@@ -1,0 +1,141 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" 
+    "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.attendance.mapper.TaskMapper">
+
+    <resultMap id="BaseResultMap" type="com.attendance.entity.Task">
+        <id column="task_id" property="taskId"/>
+        <result column="user_id" property="userId"/>
+        <result column="file_key" property="fileKey"/>
+        <result column="status" property="status"/>
+        <result column="raw_data" property="rawData"/>
+        <result column="confirmed_data" property="confirmedData"/>
+        <result column="image_urls" property="imageUrls"/>
+        <result column="anomaly_summary" property="anomalySummary"/>
+        <result column="ai_raw_output" property="aiRawOutput"/>
+        <result column="processed_by" property="processedBy"/>
+        <result column="created_at" property="createdAt"/>
+        <result column="updated_at" property="updatedAt"/>
+    </resultMap>
+
+    <sql id="Base_Column_List">
+        task_id, user_id, file_key, status, raw_data, confirmed_data,
+        image_urls, anomaly_summary, ai_raw_output, processed_by, created_at, updated_at
+    </sql>
+
+    <select id="selectTaskByTaskId" resultMap="BaseResultMap">
+        SELECT <include refid="Base_Column_List"/>
+        FROM tasks
+        WHERE task_id = #{taskId}
+    </select>
+
+    <select id="selectTaskList" resultMap="BaseResultMap">
+        SELECT <include refid="Base_Column_List"/>
+        FROM tasks
+        WHERE 1=1
+        <if test="userId != null and userId != ''">
+            AND user_id = #{userId}
+        </if>
+        <if test="status != null and status != ''">
+            AND status = #{status}
+        </if>
+        <if test="keyword != null and keyword != ''">
+            <choose>
+                <when test="keywordField == 'taskId'">
+                    AND task_id LIKE CONCAT('%', #{keyword}, '%')
+                </when>
+                <when test="keywordField == 'fileKey'">
+                    AND file_key LIKE CONCAT('%', #{keyword}, '%')
+                </when>
+                <otherwise>
+                    AND (task_id LIKE CONCAT('%', #{keyword}, '%') OR file_key LIKE CONCAT('%', #{keyword}, '%'))
+                </otherwise>
+            </choose>
+        </if>
+        ORDER BY created_at DESC
+        LIMIT #{offset}, #{size}
+    </select>
+
+    <select id="countTaskList" resultType="long">
+        SELECT COUNT(*)
+        FROM tasks
+        WHERE 1=1
+        <if test="userId != null and userId != ''">
+            AND user_id = #{userId}
+        </if>
+        <if test="status != null and status != ''">
+            AND status = #{status}
+        </if>
+        <if test="keyword != null and keyword != ''">
+            <choose>
+                <when test="keywordField == 'taskId'">
+                    AND task_id LIKE CONCAT('%', #{keyword}, '%')
+                </when>
+                <when test="keywordField == 'fileKey'">
+                    AND file_key LIKE CONCAT('%', #{keyword}, '%')
+                </when>
+                <otherwise>
+                    AND (task_id LIKE CONCAT('%', #{keyword}, '%') OR file_key LIKE CONCAT('%', #{keyword}, '%'))
+                </otherwise>
+            </choose>
+        </if>
+    </select>
+
+    <select id="selectLastTaskId" resultType="string">
+        SELECT task_id FROM tasks ORDER BY created_at DESC LIMIT 1
+    </select>
+
+    <insert id="insertTask" parameterType="com.attendance.entity.Task">
+        INSERT INTO tasks (task_id, user_id, file_key, status, raw_data, confirmed_data,
+                          image_urls, anomaly_summary, ai_raw_output, processed_by, created_at, updated_at)
+        VALUES (#{taskId}, #{userId}, #{fileKey}, #{status}, #{rawData}, #{confirmedData},
+                #{imageUrls}, #{anomalySummary}, #{aiRawOutput}, #{processedBy}, NOW(), NOW())
+    </insert>
+
+    <update id="updateTask" parameterType="com.attendance.entity.Task">
+        UPDATE tasks
+        SET status = #{status},
+            raw_data = #{rawData},
+            confirmed_data = #{confirmedData},
+            image_urls = #{imageUrls},
+            anomaly_summary = #{anomalySummary},
+            ai_raw_output = #{aiRawOutput},
+            processed_by = #{processedBy},
+            updated_at = NOW()
+        WHERE task_id = #{taskId}
+    </update>
+
+    <update id="updateTaskStatus">
+        UPDATE tasks SET status = #{status}, updated_at = NOW()
+        WHERE task_id = #{taskId}
+    </update>
+
+    <update id="updateTaskRawData">
+        UPDATE tasks 
+        SET raw_data = #{rawData}, ai_raw_output = #{aiRawOutput}, status = 'processed', updated_at = NOW()
+        WHERE task_id = #{taskId}
+    </update>
+
+    <update id="updateTaskConfirmedData">
+        UPDATE tasks 
+        SET confirmed_data = #{confirmedData}, status = 'confirmed', updated_at = NOW()
+        WHERE task_id = #{taskId}
+    </update>
+
+    <update id="updateTaskImageUrls">
+        UPDATE tasks
+        SET image_urls = #{imageUrls}, updated_at = NOW()
+        WHERE task_id = #{taskId}
+    </update>
+
+    <update id="updateTaskAnomalySummary">
+        UPDATE tasks
+        SET anomaly_summary = #{anomalySummary}, updated_at = NOW()
+        WHERE task_id = #{taskId}
+    </update>
+
+    <delete id="deleteTaskByTaskId">
+        DELETE FROM tasks WHERE task_id = #{taskId}
+    </delete>
+
+</mapper>

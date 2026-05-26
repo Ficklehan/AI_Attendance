@@ -1,0 +1,77 @@
+.container {
+  min-height: 100vh;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 40rpx;
+}
+
+.header {
+  text-align: center;
+  margin-bottom: 80rpx;
+}
+
+.logo {
+  font-size: 120rpx;
+  margin-bottom: 30rpx;
+}
+
+.title {
+  font-size: 48rpx;
+  font-weight: bold;
+  color: #ffffff;
+  margin-bottom: 15rpx;
+}
+
+.subtitle {
+  font-size: 28rpx;
+  color: rgba(255, 255, 255, 0.8);
+}
+
+.login-section {
+  width: 100%;
+  max-width: 600rpx;
+}
+
+.login-btn {
+  background: #ffffff;
+  border-radius: 15rpx;
+  padding: 30rpx;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 10rpx 40rpx rgba(0, 0, 0, 0.15);
+  margin-bottom: 30rpx;
+}
+
+.btn-icon {
+  font-size: 40rpx;
+  margin-right: 20rpx;
+}
+
+.btn-text {
+  font-size: 32rpx;
+  font-weight: bold;
+  color: #667eea;
+}
+
+.loading-text {
+  text-align: center;
+  color: #ffffff;
+  font-size: 28rpx;
+  margin-bottom: 30rpx;
+}
+
+.tips {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 15rpx;
+}
+
+.tip-item {
+  font-size: 24rpx;
+  color: rgba(255, 255, 255, 0.7);
+}

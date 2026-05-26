@@ -1,0 +1,48 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" 
+    "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.attendance.mapper.LogMapper">
+
+    <resultMap id="BaseResultMap" type="com.attendance.entity.Log">
+        <id column="id" property="id"/>
+        <result column="task_id" property="taskId"/>
+        <result column="log_type" property="logType"/>
+        <result column="content" property="content"/>
+        <result column="created_at" property="createdAt"/>
+    </resultMap>
+
+    <sql id="Base_Column_List">
+        id, task_id, log_type, content, created_at
+    </sql>
+
+    <select id="selectLogById" resultMap="BaseResultMap">
+        SELECT <include refid="Base_Column_List"/>
+        FROM logs
+        WHERE id = #{id}
+    </select>
+
+    <select id="selectLogByTaskId" resultMap="BaseResultMap">
+        SELECT <include refid="Base_Column_List"/>
+        FROM logs
+        WHERE task_id = #{taskId}
+        ORDER BY created_at
+    </select>
+
+    <select id="selectLogByLogType" resultMap="BaseResultMap">
+        SELECT <include refid="Base_Column_List"/>
+        FROM logs
+        WHERE log_type = #{logType}
+        ORDER BY created_at DESC
+        LIMIT #{offset}, #{size}
+    </select>
+
+    <insert id="insertLog" parameterType="com.attendance.entity.Log">
+        INSERT INTO logs (task_id, log_type, content, created_at)
+        VALUES (#{taskId}, #{logType}, #{content}, NOW())
+    </insert>
+
+    <delete id="deleteLogByTaskId">
+        DELETE FROM logs WHERE task_id = #{taskId}
+    </delete>
+
+</mapper>

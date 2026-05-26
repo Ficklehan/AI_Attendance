@@ -1,0 +1,84 @@
+<view class="container">
+  <view class="profile-header">
+    <view class="avatar-section">
+      <view class="avatar">
+        <text>👤</text>
+      </view>
+      <view class="user-info">
+        <text class="user-name">{{ userInfo.name || '用户' }}</text>
+        <text class="user-email">{{ userInfo.email || '-' }}</text>
+      </view>
+    </view>
+    <view class="header-actions">
+      <view class="action-btn" onTap="editProfile">
+        <text>✏️</text>
+      </view>
+    </view>
+  </view>
+
+  <view class="quick-stats card">
+    <view class="stats-header">
+      <text class="text-base font-medium">统计概览</text>
+    </view>
+    <view class="stats-grid">
+      <view class="stat-item" onTap="goToTasks" data-status="all">
+        <text class="stat-value">{{ stats.total }}</text>
+        <text class="stat-label">总任务</text>
+      </view>
+      <view class="stat-item" onTap="goToTasks" data-status="completed">
+        <text class="stat-value success">{{ stats.completed }}</text>
+        <text class="stat-label">已完成</text>
+      </view>
+      <view class="stat-item" onTap="goToTasks" data-status="pending">
+        <text class="stat-value warning">{{ stats.pending }}</text>
+        <text class="stat-label">待处理</text>
+      </view>
+      <view class="stat-item">
+        <text class="stat-value">{{ stats.records }}</text>
+        <text class="stat-label">识别记录</text>
+      </view>
+    </view>
+  </view>
+
+  <view class="menu-list">
+    <view class="menu-item card" onTap="goToConfig">
+      <view class="menu-icon">⚙️</view>
+      <view class="menu-content">
+        <text class="menu-title">系统设置</text>
+        <text class="menu-desc">国家配置、语言切换</text>
+      </view>
+      <text class="menu-arrow">→</text>
+    </view>
+
+    <view class="menu-item card" onTap="goToHelp">
+      <view class="menu-icon">❓</view>
+      <view class="menu-content">
+        <text class="menu-title">帮助中心</text>
+        <text class="menu-desc">使用说明、常见问题</text>
+      </view>
+      <text class="menu-arrow">→</text>
+    </view>
+
+    <view class="menu-item card" onTap="goToAbout">
+      <view class="menu-icon">ℹ️</view>
+      <view class="menu-content">
+        <text class="menu-title">关于我们</text>
+        <text class="menu-desc">版本信息、联系我们</text>
+      </view>
+      <text class="menu-arrow">→</text>
+    </view>
+
+    <view class="menu-item card logout" onTap="logout">
+      <view class="menu-icon">🚪</view>
+      <view class="menu-content">
+        <text class="menu-title">退出登录</text>
+        <text class="menu-desc">安全退出当前账号</text>
+      </view>
+      <text class="menu-arrow">→</text>
+    </view>
+  </view>
+
+  <view class="version-info">
+    <text>AI考勤助手 v1.0.0</text>
+  </view>
+</view>

@@ -1,0 +1,68 @@
+<view class="camera-page">
+  <camera 
+    class="camera" 
+    device-position="{{cameraPosition}}"
+    flash="{{flashMode}}"
+    onError="onCameraError"
+  />
+
+  <view class="scan-frame">
+    <view class="scan-box">
+      <view class="scan-corner top-left"></view>
+      <view class="scan-corner top-right"></view>
+      <view class="scan-corner bottom-left"></view>
+      <view class="scan-corner bottom-right"></view>
+      
+      <view class="scan-line"></view>
+      
+      <view class="scan-hint">
+        <text>请将考勤表放入框内</text>
+      </view>
+      
+      <view class="scan-guide">
+        <text class="guide-icon">📋</text>
+        <text class="guide-text">确保表格完整清晰</text>
+      </view>
+    </view>
+  </view>
+
+  <view class="camera-controls">
+    <view class="control-left">
+      <view class="control-btn" onTap="toggleFlash">
+        <text a:if="{{flashMode === 'off'}}">🔆</text>
+        <text a:else>🔅</text>
+      </view>
+    </view>
+    
+    <view class="control-center">
+      <view class="capture-btn" onTap="takePhoto">
+        <view class="capture-inner"></view>
+      </view>
+    </view>
+    
+    <view class="control-right">
+      <view class="control-btn" onTap="toggleCamera">
+        <text>🔄</text>
+      </view>
+    </view>
+  </view>
+
+  <view class="camera-tips">
+    <view class="tip-item">
+      <text class="tip-icon">💡</text>
+      <text class="tip-text">光线充足环境拍摄</text>
+    </view>
+    <view class="tip-item">
+      <text class="tip-icon">📐</text>
+      <text class="tip-text">保持表格平整</text>
+    </view>
+    <view class="tip-item">
+      <text class="tip-icon">👁️</text>
+      <text class="tip-text">正对表格拍摄</text>
+    </view>
+  </view>
+
+  <view class="gallery-btn" onTap="chooseFromGallery">
+    <text>📷 从相册选择</text>
+  </view>
+</view>

@@ -1,0 +1,79 @@
+<view class="container">
+  <view class="header">
+    <view class="header-title">AI考勤助手</view>
+    <view class="header-subtitle">拍照识别考勤表，一键提交</view>
+  </view>
+
+  <view class="upload-area" onTap="goToCamera">
+    <view class="upload-icon">
+      <text>📷</text>
+    </view>
+    <view class="upload-text">点击拍照或上传图片</view>
+    <view class="upload-hint">支持 JPG、PNG 格式，自动压缩</view>
+  </view>
+
+  <view a:if="{{imageList.length > 0}}" class="image-list">
+    <view class="image-list-header">
+      <text class="text-base font-medium">已选择 {{imageList.length}} 张图片</text>
+      <text class="text-sm text-muted" onTap="clearImages">清空</text>
+    </view>
+    <scroll-view scroll-x class="image-scroll">
+      <view class="image-items">
+        <view a:for="{{imageList}}" a:for-item="item" a:for-index="index" a:key="index" class="image-item">
+          <image src="{{item}}" mode="aspectFill" class="image-thumb" />
+          <view class="image-delete" onTap="deleteImage" data-index="{{index}}">
+            <text>✕</text>
+          </view>
+        </view>
+      </view>
+    </scroll-view>
+  </view>
+
+  <view class="country-selector card">
+    <view class="selector-header">
+      <text class="text-base font-medium">选择国家配置</text>
+    </view>
+    <scroll-view scroll-x class="country-scroll">
+      <view class="country-items">
+        <view
+          a:for="{{countries}}"
+          a:for-item="country"
+          a:key="code"
+          class="country-item {{currentCountry === country.code ? 'active' : ''}}"
+          onTap="selectCountry"
+          data-code="{{country.code}}"
+        >
+          {{country.name}}
+        </view>
+      </view>
+    </scroll-view>
+  </view>
+
+  <view a:if="{{imageList.length > 0}}" class="action-area">
+    <view class="btn-primary {{isRecognizing ? 'loading' : ''}}" onTap="startRecognition">
+      <text a:if="{{isRecognizing}}">识别中...</text>
+      <text a:else>开始识别</text>
+    </view>
+  </view>
+
+  <view class="quick-tasks card">
+    <view class="quick-header">
+      <text class="text-base font-medium">最近任务</text>
+      <text class="text-sm text-muted" onTap="goToTasks">查看全部</text>
+    </view>
+    <view a:if="{{recentTasks.length > 0}}" class="task-list">
+      <view a:for="{{recentTasks}}" a:for-item="task" a:key="id" class="task-item" onTap="goToResult" data-id="{{task.id}}">
+        <view class="task-info">
+          <text class="task-name ellipsis">{{task.name}}</text>
+          <text class="task-time text-sm text-muted">{{formatTime(task.createTime)}}</text>
+        </view>
+        <view class="tag {{getTaskStatusTag(task.status)}}">
+          {{getTaskStatusText(task.status)}}
+        </view>
+      </view>
+    </view>
+    <view a:else class="empty-tips">
+      <text class="text-muted">暂无任务记录</text>
+    </view>
+  </view>
+</view>

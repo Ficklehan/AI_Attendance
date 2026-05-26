@@ -1,0 +1,58 @@
+# 日志目录
+logs/
+*.log
+
+# 上传文件目录
+uploads/
+
+# 编译产物
+backend/target/
+backend/*.jar
+
+# IDE配置
+.idea/
+.vscode/
+*.iml
+*.iws
+*.ipr
+
+# 操作系统文件
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# 临时文件
+*.tmp
+*.bak
+*.swp
+*~
+
+# Node.js
+frontend/node_modules/
+frontend/dist/
+frontend/.env.local
+frontend/.env.*.local
+
+# Maven
+backend/.mvn/wrapper/maven-wrapper.jar
+
+# 日志文件
+*.log
+logs/
+
+# 测试覆盖率
+coverage/
+target/
+
+# 安全文件
+*.pem
+*.key
+.env
+.env.*
+
+# 移动端 Node.js
+mobile/node_modules/
+mobile/dist/
+
+# 数据库数据
+mysql_data/

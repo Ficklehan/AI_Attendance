@@ -1,0 +1,24 @@
+{
+  "name": "AI考勤助手",
+  "appid": "cli_a96dfac04b789cbb",
+  "description": "智能考勤识别助手，支持拍照扫描和AI识别",
+  "version_name": "1.0.0",
+  "version_code": "100",
+  "min_platform_version": "1026000",
+  "icon": "assets/icon.png",
+  "features": [
+    "camera",
+    "file",
+    "location"
+  ],
+  "permissions": [
+    "location",
+    "camera"
+  ],
+  "window": {
+    "navigationBar": {
+      "title": "AI考勤助手",
+      "backgroundColor": "#ffffff"
+    }
+  }
+}

@@ -1,0 +1,73 @@
+<view class="chat-page">
+  <scroll-view 
+    scroll-y 
+    class="chat-messages" 
+    scroll-into-view="{{scrollToId}}"
+    scroll-with-animation
+  >
+    <view class="message-list">
+      <view 
+        a:for="{{messages}}" 
+        a:for-item="msg"
+        a:key="index"
+        id="{{'msg-' + index}}"
+        class="message-item {{msg.isUser ? 'is-user' : ''}}"
+      >
+        <view class="avatar">
+          <text a:if="{{msg.isUser}}">👤</text>
+          <text a:else>🤖</text>
+        </view>
+        
+        <view class="message-content">
+          <view a:if="{{msg.image}}" class="message-image">
+            <image src="{{msg.image}}" mode="widthFix" />
+          </view>
+          <view a:else class="message-bubble">
+            <text>{{ msg.content }}</text>
+          </view>
+          <text class="message-time">{{ formatTime(msg.time) }}</text>
+        </view>
+      </view>
+      
+      <view a:if="{{isLoading}}" class="loading-message">
+        <view class="typing-indicator">
+          <view class="typing-dot"></view>
+          <view class="typing-dot"></view>
+          <view class="typing-dot"></view>
+        </view>
+        <text class="typing-text">AI正在思考...</text>
+      </view>
+    </view>
+  </scroll-view>
+
+  <view class="chat-input">
+    <view class="input-actions">
+      <view class="action-btn" onTap="chooseImage">
+        <text>📷</text>
+      </view>
+      <view class="action-btn" onTap="clearChat">
+        <text>🗑️</text>
+      </view>
+    </view>
+    
+    <input 
+      class="input-field" 
+      value="{{inputText}}" 
+      placeholder="输入问题或发送图片..."
+      confirm-type="send"
+      onConfirm="sendMessage"
+    />
+    
+    <view 
+      class="send-btn {{inputText.trim() || selectedImage ? 'active' : ''}}" 
+      onTap="sendMessage"
+    >
+      <text>发送</text>
+    </view>
+  </view>
+
+  <view a:if="{{selectedImage}}" class="image-preview-bar">
+    <image src="{{selectedImage}}" class="preview-thumb" />
+    <text class="remove-image" onTap="removeSelectedImage">✕</text>
+  </view>
+</view>

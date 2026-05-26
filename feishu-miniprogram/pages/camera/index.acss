@@ -1,0 +1,221 @@
+.camera-page {
+  width: 100vw;
+  height: 100vh;
+  background: #000000;
+  position: relative;
+  overflow: hidden;
+}
+
+.camera {
+  width: 100%;
+  height: 100%;
+}
+
+.scan-frame {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.6);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.scan-box {
+  width: 600rpx;
+  height: 600rpx;
+  position: relative;
+  border: 2rpx dashed rgba(255, 255, 255, 0.3);
+  border-radius: 16rpx;
+}
+
+.scan-corner {
+  position: absolute;
+  width: 48rpx;
+  height: 48rpx;
+  border: 6rpx solid #5B8FF9;
+}
+
+.scan-corner.top-left {
+  top: -2rpx;
+  left: -2rpx;
+  border-right: none;
+  border-bottom: none;
+  border-radius: 8rpx 0 0 0;
+}
+
+.scan-corner.top-right {
+  top: -2rpx;
+  right: -2rpx;
+  border-left: none;
+  border-bottom: none;
+  border-radius: 0 8rpx 0 0;
+}
+
+.scan-corner.bottom-left {
+  bottom: -2rpx;
+  left: -2rpx;
+  border-right: none;
+  border-top: none;
+  border-radius: 0 0 0 8rpx;
+}
+
+.scan-corner.bottom-right {
+  bottom: -2rpx;
+  right: -2rpx;
+  border-left: none;
+  border-top: none;
+  border-radius: 0 0 8rpx 0;
+}
+
+.scan-line {
+  position: absolute;
+  top: 0;
+  left: 20rpx;
+  right: 20rpx;
+  height: 4rpx;
+  background: linear-gradient(90deg, transparent, #5B8FF9, transparent);
+  animation: scanMove 2s linear infinite;
+}
+
+@keyframes scanMove {
+  0% {
+    top: 0;
+    opacity: 1;
+  }
+  100% {
+    top: 100%;
+    opacity: 0.5;
+  }
+}
+
+.scan-hint {
+  position: absolute;
+  top: -60rpx;
+  left: 50%;
+  transform: translateX(-50%);
+  background: rgba(0, 0, 0, 0.6);
+  padding: 12rpx 24rpx;
+  border-radius: 24rpx;
+}
+
+.scan-hint text {
+  color: #ffffff;
+  font-size: 24rpx;
+}
+
+.scan-guide {
+  position: absolute;
+  bottom: -80rpx;
+  left: 50%;
+  transform: translateX(-50%);
+  display: flex;
+  align-items: center;
+  gap: 12rpx;
+}
+
+.guide-icon {
+  font-size: 32rpx;
+}
+
+.guide-text {
+  color: rgba(255, 255, 255, 0.8);
+  font-size: 24rpx;
+}
+
+.camera-controls {
+  position: absolute;
+  bottom: 200rpx;
+  left: 0;
+  right: 0;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 0 60rpx;
+}
+
+.control-left,
+.control-right {
+  width: 100rpx;
+  height: 100rpx;
+}
+
+.control-btn {
+  width: 80rpx;
+  height: 80rpx;
+  background: rgba(255, 255, 255, 0.2);
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.control-btn text {
+  font-size: 36rpx;
+}
+
+.control-center {
+  display: flex;
+  justify-content: center;
+}
+
+.capture-btn {
+  width: 140rpx;
+  height: 140rpx;
+  background: #ffffff;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 8rpx 32rpx rgba(0, 0, 0, 0.3);
+}
+
+.capture-inner {
+  width: 100rpx;
+  height: 100rpx;
+  background: #5B8FF9;
+  border-radius: 50%;
+}
+
+.camera-tips {
+  position: absolute;
+  bottom: 100rpx;
+  left: 0;
+  right: 0;
+  display: flex;
+  justify-content: center;
+  gap: 32rpx;
+}
+
+.tip-item {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8rpx;
+}
+
+.tip-icon {
+  font-size: 32rpx;
+}
+
+.tip-text {
+  color: rgba(255, 255, 255, 0.7);
+  font-size: 20rpx;
+}
+
+.gallery-btn {
+  position: absolute;
+  bottom: 40rpx;
+  left: 50%;
+  transform: translateX(-50%);
+  background: rgba(255, 255, 255, 0.2);
+  padding: 20rpx 48rpx;
+  border-radius: 40rpx;
+}
+
+.gallery-btn text {
+  color: #ffffff;
+  font-size: 28rpx;
+}
