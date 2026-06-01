@@ -1,0 +1,429 @@
+<view class="page result-page">
+  <template name="recordMarkTags">
+    <view class="record-head-tags">
+      <block tt:for="{{row.markLabels}}" tt:key="key">
+        <text
+          tt:if="{{item.toggleHistory}}"
+          class="{{item.tagClass}}"
+          data-row-key="{{item.rowKey}}"
+          catchtap="toggleCalibrationExpand"
+        >{{item.label}}</text>
+        <text tt:else class="{{item.tagClass}}">{{item.label}}</text>
+      </block>
+    </view>
+  </template>
+
+  <template name="calibrationHistoryBlock">
+    <view tt:if="{{row.calibrationExpanded && row.calibrationHistory.length > 0}}" class="calibration-detail">
+      <text class="calibration-detail-title">{{texts.calibrationDetailTitle}}</text>
+      <view tt:for="{{row.calibrationHistory}}" tt:key="index" class="calibration-detail-item">
+        <view class="calibration-detail-meta">
+          <text class="calibration-detail-who">{{item.byName}}</text>
+          <text class="calibration-detail-at">{{item.at}}</text>
+        </view>
+        <text tt:if="{{item.reason}}" class="calibration-detail-reason">{{item.reason}}</text>
+        <view tt:for="{{item.changes}}" tt:for-item="line" tt:key="field" class="calibration-detail-change">
+          <text>{{line.label}}: </text>
+          <text class="calibration-from">{{line.from}}</text>
+          <text> → </text>
+          <text class="calibration-to">{{line.to}}</text>
+        </view>
+      </view>
+    </view>
+  </template>
+
+  <template name="recordActionLinks">
+    <view tt:if="{{showEdit || showCalibrate}}" class="record-action-row">
+      <text
+        tt:if="{{showEdit}}"
+        class="record-action-link"
+        data-row-key="{{rowKey}}"
+        catchtap="openRecordEdit"
+      >{{editText}}</text>
+      <text
+        tt:if="{{showCalibrate}}"
+        class="record-action-link record-action-link-muted"
+        data-row-key="{{rowKey}}"
+        catchtap="openCalibrate"
+      >{{calibrateText}}</text>
+    </view>
+  </template>
+
+  <template name="recordFieldLines">
+    <view class="record-fields-compact">
+      <view class="record-compact-row">
+        <view
+          tt:for="{{fieldRows.primaryRow}}"
+          tt:for-item="field"
+          tt:key="key"
+          class="record-field-cell"
+        >
+          <text class="record-field-label">{{field.label}}</text>
+          <text class="record-field-value {{field.missing ? 'is-missing' : ''}}">{{field.value}}</text>
+        </view>
+      </view>
+      <view class="record-compact-row record-compact-row-secondary">
+        <view
+          tt:for="{{fieldRows.contextRow}}"
+          tt:for-item="field"
+          tt:key="key"
+          class="record-field-cell"
+        >
+          <text class="record-field-label">{{field.label}}</text>
+          <text class="record-field-value {{field.missing ? 'is-missing' : ''}}">{{field.value}}</text>
+        </view>
+      </view>
+    </view>
+  </template>
+
+  <view tt:if="{{loading}}" class="result-loading">
+    <view class="spinner"></view>
+  </view>
+
+  <block tt:else>
+    <view
+      tt:if="{{showSyncBanner}}"
+      class="sync-banner sync-banner-{{syncBannerType}}"
+    >
+      <text class="sync-banner-text">{{syncBannerText}}</text>
+    </view>
+
+    <view class="result-header-card">
+      <view class="result-header-top">
+        <view class="result-header-main">
+          <text class="result-task-name">{{taskInfo.name}}</text>
+          <view class="result-header-sub">
+            <text class="result-time">{{taskInfo.timeText}}</text>
+            <text tt:if="{{promptCountryLabel}}" class="pill pill-sm">{{promptCountryLabel}}</text>
+          </view>
+        </view>
+        <view class="{{taskInfo.statusTag}}">{{taskInfo.statusText}}</view>
+      </view>
+      <text
+        tt:if="{{recognitionEngineLabel}}"
+        class="result-engine-line"
+      >{{recognitionEngineLabel}}</text>
+
+      <view tt:if="{{imageList.length > 0 || imagesLoading}}" class="result-source-files">
+        <view tt:if="{{imagesLoading}}" class="result-file-row muted">
+          <text class="result-file-name">{{texts.loadingImage}}</text>
+        </view>
+        <view
+          tt:else
+          tt:for="{{displayImageRows}}"
+          tt:for-item="img"
+          tt:key="key"
+          class="result-file-row"
+          bindtap="previewImageAt"
+          data-index="{{img.listIndex}}"
+        >
+          <text class="result-file-name">{{img.fileName}}</text>
+          <text class="result-file-action">{{texts.viewImage}}</text>
+        </view>
+        <view
+          tt:if="{{imageList.length > 1}}"
+          class="result-files-toggle"
+          bindtap="toggleImagesExpanded"
+        >
+          <text class="result-files-toggle-text">
+            {{imagesExpanded ? texts.collapseImages : texts.expandImages}}
+          </text>
+          <text tt:if="{{!imagesExpanded}}" class="result-files-toggle-meta">({{imageList.length}})</text>
+        </view>
+      </view>
+    </view>
+
+    <scroll-view scroll-y class="result-scroll" bindscrolltolower="loadMoreRecords">
+      <view class="result-scroll-meta">
+        <view class="result-stats-inline">
+          <view class="stat-inline">
+            <text class="stat-inline-num">{{stats.total}}</text>
+            <text class="stat-inline-label">{{texts.statsAll}}</text>
+          </view>
+          <view class="stat-inline">
+            <text class="stat-inline-num stat-inline-good">{{stats.normal}}</text>
+            <text class="stat-inline-label">{{texts.statsNormal}}</text>
+          </view>
+          <view class="stat-inline">
+            <text class="stat-inline-num stat-inline-warn">{{stats.blurred}}</text>
+            <text class="stat-inline-label">{{texts.statsBlurred}}</text>
+          </view>
+          <view class="stat-inline">
+            <text class="stat-inline-num stat-inline-bad">{{stats.absent}}</text>
+            <text class="stat-inline-label">{{texts.statsAbsent}}</text>
+          </view>
+        </view>
+        <view tt:if="{{canSubmit}}" class="result-dup-bar">
+          <text class="result-dup-label">{{texts.duplicateScopeLabel}}</text>
+          <view class="result-dup-btns">
+            <view
+              class="result-dup-btn {{duplicateScopeConfirmedActive ? 'active' : ''}}"
+              data-scope="confirmed_only"
+              bindtap="onDuplicateScopeChange"
+            >
+              <text>{{texts.duplicateScopeConfirmed}}</text>
+            </view>
+            <view
+              class="result-dup-btn {{duplicateScopeAllActive ? 'active' : ''}}"
+              data-scope="confirmed_and_processing"
+              bindtap="onDuplicateScopeChange"
+            >
+              <text>{{texts.duplicateScopeAll}}</text>
+            </view>
+          </view>
+        </view>
+        <view tt:if="{{duplicateBannerText}}" class="result-dup-banner-mini">
+          <text>{{duplicateBannerText}}</text>
+        </view>
+      </view>
+      <view tt:if="{{issueRecords.length > 0}}" class="issue-panel">
+        <view class="issue-head">
+          <text class="issue-title">{{texts.issuesTitle}}</text>
+          <text class="issue-count">{{issueCount}} {{texts.issueUnit}}</text>
+        </view>
+        <view
+          tt:for="{{issueRecords}}"
+          tt:key="index"
+          class="issue-row"
+        >
+          <view class="record-body">
+            <view class="record-head">
+              <text class="record-title">{{item.titleText}}</text>
+              <template is="recordMarkTags" data="{{row: item}}" />
+            </view>
+            <template is="recordFieldLines" data="{{fieldRows: item.fieldRows}}" />
+            <view tt:if="{{item.anomalyReasonPreview.length > 0}}" class="reason-wrap">
+              <view class="reason-tags">
+                <text
+                  tt:for="{{item.anomalyReasonPreview}}"
+                  tt:for-item="reason"
+                  tt:key="index"
+                  class="result-reason-chip {{reason.levelClass}}"
+                >{{reason.text}}</text>
+                <text tt:if="{{item.anomalyReasonMore > 0}}" class="reason-more">
+                  {{texts.anomalyMorePrefix}} +{{item.anomalyReasonMore}}
+                </text>
+              </view>
+            </view>
+            <view tt:if="{{item.hasDuplicate}}" class="duplicate-tools">
+              <text class="duplicate-tag">{{texts.duplicateTag}}</text>
+              <text
+                class="duplicate-link"
+                data-row-key="{{item._rowKey}}"
+                catchtap="toggleDuplicateExpand"
+              >{{item.duplicateExpanded ? texts.duplicateCollapse : texts.duplicateExpand}}</text>
+              <text
+                class="duplicate-link"
+                data-row-key="{{item._rowKey}}"
+                catchtap="confirmNotDuplicate"
+              >{{texts.duplicateNotDuplicate}}</text>
+            </view>
+            <template is="calibrationHistoryBlock" data="{{row: item, texts: texts}}" />
+            <template
+              is="recordActionLinks"
+              data="{{
+                showEdit: canSubmit && item.canEdit,
+                showCalibrate: canCalibrate && !item.isDeleted,
+                rowKey: item._rowKey,
+                editText: texts.editRecord,
+                calibrateText: texts.calibrate
+              }}"
+            />
+            <view tt:if="{{item.duplicateExpanded && item.duplicateMembers.length > 0}}" class="duplicate-detail">
+              <text class="duplicate-detail-title">{{texts.duplicateDetailTitle}}</text>
+              <view
+                tt:for="{{item.duplicateMembers}}"
+                tt:for-item="peer"
+                tt:key="rowKey"
+                class="duplicate-detail-row"
+              >
+                <text class="duplicate-detail-cell">{{peer.sourceTaskId}}</text>
+                <text class="duplicate-detail-cell">{{peer.NO}}</text>
+                <text class="duplicate-detail-cell">{{peer.displayName}}</text>
+              </view>
+            </view>
+          </view>
+        </view>
+        <view
+          tt:if="{{!recordsExpanded && records.length > issueRecords.length}}"
+          class="result-expand-link"
+          bindtap="toggleRecordsExpanded"
+        >
+          <text>{{texts.viewAllIssues}}</text>
+        </view>
+      </view>
+
+      <view tt:if="{{recordsExpanded}}" class="card-flush result-records-group" id="record-list">
+        <view class="result-records-head">
+          <text class="result-records-title">{{texts.recordsTitle}}</text>
+          <text class="result-records-link" bindtap="toggleRecordsExpanded">{{texts.collapseRecords}}</text>
+        </view>
+        <view
+          tt:for="{{displayRecords}}"
+          tt:key="index"
+          class="record-row {{item.rowClass}}"
+        >
+          <view class="result-record-dot {{item.rowDotClass}}"></view>
+          <view class="record-body">
+            <view class="record-head">
+              <text class="record-title">{{item.titleText}}</text>
+              <template is="recordMarkTags" data="{{row: item}}" />
+            </view>
+            <template is="recordFieldLines" data="{{fieldRows: item.fieldRows}}" />
+            <view tt:if="{{item.anomalyReasonPreview.length > 0}}" class="reason-wrap">
+              <view class="reason-tags">
+                <text
+                  tt:for="{{item.anomalyReasonPreview}}"
+                  tt:for-item="reason"
+                  tt:key="index"
+                  class="result-reason-chip {{reason.levelClass}}"
+                >{{reason.text}}</text>
+                <text tt:if="{{item.anomalyReasonMore > 0}}" class="reason-more">
+                  {{texts.anomalyMorePrefix}} +{{item.anomalyReasonMore}}
+                </text>
+              </view>
+            </view>
+            <view tt:if="{{item.hasDuplicate}}" class="duplicate-tools">
+              <text class="duplicate-tag">{{texts.duplicateTag}}</text>
+              <text
+                class="duplicate-link"
+                data-row-key="{{item._rowKey}}"
+                catchtap="toggleDuplicateExpand"
+              >{{item.duplicateExpanded ? texts.duplicateCollapse : texts.duplicateExpand}}</text>
+              <text
+                class="duplicate-link"
+                data-row-key="{{item._rowKey}}"
+                catchtap="confirmNotDuplicate"
+              >{{texts.duplicateNotDuplicate}}</text>
+            </view>
+            <template is="calibrationHistoryBlock" data="{{row: item, texts: texts}}" />
+            <template
+              is="recordActionLinks"
+              data="{{
+                showEdit: canSubmit && item.canEdit,
+                showCalibrate: canCalibrate && !item.isDeleted,
+                rowKey: item._rowKey,
+                editText: texts.editRecord,
+                calibrateText: texts.calibrate
+              }}"
+            />
+            <view tt:if="{{item.duplicateExpanded && item.duplicateMembers.length > 0}}" class="duplicate-detail">
+              <text class="duplicate-detail-title">{{texts.duplicateDetailTitle}}</text>
+              <view
+                tt:for="{{item.duplicateMembers}}"
+                tt:for-item="peer"
+                tt:key="rowKey"
+                class="duplicate-detail-row"
+              >
+                <text class="duplicate-detail-cell">{{peer.sourceTaskId}}</text>
+                <text class="duplicate-detail-cell">{{peer.NO}}</text>
+                <text class="duplicate-detail-cell">{{peer.displayName}}</text>
+              </view>
+            </view>
+          </view>
+        </view>
+        <view tt:if="{{loadingMore}}" class="result-more-loading">
+          <view class="spinner spinner-sm"></view>
+        </view>
+      </view>
+
+      <view
+        tt:elif="{{records.length > 0 && issueRecords.length === 0}}"
+        class="card-flush result-records-group"
+        id="record-list"
+      >
+        <view class="result-records-head">
+          <text class="result-records-title">{{texts.recordsTitle}}</text>
+          <text class="result-records-link" bindtap="toggleRecordsExpanded">{{texts.expandRecords}}</text>
+        </view>
+        <view class="result-all-clear">
+          <text class="result-all-clear-title">{{texts.allClearTitle}}</text>
+          <text class="result-all-clear-desc">{{texts.allClearDesc}}</text>
+        </view>
+        <view
+          tt:for="{{displayRecords}}"
+          tt:key="index"
+          class="record-row {{item.rowClass}}"
+        >
+          <view class="result-record-dot {{item.rowDotClass}}"></view>
+          <view class="record-body">
+            <view class="record-head">
+              <text class="record-title">{{item.titleText}}</text>
+              <template is="recordMarkTags" data="{{row: item}}" />
+            </view>
+            <template is="recordFieldLines" data="{{fieldRows: item.fieldRows}}" />
+            <view tt:if="{{item.anomalyReasonPreview.length > 0}}" class="reason-wrap">
+              <view class="reason-tags">
+                <text
+                  tt:for="{{item.anomalyReasonPreview}}"
+                  tt:for-item="reason"
+                  tt:key="index"
+                  class="result-reason-chip {{reason.levelClass}}"
+                >{{reason.text}}</text>
+                <text tt:if="{{item.anomalyReasonMore > 0}}" class="reason-more">
+                  {{texts.anomalyMorePrefix}} +{{item.anomalyReasonMore}}
+                </text>
+              </view>
+            </view>
+            <template
+              is="recordActionLinks"
+              data="{{
+                showEdit: canSubmit && item.canEdit,
+                showCalibrate: canCalibrate && !item.isDeleted,
+                rowKey: item._rowKey,
+                editText: texts.editRecord,
+                calibrateText: texts.calibrate
+              }}"
+            />
+          </view>
+        </view>
+        <view tt:if="{{hasMore}}" class="result-expand-link" bindtap="toggleRecordsExpanded">
+          <text>{{texts.viewAllIssues}}</text>
+        </view>
+      </view>
+    </scroll-view>
+
+    <view class="dock result-dock">
+      <view class="btn btn-secondary" bindtap="goBack">{{texts.back}}</view>
+      <view
+        tt:if="{{canRetrySync}}"
+        class="btn btn-secondary {{isRetryingSync ? 'disabled loading' : ''}}"
+        bindtap="retrySync"
+      >
+        {{isRetryingSync ? texts.retryingSync : texts.retrySync}}
+      </view>
+      <view
+        tt:if="{{canSubmit}}"
+        class="btn btn-primary {{isSubmitting ? 'disabled loading' : ''}}"
+        bindtap="confirmSubmit"
+      >
+        {{submitCtaLabel}}
+      </view>
+    </view>
+    <view class="dock-spacer"></view>
+  </block>
+
+  <view
+    tt:if="{{showConfirmSheet}}"
+    class="sheet-mask"
+    bindtap="closeConfirmSheet"
+  >
+    <view class="sheet" catchtap="noop">
+      <view class="sheet-handle"></view>
+      <text class="sheet-title">{{texts.confirmTitle}}</text>
+      <text class="sheet-desc">{{texts.confirmContent}}</text>
+      <view class="btn btn-primary" bindtap="confirmSheetSubmit">{{texts.confirmSubmit}}</view>
+      <view class="btn btn-secondary result-sheet-cancel" bindtap="closeConfirmSheet">{{texts.sheetCancel}}</view>
+    </view>
+  </view>
+
+  <view tt:if="{{showCompletion}}" class="completion">
+    <view class="completion-ring">
+      <text class="completion-check">✓</text>
+    </view>
+    <text class="completion-title">{{texts.completionTitle}}</text>
+    <text class="completion-desc">{{texts.completionDesc}}</text>
+    <view class="btn btn-primary result-completion-action" bindtap="goTasksFromCompletion">{{texts.completionTasks}}</view>
+    <view class="btn btn-secondary result-completion-action" bindtap="dismissCompletion">{{texts.completionStay}}</view>
+  </view>
+</view>

@@ -1,0 +1,68 @@
+@import "../../styles/design.ttss";
+
+/* ═══ Profile page — personal space polish ═══ */
+
+/* Avatar — refined glow ring */
+.profile-page .profile-avatar {
+  position: relative;
+}
+
+.profile-page .profile-avatar::after {
+  content: '';
+  position: absolute;
+  inset: -6rpx;
+  border-radius: 50%;
+  border: 3rpx solid rgba(91, 108, 247, 0.18);
+  pointer-events: none;
+}
+
+/* Stat cards — gradient hover */
+.profile-page .profile-stat-card {
+  transition: transform 0.15s ease, box-shadow 0.15s ease;
+}
+
+.profile-page .profile-stat-card:active {
+  transform: scale(0.97);
+  box-shadow: var(--shadow-sm);
+}
+
+/* Stat numbers — refined font rendering */
+.profile-page .profile-stat-num {
+  letter-spacing: -0.03em;
+}
+
+/* Quick tiles — gradient treatment */
+.profile-page .quick-tile {
+  background: linear-gradient(180deg, var(--surface-1) 0%, rgba(245, 240, 255, 0.40) 100%);
+  transition: transform 0.15s ease, box-shadow 0.15s ease;
+}
+
+.profile-page .quick-tile:active {
+  transform: scale(0.97);
+  box-shadow: var(--shadow-sm);
+}
+
+/* Menu card — refined surface */
+.profile-page .card-flush .list-row {
+  transition: background 0.15s ease;
+}
+
+/* Logout button — refined danger treatment */
+.profile-page .profile-logout {
+  min-height: 80rpx;
+  transition: opacity 0.15s ease;
+}
+
+.profile-page .profile-logout:active {
+  opacity: 0.8;
+}
+
+/* Section labels — warm spacing */
+.profile-page .section-label {
+  margin-top: var(--sp-2);
+}
+
+/* User card — subtle gradient */
+.profile-page .card {
+  background: linear-gradient(180deg, var(--surface-1) 0%, rgba(245, 240, 255, 0.30) 100%);
+}

@@ -2,19 +2,30 @@ package com.attendance.controller;
 
 import com.attendance.common.Result;
 import com.attendance.config.FeishuProperties;
+import com.attendance.dto.request.FeishuMiniprogramLoginRequest;
 import com.attendance.dto.response.LoginResponse;
 import com.attendance.entity.User;
 import com.attendance.service.AuditLogService;
+import com.attendance.service.FeishuService;
 import com.attendance.service.UserService;
 import com.alibaba.fastjson.JSON;
 import com.alibaba.fastjson.JSONObject;
-import okhttp3.*;
+import okhttp3.MediaType;
+import okhttp3.OkHttpClient;
+import okhttp3.Request;
+import okhttp3.Response;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.web.bind.annotation.*;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
+import org.springframework.web.bind.annotation.RestController;
 
-import jakarta.servlet.http.HttpServletResponse;
+import javax.servlet.http.HttpServletResponse;
+import javax.validation.Valid;
 import java.io.IOException;
 import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;
@@ -34,6 +45,9 @@ public class FeishuAuthController {
 
     @Autowired
     private AuditLogService auditLogService;
+
+    @Autowired
+    private FeishuService feishuService;
 
     private final OkHttpClient httpClient = new OkHttpClient.Builder()
             .connectTimeout(30, java.util.concurrent.TimeUnit.SECONDS)
@@ -220,15 +234,22 @@ public class FeishuAuthController {
     }
 
     @PostMapping("/miniprogram/login")
-    public Result<LoginResponse> miniprogramLogin(@RequestParam("code") String code) {
+    public Result<LoginResponse> miniprogramLogin(@Valid @RequestBody FeishuMiniprogramLoginRequest request) {
+        String code = request.getCode();
         log.info("飞书小程序登录, code: {}", code);
 
+        if (feishuProperties.getAppId() == null || feishuProperties.getAppId().isEmpty()
+                || feishuProperties.getAppSecret() == null || feishuProperties.getAppSecret().isEmpty()) {
+            return Result.error("未配置飞书应用凭证，请在 backend/.env 设置 FEISHU_APP_ID 和 FEISHU_APP_SECRET");
+        }
+
         try {
-            JSONObject tokenData = getMiniprogramAccessToken(code);
+            JSONObject tokenData = feishuService.exchangeMiniprogramLoginCode(code);
             String accessToken = tokenData.getString("access_token");
             String openId = tokenData.getString("open_id");
             String unionId = tokenData.getString("union_id");
             String userId = tokenData.getString("user_id");
+            String employeeId = tokenData.getString("employee_id");
             
             JSONObject userInfo = getMiniprogramUserInfo(accessToken);
             log.info("飞书小程序返回的完整用户信息: {}", userInfo.toJSONString());
@@ -240,7 +261,10 @@ public class FeishuAuthController {
             if (feishuUserId == null || feishuUserId.isEmpty()) {
                 feishuUserId = userId;
             }
-            
+            if (feishuUserId == null || feishuUserId.isEmpty()) {
+                feishuUserId = employeeId;
+            }
+
             if (feishuUserId == null || feishuUserId.isEmpty()) {
                 feishuUserId = userInfo.getString("open_id");
             }
@@ -276,32 +300,6 @@ public class FeishuAuthController {
             log.error("飞书小程序登录失败", e);
             return Result.error("登录失败: " + e.getMessage());
         }
-    }
-    
-    private JSONObject getMiniprogramAccessToken(String code) throws IOException {
-        JSONObject body = new JSONObject();
-        body.put("app_id", feishuProperties.getAppId());
-        body.put("app_secret", feishuProperties.getAppSecret());
-        body.put("grant_type", "authorization_code");
-        body.put("code", code);
-
-        Request request = new Request.Builder()
-                .url("https://open.feishu.cn/open-apis/authen/v1/oidc/access_token")
-                .header("Content-Type", "application/json")
-                .post(okhttp3.RequestBody.create(body.toJSONString(), MediaType.parse("application/json")))
-                .build();
-
-        Response response = httpClient.newCall(request).execute();
-        if (!response.isSuccessful()) {
-            throw new RuntimeException("获取飞书小程序access_token失败: " + response.code());
-        }
-
-        JSONObject result = JSON.parseObject(response.body().string());
-        if (result.getInteger("code") != 0) {
-            throw new RuntimeException("获取access_token失败: " + result.getString("msg"));
-        }
-
-        return result.getJSONObject("data");
     }
     
     private JSONObject getMiniprogramUserInfo(String accessToken) throws IOException {

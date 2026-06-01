@@ -7,6 +7,9 @@ public class Task {
     private String userId;
     private String fileKey;
     private String status;
+    private String syncStatus;
+    private String syncError;
+    private String promptCountry;
     private String rawData;
     private String confirmedData;
     private String imageUrls;
@@ -46,6 +49,30 @@ public class Task {
 
     public void setStatus(String status) {
         this.status = status;
+    }
+
+    public String getSyncStatus() {
+        return syncStatus;
+    }
+
+    public void setSyncStatus(String syncStatus) {
+        this.syncStatus = syncStatus;
+    }
+
+    public String getSyncError() {
+        return syncError;
+    }
+
+    public void setSyncError(String syncError) {
+        this.syncError = syncError;
+    }
+
+    public String getPromptCountry() {
+        return promptCountry;
+    }
+
+    public void setPromptCountry(String promptCountry) {
+        this.promptCountry = promptCountry;
     }
 
     public String getRawData() {

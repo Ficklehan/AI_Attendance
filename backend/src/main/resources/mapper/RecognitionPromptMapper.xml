@@ -1,0 +1,70 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+    "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.attendance.mapper.RecognitionPromptMapper">
+
+    <resultMap id="RecognitionPromptMap" type="com.attendance.entity.RecognitionPrompt">
+        <id property="countryCode" column="country_code"/>
+        <result property="aiPrompt" column="ai_prompt"/>
+        <result property="continuePrompt" column="continue_prompt"/>
+        <result property="seedVersion" column="seed_version"/>
+        <result property="userModified" column="user_modified"/>
+        <result property="createdAt" column="created_at"/>
+        <result property="updatedAt" column="updated_at"/>
+    </resultMap>
+
+    <select id="selectByCountry" resultMap="RecognitionPromptMap">
+        SELECT country_code, ai_prompt, continue_prompt, seed_version, user_modified, created_at, updated_at
+        FROM recognition_prompt
+        WHERE country_code = #{countryCode}
+    </select>
+
+    <select id="selectAll" resultMap="RecognitionPromptMap">
+        SELECT country_code, ai_prompt, continue_prompt, seed_version, user_modified, created_at, updated_at
+        FROM recognition_prompt
+        ORDER BY country_code
+    </select>
+
+    <select id="countAll" resultType="long">
+        SELECT COUNT(*) FROM recognition_prompt
+    </select>
+
+    <select id="selectAllCountryCodes" resultType="string">
+        SELECT country_code FROM recognition_prompt ORDER BY country_code
+    </select>
+
+    <!-- 标准模板播种：不覆盖用户已改动的行 -->
+    <insert id="upsertSystemSeed">
+        INSERT INTO recognition_prompt (country_code, ai_prompt, continue_prompt, seed_version, user_modified)
+        VALUES (#{countryCode}, #{aiPrompt}, #{continuePrompt}, #{seedVersion}, 0)
+        ON DUPLICATE KEY UPDATE
+            ai_prompt = IF(user_modified = 1, ai_prompt, VALUES(ai_prompt)),
+            continue_prompt = IF(user_modified = 1, continue_prompt, VALUES(continue_prompt)),
+            seed_version = IF(user_modified = 1, seed_version, VALUES(seed_version)),
+            updated_at = CURRENT_TIMESTAMP
+    </insert>
+
+    <!-- 强制刷新标准模板（初始化库 / 管理员重置） -->
+    <insert id="upsertForceSeed">
+        INSERT INTO recognition_prompt (country_code, ai_prompt, continue_prompt, seed_version, user_modified)
+        VALUES (#{countryCode}, #{aiPrompt}, #{continuePrompt}, #{seedVersion}, 0)
+        ON DUPLICATE KEY UPDATE
+            ai_prompt = VALUES(ai_prompt),
+            continue_prompt = VALUES(continue_prompt),
+            seed_version = VALUES(seed_version),
+            user_modified = 0,
+            updated_at = CURRENT_TIMESTAMP
+    </insert>
+
+    <!-- 配置页保存 -->
+    <insert id="upsertUserEdit">
+        INSERT INTO recognition_prompt (country_code, ai_prompt, continue_prompt, seed_version, user_modified)
+        VALUES (#{countryCode}, #{aiPrompt}, #{continuePrompt}, #{seedVersion}, 1)
+        ON DUPLICATE KEY UPDATE
+            ai_prompt = VALUES(ai_prompt),
+            continue_prompt = VALUES(continue_prompt),
+            user_modified = 1,
+            updated_at = CURRENT_TIMESTAMP
+    </insert>
+
+</mapper>

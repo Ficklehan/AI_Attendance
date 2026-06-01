@@ -1,6 +1,7 @@
 package com.attendance.entity;
 
 import java.time.LocalDateTime;
+import java.util.Map;
 
 public class User {
     private String id;
@@ -15,6 +16,16 @@ public class User {
     private LocalDateTime lastLoginAt;
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;
+    /** 当前用户有效权限（仅 API 响应，非数据库字段） */
+    private Map<String, Boolean> permissions;
+
+    public Map<String, Boolean> getPermissions() {
+        return permissions;
+    }
+
+    public void setPermissions(Map<String, Boolean> permissions) {
+        this.permissions = permissions;
+    }
 
     public String getId() {
         return id;

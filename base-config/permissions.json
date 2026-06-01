@@ -1,0 +1,20 @@
+{
+	"admin":{
+		"tasks":true,
+		"country":true,
+		"aiConfig":true,
+		"feishuConfig":true,
+		"users":true,
+		"audit":true,
+		"recordCalibrate":true
+	},
+	"user":{
+		"tasks":true,
+		"country":true,
+		"aiConfig":false,
+		"feishuConfig":false,
+		"users":false,
+		"audit":false,
+		"recordCalibrate":false
+	}
+}

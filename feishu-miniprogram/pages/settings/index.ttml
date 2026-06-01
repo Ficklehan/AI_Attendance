@@ -1,0 +1,85 @@
+<view class="page settings-page">
+  <view class="page-header">
+    <text class="page-title">{{ texts.title }}</text>
+  </view>
+
+  <view tt:if="{{isSetup}}" class="banner banner-info setup-banner">
+    <text class="banner-text">{{ texts.setupTitle }} - {{ texts.setupDesc }}</text>
+  </view>
+
+  <block tt:if="{{loading}}">
+    <view class="skeleton-card">
+      <view class="skeleton-line medium"></view>
+      <view class="skeleton-line"></view>
+      <view class="skeleton-line short"></view>
+    </view>
+    <view class="skeleton-card">
+      <view class="skeleton-line medium"></view>
+      <view class="skeleton-line"></view>
+    </view>
+  </block>
+
+  <block tt:else>
+  <text class="section-label">{{ texts.countryTitle }}</text>
+  <view class="card-flush settings-card">
+    <view class="settings-head" bindtap="toggleCountryOptions">
+      <view class="settings-main">
+        <text class="settings-label">{{ texts.countryTitle }}</text>
+        <text class="settings-value">{{ currentCountryLabel || texts.countryUnset }}</text>
+      </view>
+      <text class="settings-action">{{ texts.countryChangeAction }}</text>
+    </view>
+    <text class="settings-impact">{{ texts.countryImpact }}</text>
+
+    <view tt:if="{{showCountryOptions}}" class="settings-options">
+      <view
+        tt:for="{{countries}}"
+        tt:for-item="country"
+        tt:key="code"
+        class="settings-option {{selectedCountry === country.code ? 'selected' : ''}}"
+        bindtap="onSelectCountry"
+        data-code="{{country.code}}"
+      >
+        <text class="option-flag">{{ country.flag }}</text>
+        <view class="list-body">
+          <text class="list-title">{{ country.name }}</text>
+        </view>
+        <text tt:if="{{selectedCountry === country.code}}" class="list-check">✓</text>
+      </view>
+    </view>
+  </view>
+
+  <text class="section-label">{{ texts.languageTitle }}</text>
+  <view class="card-flush settings-card">
+    <view class="settings-head" bindtap="toggleLanguageOptions">
+      <view class="settings-main">
+        <text class="settings-label">{{ texts.languageTitle }}</text>
+        <text class="settings-value">{{ currentLocaleLabel }}</text>
+      </view>
+      <text class="settings-action">{{ texts.languageChangeAction }}</text>
+    </view>
+    <text class="settings-impact">{{ texts.languageImpact }}</text>
+
+    <view tt:if="{{showLanguageOptions}}" class="settings-options">
+      <view
+        tt:for="{{languages}}"
+        tt:for-item="lang"
+        tt:key="value"
+        class="settings-option {{selectedLocale === lang.value ? 'selected' : ''}}"
+        bindtap="onSelectLanguage"
+        data-value="{{lang.value}}"
+      >
+        <view class="list-body">
+          <text class="list-title">{{ lang.label }}</text>
+        </view>
+        <text tt:if="{{selectedLocale === lang.value}}" class="list-check">✓</text>
+      </view>
+    </view>
+  </view>
+  </block>
+
+  <view class="dock-spacer"></view>
+  <view class="dock">
+    <view class="btn btn-primary {{saving || loading ? 'disabled loading' : ''}}" bindtap="onSave">{{ saving ? texts.saving : texts.save }}</view>
+  </view>
+</view>

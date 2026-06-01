@@ -1,0 +1,102 @@
+@import "../../styles/design.ttss";
+
+/* ═══ Chat page — conversational polish ═══ */
+
+/* Intro card — decorative gradient */
+.chat-page .chat-intro {
+  background: linear-gradient(135deg, var(--surface-1) 0%, rgba(240, 241, 255, 0.50) 100%);
+  border-color: var(--border-accent);
+}
+
+/* Intro link — accent underline */
+.chat-page .chat-intro-link {
+  position: relative;
+  display: inline-block;
+  padding-bottom: 2rpx;
+}
+
+.chat-page .chat-intro-link::after {
+  content: '';
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  height: 3rpx;
+  border-radius: 2rpx;
+  background: var(--primary-gradient);
+  opacity: 0.4;
+}
+
+/* User bubble — refined shadow and gradient */
+.chat-page .is-user .chat-bubble {
+  border-radius: 24rpx 24rpx 8rpx 24rpx;
+}
+
+/* Bot bubble — refined corner radius */
+.chat-page .is-bot .chat-bubble {
+  border-radius: 24rpx 24rpx 24rpx 8rpx;
+}
+
+/* Bubble image — refined */
+.chat-page .chat-bubble-image {
+  box-shadow: var(--shadow-sm);
+}
+
+/* Composer — glass effect */
+.chat-page .chat-composer {
+  background: rgba(255, 255, 255, 0.95);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border-top: 1rpx solid rgba(237, 234, 239, 0.6);
+}
+
+/* Chat input — refined focus feel */
+.chat-page .chat-input {
+  transition: border-color 0.2s ease, box-shadow 0.2s ease;
+}
+
+/* Send button — refined active state */
+.chat-page .chat-send.active {
+  transition: transform 0.12s ease, box-shadow 0.12s ease;
+}
+
+.chat-page .chat-send.active:active {
+  transform: scale(0.95);
+  box-shadow: 0 4rpx 16rpx rgba(91, 108, 247, 0.35);
+}
+
+/* Tool buttons — refined interaction */
+.chat-page .chat-tool {
+  transition: background 0.15s ease, transform 0.12s ease;
+}
+
+.chat-page .chat-tool:active {
+  background: rgba(91, 108, 247, 0.12);
+  transform: scale(0.95);
+}
+
+/* Thinking indicator — subtle */
+.chat-page .chat-thinking {
+  padding: var(--sp-3) 0;
+}
+
+/* Task action button — refined */
+.chat-page .chat-task-btn {
+  transition: transform 0.12s ease, box-shadow 0.12s ease;
+  box-shadow: var(--shadow-xs);
+}
+
+.chat-page .chat-task-btn:active {
+  transform: scale(0.96);
+  box-shadow: none;
+}
+
+/* Nav bar — glass refinement */
+.chat-page .nav-bar {
+  background: rgba(251, 249, 247, 0.98);
+}
+
+/* Messages area — refined padding */
+.chat-page .chat-messages {
+  padding-bottom: var(--sp-8);
+}

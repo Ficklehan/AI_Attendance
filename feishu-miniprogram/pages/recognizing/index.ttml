@@ -1,0 +1,57 @@
+<view class="page rec-page">
+  <view class="rec-hero">
+    <image
+      class="rec-hero-bg"
+      src="/assets/attendance-processing-bg.png"
+      mode="aspectFill"
+    />
+    <view class="rec-hero-mask"></view>
+  </view>
+
+  <view class="rec-card card-flush">
+    <view class="rec-steps">
+      <view class="rec-step {{currentStep >= 1 ? 'done' : ''}} {{currentStep === 1 ? 'active' : ''}}">
+        <view class="rec-step-dot">1</view>
+        <text class="rec-step-lbl">{{texts.stepUpload}}</text>
+      </view>
+      <view class="rec-step-line {{currentStep >= 2 ? 'done' : ''}}"></view>
+      <view class="rec-step {{currentStep >= 2 ? 'done' : ''}} {{currentStep === 2 ? 'active' : ''}}">
+        <view class="rec-step-dot">2</view>
+        <text class="rec-step-lbl">{{texts.stepAnalyze}}</text>
+      </view>
+      <view class="rec-step-line {{currentStep >= 3 ? 'done' : ''}}"></view>
+      <view class="rec-step {{currentStep >= 3 ? 'done' : ''}} {{currentStep === 3 ? 'active' : ''}}">
+        <view class="rec-step-dot">3</view>
+        <text class="rec-step-lbl">{{texts.stepDone}}</text>
+      </view>
+    </view>
+
+    <view class="rec-ring">
+      <view class="spinner rec-spinner"></view>
+    </view>
+    <text class="rec-title">{{statusText}}</text>
+    <view class="rec-context">
+      <text class="rec-context-item">{{countryText || texts.contextCountryPending}}</text>
+      <text class="rec-context-dot">·</text>
+      <text class="rec-context-item">{{elapsedText || texts.contextElapsedPending}}</text>
+    </view>
+    <view tt:if="{{countryText || engineText}}" class="rec-tags">
+      <text tt:if="{{countryText}}" class="rec-tag">{{countryText}}</text>
+      <text tt:if="{{engineText}}" class="rec-tag muted">{{engineText}}</text>
+    </view>
+    <view tt:if="{{rowCount > 0}}" class="rec-progress">
+      <text class="rec-count">{{rowCount}}</text>
+      <text class="rec-count-label">{{texts.rowCountLabel}}</text>
+    </view>
+    <text tt:if="{{elapsedText}}" class="rec-elapsed">{{elapsedText}}</text>
+    <text tt:if="{{batchLabel}}" class="rec-batch">{{batchLabel}}</text>
+    <text class="rec-hint">{{hint}}</text>
+    <text class="rec-bg-hint">{{texts.backgroundHint}}</text>
+  </view>
+
+  <view class="dock-spacer"></view>
+  <view class="rec-dock dock">
+    <view class="btn btn-secondary" catchtap="leaveToHome">{{texts.exitHome}}</view>
+    <view class="btn btn-primary" catchtap="leaveToTasks">{{texts.viewTasks}}</view>
+  </view>
+</view>

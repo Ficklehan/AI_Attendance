@@ -7,6 +7,8 @@ public class TaskListDTO {
     private String taskId;
     private String fileKey;
     private String status;
+    private String syncStatus;
+    private String syncError;
     private String imageUrls;
     private String userName;
     private LocalDateTime createdAt;
@@ -17,6 +19,8 @@ public class TaskListDTO {
         this.taskId = task.getTaskId();
         this.fileKey = task.getFileKey();
         this.status = task.getStatus();
+        this.syncStatus = task.getSyncStatus();
+        this.syncError = task.getSyncError();
         this.imageUrls = task.getImageUrls();
         this.userName = userName;
         this.createdAt = task.getCreatedAt();
@@ -44,6 +48,22 @@ public class TaskListDTO {
 
     public void setStatus(String status) {
         this.status = status;
+    }
+
+    public String getSyncStatus() {
+        return syncStatus;
+    }
+
+    public void setSyncStatus(String syncStatus) {
+        this.syncStatus = syncStatus;
+    }
+
+    public String getSyncError() {
+        return syncError;
+    }
+
+    public void setSyncError(String syncError) {
+        this.syncError = syncError;
     }
 
     public String getImageUrls() {

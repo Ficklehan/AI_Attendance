@@ -1,0 +1,43 @@
+<view class="login-page">
+  <view class="login-shell">
+    <view class="login-hero">
+      <image
+        class="login-hero-image"
+        src="/assets/attendance-login-hero-vertical.png"
+        mode="widthFix"
+      />
+      <view class="login-hero-overlay"></view>
+    </view>
+
+    <view class="login-hero-caption">
+      <text class="login-kicker">ATTENDANCE OPS</text>
+      <text class="login-title">{{texts.title}}</text>
+      <text class="login-subtitle">{{texts.subtitle}}</text>
+    </view>
+
+    <view class="login-panel-body">
+      <view class="login-panel-main">
+        <view class="login-card">
+          <text class="login-card-title">{{texts.feishuLogin}}</text>
+          <text class="login-card-desc">{{texts.tip1}}</text>
+          <view
+            class="btn btn-primary login-btn {{loading ? 'disabled' : ''}}"
+            bindtap="handleFeishuLogin"
+          >
+            <text>{{loading ? texts.loggingIn : texts.feishuLoginAction}}</text>
+          </view>
+        </view>
+
+        <view class="login-tips">
+          <view class="pill"><text>{{texts.tip2}}</text></view>
+          <view class="pill"><text>{{texts.tip3}}</text></view>
+        </view>
+      </view>
+      <view class="login-panel-spacer-bottom"></view>
+    </view>
+  </view>
+
+  <view tt:if="{{loading}}" class="login-loading">
+    <view class="spinner"></view>
+  </view>
+</view>

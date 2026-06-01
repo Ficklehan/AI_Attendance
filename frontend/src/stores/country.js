@@ -1,0 +1,109 @@
+import { defineStore } from 'pinia'
+import request from '@/api/index'
+import { getCachedWorkingCountry, setCachedWorkingCountry } from '@/utils/countryHeader'
+import { COUNTRY_FLAG_FALLBACK, DEFAULT_COUNTRY_FLAG, resolveCountryFlag } from '@/utils/countryCatalog'
+import { buildCountrySelectOption, formatCountryLabel, translateCountryName } from '@/utils/countryLabels'
+
+export const useCountryStore = defineStore('country', {
+  state: () => ({
+    workingCountry: getCachedWorkingCountry(),
+    options: [],
+    bundle: null,
+    hydrated: false,
+    loading: false,
+  }),
+
+  getters: {
+    selectOptions(state) {
+      return (state.options || []).map((item) => buildCountrySelectOption(item))
+    },
+
+    workingCountryMeta(state) {
+      const code = state.workingCountry || 'default'
+      const found = (state.options || []).find((item) => item.code === code)
+      if (found) {
+        return {
+          ...found,
+          flag: resolveCountryFlag(found.code, found.flag),
+          name: translateCountryName(found.code, found.name),
+        }
+      }
+      if (code === 'default') {
+        return { code, flag: DEFAULT_COUNTRY_FLAG, name: translateCountryName('default', '全局默认') }
+      }
+      return {
+        code,
+        flag: COUNTRY_FLAG_FALLBACK[code] || '🏳️',
+        name: translateCountryName(code, code),
+      }
+    },
+
+    workingCountryLabel() {
+      const meta = this.workingCountryMeta
+      return formatCountryLabel(meta.code, meta.flag, meta.name)
+    },
+
+    promptFromGlobalFallback(state) {
+      return Boolean(state.bundle?.promptFromGlobalFallback)
+    },
+
+    feishuFromGlobalFallback(state) {
+      return Boolean(state.bundle?.feishuFromGlobalFallback)
+    },
+  },
+
+  actions: {
+    async hydrate(force = false) {
+      if (this.hydrated && !force) {
+        return this.workingCountry
+      }
+      this.loading = true
+      try {
+        const [optionsRes, countryRes] = await Promise.all([
+          request({ url: '/config/country-options', method: 'get' }),
+          request({ url: '/config/current-country', method: 'get' }),
+        ])
+        if (optionsRes?.data?.length) {
+          this.options = optionsRes.data
+        }
+        const country = countryRes?.data?.country || getCachedWorkingCountry()
+        this.workingCountry = country
+        setCachedWorkingCountry(country)
+        await this.loadBundle()
+        this.hydrated = true
+        return country
+      } finally {
+        this.loading = false
+      }
+    },
+
+    async loadBundle(countryCode) {
+      const code = countryCode || this.workingCountry || 'default'
+      try {
+        const res = await request({
+          url: '/config/country-bundle',
+          method: 'get',
+          params: { country: code },
+        })
+        this.bundle = res.data || null
+      } catch (error) {
+        console.error('加载国家配置摘要失败:', error)
+        this.bundle = null
+      }
+    },
+
+    async setWorkingCountry(country) {
+      const code = country || 'default'
+      await request({
+        url: '/config/current-country',
+        method: 'put',
+        data: { country: code },
+      })
+      this.workingCountry = code
+      setCachedWorkingCountry(code)
+      await this.loadBundle(code)
+      this.hydrated = true
+      return code
+    },
+  },
+})

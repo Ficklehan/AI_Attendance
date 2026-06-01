@@ -40,6 +40,14 @@
 mysql -u root -p < backend/config/init.sql
 ```
 
+已有库升级（按顺序执行）：
+
+```bash
+mysql -u root -p attendance_assistant < backend/config/migration/001_task_sync_and_country.sql
+mysql -u root -p attendance_assistant < backend/config/migration/002_task_image_and_anomaly.sql
+mysql -u root -p attendance_assistant < backend/config/migration/003_task_status_add_cancelled.sql
+```
+
 ### 2. 配置环境变量
 
 ```bash
@@ -119,6 +127,7 @@ start.bat
 | GET /api/tasks | 列表 | 获取任务列表 |
 | GET /api/tasks/:id | 详情 | 获取任务详情 |
 | POST /api/tasks/:id/confirm | 确认 | 确认提交任务 |
+| POST /api/tasks/:id/retry-sync | 重试 | 重试飞书多维表格同步 |
 
 ### 上传接口
 
@@ -165,8 +174,9 @@ FEISHU_APP_SECRET=你的飞书应用密钥
 ### AI服务配置
 
 ```env
-MIMO_API_KEY=你的MiMo API密钥
-MIMO_API_URL=https://api.mimo.com/v2/vision
+MIMO_API_KEY=你的小米 MiMo API 密钥
+MIMO_API_URL=https://api.xiaomimimo.com/v1
+MIMO_MODEL=mimo-v2.5
 ```
 
 ## 许可证

@@ -1,0 +1,97 @@
+<view class="preview-page">
+  <view class="preview-toolbar">
+    <view class="preview-tool-btn" bindtap="onClose">
+      <text>{{texts.close}}</text>
+    </view>
+    <view class="preview-toolbar-center">
+      <text class="preview-file-name">{{fileName}}</text>
+      <text tt:if="{{counterText}}" class="preview-counter">{{counterText}}</text>
+    </view>
+    <view class="preview-tool-btn primary" bindtap="onRotate">
+      <text>{{texts.rotate}}</text>
+    </view>
+  </view>
+
+  <view tt:if="{{images.length > 1}}" class="preview-switch-bar">
+    <view class="preview-switch-btn" bindtap="onPrev">
+      <text class="preview-switch-icon">‹</text>
+      <text class="preview-switch-label">{{texts.prev}}</text>
+    </view>
+    <text class="preview-switch-counter">{{counterText}}</text>
+    <view class="preview-switch-btn" bindtap="onNext">
+      <text class="preview-switch-label">{{texts.next}}</text>
+      <text class="preview-switch-icon">›</text>
+    </view>
+  </view>
+
+  <view class="preview-zoom-bar">
+    <view class="preview-zoom-btn" bindtap="onZoomOut">
+      <text class="preview-zoom-icon">−</text>
+      <text class="preview-zoom-label">{{texts.zoomOut}}</text>
+    </view>
+    <view class="preview-zoom-btn preview-zoom-reset" bindtap="onZoomReset">
+      <text class="preview-zoom-percent">{{zoomPercent}}%</text>
+      <text class="preview-zoom-label">{{texts.zoomReset}}</text>
+    </view>
+    <view class="preview-zoom-btn" bindtap="onZoomIn">
+      <text class="preview-zoom-icon">+</text>
+      <text class="preview-zoom-label">{{texts.zoomIn}}</text>
+    </view>
+  </view>
+
+  <view class="preview-main">
+    <block tt:if="{{loadError}}">
+      <view class="preview-error">
+        <text>{{texts.loadError}}</text>
+      </view>
+    </block>
+    <block tt:else>
+      <swiper
+        class="preview-swiper"
+        current="{{currentIndex}}"
+        disable-touch="{{swiperDisabled}}"
+        bindchange="onSwiperChange"
+      >
+        <swiper-item
+          tt:for="{{images}}"
+          tt:for-item="img"
+          tt:for-index="idx"
+          tt:key="key"
+        >
+          <view
+            class="preview-slide"
+            bindtouchstart="onTouchStart"
+            bindtouchmove="onTouchMove"
+            bindtouchend="onTouchEnd"
+            bindtouchcancel="onTouchEnd"
+          >
+            <view class="preview-rotate preview-rotate-{{rotateDeg}}">
+              <block tt:if="{{useTransform}}">
+                <image
+                  class="preview-image preview-image-transform"
+                  src="{{img.displayUrl || img.url}}"
+                  mode="aspectFit"
+                  style="{{transformStyle}}"
+                  data-index="{{idx}}"
+                  bindload="onImageLoad"
+                  binderror="onImageError"
+                />
+              </block>
+              <block tt:else>
+                <image
+                  class="preview-image"
+                  src="{{img.displayUrl || img.url}}"
+                  mode="aspectFit"
+                  data-index="{{idx}}"
+                  bindload="onImageLoad"
+                  binderror="onImageError"
+                />
+              </block>
+            </view>
+          </view>
+        </swiper-item>
+      </swiper>
+      <text class="preview-gesture-hint">{{texts.gestureHint}}</text>
+    </block>
+  </view>
+</view>

@@ -1,14 +1,19 @@
 package com.attendance.service;
 
+import com.attendance.config.ConfigPathResolver;
+import com.attendance.dto.CountryConfigBundle;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
-import jakarta.annotation.PostConstruct;
+import javax.annotation.PostConstruct;
+import java.io.ByteArrayOutputStream;
 import java.io.IOException;
+import java.io.InputStream;
+import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -21,13 +26,19 @@ public class MarkdownConfigService {
     
     private static final Logger log = LoggerFactory.getLogger(MarkdownConfigService.class);
     
-    private static final String CONFIG_BASE_PATH = "../base-config";
+    @Autowired
+    private ConfigPathResolver configPathResolver;
+
+    @Autowired
+    private RecognitionPromptService recognitionPromptService;
     
     private String promptsContent;
     private String feishuContent;
     private String countriesContent;
     
     private String currentCountry = "default";
+    private long promptsFileLastModified = -1L;
+    private long feishuFileLastModified = -1L;
     
     @PostConstruct
     public void init() {
@@ -38,10 +49,11 @@ public class MarkdownConfigService {
         try {
             log.info("开始加载配置文件...");
             log.info("当前工作目录: {}", System.getProperty("user.dir"));
-            log.info("配置基础路径: {}", CONFIG_BASE_PATH);
+            log.info("配置基础路径: {}", configPathResolver.getBaseConfigDir());
             
-            promptsContent = readFile("prompts.md");
+            refreshPromptsFromDisk(true);
             feishuContent = readFile("feishu.md");
+            feishuFileLastModified = lastModified("feishu.md");
             countriesContent = readFile("countries.md");
             
             log.info("prompts.md 长度: {}", promptsContent.length());
@@ -52,9 +64,93 @@ public class MarkdownConfigService {
             log.error("加载配置文件失败", e);
         }
     }
+
+    /**
+     * 读取 prompts.md；若仍为旧版 11 字段结构则自动迁移为内置 canonical 版本。
+     */
+    public boolean refreshPromptsFromDisk(boolean allowMigrate) throws IOException {
+        Path path = configPathResolver.resolveFile("prompts.md");
+        long mtime = Files.exists(path) ? Files.getLastModifiedTime(path).toMillis() : -1L;
+        if (mtime == promptsFileLastModified && promptsContent != null && !promptsContent.isEmpty()) {
+            return false;
+        }
+        String loaded = Files.exists(path) ? Files.readString(path) : "";
+        if (allowMigrate && isLegacyPromptsFile(loaded)) {
+            String canonical = readCanonicalPromptsResource();
+            if (canonical != null && !canonical.isBlank()) {
+                log.warn("检测到旧版 prompts.md（缺少 Pays/SIGNATURE 等新字段），正在自动迁移");
+                Files.writeString(path, canonical);
+                loaded = canonical;
+                mtime = Files.getLastModifiedTime(path).toMillis();
+            }
+        }
+        promptsContent = loaded;
+        promptsFileLastModified = mtime;
+        return true;
+    }
+
+    private void ensurePromptsFresh() {
+        try {
+            refreshPromptsFromDisk(true);
+        } catch (IOException e) {
+            log.warn("刷新 prompts.md 失败，继续使用内存缓存", e);
+        }
+    }
+
+    private void ensureFeishuFresh() {
+        try {
+            long mtime = lastModified("feishu.md");
+            if (mtime != feishuFileLastModified) {
+                feishuContent = readFile("feishu.md");
+                feishuFileLastModified = mtime;
+            }
+        } catch (IOException e) {
+            log.warn("刷新 feishu.md 失败", e);
+        }
+    }
+
+    private long lastModified(String filename) throws IOException {
+        Path path = configPathResolver.resolveFile(filename);
+        return Files.exists(path) ? Files.getLastModifiedTime(path).toMillis() : -1L;
+    }
+
+    public static boolean isLegacyPromptsFile(String content) {
+        if (content == null || content.isBlank()) {
+            return true;
+        }
+        if (content.contains("Pays,Entrepot") || content.contains("Pays, Entrepot")) {
+            return false;
+        }
+        return content.contains("检查器")
+                || content.contains(",CHECKER,")
+                || content.contains("[NO,姓名,中介")
+                || content.contains("第10个字段");
+    }
+
+    public boolean isCurrentPromptsLegacy() {
+        return recognitionPromptService.isLegacyPromptInDatabase();
+    }
+
+    private String readCanonicalPromptsResource() {
+        try (InputStream in = getClass().getResourceAsStream("/canonical/prompts.md")) {
+            if (in == null) {
+                return null;
+            }
+            ByteArrayOutputStream buffer = new ByteArrayOutputStream();
+            byte[] chunk = new byte[4096];
+            int read;
+            while ((read = in.read(chunk)) != -1) {
+                buffer.write(chunk, 0, read);
+            }
+            return new String(buffer.toByteArray(), StandardCharsets.UTF_8);
+        } catch (IOException e) {
+            log.error("读取内置 canonical prompts 失败", e);
+            return null;
+        }
+    }
     
     private String readFile(String filename) throws IOException {
-        Path path = Paths.get(CONFIG_BASE_PATH, filename);
+        Path path = configPathResolver.resolveFile(filename);
         log.info("读取文件: {}, 绝对路径: {}", filename, path.toAbsolutePath());
         
         if (!Files.exists(path)) {
@@ -70,35 +166,99 @@ public class MarkdownConfigService {
         return getAiPrompt(currentCountry);
     }
     
+    /**
+     * 识别提示词：所选国家无独立 AI 章节时回退 default。
+     */
+    public String resolveEffectiveCountry(String country) {
+        return resolveEffectivePromptCountry(country);
+    }
+
+    public String resolveEffectivePromptCountry(String country) {
+        return recognitionPromptService.resolveEffectivePromptCountry(country);
+    }
+
+    /**
+     * 飞书多维表：所选国家无独立 feishu.md 章节时回退「全局默认配置」。
+     */
+    public String resolveEffectiveFeishuCountry(String country) {
+        if (country == null || country.isBlank() || "default".equalsIgnoreCase(country.trim())) {
+            return "default";
+        }
+        String normalized = country.trim().toUpperCase();
+        if (hasCountryFeishuConfig(normalized)) {
+            return normalized;
+        }
+        log.info("国家 {} 未配置独立飞书章节，回退全局默认配置", normalized);
+        return "default";
+    }
+
+    public CountryConfigBundle getCountryConfigBundle(String country) {
+        ensureFeishuFresh();
+        String request = normalizeCountryCode(country);
+        String effectivePrompt = resolveEffectivePromptCountry(request);
+        String effectiveFeishu = resolveEffectiveFeishuCountry(request);
+
+        CountryConfigBundle bundle = new CountryConfigBundle();
+        bundle.setRequestCountry(request);
+        bundle.setEffectivePromptCountry(effectivePrompt);
+        bundle.setEffectiveFeishuCountry(effectiveFeishu);
+        bundle.setPromptFromGlobalFallback(!"default".equalsIgnoreCase(request)
+                && "default".equalsIgnoreCase(effectivePrompt));
+        bundle.setFeishuFromGlobalFallback(!"default".equalsIgnoreCase(request)
+                && "default".equalsIgnoreCase(effectiveFeishu));
+        bundle.setPromptSection(describePromptSection(request));
+        bundle.setAiPrompt(getAiPrompt(request));
+        bundle.setContinuePrompt(getContinuePrompt(request));
+
+        Map<String, Object> feishu = getFeishuConfig(request);
+        bundle.setAppToken((String) feishu.get("appToken"));
+        bundle.setTableId((String) feishu.get("tableId"));
+        Object mapping = feishu.get("fieldMapping");
+        if (mapping instanceof List) {
+            @SuppressWarnings("unchecked")
+            List<Map<String, Object>> list = (List<Map<String, Object>>) mapping;
+            bundle.setFieldMapping(list);
+        }
+        return bundle;
+    }
+
+    private static String normalizeCountryCode(String country) {
+        if (country == null || country.isBlank()) {
+            return "default";
+        }
+        return "default".equalsIgnoreCase(country.trim()) ? "default" : country.trim().toUpperCase();
+    }
+
+    public String describePromptSection(String country) {
+        return recognitionPromptService.describePromptSection(country);
+    }
+
+    private boolean hasCountryAiPrompt(String country) {
+        return recognitionPromptService.hasCountryPrompt(country);
+    }
+
+    private String extractCountryAiPromptOnly(String country) {
+        String prompt = findPromptSectionByCountryCode(promptsContent, country, "识别提示词");
+        if (prompt == null || prompt.trim().isEmpty()) {
+            prompt = extractSection(promptsContent, country + " - 识别提示词", "```markdown", "```");
+        }
+        return prompt;
+    }
+
+    private boolean hasCountryFeishuConfig(String country) {
+        String yaml = extractSection(feishuContent, country, "```yaml", "```");
+        if (yaml == null || yaml.trim().isEmpty()) {
+            yaml = findFeishuSectionByCountryCode(feishuContent, country);
+        }
+        return yaml != null && !yaml.trim().isEmpty();
+    }
+
     public String getAiPrompt(String country) {
-        log.info("getAiPrompt 被调用，country={}", country);
-        if ("default".equalsIgnoreCase(country)) {
-            String prompt = extractSection(promptsContent, "主要识别提示词", "```markdown", "```");
-            if (prompt != null) {
-                log.info("最终提示词长度: {}, 前200字符: {}", prompt.length(), prompt.substring(0, Math.min(200, prompt.length())));
-            }
-            return prompt;
-        }
-        
-        // 先尝试直接匹配 "### 国家代码 - 识别提示词"
-        String sectionName = country + " - 识别提示词";
-        log.info("准备提取 section: {}", sectionName);
-        String prompt = extractSection(promptsContent, sectionName, "```markdown", "```");
-        
-        // 如果没找到，尝试查找带括号的格式 "### 国家名 (国家代码) - 识别提示词"
-        if (prompt == null || prompt.trim().isEmpty()) {
-            log.info("提取失败，尝试查找带括号的格式");
-            prompt = findPromptSectionByCountryCode(promptsContent, country, "识别提示词");
-        }
-        
-        // 最后 fallback 到默认
-        if (prompt == null || prompt.trim().isEmpty()) {
-            log.info("提取失败，尝试提取默认的 '主要识别提示词'");
-            prompt = extractSection(promptsContent, "主要识别提示词", "```markdown", "```");
-        }
-        
+        String effective = resolveEffectiveCountry(country);
+        log.info("getAiPrompt(DB) request={}, effective={}", country, effective);
+        String prompt = recognitionPromptService.getAiPrompt(country);
         if (prompt != null) {
-            log.info("最终提示词长度: {}, 前200字符: {}", prompt.length(), prompt.substring(0, Math.min(200, prompt.length())));
+            log.info("最终提示词长度: {}", prompt.length());
         }
         return prompt;
     }
@@ -108,30 +268,13 @@ public class MarkdownConfigService {
     }
     
     public String getContinuePrompt(String country) {
-        if ("default".equalsIgnoreCase(country)) {
-            return extractSection(promptsContent, "继续输出提示词", "```markdown", "```");
-        }
-        
-        // 先尝试直接匹配
-        String sectionName = country + " - 继续提示词";
-        String prompt = extractSection(promptsContent, sectionName, "```markdown", "```");
-        
-        // 如果没找到，尝试查找带括号的格式
-        if (prompt == null || prompt.trim().isEmpty()) {
-            prompt = findPromptSectionByCountryCode(promptsContent, country, "继续提示词");
-        }
-        
-        // 最后 fallback 到默认
-        if (prompt == null || prompt.trim().isEmpty()) {
-            prompt = extractSection(promptsContent, "继续输出提示词", "```markdown", "```");
-        }
-        
-        return prompt;
+        return recognitionPromptService.getContinuePrompt(country);
     }
     
     private String findPromptSectionByCountryCode(String content, String countryCode, String sectionType) {
-        // 匹配类似 "### 中国 (CN) - 识别提示词" 这种格式的章节
-        Pattern pattern = Pattern.compile("###+\\s*[^\\n]*\\(" + Pattern.quote(countryCode) + "\\)[^\\n]*" + Pattern.quote(sectionType) + "[^\\n]*\\n(.*?)```markdown(.*?)```", Pattern.DOTALL);
+        // 匹配 "## 法国 (FR) - 识别提示词" 或 "### 中国 (CN) - 识别提示词"
+        Pattern pattern = Pattern.compile("##+\\s*[^\\n]*\\(" + Pattern.quote(countryCode) + "\\)[^\\n]*"
+                + Pattern.quote(sectionType) + "[^\\n]*\\n(.*?)```markdown(.*?)```", Pattern.DOTALL);
         Matcher matcher = pattern.matcher(content);
         
         if (matcher.find()) {
@@ -146,16 +289,18 @@ public class MarkdownConfigService {
     }
     
     public Map<String, Object> getFeishuConfig(String country) {
+        ensureFeishuFresh();
         Map<String, Object> config = new HashMap<>();
-        
-        String targetSection = "default".equalsIgnoreCase(country) ? "全局默认配置" : country;
+        String effective = resolveEffectiveFeishuCountry(country);
+        log.info("getFeishuConfig request={}, effectiveFeishu={}", country, effective);
+
+        String targetSection = "default".equalsIgnoreCase(effective) ? "全局默认配置" : effective;
         // 先尝试直接匹配国家代码
         String yamlContent = extractSection(feishuContent, targetSection, "```yaml", "```");
         
         // 如果没找到，尝试查找带括号的格式 "### 荷兰 (NL)"
-        if ((yamlContent == null || yamlContent.trim().isEmpty()) && !"default".equalsIgnoreCase(country)) {
-            // 查找包含该国家代码的章节
-            yamlContent = findFeishuSectionByCountryCode(feishuContent, country);
+        if ((yamlContent == null || yamlContent.trim().isEmpty()) && !"default".equalsIgnoreCase(effective)) {
+            yamlContent = findFeishuSectionByCountryCode(feishuContent, effective);
         }
         
         // 最后 fallback 到默认
@@ -175,8 +320,7 @@ public class MarkdownConfigService {
     }
     
     private String findFeishuSectionByCountryCode(String content, String countryCode) {
-        // 匹配类似 "### 荷兰 (NL)" 这种格式的章节
-        Pattern pattern = Pattern.compile("###+\\s*[^\\n]*\\(" + Pattern.quote(countryCode) + "\\)[^\\n]*\\n(.*?)```yaml(.*?)```", Pattern.DOTALL);
+        Pattern pattern = Pattern.compile("##+\\s*[^\\n]*\\(" + Pattern.quote(countryCode) + "\\)[^\\n]*\\n(.*?)```yaml(.*?)```", Pattern.DOTALL);
         Matcher matcher = pattern.matcher(content);
         
         if (matcher.find()) {
@@ -200,7 +344,15 @@ public class MarkdownConfigService {
     }
     
     public void setCountry(String country) {
-        this.currentCountry = country.toUpperCase();
+        if (country == null || country.isBlank()) {
+            this.currentCountry = "default";
+            return;
+        }
+        if ("default".equalsIgnoreCase(country.trim())) {
+            this.currentCountry = "default";
+        } else {
+            this.currentCountry = country.trim().toUpperCase();
+        }
     }
     
     public String getCurrentCountry() {
@@ -208,38 +360,40 @@ public class MarkdownConfigService {
     }
     
     public boolean hasCountryConfig(String country) {
-        String targetSection = "default".equalsIgnoreCase(country) ? "全局默认配置" : "### " + country;
-        String content = extractSection(feishuContent, targetSection, "```yaml", "```");
-        return content != null && !content.trim().isEmpty();
+        if (country == null || country.isBlank() || "default".equalsIgnoreCase(country.trim())) {
+            return true;
+        }
+        return hasCountryFeishuConfig(country.trim().toUpperCase());
     }
     
     public List<String> getAllCountries() {
         List<String> countries = new ArrayList<>();
         countries.add("default");
-        
-        // 匹配 "### 荷兰 (NL)" 这种格式
-        Pattern pattern = Pattern.compile("###+\\s*[^\\n]*\\(([A-Z]{2})\\)");
-        Matcher matcher = pattern.matcher(feishuContent);
-        
-        while (matcher.find()) {
-            String country = matcher.group(1);
-            if (!countries.contains(country)) {
-                countries.add(country);
+        try {
+            for (String code : recognitionPromptService.listCountryCodes()) {
+                if (!"default".equalsIgnoreCase(code) && !countries.contains(code)) {
+                    countries.add(code);
+                }
             }
+        } catch (Exception e) {
+            log.warn("从数据库读取提示词国家列表失败", e);
         }
-        
-        // 也匹配 "### NL" 这种简单格式
-        Pattern simplePattern = Pattern.compile("###\\s*([A-Z]{2})");
-        Matcher simpleMatcher = simplePattern.matcher(feishuContent);
-        
-        while (simpleMatcher.find()) {
-            String country = simpleMatcher.group(1);
-            if (!countries.contains(country)) {
-                countries.add(country);
-            }
-        }
-        
+        Pattern pattern = Pattern.compile("##+\\s*[^\\n]*\\(([A-Z]{2})\\)");
+        collectCountryCodes(feishuContent, pattern, countries);
         return countries;
+    }
+
+    private void collectCountryCodes(String content, Pattern pattern, List<String> countries) {
+        if (content == null || content.isEmpty()) {
+            return;
+        }
+        Matcher matcher = pattern.matcher(content);
+        while (matcher.find()) {
+            String code = matcher.group(1);
+            if (!countries.contains(code)) {
+                countries.add(code);
+            }
+        }
     }
     
     private String extractSection(String content, String sectionName, String codeStart, String codeEnd) {
@@ -371,19 +525,8 @@ public class MarkdownConfigService {
     }
     
     public void updatePrompt(String country, String aiPrompt, String continuePrompt) throws IOException {
-        String content = promptsContent;
-        
-        String aiSectionName = "default".equalsIgnoreCase(country) ? "主要识别提示词" : country + " - 识别提示词";
-        String continueSectionName = "default".equalsIgnoreCase(country) ? "继续输出提示词" : country + " - 继续提示词";
-        
-        content = updateSection(content, aiSectionName, aiPrompt, country);
-        content = updateSection(content, continueSectionName, continuePrompt, country);
-        
-        Path path = Paths.get(CONFIG_BASE_PATH, "prompts.md");
-        Files.writeString(path, content);
-        this.promptsContent = content;
-        
-        log.info("提示词配置已更新: country={}", country);
+        recognitionPromptService.saveUserPrompt(country, aiPrompt, continuePrompt);
+        log.info("提示词已写入数据库: country={}", country);
     }
     
     public void updateFeishuConfig(String appToken, String tableId, String fieldMapping) throws IOException {
@@ -403,7 +546,7 @@ public class MarkdownConfigService {
         // 先尝试更新现有的章节
         content = updateSection(content, sectionName, newSection, country);
         
-        Path path = Paths.get(CONFIG_BASE_PATH, "feishu.md");
+        Path path = configPathResolver.resolveFile("feishu.md");
         Files.writeString(path, content);
         this.feishuContent = content;
         
@@ -423,10 +566,15 @@ public class MarkdownConfigService {
                 "##+\\s*" + Pattern.quote(sectionName)
             };
         } else {
+            String countryCode = country.trim().toUpperCase();
+            String sectionSuffix = sectionName.contains("继续") ? "继续提示词" : "识别提示词";
             patternsToTry = new String[] {
                 "##+\\s*" + Pattern.quote(sectionName),
-                "##+\\s*[^\\n]*\\(" + Pattern.quote(country) + "\\)[^\\n]*" + Pattern.quote(sectionName),
-                "##+\\s*[^\\n]*\\(" + Pattern.quote(country) + "\\)"
+                "##+\\s*[^\\n]*\\(" + Pattern.quote(countryCode) + "\\)[^\\n]*"
+                        + Pattern.quote(sectionSuffix),
+                "##+\\s*[^\\n]*\\(" + Pattern.quote(countryCode) + "\\)[^\\n]*"
+                        + Pattern.quote(sectionName),
+                "##+\\s*[^\\n]*\\(" + Pattern.quote(countryCode) + "\\)"
             };
         }
         
@@ -485,6 +633,7 @@ public class MarkdownConfigService {
             case "DE": return "德国";
             case "PL": return "波兰";
             case "NL": return "荷兰";
+            case "IT": return "意大利";
             case "CZ": return "捷克";
             default: return countryCode;
         }

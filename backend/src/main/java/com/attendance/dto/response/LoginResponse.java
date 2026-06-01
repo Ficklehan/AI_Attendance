@@ -34,6 +34,7 @@ public class LoginResponse {
         private String email;
         private String role;
         private String realName;
+        private java.util.Map<String, Boolean> permissions;
 
         public UserInfo() {
         }
@@ -84,6 +85,14 @@ public class LoginResponse {
 
         public void setRealName(String realName) {
             this.realName = realName;
+        }
+
+        public java.util.Map<String, Boolean> getPermissions() {
+            return permissions;
+        }
+
+        public void setPermissions(java.util.Map<String, Boolean> permissions) {
+            this.permissions = permissions;
         }
     }
 }

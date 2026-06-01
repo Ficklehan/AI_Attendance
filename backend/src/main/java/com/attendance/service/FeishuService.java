@@ -30,6 +30,86 @@ public class FeishuService {
     private long tokenExpireTime;
     private final Object tokenLock = new Object();
 
+    private String appAccessToken;
+    private long appTokenExpireTime;
+    private final Object appTokenLock = new Object();
+
+    /**
+     * 小程序 code2session：tt.login 的 code 换用户凭证（官方 mina/v2/tokenLoginValidate）
+     */
+    public JSONObject exchangeMiniprogramLoginCode(String code) throws IOException {
+        String appToken = getAppAccessToken();
+
+        JSONObject body = new JSONObject();
+        body.put("code", code);
+
+        Request request = new Request.Builder()
+                .url("https://open.feishu.cn/open-apis/mina/v2/tokenLoginValidate")
+                .header("Authorization", "Bearer " + appToken)
+                .header("Content-Type", "application/json; charset=utf-8")
+                .post(RequestBody.create(body.toJSONString(), MediaType.parse("application/json")))
+                .build();
+
+        Response response = httpClient.newCall(request).execute();
+        String responseBody = response.body() != null ? response.body().string() : "";
+        if (!response.isSuccessful()) {
+            log.error("tokenLoginValidate HTTP {}: {}", response.code(), responseBody);
+            throw new RuntimeException("小程序登录校验失败: HTTP " + response.code());
+        }
+
+        JSONObject result = JSON.parseObject(responseBody);
+        assertFeishuApiSuccess(result, "小程序登录校验");
+        return result.getJSONObject("data");
+    }
+
+    public String getAppAccessToken() throws IOException {
+        synchronized (appTokenLock) {
+            if (appAccessToken != null && System.currentTimeMillis() < appTokenExpireTime) {
+                return appAccessToken;
+            }
+
+            JSONObject body = new JSONObject();
+            body.put("app_id", feishuProperties.getAppId());
+            body.put("app_secret", feishuProperties.getAppSecret());
+
+            Request request = new Request.Builder()
+                    .url("https://open.feishu.cn/open-apis/auth/v3/app_access_token/internal")
+                    .post(RequestBody.create(body.toJSONString(), MediaType.parse("application/json")))
+                    .build();
+
+            Response response = httpClient.newCall(request).execute();
+            String responseBody = response.body() != null ? response.body().string() : "";
+            if (!response.isSuccessful()) {
+                log.error("app_access_token HTTP {}: {}", response.code(), responseBody);
+                throw new RuntimeException("获取 app_access_token 失败: HTTP " + response.code());
+            }
+
+            JSONObject result = JSON.parseObject(responseBody);
+            assertFeishuApiSuccess(result, "获取 app_access_token");
+
+            appAccessToken = result.getString("app_access_token");
+            long expire = result.getLong("expire");
+            if (expire <= 0) {
+                expire = result.getLongValue("expire_in");
+            }
+            appTokenExpireTime = System.currentTimeMillis() + (expire - 60) * 1000;
+            log.info("飞书 app_access_token 获取成功");
+            return appAccessToken;
+        }
+    }
+
+    private void assertFeishuApiSuccess(JSONObject result, String action) {
+        if (result == null || result.getInteger("code") == null || result.getInteger("code") != 0) {
+            String msg = result != null ? result.getString("msg") : null;
+            if (msg == null || msg.isEmpty()) {
+                msg = result != null ? result.getString("message") : null;
+            }
+            Integer errCode = result != null ? result.getInteger("code") : null;
+            log.error("飞书 {} 失败: {}", action, result != null ? result.toJSONString() : "null");
+            throw new RuntimeException(action + "失败: " + (msg != null && !msg.isEmpty() ? msg : "errCode=" + errCode));
+        }
+    }
+
     private String getAccessToken() throws IOException {
         synchronized (tokenLock) {
             if (accessToken != null && System.currentTimeMillis() < tokenExpireTime) {

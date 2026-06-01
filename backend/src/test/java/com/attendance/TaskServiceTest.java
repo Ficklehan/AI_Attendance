@@ -112,9 +112,10 @@ class TaskServiceTest {
         when(taskMapper.selectTaskByTaskId("20260520_001")).thenReturn(processedTask);
         when(taskMapper.updateTaskConfirmedData(anyString(), anyString())).thenReturn(1);
 
-        List<java.util.Map<String, Object>> data = Arrays.asList(
-            new java.util.HashMap<String, Object>() {{ put("NO", "001"); }}
-        );
+        java.util.Map<String, Object> record = new java.util.HashMap<>();
+        record.put("NOM_PRENOM", "Test User");
+        record.put("Date", "2026-05-20");
+        List<java.util.Map<String, Object>> data = Arrays.asList(record);
         
         taskService.confirmTask("20260520_001", data);
 

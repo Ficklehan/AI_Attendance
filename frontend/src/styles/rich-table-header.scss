@@ -1,0 +1,66 @@
+/** 统一数据表表头视觉（任务列表 / 考勤记录 / 任务编辑 / 首页识别表） */
+
+.rich-table-header {
+  .ant-table-content > table {
+    width: max-content !important;
+    min-width: 100%;
+  }
+
+  .ant-table-thead > tr > th,
+  .ant-table-tbody > tr > td {
+    white-space: nowrap;
+  }
+
+  .ant-table-tbody > tr > td.cell-wrap {
+    white-space: normal;
+    word-break: break-word;
+  }
+
+  .ant-table-thead > tr > th {
+    background: linear-gradient(180deg, #fafbfc 0%, #f2f4f7 100%) !important;
+    border-bottom: 1px solid #eaecf0 !important;
+    padding: 8px 10px !important;
+    font-weight: 600;
+    font-size: 12px;
+    color: #344054;
+    vertical-align: middle !important;
+    transition: background 0.15s ease;
+
+    &::before {
+      display: none !important;
+    }
+
+    &:hover {
+      background: linear-gradient(180deg, #f5f7fa 0%, #eceff3 100%) !important;
+    }
+  }
+
+  .ant-table-thead > tr > th .ant-table-column-sorters {
+    display: flex;
+    align-items: center;
+    width: 100%;
+    min-height: 34px;
+    padding: 0;
+  }
+
+  .ant-table-thead > tr > th .ant-table-column-title {
+    display: flex;
+    align-items: center;
+    width: 100%;
+    min-height: 34px;
+    overflow: visible;
+  }
+
+  /* 自定义表头内已渲染排序按钮 */
+  .ant-table-thead > tr > th .ant-table-column-sorters > .ant-table-column-sorter {
+    display: none !important;
+  }
+
+  .ant-table-tbody > tr > td {
+    border-bottom: 1px solid #f2f4f7;
+  }
+
+  .ant-table-tbody > tr:hover > td {
+    background: #f9fafb !important;
+  }
+}

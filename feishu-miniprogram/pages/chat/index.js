@@ -1,27 +1,79 @@
 const App = getApp()
+const { isApiSuccess, getApiData, getApiMessage } = require('../../utils/response')
+const { t } = require('../../utils/i18n')
+const { translateErrorMessage } = require('../../utils/translateError')
+const { getCountry } = require('../../utils/preferences')
+const { startRecognition } = require('../../utils/recognitionUpload')
+const { taskApi } = require('../../utils/api')
+const { parseRecords } = require('../../utils/task')
+const { calculateRecordStats } = require('../../utils/recordDisplay')
+const { runWithCountryGate } = require('../../utils/countryGate')
+
+const CHAT_TEXT_FALLBACK = {
+  actionCamera: '拍照',
+  imageUploaded: '已上传图片',
+  recognitionStarted: '图片已收到，正在识别。完成后我会在这里给你概览统计。',
+  recognitionFailed: '识别失败：{message}',
+  recognitionSummary: '识别完成：共 {total} 条，正常 {normal} 条，需核对 {issue} 条（模糊 {blurred}，缺勤 {absent}）。',
+  recognitionSummaryClean: '识别完成：共 {total} 条，正常 {normal} 条，未发现明显异常。',
+  reviewAction: '去核对'
+}
+
+function formatText(template, params) {
+  let text = template || ''
+  if (params && typeof params === 'object') {
+    Object.keys(params).forEach((key) => {
+      text = text.replace(new RegExp(`\\{${key}\\}`, 'g'), String(params[key]))
+    })
+  }
+  return text
+}
 
 Page({
   data: {
-    messages: [
-      {
-        id: 0,
-        isUser: false,
-        content: '您好！我是AI考勤助手，请问有什么可以帮您的？\n\n您可以：\n📷 发送考勤表图片进行识别\n❓ 询问关于考勤数据的问题\n📊 查询统计信息',
-        time: new Date().toISOString()
-      }
-    ],
+    messages: [],
     inputText: '',
     selectedImage: null,
     isLoading: false,
-    scrollToId: ''
+    scrollToId: '',
+    texts: {}
   },
 
   onLoad: function () {
-    dd.setNavigationBarTitle({ title: 'AI助手' })
+    this.refreshTexts()
   },
 
   onShow: function () {
+    this.refreshTexts()
     this.scrollToBottom()
+  },
+
+  refreshTexts: function () {
+    const welcome = {
+      id: 0,
+      isUser: false,
+      content: t('chat.welcome'),
+      time: new Date().toISOString()
+    }
+    const hasWelcome = (this.data.messages || []).some((m) => m.id === 0)
+    this.setData({
+      texts: {
+        title: t('chat.title'),
+        placeholder: t('chat.placeholder'),
+        send: t('chat.send'),
+        thinking: t('chat.thinking'),
+        actionCamera: this.chatText('actionCamera'),
+        actionImage: t('chat.actionImage'),
+        actionClear: t('chat.actionClear'),
+        assistantHint: t('chat.assistantHint'),
+        imageHint: t('chat.imageHint'),
+        imageUploaded: t('chat.imageUploaded'),
+        recognitionStarted: t('chat.recognitionStarted'),
+        recognitionFailed: t('chat.recognitionFailed')
+      },
+      messages: hasWelcome ? this.data.messages : [welcome]
+    })
+    tt.setNavigationBarTitle({ title: t('chat.title') })
   },
 
   onInput: function(e) {
@@ -30,22 +82,39 @@ Page({
     })
   },
 
-  chooseImage: async function () {
-    try {
-      const res = await dd.chooseImage({
+  chatText: function (key, params) {
+    const fullKey = `chat.${key}`
+    const value = t(fullKey, params)
+    if (value && value !== fullKey) return value
+    return formatText(CHAT_TEXT_FALLBACK[key] || fullKey, params)
+  },
+
+  chooseImage: function () {
+    if (this.data.isLoading) return
+    runWithCountryGate(() => {
+      tt.chooseImage({
         count: 1,
         sizeType: ['compressed'],
-        sourceType: ['album', 'camera']
+        sourceType: ['album'],
+        success: (res) => {
+          if (res.tempFilePaths.length > 0) {
+            this.sendImageForRecognition(res.tempFilePaths[0])
+          }
+        },
+        fail: (error) => {
+          console.error('选择图片失败:', error)
+        }
       })
-      
-      if (res.tempFilePaths.length > 0) {
-        this.setData({
-          selectedImage: res.tempFilePaths[0]
-        })
-      }
-    } catch (error) {
-      console.error('选择图片失败:', error)
-    }
+    })
+  },
+
+  takePhoto: function () {
+    if (this.data.isLoading) return
+    runWithCountryGate(() => {
+      tt.navigateTo({
+        url: '/pages/camera/index?from=chat'
+      })
+    })
   },
 
   removeSelectedImage: function () {
@@ -54,7 +123,111 @@ Page({
     })
   },
 
-  sendMessage: async function () {
+  sendImageForRecognition: function (imagePath) {
+    const userMsg = {
+      id: Date.now(),
+      isUser: true,
+      content: this.chatText('imageUploaded'),
+      image: imagePath,
+      time: new Date().toISOString()
+    }
+    const progressMsg = {
+      id: Date.now() + 1,
+      isUser: false,
+      content: this.chatText('recognitionStarted'),
+      time: new Date().toISOString()
+    }
+
+    this.setData({
+      messages: [...this.data.messages, userMsg, progressMsg],
+      inputText: '',
+      selectedImage: null,
+      isLoading: true
+    })
+    setTimeout(() => this.scrollToBottom(), 100)
+
+    startRecognition(imagePath)
+      .then((result) => this.buildRecognitionOverview(result))
+      .then((overview) => {
+        const aiMsg = {
+          id: Date.now() + 2,
+          isUser: false,
+          content: overview.content,
+          taskId: overview.taskId,
+          actionText: overview.actionText,
+          time: new Date().toISOString()
+        }
+        this.setData({
+          messages: [...this.data.messages, aiMsg],
+          isLoading: false
+        })
+        setTimeout(() => this.scrollToBottom(), 100)
+      })
+      .catch((error) => {
+        console.error('聊天页图片识别失败:', error)
+        const errorMsg = {
+          id: Date.now() + 2,
+          isUser: false,
+          content: this.chatText('recognitionFailed', {
+            message: translateErrorMessage(error, t('recognizing.errorDefault'))
+          }),
+          time: new Date().toISOString()
+        }
+        this.setData({
+          messages: [...this.data.messages, errorMsg],
+          isLoading: false
+        })
+        setTimeout(() => this.scrollToBottom(), 100)
+      })
+  },
+
+  buildRecognitionOverview: function (result) {
+    const taskId = result && result.taskId
+    const withAction = (content) => ({
+      content,
+      taskId,
+      actionText: taskId ? this.chatText('reviewAction') : ''
+    })
+    const fallback = () => withAction(this.chatText('recognitionSummary', {
+      total: (result && result.rowCount) || 0,
+      normal: 0,
+      issue: 0,
+      blurred: 0,
+      absent: 0
+    }))
+
+    if (!result || !result.taskId) {
+      return Promise.resolve(fallback())
+    }
+
+    return taskApi.getTaskDetail(result.taskId).then((res) => {
+      if (!res || !isApiSuccess(res)) return fallback()
+      const task = getApiData(res) || {}
+      const records = parseRecords(task.rawData || task.confirmedData)
+      const stats = calculateRecordStats(records)
+      const issue = Math.max(0, (stats.total || 0) - (stats.normal || 0) - (stats.deleted || 0))
+      const key = issue > 0 ? 'recognitionSummary' : 'recognitionSummaryClean'
+      return withAction(this.chatText(key, {
+        total: stats.total || 0,
+        normal: stats.normal || 0,
+        issue,
+        blurred: stats.blurred || 0,
+        absent: stats.absent || 0
+      }))
+    }).catch((error) => {
+      console.warn('获取识别概览失败', error)
+      return fallback()
+    })
+  },
+
+  openTaskFromMessage: function (e) {
+    const dataset = (e.currentTarget && e.currentTarget.dataset) || {}
+    const taskId = dataset.taskId || dataset.taskid
+    if (!taskId) return
+    tt.navigateTo({ url: `/pages/result/index?id=${taskId}` })
+  },
+
+  sendMessage: function () {
     const text = this.data.inputText.trim()
     const image = this.data.selectedImage
 
@@ -62,11 +235,19 @@ Page({
       return
     }
 
+    if (image) {
+      this.setData({
+        inputText: '',
+        selectedImage: null
+      })
+      this.sendImageForRecognition(image)
+      return
+    }
+
     const userMsg = {
       id: Date.now(),
       isUser: true,
-      content: text || '[图片]',
-      image: image,
+      content: text,
       time: new Date().toISOString()
     }
 
@@ -81,15 +262,9 @@ Page({
       this.scrollToBottom()
     }, 100)
 
-    try {
-      let response
+    const requestPromise = this.sendTextMessage(text)
 
-      if (image) {
-        response = await this.sendImageMessage(image)
-      } else {
-        response = await this.sendTextMessage(text)
-      }
-
+    requestPromise.then((response) => {
       const aiMsg = {
         id: Date.now() + 1,
         isUser: false,
@@ -98,75 +273,53 @@ Page({
       }
 
       this.setData({
-        messages: [...this.data.messages, userMsg, aiMsg],
+        messages: [...this.data.messages, aiMsg],
         isLoading: false
       })
 
       setTimeout(() => {
         this.scrollToBottom()
       }, 100)
-    } catch (error) {
+    }).catch((error) => {
       console.error('发送消息失败:', error)
       
       const errorMsg = {
         id: Date.now() + 1,
         isUser: false,
-        content: '抱歉，我暂时无法回答您的问题，请稍后再试。',
+        content: t('chat.sendFail'),
         time: new Date().toISOString()
       }
 
       this.setData({
-        messages: [...this.data.messages, userMsg, errorMsg],
+        messages: [...this.data.messages, errorMsg],
         isLoading: false
       })
 
       setTimeout(() => {
         this.scrollToBottom()
       }, 100)
-    }
-  },
-
-  sendTextMessage: async function (text) {
-    const res = await dd.httpRequest({
-      url: `${App.globalData.baseUrl}/api/chat/completion`,
-      method: 'POST',
-      data: {
-        message: text,
-        country: App.globalData.currentCountry
-      },
-      header: {
-        'Content-Type': 'application/json',
-        'Authorization': App.globalData.token ? `Bearer ${App.globalData.token}` : ''
-      }
     })
-
-    if (res.data && res.data.success) {
-      return res.data.data.content
-    } else {
-      throw new Error(res.data.message || '请求失败')
-    }
   },
 
-  sendImageMessage: async function (imagePath) {
+  sendTextMessage: function (text) {
     return new Promise((resolve, reject) => {
-      dd.uploadFile({
-        url: `${App.globalData.baseUrl}/api/chat/image`,
-        filePath: imagePath,
-        name: 'file',
+      tt.request({
+        url: `${App.globalData.baseUrl}/chat/completion`,
+        method: 'POST',
+        data: {
+          message: text,
+          country: getCountry()
+        },
         header: {
-          'Authorization': App.globalData.token ? `Bearer ${App.globalData.token}` : '',
-          'X-Country': App.globalData.currentCountry
+          'Content-Type': 'application/json',
+          'Authorization': App.globalData.token ? `Bearer ${App.globalData.token}` : ''
         },
         success: (res) => {
-          try {
-            const data = JSON.parse(res.data)
-            if (data.success) {
-              resolve(data.data.content)
-            } else {
-              reject(new Error(data.message))
-            }
-          } catch {
-            reject(new Error('解析失败'))
+          if (isApiSuccess(res.data)) {
+            const payload = getApiData(res.data) || {}
+            resolve(payload.content)
+          } else {
+            reject(new Error(getApiMessage(res.data)))
           }
         },
         fail: (error) => {
@@ -177,9 +330,11 @@ Page({
   },
 
   clearChat: function () {
-    dd.showModal({
-      title: '清空对话',
-      content: '确定要清空所有对话记录吗？',
+    tt.showModal({
+      title: t('chat.clearTitle'),
+      content: t('chat.clearContent'),
+      confirmText: t('common.confirm'),
+      cancelText: t('common.cancel'),
       success: (res) => {
         if (res.confirm) {
           this.setData({
@@ -187,7 +342,7 @@ Page({
               {
                 id: 0,
                 isUser: false,
-                content: '您好！我是AI考勤助手，请问有什么可以帮您的？',
+                content: t('chat.welcome'),
                 time: new Date().toISOString()
               }
             ]
@@ -198,10 +353,15 @@ Page({
   },
 
   scrollToBottom: function () {
-    const lastIndex = this.data.messages.length - 1
+    const messages = this.data.messages || []
+    const last = messages[messages.length - 1]
     this.setData({
-      scrollToId: `msg-${lastIndex}`
+      scrollToId: last ? `msg-${last.id}` : ''
     })
+  },
+
+  goBack: function () {
+    tt.navigateBack()
   },
 
   formatTime: function (time) {

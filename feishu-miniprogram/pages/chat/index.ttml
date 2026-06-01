@@ -1,0 +1,78 @@
+<view class="page chat-page">
+  <view class="nav-bar">
+    <view class="nav-btn" bindtap="goBack">‹</view>
+    <text class="nav-title">{{texts.title}}</text>
+    <view class="nav-spacer"></view>
+  </view>
+
+  <scroll-view
+    scroll-y
+    class="chat-scroll"
+    scroll-into-view="{{scrollToId}}"
+  >
+    <view class="chat-messages">
+      <view class="card chat-intro">
+        <text class="chat-intro-title">{{texts.title}}</text>
+        <text class="chat-intro-desc">{{texts.assistantHint}}</text>
+        <text class="chat-intro-link">{{texts.imageHint}}</text>
+      </view>
+
+      <view
+        tt:for="{{messages}}"
+        tt:for-item="msg"
+        tt:key="id"
+        id="msg-{{msg.id}}"
+        class="chat-bubble-wrap {{msg.isUser ? 'is-user' : 'is-bot'}}"
+      >
+        <view class="chat-bubble">
+          <image
+            tt:if="{{msg.image}}"
+            class="chat-bubble-image"
+            src="{{msg.image}}"
+            mode="aspectFill"
+          />
+          <text class="chat-bubble-text">{{msg.content}}</text>
+          <view
+            tt:if="{{msg.taskId && msg.actionText}}"
+            class="chat-task-btn"
+            bindtap="openTaskFromMessage"
+            data-task-id="{{msg.taskId}}"
+            data-taskid="{{msg.taskId}}"
+          >
+            <text>{{msg.actionText}}</text>
+          </view>
+        </view>
+      </view>
+
+      <view tt:if="{{isLoading}}" class="chat-thinking">
+        <view class="spinner spinner-sm"></view>
+        <text>{{texts.thinking}}</text>
+      </view>
+    </view>
+  </scroll-view>
+
+  <view class="chat-composer">
+    <view class="chat-tool" bindtap="takePhoto">
+      <text class="chat-tool-text">{{texts.actionCamera}}</text>
+    </view>
+    <view class="chat-tool" bindtap="chooseImage">
+      <text class="chat-tool-text">{{texts.actionImage}}</text>
+    </view>
+    <view class="chat-tool" bindtap="clearChat">
+      <text class="chat-tool-text">{{texts.actionClear}}</text>
+    </view>
+    <input
+      class="chat-input"
+      placeholder="{{texts.placeholder}}"
+      value="{{inputText}}"
+      bindinput="onInput"
+      bindconfirm="sendMessage"
+    />
+    <view
+      class="chat-send {{inputText && !isLoading ? 'active' : ''}}"
+      bindtap="sendMessage"
+    >
+      <text>{{texts.send}}</text>
+    </view>
+  </view>
+</view>

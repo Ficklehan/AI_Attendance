@@ -69,6 +69,9 @@
             real_name = #{realName},
             employee_id = #{employeeId},
             status = #{status},
+            <if test="passwordHash != null">
+            password_hash = #{passwordHash},
+            </if>
             updated_at = NOW()
         WHERE id = #{id}
     </update>

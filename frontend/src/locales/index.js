@@ -6,6 +6,7 @@ import nlNL from './nl-NL.js'
 import csCZ from './cs-CZ.js'
 import plPL from './pl-PL.js'
 import deDE from './de-DE.js'
+import esES from './es-ES.js'
 
 const messages = {
   'zh-CN': zhCN,
@@ -14,7 +15,8 @@ const messages = {
   'nl-NL': nlNL,
   'cs-CZ': csCZ,
   'pl-PL': plPL,
-  'de-DE': deDE
+  'de-DE': deDE,
+  'es-ES': esES
 }
 
 const i18n = createI18n({

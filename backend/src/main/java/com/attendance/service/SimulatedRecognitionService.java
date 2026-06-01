@@ -28,26 +28,17 @@ public class SimulatedRecognitionService {
     }
     
     public void simulateRecognition(SimCallback callback) {
-        log.info("使用模拟识别服务");
-        
-        new Thread(() -> {
-            try {
-                int recordCount = 5 + random.nextInt(6);
-                List<JSONObject> records = generateMockRecords(recordCount);
-                
-                for (int i = 0; i < records.size(); i++) {
-                    Thread.sleep(300 + random.nextInt(500));
-                    callback.onRecord(records.get(i));
-                }
-                
-                Thread.sleep(500);
-                callback.onComplete(recordCount);
-                
-            } catch (InterruptedException e) {
-                Thread.currentThread().interrupt();
-                callback.onError(e);
+        log.info("使用模拟识别服务（同步）");
+        try {
+            int recordCount = 5 + random.nextInt(6);
+            List<JSONObject> records = generateMockRecords(recordCount);
+            for (JSONObject record : records) {
+                callback.onRecord(record);
             }
-        }).start();
+            callback.onComplete(recordCount);
+        } catch (Exception e) {
+            callback.onError(e);
+        }
     }
     
     private List<JSONObject> generateMockRecords(int count) {
@@ -57,6 +48,8 @@ public class SimulatedRecognitionService {
             JSONObject record = new JSONObject();
             
             record.put("NO", String.format("%04d", i));
+            record.put("Pays", "Netherlands");
+            record.put("Entrepot", "AMS");
             record.put("NOM_PRENOM", FIRST_NAMES[random.nextInt(FIRST_NAMES.length)] + LAST_NAMES[random.nextInt(LAST_NAMES.length)]);
             record.put("AGENCE_INTERIMAIRE", AGENCIES[random.nextInt(AGENCIES.length)]);
             record.put("HORAIRES_DU_TRAVAIL", SHIFTS[random.nextInt(SHIFTS.length)]);
@@ -73,7 +66,9 @@ public class SimulatedRecognitionService {
             record.put("DEPAR", String.format("%02d:%02d", departHour, departMin));
             
             record.put("PAUSE", 30 + random.nextInt(31));
-            record.put("CHECKER", "审核员" + (char)('A' + random.nextInt(5)));
+            record.put("SIGNATURE", "员工签名" + (char)('A' + random.nextInt(5)));
+            record.put("CHECKER", record.getString("SIGNATURE"));
+            record.put("Observations", "");
             
             String[] marks = {"正常", "手写", "模糊", "正常;夜班", "手写;夜班"};
             record.put("Mark", marks[random.nextInt(marks.length)]);

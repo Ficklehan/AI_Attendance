@@ -2,7 +2,7 @@
   <div class="callback-container">
     <div class="loading-content">
       <div class="spinner"></div>
-      <p>正在处理飞书登录...</p>
+      <p>正在处理飞书登录…</p>
     </div>
   </div>
 </template>
@@ -22,28 +22,22 @@ onMounted(async () => {
     const urlParams = new URLSearchParams(window.location.search)
     const token = urlParams.get('token')
     const userInfoStr = urlParams.get('userInfo')
-    
-    console.log('飞书回调 - 收到参数:', { token: token ? token.substring(0, 20) + '...' : null, userInfoStr })
-    
+
     if (!token || !userInfoStr) {
       throw new Error('缺少登录信息')
     }
-    
+
     const userInfo = JSON.parse(userInfoStr)
-    
-    // 更新 auth store
+
     authStore.token = token
     authStore.userInfo = userInfo
     authStore.roles = userInfo.role ? [userInfo.role] : []
-    
-    // 保存到 localStorage
+
     setToken(token)
     localStorage.setItem('userInfo', userInfoStr)
-    
-    console.log('飞书登录成功，准备跳转到首页')
+
     message.success('飞书登录成功')
-    
-    // 跳转到首页
+
     setTimeout(() => {
       router.replace('/')
     }, 500)
@@ -59,27 +53,27 @@ onMounted(async () => {
 
 <style lang="scss" scoped>
 .callback-container {
-  height: 100vh;
+  min-height: 100vh;
   display: flex;
   align-items: center;
   justify-content: center;
-  background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
-  
+  background: $bg-body;
+
   .loading-content {
     text-align: center;
-    color: #fff;
-    font-size: 16px;
-    
+    color: $text-primary;
+    font-size: 15px;
+
     .spinner {
       width: 40px;
       height: 40px;
-      border: 4px solid rgba(255, 255, 255, 0.3);
-      border-top-color: #5B8FF9;
+      border: 3px solid rgba(60, 60, 67, 0.12);
+      border-top-color: $primary;
       border-radius: 50%;
-      animation: spin 1s linear infinite;
-      margin: 0 auto 20px;
+      animation: spin 0.75s linear infinite;
+      margin: 0 auto 16px;
     }
-    
+
     @keyframes spin {
       to {
         transform: rotate(360deg);

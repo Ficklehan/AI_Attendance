@@ -8,6 +8,9 @@
         <result column="user_id" property="userId"/>
         <result column="file_key" property="fileKey"/>
         <result column="status" property="status"/>
+        <result column="sync_status" property="syncStatus"/>
+        <result column="sync_error" property="syncError"/>
+        <result column="prompt_country" property="promptCountry"/>
         <result column="raw_data" property="rawData"/>
         <result column="confirmed_data" property="confirmedData"/>
         <result column="image_urls" property="imageUrls"/>
@@ -19,8 +22,9 @@
     </resultMap>
 
     <sql id="Base_Column_List">
-        task_id, user_id, file_key, status, raw_data, confirmed_data,
-        image_urls, anomaly_summary, ai_raw_output, processed_by, created_at, updated_at
+        task_id, user_id, file_key, status, sync_status, sync_error, prompt_country,
+        raw_data, confirmed_data, image_urls, anomaly_summary, ai_raw_output, processed_by,
+        created_at, updated_at
     </sql>
 
     <select id="selectTaskByTaskId" resultMap="BaseResultMap">
@@ -30,52 +34,74 @@
     </select>
 
     <select id="selectTaskList" resultMap="BaseResultMap">
-        SELECT <include refid="Base_Column_List"/>
-        FROM tasks
+        SELECT t.task_id, t.user_id, t.file_key, t.status, t.sync_status, t.sync_error, t.prompt_country,
+               t.raw_data, t.confirmed_data, t.image_urls, t.anomaly_summary, t.ai_raw_output, t.processed_by,
+               t.created_at, t.updated_at
+        FROM tasks t
+        LEFT JOIN users u ON t.user_id = u.id
         WHERE 1=1
         <if test="userId != null and userId != ''">
-            AND user_id = #{userId}
+            AND t.user_id = #{userId}
         </if>
         <if test="status != null and status != ''">
-            AND status = #{status}
+            AND t.status = #{status}
         </if>
         <if test="keyword != null and keyword != ''">
             <choose>
                 <when test="keywordField == 'taskId'">
-                    AND task_id LIKE CONCAT('%', #{keyword}, '%')
+                    AND t.task_id LIKE CONCAT('%', #{keyword}, '%')
                 </when>
                 <when test="keywordField == 'fileKey'">
-                    AND file_key LIKE CONCAT('%', #{keyword}, '%')
+                    AND t.file_key LIKE CONCAT('%', #{keyword}, '%')
+                </when>
+                <when test="keywordField == 'userName'">
+                    AND (u.real_name LIKE CONCAT('%', #{keyword}, '%') OR u.username LIKE CONCAT('%', #{keyword}, '%'))
+                </when>
+                <when test="keywordField == 'status'">
+                    AND t.status = #{keyword}
+                </when>
+                <when test="keywordField == 'createdAt'">
+                    AND DATE_FORMAT(t.created_at, '%Y-%m-%d %H:%i:%s') LIKE CONCAT('%', #{keyword}, '%')
                 </when>
                 <otherwise>
-                    AND (task_id LIKE CONCAT('%', #{keyword}, '%') OR file_key LIKE CONCAT('%', #{keyword}, '%'))
+                    AND (t.task_id LIKE CONCAT('%', #{keyword}, '%') OR t.file_key LIKE CONCAT('%', #{keyword}, '%'))
                 </otherwise>
             </choose>
         </if>
-        ORDER BY created_at DESC
+        ORDER BY t.created_at DESC
         LIMIT #{offset}, #{size}
     </select>
 
     <select id="countTaskList" resultType="long">
         SELECT COUNT(*)
-        FROM tasks
+        FROM tasks t
+        LEFT JOIN users u ON t.user_id = u.id
         WHERE 1=1
         <if test="userId != null and userId != ''">
-            AND user_id = #{userId}
+            AND t.user_id = #{userId}
         </if>
         <if test="status != null and status != ''">
-            AND status = #{status}
+            AND t.status = #{status}
         </if>
         <if test="keyword != null and keyword != ''">
             <choose>
                 <when test="keywordField == 'taskId'">
-                    AND task_id LIKE CONCAT('%', #{keyword}, '%')
+                    AND t.task_id LIKE CONCAT('%', #{keyword}, '%')
                 </when>
                 <when test="keywordField == 'fileKey'">
-                    AND file_key LIKE CONCAT('%', #{keyword}, '%')
+                    AND t.file_key LIKE CONCAT('%', #{keyword}, '%')
+                </when>
+                <when test="keywordField == 'userName'">
+                    AND (u.real_name LIKE CONCAT('%', #{keyword}, '%') OR u.username LIKE CONCAT('%', #{keyword}, '%'))
+                </when>
+                <when test="keywordField == 'status'">
+                    AND t.status = #{keyword}
+                </when>
+                <when test="keywordField == 'createdAt'">
+                    AND DATE_FORMAT(t.created_at, '%Y-%m-%d %H:%i:%s') LIKE CONCAT('%', #{keyword}, '%')
                 </when>
                 <otherwise>
-                    AND (task_id LIKE CONCAT('%', #{keyword}, '%') OR file_key LIKE CONCAT('%', #{keyword}, '%'))
+                    AND (t.task_id LIKE CONCAT('%', #{keyword}, '%') OR t.file_key LIKE CONCAT('%', #{keyword}, '%'))
                 </otherwise>
             </choose>
         </if>
@@ -85,11 +111,30 @@
         SELECT task_id FROM tasks ORDER BY created_at DESC LIMIT 1
     </select>
 
+    <select id="selectTaskOwningFileKey" resultMap="BaseResultMap">
+        SELECT <include refid="Base_Column_List"/>
+        FROM tasks
+        WHERE user_id = #{userId}
+          AND (file_key = #{fileKey} OR image_urls LIKE CONCAT('%', #{fileKey}, '%'))
+        ORDER BY created_at DESC
+        LIMIT 1
+    </select>
+
+    <select id="selectTaskByFileKey" resultMap="BaseResultMap">
+        SELECT <include refid="Base_Column_List"/>
+        FROM tasks
+        WHERE file_key = #{fileKey} OR image_urls LIKE CONCAT('%', #{fileKey}, '%')
+        ORDER BY created_at DESC
+        LIMIT 1
+    </select>
+
     <insert id="insertTask" parameterType="com.attendance.entity.Task">
-        INSERT INTO tasks (task_id, user_id, file_key, status, raw_data, confirmed_data,
-                          image_urls, anomaly_summary, ai_raw_output, processed_by, created_at, updated_at)
-        VALUES (#{taskId}, #{userId}, #{fileKey}, #{status}, #{rawData}, #{confirmedData},
-                #{imageUrls}, #{anomalySummary}, #{aiRawOutput}, #{processedBy}, NOW(), NOW())
+        INSERT INTO tasks (task_id, user_id, file_key, status, sync_status, prompt_country,
+                          raw_data, confirmed_data, image_urls, anomaly_summary, ai_raw_output,
+                          processed_by, created_at, updated_at)
+        VALUES (#{taskId}, #{userId}, #{fileKey}, #{status}, #{syncStatus}, #{promptCountry},
+                #{rawData}, #{confirmedData}, #{imageUrls}, #{anomalySummary}, #{aiRawOutput},
+                #{processedBy}, NOW(), NOW())
     </insert>
 
     <update id="updateTask" parameterType="com.attendance.entity.Task">
@@ -116,9 +161,31 @@
         WHERE task_id = #{taskId}
     </update>
 
+    <update id="updateTaskRawDataProgress">
+        UPDATE tasks
+        SET raw_data = #{rawData}, ai_raw_output = #{aiRawOutput}, updated_at = NOW()
+        WHERE task_id = #{taskId} AND status = 'processing'
+    </update>
+
     <update id="updateTaskConfirmedData">
         UPDATE tasks 
         SET confirmed_data = #{confirmedData}, status = 'confirmed', updated_at = NOW()
+        WHERE task_id = #{taskId}
+    </update>
+
+    <update id="updateTaskRecordPayload">
+        UPDATE tasks
+        SET raw_data = #{rawData},
+            confirmed_data = #{confirmedData},
+            updated_at = NOW()
+        WHERE task_id = #{taskId}
+    </update>
+
+    <update id="updateTaskSyncStatus">
+        UPDATE tasks
+        SET sync_status = #{syncStatus},
+            sync_error = #{syncError},
+            updated_at = NOW()
         WHERE task_id = #{taskId}
     </update>
 
@@ -133,6 +200,44 @@
         SET anomaly_summary = #{anomalySummary}, updated_at = NOW()
         WHERE task_id = #{taskId}
     </update>
+
+    <select id="selectTasksForDuplicateByStatuses" resultMap="BaseResultMap">
+        SELECT <include refid="Base_Column_List"/>
+        FROM tasks
+        WHERE status IN
+        <foreach item="s" collection="statuses" open="(" separator="," close=")">
+            #{s}
+        </foreach>
+          AND confirmed_data IS NOT NULL
+          AND confirmed_data != ''
+          <if test="excludeTaskId != null and excludeTaskId != ''">
+            AND task_id != #{excludeTaskId}
+          </if>
+        ORDER BY updated_at DESC
+    </select>
+
+    <select id="countTasksGroupByStatus" resultType="map">
+        SELECT t.status AS status, COUNT(*) AS cnt
+        FROM tasks t
+        WHERE 1=1
+        <if test="userId != null and userId != ''">
+            AND t.user_id = #{userId}
+        </if>
+        GROUP BY t.status
+    </select>
+
+    <select id="selectTasksForRecordView" resultMap="BaseResultMap">
+        SELECT <include refid="Base_Column_List"/>
+        FROM tasks
+        WHERE 1=1
+        <if test="userId != null and userId != ''">
+            AND user_id = #{userId}
+        </if>
+        <if test="status != null and status != ''">
+            AND status = #{status}
+        </if>
+        ORDER BY created_at DESC
+    </select>
 
     <delete id="deleteTaskByTaskId">
         DELETE FROM tasks WHERE task_id = #{taskId}

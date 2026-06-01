@@ -11,6 +11,16 @@ field_mapping:
     type: 'string'
     required: true
     description: '工号'
+  - aiField: 'Pays'
+    feishuField: 'Pays'
+    type: 'string'
+    required: false
+    description: '国家'
+  - aiField: 'Entrepot'
+    feishuField: 'Entrepôt'
+    type: 'string'
+    required: false
+    description: '仓库'
   - aiField: 'NOM_PRENOM'
     feishuField: 'NOM PRENOM'
     type: 'string'
@@ -46,11 +56,16 @@ field_mapping:
     type: 'number'
     required: true
     description: '休息(分钟)'
-  - aiField: 'CHECKER'
-    feishuField: 'CHECKER'
+  - aiField: 'SIGNATURE'
+    feishuField: 'SIGNATURE'
     type: 'string'
     required: false
-    description: '状态'
+    description: '员工签名'
+  - aiField: 'Observations'
+    feishuField: 'Observations'
+    type: 'string'
+    required: false
+    description: '备注'
   - aiField: 'SmartMark'
     feishuField: 'Mark'
     type: 'string'
@@ -79,6 +94,16 @@ field_mapping:
     type: 'string'
     required: true
     description: '工号'
+  - aiField: 'Pays'
+    feishuField: 'Pays'
+    type: 'string'
+    required: false
+    description: '国家'
+  - aiField: 'Entrepot'
+    feishuField: 'Entrepôt'
+    type: 'string'
+    required: false
+    description: '仓库'
   - aiField: 'NOM_PRENOM'
     feishuField: 'NOM PRENOM'
     type: 'string'
@@ -114,11 +139,16 @@ field_mapping:
     type: 'number'
     required: true
     description: '休息(分钟)'
-  - aiField: 'CHECKER'
-    feishuField: 'CHECKER'
+  - aiField: 'SIGNATURE'
+    feishuField: 'SIGNATURE'
     type: 'string'
     required: false
-    description: '状态'
+    description: '员工签名'
+  - aiField: 'Observations'
+    feishuField: 'Observations'
+    type: 'string'
+    required: false
+    description: '备注'
   - aiField: 'SmartMark'
     feishuField: 'Mark'
     type: 'string'
@@ -147,6 +177,16 @@ field_mapping:
     type: 'string'
     required: true
     description: '工号'
+  - aiField: 'Pays'
+    feishuField: '国家'
+    type: 'string'
+    required: false
+    description: '国家'
+  - aiField: 'Entrepot'
+    feishuField: '仓库'
+    type: 'string'
+    required: false
+    description: '仓库'
   - aiField: 'NOM_PRENOM'
     feishuField: '姓名'
     type: 'string'
@@ -182,11 +222,16 @@ field_mapping:
     type: 'number'
     required: true
     description: '休息(分钟)'
-  - aiField: 'CHECKER'
-    feishuField: '状态'
+  - aiField: 'SIGNATURE'
+    feishuField: '员工签名'
     type: 'string'
     required: false
-    description: '状态'
+    description: '员工签名'
+  - aiField: 'Observations'
+    feishuField: '备注'
+    type: 'string'
+    required: false
+    description: '备注'
   - aiField: 'SmartMark'
     feishuField: '标记'
     type: 'string'
@@ -215,6 +260,16 @@ field_mapping:
     type: 'string'
     required: true
     description: '工号'
+  - aiField: 'Pays'
+    feishuField: 'Pays'
+    type: 'string'
+    required: false
+    description: '国家'
+  - aiField: 'Entrepot'
+    feishuField: 'Entrepôt'
+    type: 'string'
+    required: false
+    description: '仓库'
   - aiField: 'NOM_PRENOM'
     feishuField: 'Name'
     type: 'string'
@@ -250,11 +305,16 @@ field_mapping:
     type: 'number'
     required: true
     description: '休息(分钟)'
-  - aiField: 'CHECKER'
-    feishuField: 'Status'
+  - aiField: 'SIGNATURE'
+    feishuField: 'SIGNATURE'
     type: 'string'
     required: false
-    description: '状态'
+    description: '员工签名'
+  - aiField: 'Observations'
+    feishuField: 'Observations'
+    type: 'string'
+    required: false
+    description: '备注'
   - aiField: 'SmartMark'
     feishuField: 'Markierung'
     type: 'string'
@@ -283,6 +343,16 @@ field_mapping:
     type: 'string'
     required: true
     description: '工号'
+  - aiField: 'Pays'
+    feishuField: 'Country'
+    type: 'string'
+    required: false
+    description: '国家'
+  - aiField: 'Entrepot'
+    feishuField: 'Warehouse'
+    type: 'string'
+    required: false
+    description: '仓库'
   - aiField: 'NOM_PRENOM'
     feishuField: 'Name'
     type: 'string'
@@ -318,11 +388,16 @@ field_mapping:
     type: 'number'
     required: true
     description: '休息(分钟)'
-  - aiField: 'CHECKER'
-    feishuField: 'Status'
+  - aiField: 'SIGNATURE'
+    feishuField: 'Signature'
     type: 'string'
     required: false
-    description: '状态'
+    description: '员工签名'
+  - aiField: 'Observations'
+    feishuField: 'Remarks'
+    type: 'string'
+    required: false
+    description: '备注'
   - aiField: 'SmartMark'
     feishuField: 'Mark'
     type: 'string'
@@ -338,4 +413,91 @@ field_mapping:
     type: 'user'
     required: false
     description: '上传人员'
+```
+
+
+### 荷兰 (NL) - NL
+
+```markdown
+```yaml
+bitable_app_token: 'Mcbebch6jaRAgMsOWmCcM3f8nrg'
+bitable_table_id: 'tblZxwgGwg5ijlZB'
+field_mapping:
+  - aiField: 'NO'
+    feishuField: 'NO'
+    type: 'string'
+    required: true
+    description: '工号'
+  - aiField: 'Pays'
+    feishuField: 'Pays'
+    type: 'string'
+    required: false
+    description: '国家'
+  - aiField: 'Entrepot'
+    feishuField: 'Entrepôt'
+    type: 'string'
+    required: false
+    description: '仓库'
+  - aiField: 'NOM_PRENOM'
+    feishuField: 'NOM PRENOM'
+    type: 'string'
+    required: false
+    description: '姓名'
+  - aiField: 'AGENCE_INTERIMAIRE'
+    feishuField: 'AGENCE D'INTERIMAIR'
+    type: 'string'
+    required: false
+    description: '中介机构'
+  - aiField: 'HORAIRES_DU_TRAVAIL'
+    feishuField: 'HORAIRES DU TRAVAI'
+    type: 'string'
+    required: false
+    description: '工作时间'
+  - aiField: 'Date'
+    feishuField: 'Date'
+    type: 'date'
+    required: true
+    description: '日期'
+  - aiField: 'ARRIVEE_DATETIME'
+    feishuField: 'ARRIVE'
+    type: 'datetime'
+    required: true
+    description: '到达时间'
+  - aiField: 'DEPAR_DATETIME'
+    feishuField: 'DEPAR'
+    type: 'datetime'
+    required: true
+    description: '离开时间'
+  - aiField: 'PAUSE'
+    feishuField: 'PAUS'
+    type: 'number'
+    required: true
+    description: '休息(分钟)'
+  - aiField: 'SIGNATURE'
+    feishuField: 'SIGNATURE'
+    type: 'string'
+    required: false
+    description: '员工签名'
+  - aiField: 'Observations'
+    feishuField: 'Observations'
+    type: 'string'
+    required: false
+    description: '备注'
+  - aiField: 'SmartMark'
+    feishuField: 'Mark'
+    type: 'string'
+    required: false
+    description: '标记'
+  - aiField: 'TASK_ID'
+    feishuField: '任务id'
+    type: 'string'
+    required: false
+    description: '任务id'
+  - aiField: 'UPLOADED_BY'
+    feishuField: '上传人员'
+    type: 'user'
+    required: false
+    description: '上传人员'
+
+```
 ```

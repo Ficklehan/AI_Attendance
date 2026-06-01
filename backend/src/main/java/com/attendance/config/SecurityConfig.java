@@ -21,6 +21,9 @@ public class SecurityConfig {
     @Autowired
     private JwtAuthenticationFilter jwtAuthenticationFilter;
 
+    @Autowired
+    private SecurityJsonHandlers securityJsonHandlers;
+
     @Bean
     public SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
         http
@@ -29,15 +32,14 @@ public class SecurityConfig {
             .sessionManagement()
                 .sessionCreationPolicy(SessionCreationPolicy.STATELESS)
             .and()
-            .authorizeHttpRequests(auth -> auth
-                .requestMatchers("/auth/**").permitAll()
-                .requestMatchers("/feishu-auth/**").permitAll()
-                .requestMatchers("/webhook/**").permitAll()
-                .requestMatchers("/service/status").permitAll()
-                .requestMatchers("/uploads/**").permitAll()
-                .requestMatchers("/local/**").permitAll()
-                .requestMatchers("/test-config/**").permitAll()
-                .requestMatchers("/tasks/**").permitAll()
+            .exceptionHandling(ex -> ex
+                .authenticationEntryPoint(securityJsonHandlers)
+                .accessDeniedHandler(securityJsonHandlers))
+            .authorizeRequests(auth -> auth
+                .antMatchers("/auth/**").permitAll()
+                .antMatchers("/feishu-auth/**").permitAll()
+                .antMatchers("/uploads/**").permitAll()
+                .antMatchers("/config/current-country", "/config/country-options").permitAll()
                 .anyRequest().authenticated()
             )
             .addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class);

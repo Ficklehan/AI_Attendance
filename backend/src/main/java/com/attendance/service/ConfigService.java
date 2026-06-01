@@ -1,7 +1,6 @@
 package com.attendance.service;
 
-import com.attendance.common.BusinessException;
-import com.attendance.common.ErrorCode;
+import com.attendance.dto.CountryConfigBundle;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -129,5 +128,25 @@ public class ConfigService {
     
     public String getContinuePrompt(String country) {
         return markdownConfigService.getContinuePrompt(country);
+    }
+
+    public String resolveEffectiveCountry(String country) {
+        return markdownConfigService.resolveEffectiveCountry(country);
+    }
+
+    public String describePromptSection(String country) {
+        return markdownConfigService.describePromptSection(country);
+    }
+
+    public String resolveEffectivePromptCountry(String country) {
+        return markdownConfigService.resolveEffectivePromptCountry(country);
+    }
+
+    public String resolveEffectiveFeishuCountry(String country) {
+        return markdownConfigService.resolveEffectiveFeishuCountry(country);
+    }
+
+    public CountryConfigBundle getCountryConfigBundle(String country) {
+        return markdownConfigService.getCountryConfigBundle(country);
     }
 }

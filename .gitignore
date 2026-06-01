@@ -1,5 +1,6 @@
 # 日志目录
 logs/
+backend/logs/
 *.log
 
 # 上传文件目录
@@ -56,3 +57,9 @@ mobile/dist/
 
 # 数据库数据
 mysql_data/
+
+# 本地导出与 IDE
+backend/exports/
+.cursor/
+frontend/tmp-screenshots/
+frontend/tmp_capture.mjs

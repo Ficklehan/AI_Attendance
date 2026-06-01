@@ -1,6 +1,6 @@
 package com.attendance.dto.request;
 
-import jakarta.validation.constraints.NotBlank;
+import javax.validation.constraints.NotBlank;
 
 public class ConfigUpdateRequest {
     

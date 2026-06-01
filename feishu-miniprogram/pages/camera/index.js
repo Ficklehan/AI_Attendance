@@ -1,23 +1,202 @@
-const App = getApp()
+const { t } = require('../../utils/i18n')
+const { ensureCountryConfigured } = require('../../utils/preferences')
+
+const CAMERA_ID = 'camera'
+const BOOTSTRAP_MAX_ATTEMPTS = 12
+const BOOTSTRAP_INTERVAL_MS = 350
 
 Page({
   data: {
     cameraPosition: 'back',
-    flashMode: 'off'
+    flashMode: 'off',
+    cameraReady: false,
+    initHint: '',
+    texts: {}
   },
 
-  onLoad: function () {
-    dd.setNavigationBarTitle({ title: '拍照识别' })
+  onLoad: function (options) {
+    this._fromChat = options && options.from === 'chat'
+    if (!ensureCountryConfigured()) {
+      return
+    }
+    this.refreshTexts()
+    this.setData({ initHint: t('camera.starting') })
+    this.requestCameraPermission(() => {
+      this.scheduleCameraBootstrap()
+    })
   },
 
   onReady: function () {
-    this.cameraContext = dd.createCameraContext()
+    this._pageReady = true
+    this.scheduleCameraBootstrap()
+  },
+
+  onShow: function () {
+    if (this._needReinitContext) {
+      this._needReinitContext = false
+      this.setData({ initHint: t('camera.starting'), cameraReady: false })
+      this.scheduleCameraBootstrap()
+    }
+  },
+
+  onUnload: function () {
+    this.clearBootstrapTimer()
+  },
+
+  goBack: function () {
+    tt.navigateBack()
+  },
+
+  refreshTexts: function () {
+    this.setData({
+      texts: {
+        title: t('camera.title'),
+        scanHint: t('camera.scanHint'),
+        scanGuide: t('camera.scanGuide'),
+        guideTitle: t('camera.guideTitle'),
+        tipLight: t('camera.tipLight'),
+        tipFlat: t('camera.tipFlat'),
+        tipAngle: t('camera.tipAngle'),
+        gallery: t('camera.gallery'),
+        flashOn: t('camera.flashOn'),
+        flashOff: t('camera.flashOff'),
+        flip: t('camera.flip')
+      }
+    })
+    tt.setNavigationBarTitle({ title: t('camera.title') })
+  },
+
+  clearBootstrapTimer: function () {
+    if (this._bootstrapTimer) {
+      clearTimeout(this._bootstrapTimer)
+      this._bootstrapTimer = null
+    }
+  },
+
+  scheduleCameraBootstrap: function () {
+    if (!this._pageReady) {
+      return
+    }
+    this.clearBootstrapTimer()
+    this._bootstrapAttempt = 0
+    this.bootstrapCameraStep()
+  },
+
+  bootstrapCameraStep: function () {
+    const attempt = this._bootstrapAttempt || 0
+    this._bootstrapAttempt = attempt + 1
+
+    if (this.initCameraContext()) {
+      return
+    }
+
+    if (attempt >= BOOTSTRAP_MAX_ATTEMPTS) {
+      this.setData({
+        cameraReady: false,
+        initHint: t('camera.previewUnavailable')
+      })
+      return
+    }
+
+    this._bootstrapTimer = setTimeout(() => {
+      this.bootstrapCameraStep()
+    }, BOOTSTRAP_INTERVAL_MS)
+  },
+
+  requestCameraPermission: function (onGranted) {
+    const done = typeof onGranted === 'function' ? onGranted : function () {}
+
+    tt.getSetting({
+      success: (res) => {
+        const auth = res.authSetting && res.authSetting['scope.camera']
+        if (auth === true) {
+          done()
+          return
+        }
+        if (auth === false) {
+          this.setData({
+            cameraReady: false,
+            initHint: t('camera.permissionDenied')
+          })
+          return
+        }
+        tt.authorize({
+          scope: 'scope.camera',
+          success: () => done(),
+          fail: () => {
+            this.setData({
+              cameraReady: false,
+              initHint: t('camera.permissionDenied')
+            })
+          }
+        })
+      },
+      fail: () => done()
+    })
+  },
+
+  openCameraSettings: function () {
+    tt.openSetting({
+      success: (res) => {
+        if (res.authSetting && res.authSetting['scope.camera']) {
+          this.setData({ initHint: t('camera.starting') })
+          this.scheduleCameraBootstrap()
+        }
+      }
+    })
+  },
+
+  onInitHintTap: function () {
+    const hint = this.data.initHint || ''
+    if (hint === t('camera.permissionDenied')) {
+      this.openCameraSettings()
+      return
+    }
+    if (hint === t('camera.previewUnavailable') || hint === t('camera.unsupported')) {
+      this.chooseFromGallery()
+    }
+  },
+
+  initCameraContext: function () {
+    try {
+      if (typeof tt.createCameraContext !== 'function') {
+        this.setData({
+          cameraReady: false,
+          initHint: t('camera.unsupported')
+        })
+        return false
+      }
+      this.cameraContext = tt.createCameraContext(CAMERA_ID)
+      this.setData({ cameraReady: true, initHint: '' })
+      this.clearBootstrapTimer()
+      return true
+    } catch (e) {
+      console.warn('createCameraContext 失败', e)
+      this.cameraContext = null
+      return false
+    }
+  },
+
+  onCameraInitDone: function (e) {
+    console.log('camera init done', e.detail)
+    this._retriedPhoto = false
+    this.initCameraContext()
+  },
+
+  onCameraStop: function () {
+    this.cameraContext = null
+    this.setData({ cameraReady: false, initHint: t('camera.starting') })
+    this._needReinitContext = true
   },
 
   toggleCamera: function () {
+    this.cameraContext = null
     this.setData({
-      cameraPosition: this.data.cameraPosition === 'back' ? 'front' : 'back'
+      cameraPosition: this.data.cameraPosition === 'back' ? 'front' : 'back',
+      cameraReady: false,
+      initHint: t('camera.switching')
     })
+    this.scheduleCameraBootstrap()
   },
 
   toggleFlash: function () {
@@ -26,97 +205,97 @@ Page({
     })
   },
 
-  takePhoto: async function () {
-    try {
-      const res = await this.cameraContext.takePhoto({
-        quality: 'high'
-      })
-      
-      this.processPhoto(res.tempImagePath)
-    } catch (error) {
-      console.error('拍照失败:', error)
-      dd.showToast({ title: '拍照失败', icon: 'none' })
-    }
-  },
-
-  processPhoto: async function (imagePath) {
-    dd.showLoading({ title: '正在处理...' })
-    
-    try {
-      const res = await dd.getImageInfo({ src: imagePath })
-      
-      if (res.width < 1000 || res.height < 1000) {
-        dd.hideLoading()
-        dd.showModal({
-          title: '图片质量提示',
-          content: '拍摄的图片分辨率较低，可能影响识别效果。是否继续使用？',
-          success: (modalRes) => {
-            if (modalRes.confirm) {
-              this.uploadPhoto(imagePath)
-            }
-          }
-        })
+  takePhoto: function () {
+    const run = () => {
+      if (!this.cameraContext && !this.initCameraContext()) {
+        this.fallbackCapture(t('camera.notReady'))
         return
       }
-      
-      this.uploadPhoto(imagePath)
-    } catch (error) {
-      console.error('处理图片失败:', error)
-      dd.hideLoading()
-      dd.showToast({ title: '处理失败', icon: 'none' })
-    }
-  },
-
-  uploadPhoto: async function (imagePath) {
-    try {
-      dd.showLoading({ title: '上传识别中...' })
-      
-      const res = await dd.uploadFile({
-        url: `${App.globalData.baseUrl}/api/local/upload-stream`,
-        filePath: imagePath,
-        name: 'file',
-        fileName: 'photo.jpg',
-        header: {
-          'Authorization': App.globalData.token ? `Bearer ${App.globalData.token}` : '',
-          'X-Country': App.globalData.currentCountry
+      this.cameraContext.takePhoto({
+        quality: 'normal',
+        success: (res) => {
+          if (res.tempImagePath) {
+            this.processPhoto(res.tempImagePath)
+          } else {
+            this.fallbackCapture(t('camera.photoFail'))
+          }
+        },
+        fail: (error) => {
+          console.error('拍照失败:', error)
+          const msg = (error && error.errString) || ''
+          if (msg.indexOf('not found') >= 0 && !this._retriedPhoto) {
+            this._retriedPhoto = true
+            this.scheduleCameraBootstrap()
+            setTimeout(() => this.takePhoto(), 500)
+            return
+          }
+          this.fallbackCapture(t('camera.photoFail'))
         }
       })
-      
-      dd.hideLoading()
-      const data = JSON.parse(res.data)
-      
-      if (data.success) {
-        dd.redirectTo({
-          url: `/pages/result/index?id=${data.data.taskId}`
-        })
-      } else {
-        dd.showToast({ title: data.message || '识别失败', icon: 'none' })
-      }
-    } catch (error) {
-      console.error('上传失败:', error)
-      dd.hideLoading()
-      dd.showToast({ title: '上传失败', icon: 'none' })
     }
+
+    if (!this.data.cameraReady) {
+      tt.showToast({ title: t('camera.warming'), icon: 'none' })
+      this.scheduleCameraBootstrap()
+      setTimeout(run, 500)
+      return
+    }
+    run()
   },
 
-  chooseFromGallery: async function () {
-    try {
-      const res = await dd.chooseImage({
-        count: 1,
-        sizeType: ['compressed'],
-        sourceType: ['album']
-      })
-      
-      if (res.tempFilePaths.length > 0) {
-        this.processPhoto(res.tempFilePaths[0])
+  fallbackCapture: function (reason) {
+    tt.showModal({
+      title: t('camera.photoFail'),
+      content: reason + '\n' + t('camera.fallbackHint'),
+      confirmText: t('camera.openAlbum'),
+      cancelText: t('common.cancel'),
+      success: (res) => {
+        if (res.confirm) {
+          this.chooseFromGallery()
+        }
       }
-    } catch (error) {
-      console.error('选择图片失败:', error)
+    })
+  },
+
+  processPhoto: function (imagePath) {
+    if (this._fromChat) {
+      const pages = getCurrentPages()
+      const prev = pages && pages.length >= 2 ? pages[pages.length - 2] : null
+      if (prev && typeof prev.sendImageForRecognition === 'function') {
+        prev.sendImageForRecognition(imagePath)
+        tt.navigateBack()
+        return
+      }
     }
+    const encoded = encodeURIComponent(imagePath)
+    tt.navigateTo({
+      url: `/pages/recognizing/index?imagePath=${encoded}`
+    })
+  },
+
+  chooseFromGallery: function () {
+    tt.chooseImage({
+      count: 1,
+      sizeType: ['compressed'],
+      sourceType: ['album'],
+      success: (res) => {
+        if (res.tempFilePaths && res.tempFilePaths.length > 0) {
+          this.processPhoto(res.tempFilePaths[0])
+        }
+      },
+      fail: (error) => {
+        console.error('选择图片失败:', error)
+      }
+    })
   },
 
   onCameraError: function (error) {
     console.error('相机错误:', error)
-    dd.showToast({ title: '相机初始化失败', icon: 'none' })
+    this.cameraContext = null
+    this.setData({
+      cameraReady: false,
+      initHint: t('camera.cameraFail')
+    })
+    tt.showToast({ title: t('camera.cameraFail'), icon: 'none' })
   }
 })

@@ -4,6 +4,7 @@ import com.attendance.common.PageResult;
 import com.attendance.common.Result;
 import com.attendance.entity.AuditLog;
 import com.attendance.service.AuditLogService;
+import com.attendance.security.AdminAuthService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -20,6 +21,9 @@ public class AuditController {
     @Autowired
     private AuditLogService auditLogService;
 
+    @Autowired
+    private AdminAuthService adminAuthService;
+
     @GetMapping
     public Result<PageResult<AuditLog>> getAuditLogList(
             @RequestParam(required = false) String userId,
@@ -28,7 +32,8 @@ public class AuditController {
             @RequestParam(required = false) String endDate,
             @RequestParam(defaultValue = "1") Long current,
             @RequestParam(defaultValue = "20") Long size) {
-        
+
+        adminAuthService.requireAdmin();
         long offset = (current - 1) * size;
         List<AuditLog> records = auditLogService.getAuditLogList(
             userId, action, startDate, endDate, offset, size

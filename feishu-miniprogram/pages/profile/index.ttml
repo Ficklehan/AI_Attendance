@@ -1,0 +1,76 @@
+<view class="page profile-page">
+  <view class="page-header">
+    <text class="page-title">{{texts.title}}</text>
+  </view>
+
+  <view class="card">
+    <view class="profile-user">
+      <view class="profile-avatar">
+        <text class="profile-avatar-letter">{{avatarLetter}}</text>
+      </view>
+      <view class="profile-user-main">
+        <text class="profile-name">{{userInfo.name || userInfo.realName || userInfo.username || texts.userDefault}}</text>
+        <text class="profile-summary">{{summaryLine}}</text>
+      </view>
+    </view>
+  </view>
+
+  <text class="section-label">{{texts.statsTitle}}</text>
+  <view class="profile-stats-grid">
+    <view class="profile-stat-card" bindtap="goToTasks" data-status="all">
+      <text class="profile-stat-num">{{stats.total || 0}}</text>
+      <text class="profile-stat-label">{{texts.statTotal}}</text>
+    </view>
+    <view class="profile-stat-card" bindtap="goToTasks" data-status="pending">
+      <text class="profile-stat-num warn">{{pendingCount}}</text>
+      <text class="profile-stat-label">{{texts.statPending}}</text>
+    </view>
+    <view class="profile-stat-card" bindtap="goToTasks" data-status="completed">
+      <text class="profile-stat-num ok">{{stats.completed || 0}}</text>
+      <text class="profile-stat-label">{{texts.statCompleted}}</text>
+    </view>
+  </view>
+
+  <text class="section-label">{{texts.quickSection}}</text>
+  <view class="quick-grid">
+    <view class="quick-tile" bindtap="goToChat">
+      <text class="quick-title">{{texts.menuAssistant}}</text>
+      <text class="quick-desc">{{texts.menuAssistantDesc}}</text>
+    </view>
+    <view class="quick-tile" bindtap="goToConfig">
+      <text class="quick-title">{{texts.menuSettings}}</text>
+      <text class="quick-desc">{{texts.menuSettingsDesc}}</text>
+    </view>
+  </view>
+
+  <text class="section-label">{{texts.sectionMenu}}</text>
+  <view class="card-flush">
+    <view class="list-row" bindtap="goToHelp">
+      <view class="list-icon">
+        <text class="list-icon-text">?</text>
+      </view>
+      <view class="list-body">
+        <text class="list-title">{{texts.menuHelp}}</text>
+        <text class="list-desc">{{texts.menuHelpDesc}}</text>
+      </view>
+      <text class="list-chevron">›</text>
+    </view>
+    <view class="list-row" bindtap="goToAbout">
+      <view class="list-icon">
+        <text class="list-icon-text">i</text>
+      </view>
+      <view class="list-body">
+        <text class="list-title">{{texts.menuAbout}}</text>
+        <text class="list-desc">{{texts.menuAboutDesc}}</text>
+      </view>
+      <text class="list-chevron">›</text>
+    </view>
+  </view>
+
+  <view class="profile-logout-wrap">
+    <view class="btn btn-danger profile-logout" bindtap="logout">{{texts.menuLogout}}</view>
+    <text class="profile-version">{{texts.version}}</text>
+  </view>
+
+  <view class="dock-spacer"></view>
+</view>

@@ -1,16 +1,8 @@
 <template>
-  <div class="audit-container">
-    <a-card class="audit-card">
-      <div class="card-header">
-        <div class="header-left">
-          <h3 class="card-title">
-            <FileTextOutlined />
-            <span>{{ $t('audit.title') }}</span>
-          </h3>
-          <p class="card-desc">{{ $t('audit.subtitle') }}</p>
-        </div>
-      </div>
-      
+  <div class="audit-container page-inner">
+    <PageShell :title="$t('audit.title')" :subtitle="$t('audit.subtitle')" />
+
+    <a-card class="audit-card surface-card" :bordered="false">
       <div class="filter-bar">
         <a-select 
           v-model:value="filterAction" 
@@ -37,7 +29,7 @@
       
       <a-table 
         :columns="columns" 
-        :data-source="logs" 
+        :data-source="displayLogs" 
         :loading="loading" 
         :pagination="false"
         class="audit-table"
@@ -69,10 +61,11 @@
 </template>
 
 <script setup>
-import { ref, onMounted } from 'vue'
+import { ref, computed, onMounted } from 'vue'
 import { useI18n } from 'vue-i18n'
-import { FileTextOutlined } from '@ant-design/icons-vue'
 import request from '@/api/index'
+import PageShell from '@/components/PageShell.vue'
+import { useTableColumnSort } from '@/composables/useTableColumnSort'
 
 const { t } = useI18n()
 
@@ -84,14 +77,16 @@ const total = ref(0)
 const filterAction = ref('')
 const dateRange = ref(null)
 
-const columns = [
+const baseColumns = computed(() => [
   { title: t('audit.username'), dataIndex: 'username', key: 'username', width: 120 },
   { title: t('audit.action'), dataIndex: 'action', key: 'action', width: 120 },
   { title: t('audit.targetType'), dataIndex: 'targetType', key: 'targetType', width: 100 },
   { title: t('audit.targetId'), dataIndex: 'targetId', key: 'targetId', width: 150, ellipsis: true },
   { title: t('audit.details'), dataIndex: 'details', key: 'details', ellipsis: true },
   { title: t('audit.createdAt'), dataIndex: 'createdAt', key: 'createdAt', width: 180 },
-]
+])
+const { columns, sortRows } = useTableColumnSort(baseColumns)
+const displayLogs = computed(() => sortRows(logs.value))
 
 const loadLogs = async () => {
   loading.value = true
@@ -169,14 +164,14 @@ onMounted(() => {
 <style lang="scss" scoped>
 .audit-container {
   .audit-card {
-    border-radius: 14px;
+    border-radius: $radius-xl;
     border: none;
-    box-shadow: 0 2px 12px rgba(0, 0, 0, 0.06);
+    box-shadow: $shadow-card;
     overflow: hidden;
     
     .card-header {
       padding: 20px 24px 16px;
-      border-bottom: 1px solid #F0F1F5;
+      border-bottom: 1px solid $border;
       
       .header-left {
         display: flex;
@@ -185,21 +180,22 @@ onMounted(() => {
         .card-title {
           display: flex;
           align-items: center;
-          gap: 8px;
-          font-size: 17px;
-          font-weight: 600;
-          color: #1F2329;
-          margin: 0 0 4px;
+          gap: $space-2;
+          font-size: $font-size-xl;
+          font-weight: $font-weight-extrabold;
+          color: $text-strong;
+          margin: 0 0 $space-1;
+          letter-spacing: -0.02em;
           
           svg {
-            color: #5B8FF9;
+            color: $primary;
           }
         }
         
         .card-desc {
           margin: 0;
           font-size: 13px;
-          color: #8F959E;
+          color: $text-secondary;
         }
       }
     }
@@ -208,14 +204,14 @@ onMounted(() => {
       display: flex;
       gap: 12px;
       padding: 16px 24px;
-      background: #FAFBFC;
+      background: $bg-muted;
       
       .action-select {
         width: 140px;
         
         :deep(.ant-select-selector) {
-          border-radius: 8px;
-          border-color: #E5E6EB;
+          border-radius: $radius-md;
+          border-color: $border;
         }
       }
       
@@ -223,8 +219,8 @@ onMounted(() => {
         width: 280px;
         
         :deep(.ant-picker) {
-          border-radius: 8px;
-          border-color: #E5E6EB;
+          border-radius: $radius-md;
+          border-color: $border;
         }
       }
     }
@@ -233,53 +229,53 @@ onMounted(() => {
       padding: 0 24px;
       
       :deep(.ant-table) {
-        border-radius: 10px;
+        border-radius: $radius-lg;
         overflow: hidden;
       }
       
       :deep(.ant-table-thead > tr > th) {
-        background: #FAFBFC;
-        border-bottom: 1px solid #F0F1F5;
-        font-weight: 600;
+        background: $bg-muted;
+        border-bottom: 1px solid $border;
+        font-weight: $font-weight-semibold;
         font-size: 13px;
-        color: #4E5969;
+        color: $text-primary;
         padding: 12px 16px;
       }
       
       :deep(.ant-table-tbody > tr) {
-        transition: all 0.2s ease;
+        transition: all $duration-base $ease-smooth;
         
         &:hover {
-          background: #FAFBFC;
+          background: $bg-muted;
         }
       }
       
       :deep(.ant-table-tbody > tr > td) {
         padding: 12px 16px;
         font-size: 13px;
-        color: #1F2329;
-        border-bottom: 1px solid #F5F7FA;
+        color: $text-strong;
+        border-bottom: 1px solid $bg-muted;
       }
       
       .action-tag {
-        border-radius: 6px;
-        font-size: 12px;
-        font-weight: 500;
+        border-radius: $radius-sm;
+        font-size: $font-size-sm;
+        font-weight: $font-weight-medium;
         padding: 2px 10px;
       }
     }
     
     .pagination-wrapper {
       padding: 20px 24px;
-      border-top: 1px solid #F0F1F5;
+      border-top: 1px solid $border;
       
       .pagination {
         display: flex;
         justify-content: flex-end;
         
         :deep(.ant-pagination-item-active) {
-          background: #5B8FF9;
-          border-color: #5B8FF9;
+          background: $primary;
+          border-color: $primary;
         }
       }
     }

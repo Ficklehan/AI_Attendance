@@ -1,0 +1,146 @@
+<view class="page home-page">
+  <scroll-view scroll-y class="home-scroll">
+    <view class="home-scroll-inner">
+      <view class="home-content">
+        <view class="home-zone home-zone-primary">
+          <view tt:if="{{!countryConfigured}}" class="banner banner-info" bindtap="goToSettings">
+            <text class="banner-text">{{texts.countryWarnBanner}}</text>
+          </view>
+
+          <view class="hero workbench-top" bindtap="goToSettings">
+            <view class="hero-content workbench-top-main">
+              <text class="hero-title">{{texts.heroTitle}}</text>
+              <view class="hero-chips">
+                <text class="hero-chip">{{contextCountryLabel}}</text>
+                <text class="hero-chip-divider">·</text>
+                <text class="hero-chip">{{contextLanguageLabel}}</text>
+                <text class="hero-chip hero-chip-link">{{texts.contextChange}}</text>
+              </view>
+            </view>
+            <image class="hero-art" src="/assets/attendance-workbench-hero.png" mode="aspectFit" />
+          </view>
+
+          <view class="action-grid">
+            <view class="action-tile" bindtap="goToCamera">
+              <view class="action-icon-wrap">
+                <view class="action-icon action-icon-gradient">
+                  <image class="action-icon-svg" src="/assets/icon-camera.svg" />
+                </view>
+              </view>
+              <text class="action-title">{{texts.scanTitle}}</text>
+              <text class="action-desc">{{texts.scanSub}}</text>
+            </view>
+            <view class="action-tile" bindtap="chooseImage">
+              <view class="action-icon-wrap">
+                <view class="action-icon action-icon-gradient">
+                  <image class="action-icon-svg" src="/assets/icon-album.svg" />
+                </view>
+              </view>
+              <text class="action-title">{{texts.uploadAlbum}}</text>
+              <text class="action-desc">{{texts.uploadAlbumSub}}</text>
+            </view>
+          </view>
+
+          <view class="flow-hint">
+            <text class="flow-step {{workflowStage === 'capture' ? 'active' : ''}}">{{texts.stepCapture}}</text>
+            <text class="flow-arrow">→</text>
+            <text class="flow-step {{workflowStage === 'review' ? 'active' : ''}}">{{texts.stepReview}}</text>
+            <text class="flow-arrow">→</text>
+            <text class="flow-step {{workflowStage === 'submit' ? 'active' : ''}}">{{texts.stepSubmit}}</text>
+          </view>
+
+          <block tt:if="{{imageList.length > 0}}">
+            <text class="section-label">{{texts.sectionQueue}}</text>
+            <view class="card-flush home-queue-panel">
+              <scroll-view scroll-x class="home-thumbs-scroll">
+                <view class="home-thumbs">
+                  <view
+                    tt:for="{{imageList}}"
+                    tt:key="*this"
+                    class="home-thumb-item"
+                  >
+                    <image class="home-thumb-img" src="{{item.path || item}}" mode="aspectFill" />
+                    <text tt:if="{{item.statusText}}" class="home-thumb-status {{item.status}}">{{item.statusText}}</text>
+                    <view class="home-thumb-remove" bindtap="deleteImage" data-index="{{index}}">×</view>
+                  </view>
+                </view>
+              </scroll-view>
+              <view class="home-queue-clear">
+                <text bindtap="clearImages">{{texts.clear}}</text>
+              </view>
+            </view>
+          </block>
+        </view>
+
+        <view class="home-zone home-zone-secondary">
+          <view class="home-recent-section">
+            <view class="home-recent-head">
+              <text class="home-recent-title">{{texts.recentTasks}}</text>
+              <text class="home-recent-link" bindtap="goToTasks" data-tab="all">{{texts.viewAll}}</text>
+            </view>
+
+            <view tt:if="{{recentTasks.length > 0}}" class="home-recent-list">
+              <view
+                tt:for="{{recentTasks}}"
+                tt:key="id"
+                class="home-recent-item"
+                bindtap="goToTask"
+                data-id="{{item.id}}"
+                data-status="{{item.status}}"
+              >
+                <view class="task-row task-row-list">
+                  <view class="task-main">
+                    <text class="task-title">{{item.name}}</text>
+                    <text class="task-meta">{{item.timeText}}</text>
+                  </view>
+                  <view class="task-aside">
+                    <view class="badge {{item.statusTag}}">{{item.statusText}}</view>
+                    <text tt:if="{{item.syncLabel}}" class="task-sync-label">{{item.syncLabel}}</text>
+                  </view>
+                </view>
+              </view>
+            </view>
+
+            <view tt:else class="home-recent-empty">
+              <text class="home-recent-empty-txt">{{texts.noTasks}}</text>
+            </view>
+          </view>
+
+          <view class="home-footer-panel">
+            <view class="home-status-bar status-overview-card">
+              <view class="home-status-head status-overview-head">
+                <text class="home-status-title status-overview-title">{{texts.statusTitle}}</text>
+              </view>
+              <view class="home-status-metrics">
+                <view class="home-metric" bindtap="goToTasks" data-tab="pending">
+                  <text class="home-metric-num">{{statusSummary.processing}}</text>
+                  <text class="home-metric-label">{{texts.statusProcessing}}</text>
+                </view>
+                <view class="home-metric-divider"></view>
+                <view class="home-metric highlight" bindtap="goToTasks" data-tab="review">
+                  <text class="home-metric-num">{{statusSummary.review}}</text>
+                  <text class="home-metric-label">{{texts.statusReview}}</text>
+                </view>
+                <view class="home-metric-divider"></view>
+                <view class="home-metric" bindtap="goToTasks" data-tab="completed">
+                  <text class="home-metric-num">{{statusSummary.completed}}</text>
+                  <text class="home-metric-label">{{texts.statusCompleted}}</text>
+                </view>
+              </view>
+            </view>
+          </view>
+        </view>
+      </view>
+    </view>
+  </scroll-view>
+
+  <view class="home-bottom-dock">
+    <text tt:if="{{imageList.length > 0}}" class="home-dock-hint">{{dockHint}}</text>
+    <view
+      class="btn btn-primary home-cta {{isRecognizing ? 'disabled loading' : ''}}"
+      catchtap="onPrimaryCta"
+    >
+      {{primaryCtaLabel}}
+    </view>
+  </view>
+</view>

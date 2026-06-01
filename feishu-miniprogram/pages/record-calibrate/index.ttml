@@ -1,0 +1,60 @@
+<view class="page calibrate-page">
+  <view class="hint">{{texts.hint}}</view>
+
+  <scroll-view scroll-y class="form-scroll" enhanced show-scrollbar="{{false}}">
+    <view class="form-body">
+      <view tt:if="{{historyEntries.length > 0}}" class="history-block">
+        <text class="history-title">{{texts.historyTitle}}</text>
+        <view tt:for="{{historyEntries}}" tt:key="index" class="history-item">
+          <view class="history-meta">
+            <text class="history-who">{{item.byName}}</text>
+            <text class="history-at">{{item.at}}</text>
+          </view>
+          <text tt:if="{{item.reason}}" class="history-reason">{{item.reason}}</text>
+          <view tt:for="{{item.changes}}" tt:for-item="line" tt:key="field" class="history-change">
+            <text class="history-field">{{line.label}}</text>
+            <text class="history-from">{{line.from}}</text>
+            <text class="history-arrow">→</text>
+            <text class="history-to">{{line.to}}</text>
+          </view>
+        </view>
+      </view>
+
+      <view tt:for="{{fields}}" tt:key="key" class="field-row">
+        <text class="field-label">{{item.label}}</text>
+        <view class="field-input-shell">
+          <input
+            class="field-input"
+            type="text"
+            value="{{item.value}}"
+            data-key="{{item.key}}"
+            bindinput="onFieldInput"
+          />
+        </view>
+        <view class="original-line">
+          <text class="original-prefix">{{texts.originalValue}}：</text>
+          <text class="original-value">{{item.originalDisplay}}</text>
+        </view>
+      </view>
+
+      <view class="reason-block">
+        <text class="reason-label">{{texts.reason}} *</text>
+        <view class="reason-input-shell">
+          <textarea
+            class="reason-input"
+            value="{{reason}}"
+            placeholder="{{texts.reasonPlaceholder}}"
+            maxlength="500"
+            auto-height
+            bindinput="onReasonInput"
+          />
+        </view>
+      </view>
+    </view>
+  </scroll-view>
+
+  <view class="dock">
+    <view class="btn btn-secondary" bindtap="goBack">{{texts.cancel}}</view>
+    <view class="btn btn-primary {{submitting ? 'disabled' : ''}}" bindtap="submit">{{texts.submit}}</view>
+  </view>
+</view>

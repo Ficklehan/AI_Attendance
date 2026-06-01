@@ -1,8 +1,9 @@
 import axios from 'axios'
-import { message } from 'ant-design-vue'
 import { useAuthStore } from '@/stores/auth'
 import router from '@/router'
 import { getToken } from '@/utils/auth'
+import { getCachedWorkingCountry } from '@/utils/countryHeader'
+import { showApiError, showErrorMessage } from '@/utils/translateError'
 
 const request = axios.create({
   baseURL: '/api',
@@ -14,6 +15,10 @@ request.interceptors.request.use(
     const token = getToken()
     if (token) {
       config.headers['Authorization'] = `Bearer ${token}`
+    }
+    const country = getCachedWorkingCountry()
+    if (country) {
+      config.headers['X-Country'] = country
     }
     return config
   },
@@ -27,23 +32,22 @@ request.interceptors.response.use(
     const res = response.data
     
     if (res.code !== 200) {
-      message.error(res.message || '请求失败')
-      
-      if (res.code === 401) {
+      const text = showApiError(res)
+
+      if (res.code === 401 || res.code === 1004) {
         const authStore = useAuthStore()
         authStore.logout()
         router.push('/login')
       }
-      
-      return Promise.reject(new Error(res.message || '请求失败'))
+
+      return Promise.reject(new Error(text))
     }
     
     return res
   },
   (error) => {
-    const messageText = error.response?.data?.message || error.message || '网络错误'
-    message.error(messageText)
-    return Promise.reject(error)
+    const messageText = showErrorMessage(error)
+    return Promise.reject(new Error(messageText))
   }
 )
 

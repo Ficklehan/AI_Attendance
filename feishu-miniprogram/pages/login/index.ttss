@@ -1,0 +1,82 @@
+@import "../../styles/design.ttss";
+
+.login-page {
+  height: 100vh;
+  min-height: 100vh;
+  box-sizing: border-box;
+  position: relative;
+}
+
+.login-page .login-panel-main {
+  flex-shrink: 0;
+}
+
+.login-page .login-shell {
+  animation: loginShellIn 0.55s cubic-bezier(0.23, 1, 0.32, 1) both;
+}
+
+@keyframes loginShellIn {
+  from { opacity: 0; transform: translateY(24rpx); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.login-page .login-hero-overlay {
+  background: linear-gradient(180deg, rgba(28, 26, 46, 0.05) 0%, rgba(255, 255, 255, 0.78) 100%);
+}
+
+.login-page .login-card {
+  animation: loginCardIn 0.5s cubic-bezier(0.23, 1, 0.32, 1) 0.12s both;
+}
+
+@keyframes loginCardIn {
+  from { opacity: 0; transform: translateY(16rpx); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.login-page .login-btn {
+  min-height: 96rpx;
+  font-size: var(--font-md);
+  letter-spacing: 0.01em;
+  box-shadow: var(--shadow-primary);
+}
+
+.login-page .login-btn:active {
+  box-shadow: 0 4rpx 16rpx rgba(37, 99, 235, 0.40);
+  transform: scale(0.97);
+}
+
+.login-page .login-tips .pill {
+  animation: tipFadeIn 0.4s ease 0.22s both;
+}
+
+.login-page .login-tips .pill:nth-child(2) {
+  animation-delay: 0.3s;
+}
+
+@keyframes tipFadeIn {
+  from { opacity: 0; transform: translateY(8rpx); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.login-page .login-hero-caption .login-kicker {
+  position: relative;
+  display: inline-block;
+  padding-bottom: 6rpx;
+}
+
+.login-page .login-hero-caption .login-kicker::after {
+  content: '';
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  width: 48rpx;
+  height: 4rpx;
+  border-radius: 2rpx;
+  background: var(--accent-gradient);
+}
+
+.login-page .login-loading {
+  background: rgba(248, 250, 252, 0.72);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+}

@@ -1,31 +1,47 @@
 @import './variables.scss';
+@import './rich-table-header.scss';
+@import './table-header-filter.scss';
 
-* {
+// ═══════════════════════════════════════════════════════════
+// Global Styles — Atelier Design System v4
+// ═══════════════════════════════════════════════════════════
+
+*,
+*::before,
+*::after {
   margin: 0;
   padding: 0;
   box-sizing: border-box;
 }
 
-html,
-body {
+html {
   width: 100%;
   height: 100%;
   font-family: $font-family;
   font-size: $font-size-base;
   color: $text-primary;
-  background-color: $bg-page;
+  background-color: $bg-body;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
   -webkit-tap-highlight-color: transparent;
+  text-rendering: optimizeLegibility;
+}
+
+body {
+  width: 100%;
+  height: 100%;
+  overflow-x: hidden;
 }
 
 #app {
   height: 100%;
+  min-height: 100vh;
 }
 
+// ── Scrollbar ──
 ::-webkit-scrollbar {
-  width: 6px;
-  height: 6px;
+  width: 5px;
+  height: 5px;
 }
 
 ::-webkit-scrollbar-track {
@@ -33,90 +49,120 @@ body {
 }
 
 ::-webkit-scrollbar-thumb {
-  background: $border-color;
-  border-radius: 3px;
-  
+  background: rgba($text-secondary, 0.2);
+  border-radius: 10px;
+  transition: background 0.2s;
+
   &:hover {
-    background: $border-hover;
+    background: rgba($text-secondary, 0.35);
   }
 }
 
-.text-primary {
-  color: $primary-color;
+// ── Selection ──
+::selection {
+  background: rgba($primary, 0.15);
+  color: $text-strong;
 }
 
-.text-success {
-  color: $success-color;
-}
+// ── Utility Classes ──
+.text-primary { color: $primary; }
+.text-success { color: $success; }
+.text-warning { color: $warning; }
+.text-danger  { color: $danger; }
+.text-center  { text-align: center; }
+.text-strong  { color: $text-strong; }
 
-.text-warning {
-  color: $warning-color;
-}
+.flex         { display: flex; }
+.flex-center  { display: flex; align-items: center; justify-content: center; }
+.flex-between { display: flex; align-items: center; justify-content: space-between; }
+.flex-column  { display: flex; flex-direction: column; }
 
-.text-danger {
-  color: $danger-color;
-}
-
-.text-center {
-  text-align: center;
-}
-
-.flex {
-  display: flex;
-}
-
-.flex-center {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
-
-.flex-between {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-}
-
-.flex-column {
-  display: flex;
-  flex-direction: column;
-}
-
+// ── Card ──
 .card {
-  background: $bg-card;
-  border-radius: $border-radius-lg;
+  background: $bg-surface;
+  border-radius: $radius-xl;
   box-shadow: $shadow-card;
-  padding: $spacing-lg;
+  padding: $space-5;
+  border: 1px solid rgba($border, 0.5);
+  transition: box-shadow $duration-base $ease-smooth,
+              border-color $duration-base $ease-smooth;
+
+  &:hover {
+    box-shadow: $shadow-card-hover;
+  }
 }
 
+.surface-card {
+  background: $bg-surface;
+  border-radius: $radius-xl;
+  border: 1px solid rgba($border, 0.5);
+  box-shadow: $shadow-card;
+}
+
+// ── Page ──
 .page-title {
   font-size: $font-size-xl;
-  font-weight: 600;
-  color: $text-primary;
-  margin-bottom: $spacing-lg;
+  font-weight: $font-weight-extrabold;
+  color: $text-strong;
+  margin-bottom: $space-5;
+  letter-spacing: -0.02em;
 }
 
+.page-inner {
+  width: 100%;
+  max-width: 100%;
+  margin: 0;
+  animation: fadeUp 0.4s $ease-out forwards;
+}
+
+// ── Buttons ──
 .btn-primary-gradient {
   background: $primary-gradient;
   border: none;
   color: #fff;
-  font-weight: 500;
-  
+  font-weight: $font-weight-bold;
+  box-shadow: $shadow-glow;
+  transition: all $duration-base $ease-smooth;
+
   &:hover {
-    opacity: 0.95;
+    background: $primary-gradient-deep;
+    box-shadow: $shadow-glow-lg;
     transform: translateY(-1px);
-    box-shadow: $shadow-lg;
   }
-  
+
   &:active {
     transform: translateY(0);
+    box-shadow: 0 2px 8px rgba($primary, 0.2);
   }
 }
 
-@keyframes fadeIn {
+// ── Filter bar ──
+.filter-bar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: $space-3;
+  margin-bottom: $space-5;
+  padding: 0;
+  background: transparent;
+  border: none;
+}
+
+// ── Section label (uppercase, like mini-program) ──
+.section-label {
+  display: block;
+  font-size: $font-size-xs;
+  font-weight: $font-weight-bold;
+  color: $text-tertiary;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  margin-bottom: $space-3;
+}
+
+// ── Animations ──
+@keyframes fadeUp {
   from {
     opacity: 0;
-    transform: translateY(10px);
+    transform: translateY(12px);
   }
   to {
     opacity: 1;
@@ -124,19 +170,15 @@ body {
   }
 }
 
-@keyframes pulse {
-  0%, 100% {
-    opacity: 1;
-  }
-  50% {
-    opacity: 0.5;
-  }
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to   { opacity: 1; }
 }
 
-@keyframes slideIn {
+@keyframes slideInLeft {
   from {
     opacity: 0;
-    transform: translateX(-20px);
+    transform: translateX(-16px);
   }
   to {
     opacity: 1;
@@ -144,18 +186,76 @@ body {
   }
 }
 
-.animate-fadeIn {
-  animation: fadeIn 0.4s ease forwards;
+@keyframes slideInRight {
+  from {
+    opacity: 0;
+    transform: translateX(16px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
 }
 
-.animate-pulse {
-  animation: pulse 2s ease-in-out infinite;
+@keyframes pulse {
+  0%, 100% { opacity: 1; }
+  50%      { opacity: 0.6; }
 }
 
-.animate-slideIn {
-  animation: slideIn 0.3s ease forwards;
+@keyframes shimmer {
+  0%   { background-position: -200% 0; }
+  100% { background-position: 200% 0; }
 }
 
+@keyframes float {
+  0%, 100% { transform: translateY(0); }
+  50%      { transform: translateY(-6px); }
+}
+
+@keyframes scaleIn {
+  from {
+    opacity: 0;
+    transform: scale(0.92);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+@keyframes gradientShift {
+  0%   { background-position: 0% 50%; }
+  50%  { background-position: 100% 50%; }
+  100% { background-position: 0% 50%; }
+}
+
+@keyframes completionPop {
+  from { transform: scale(0.5); opacity: 0; }
+  to { transform: scale(1); opacity: 1; }
+}
+
+.animate-fadeIn    { animation: fadeIn 0.4s $ease-out forwards; }
+.animate-fadeUp    { animation: fadeUp 0.4s $ease-out forwards; }
+.animate-pulse     { animation: pulse 2s $ease-smooth infinite; }
+.animate-slideIn   { animation: slideInLeft 0.35s $ease-out forwards; }
+.animate-scaleIn   { animation: scaleIn 0.3s $ease-bounce forwards; }
+.animate-float     { animation: float 3s $ease-smooth infinite; }
+
+// Stagger children animation
+.stagger-children {
+  > * {
+    opacity: 0;
+    animation: fadeUp 0.4s $ease-out forwards;
+  }
+
+  @for $i from 1 through 12 {
+    > *:nth-child(#{$i}) {
+      animation-delay: #{$i * 0.06}s;
+    }
+  }
+}
+
+// ── Image preview modal (global override) ──
 .ant-modal.image-preview-modal .ant-modal-body .preview-body img {
   max-width: 100% !important;
   max-height: 100% !important;
@@ -164,4 +264,34 @@ body {
   object-fit: contain !important;
   display: block !important;
   flex-shrink: 0;
+}
+
+// ── API error notification (long AI parse preview) ──
+.api-error-notification {
+  .ant-notification-notice-message {
+    margin-bottom: 8px;
+    line-height: 1.5;
+  }
+
+  .api-error-detail__label {
+    font-size: 12px;
+    color: $text-secondary;
+    margin-bottom: 6px;
+  }
+
+  .api-error-preview {
+    margin: 0;
+    max-height: 220px;
+    overflow: auto;
+    white-space: pre-wrap;
+    word-break: break-word;
+    font-size: 12px;
+    line-height: 1.55;
+    font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+    background: $bg-muted;
+    color: $text-primary;
+    padding: 10px 12px;
+    border-radius: $radius-md;
+    border: 1px solid $border-color;
+  }
 }

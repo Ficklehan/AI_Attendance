@@ -11,6 +11,8 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
 import java.io.IOException;
+import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 
@@ -50,26 +52,122 @@ public class BitableService {
     }
 
     public void batchWriteRecords(List<Map<String, Object>> records, String countryCode) throws IOException {
+        batchWriteRecordsReturningIds(records, countryCode);
+    }
+
+    /**
+     * 批量新增并返回与入参顺序一致的飞书记录 ID（record_id）。
+     */
+    public List<String> batchWriteRecordsReturningIds(List<Map<String, Object>> records, String countryCode) throws IOException {
+        if (records == null || records.isEmpty()) {
+            return Collections.emptyList();
+        }
         String token = getAccessToken();
         String appToken = getAppToken(countryCode);
         String tableId = getTableId(countryCode);
 
+        List<String> allIds = new ArrayList<>();
         int batchSize = 100;
         for (int i = 0; i < records.size(); i += batchSize) {
             int end = Math.min(i + batchSize, records.size());
             List<Map<String, Object>> batch = records.subList(i, end);
-            
-            try {
-                writeBatch(token, appToken, tableId, batch, countryCode, false);
-                log.info("写入飞书表格成功: 批次{}，记录数{}", (i / batchSize) + 1, batch.size());
-            } catch (RuntimeException e) {
-                log.error("写入飞书表格失败: {}", e.getMessage());
-                throw e;
-            }
+            List<String> ids = writeBatch(token, appToken, tableId, batch, countryCode, false);
+            allIds.addAll(ids);
+            log.info("写入飞书表格成功: 批次{}，记录数{}", (i / batchSize) + 1, batch.size());
         }
+        return allIds;
     }
 
-    private void writeBatch(String token, String appToken, String tableId, List<Map<String, Object>> records, String countryCode, Object excludeParam) throws IOException {
+    /**
+     * 按 record_id 更新单条多维表格记录（校准后同步）。
+     */
+    public void updateRecordById(String recordId, Map<String, Object> record, String countryCode) throws IOException {
+        if (recordId == null || recordId.isBlank()) {
+            throw new IllegalArgumentException("feishu record_id is required");
+        }
+        String token = getAccessToken();
+        String appToken = getAppToken(countryCode);
+        String tableId = getTableId(countryCode);
+
+        JSONObject item = convertRecord(record, countryCode, null, false);
+        item.put("record_id", recordId);
+
+        JSONObject body = new JSONObject();
+        body.put("records", new JSONArray().fluentAdd(item));
+
+        Request request = new Request.Builder()
+                .url("https://open.feishu.cn/open-apis/bitable/v1/apps/" + appToken + "/tables/" + tableId + "/records/batch_update")
+                .header("Authorization", "Bearer " + token)
+                .header("Content-Type", "application/json")
+                .post(RequestBody.create(body.toJSONString(), MediaType.parse("application/json")))
+                .build();
+
+        executeOrThrow(request, "更新飞书多维表格记录");
+    }
+
+    /**
+     * 按任务 ID + 工号查找已同步的飞书记录（历史数据无 _feishuRecordId 时的兜底）。
+     */
+    public String findRecordIdByTaskAndNo(String taskId, String workerNo, String countryCode) throws IOException {
+        if (taskId == null || taskId.isBlank() || workerNo == null || workerNo.isBlank()) {
+            return null;
+        }
+        Map<String, FieldMapping> mappings = getFieldMappings(countryCode);
+        FieldMapping taskMapping = mappings.get("TASK_ID");
+        FieldMapping noMapping = mappings.get("NO");
+        if (taskMapping == null || noMapping == null) {
+            return null;
+        }
+
+        String token = getAccessToken();
+        String appToken = getAppToken(countryCode);
+        String tableId = getTableId(countryCode);
+
+        JSONObject conditionTask = new JSONObject();
+        conditionTask.put("field_name", taskMapping.feishuField);
+        conditionTask.put("operator", "is");
+        conditionTask.put("value", new JSONArray().fluentAdd(taskId));
+
+        JSONObject conditionNo = new JSONObject();
+        conditionNo.put("field_name", noMapping.feishuField);
+        conditionNo.put("operator", "is");
+        conditionNo.put("value", new JSONArray().fluentAdd(workerNo));
+
+        JSONObject filter = new JSONObject();
+        filter.put("conjunction", "and");
+        filter.put("conditions", new JSONArray().fluentAdd(conditionTask).fluentAdd(conditionNo));
+
+        JSONObject body = new JSONObject();
+        body.put("filter", filter);
+        body.put("page_size", 5);
+
+        Request request = new Request.Builder()
+                .url("https://open.feishu.cn/open-apis/bitable/v1/apps/" + appToken + "/tables/" + tableId + "/records/search")
+                .header("Authorization", "Bearer " + token)
+                .header("Content-Type", "application/json")
+                .post(RequestBody.create(body.toJSONString(), MediaType.parse("application/json")))
+                .build();
+
+        Response response = httpClient.newCall(request).execute();
+        String responseBody = response.body().string();
+        JSONObject result = JSON.parseObject(responseBody);
+        Integer code = result.getInteger("code");
+        if (!response.isSuccessful() || (code != null && code != 0)) {
+            log.warn("飞书记录搜索失败: taskId={}, NO={}, body={}", taskId, workerNo, responseBody);
+            return null;
+        }
+        JSONObject data = result.getJSONObject("data");
+        if (data == null) {
+            return null;
+        }
+        JSONArray items = data.getJSONArray("items");
+        if (items == null || items.isEmpty()) {
+            return null;
+        }
+        return items.getJSONObject(0).getString("record_id");
+    }
+
+    private List<String> writeBatch(String token, String appToken, String tableId, List<Map<String, Object>> records, String countryCode, Object excludeParam) throws IOException {
         JSONObject body = new JSONObject();
         body.put("app_token", appToken);
         body.put("table_id", tableId);
@@ -139,7 +237,7 @@ public class BitableService {
             }
             
             log.info("降级推送飞书写入成功: {}", retryResult);
-            return;
+            return extractRecordIds(retryResult);
         }
         
         if (!response.isSuccessful()) {
@@ -153,6 +251,44 @@ public class BitableService {
         }
         
         log.info("飞书写入成功: {}", result);
+        return extractRecordIds(result);
+    }
+
+    private List<String> extractRecordIds(JSONObject apiResult) {
+        if (apiResult == null) {
+            return Collections.emptyList();
+        }
+        JSONObject data = apiResult.getJSONObject("data");
+        if (data == null) {
+            return Collections.emptyList();
+        }
+        JSONArray created = data.getJSONArray("records");
+        if (created == null || created.isEmpty()) {
+            return Collections.emptyList();
+        }
+        List<String> ids = new ArrayList<>();
+        for (int i = 0; i < created.size(); i++) {
+            JSONObject row = created.getJSONObject(i);
+            if (row == null) {
+                continue;
+            }
+            String id = row.getString("record_id");
+            if (id == null || id.isBlank()) {
+                id = row.getString("id");
+            }
+            ids.add(id);
+        }
+        return ids;
+    }
+
+    private void executeOrThrow(Request request, String action) throws IOException {
+        Response response = httpClient.newCall(request).execute();
+        String responseBody = response.body().string();
+        JSONObject result = JSON.parseObject(responseBody);
+        Integer code = result != null ? result.getInteger("code") : null;
+        if (!response.isSuccessful() || (code != null && code != 0)) {
+            throw new RuntimeException(action + "失败: " + responseBody);
+        }
     }
 
     private JSONObject convertRecord(Map<String, Object> record, String countryCode, Object excludeParam) {
@@ -255,14 +391,7 @@ public class BitableService {
             }
             
             // 减去休息时间
-            int pause = 0;
-            if (pauseMinutes != null && !pauseMinutes.toString().isEmpty()) {
-                try {
-                    pause = Integer.parseInt(pauseMinutes.toString());
-                } catch (NumberFormatException e) {
-                    log.warn("休息时间格式错误: {}", pauseMinutes);
-                }
-            }
+            int pause = parsePauseToMinutes(pauseMinutes);
             
             int workMinutes = totalMinutes - pause;
             if (workMinutes < 0) {
@@ -305,6 +434,48 @@ public class BitableService {
         return null;
     }
 
+    private int parsePauseToMinutes(Object pauseValue) {
+        if (pauseValue == null) {
+            return 0;
+        }
+        String raw = pauseValue.toString().trim();
+        if (raw.isEmpty()) {
+            return 0;
+        }
+        String normalized = raw.toLowerCase()
+                .replace(',', '.')
+                .replaceAll("\\s+", "")
+                .replace("minutes", "min")
+                .replace("minute", "min")
+                .replace("mins", "min")
+                .replace("mn", "min");
+        try {
+            java.util.regex.Matcher hourMinute = java.util.regex.Pattern
+                    .compile("^(\\d+(?:\\.\\d+)?)h(\\d+(?:\\.\\d+)?)?(?:min|m)?$")
+                    .matcher(normalized);
+            if (hourMinute.matches()) {
+                double hours = Double.parseDouble(hourMinute.group(1));
+                double minutes = hourMinute.group(2) == null || hourMinute.group(2).isEmpty()
+                        ? 0
+                        : Double.parseDouble(hourMinute.group(2));
+                return (int) Math.round(hours * 60 + minutes);
+            }
+
+            java.util.regex.Matcher colon = java.util.regex.Pattern.compile("^(\\d{1,2}):(\\d{1,2})$").matcher(normalized);
+            if (colon.matches()) {
+                return Integer.parseInt(colon.group(1)) * 60 + Integer.parseInt(colon.group(2));
+            }
+
+            java.util.regex.Matcher minute = java.util.regex.Pattern.compile("^(\\d+(?:\\.\\d+)?)(?:min|m)?$").matcher(normalized);
+            if (minute.matches()) {
+                return (int) Math.round(Double.parseDouble(minute.group(1)));
+            }
+        } catch (Exception e) {
+            log.warn("休息时间格式错误: {}", pauseValue);
+        }
+        return 0;
+    }
+
     private Object convertValue(Object value, String type) {
         if (value == null) return null;
         
@@ -317,7 +488,7 @@ public class BitableService {
                 return convertDateTime(strValue);
             case "number":
                 try {
-                    return Double.parseDouble(strValue);
+                    return parseNumberValue(strValue);
                 } catch (NumberFormatException e) {
                     return 0;
                 }
@@ -335,6 +506,19 @@ public class BitableService {
             default:
                 return strValue;
         }
+    }
+
+    private Double parseNumberValue(String value) {
+        if (value == null || value.trim().isEmpty()) {
+            return 0D;
+        }
+        String normalized = value.trim().toLowerCase()
+                .replace(',', '.')
+                .replaceAll("\\s+", "");
+        if (normalized.matches(".*(h|m|min|mn|minute|minutes).*") || normalized.matches("^\\d{1,2}:\\d{1,2}$")) {
+            return (double) parsePauseToMinutes(value);
+        }
+        return Double.parseDouble(normalized);
     }
 
     private long convertDate(String dateStr) {
@@ -384,16 +568,39 @@ public class BitableService {
 
     private String getAppToken(String countryCode) {
         Map<String, Object> config = configService.getFeishuConfig(countryCode);
-        String token = config != null ? (String) config.get("bitable_app_token") : null;
-        log.info("获取飞书App Token: country={}, token={}", countryCode, token != null ? token.substring(0, Math.min(10, token.length())) + "..." : "null");
-        return token != null && !token.isEmpty() ? token : "MssZb4YXQaEeR5swLencoIcRnLc";
+        String token = readConfigString(config, "appToken", "bitable_app_token");
+        log.info("获取飞书App Token: country={}, token={}", countryCode,
+                token != null ? token.substring(0, Math.min(10, token.length())) + "..." : "null");
+        if (token == null || token.isEmpty()) {
+            throw new IllegalStateException("未配置飞书多维表 App Token: country=" + countryCode);
+        }
+        return token;
     }
 
     private String getTableId(String countryCode) {
         Map<String, Object> config = configService.getFeishuConfig(countryCode);
-        String tableId = config != null ? (String) config.get("bitable_table_id") : null;
+        String tableId = readConfigString(config, "tableId", "bitable_table_id");
         log.info("获取飞书Table ID: country={}, tableId={}", countryCode, tableId);
-        return tableId != null && !tableId.isEmpty() ? tableId : "tbl5WHAQbm0f6JyE";
+        if (tableId == null || tableId.isEmpty()) {
+            throw new IllegalStateException("未配置飞书多维表 Table ID: country=" + countryCode);
+        }
+        return tableId;
+    }
+
+    private static String readConfigString(Map<String, Object> config, String... keys) {
+        if (config == null || keys == null) {
+            return null;
+        }
+        for (String key : keys) {
+            Object value = config.get(key);
+            if (value != null) {
+                String text = String.valueOf(value).trim();
+                if (!text.isEmpty()) {
+                    return text;
+                }
+            }
+        }
+        return null;
     }
 
     private Map<String, FieldMapping> getFieldMappings(String countryCode) {
@@ -421,6 +628,8 @@ public class BitableService {
         Map<String, FieldMapping> mappings = new java.util.HashMap<>();
         
         mappings.put("NO", new FieldMapping("NO", "string", true));
+        mappings.put("Pays", new FieldMapping("Pays", "string", false));
+        mappings.put("Entrepot", new FieldMapping("Entrepôt", "string", false));
         mappings.put("NOM_PRENOM", new FieldMapping("NOM PRENOM", "string", false));
         mappings.put("AGENCE_INTERIMAIRE", new FieldMapping("AGENCE D'INTERIMAIR", "string", false));
         mappings.put("HORAIRES_DU_TRAVAIL", new FieldMapping("HORAIRES DU TRAVAI", "string", false));
@@ -428,7 +637,8 @@ public class BitableService {
         mappings.put("ARRIVEE_DATETIME", new FieldMapping("ARRIVE", "datetime", true));
         mappings.put("DEPAR_DATETIME", new FieldMapping("DEPAR", "datetime", true));
         mappings.put("PAUSE", new FieldMapping("PAUS", "number", true));
-        mappings.put("CHECKER", new FieldMapping("CHECKER", "string", false));
+        mappings.put("SIGNATURE", new FieldMapping("SIGNATURE", "string", false));
+        mappings.put("Observations", new FieldMapping("Observations", "string", false));
         mappings.put("SmartMark", new FieldMapping("Mark", "string", false));
         mappings.put("TASK_ID", new FieldMapping("任务id", "string", false));
         mappings.put("UPLOADED_BY", new FieldMapping("上传人员", "user", false));

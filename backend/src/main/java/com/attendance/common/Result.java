@@ -1,8 +1,13 @@
 package com.attendance.common;
 
+import java.util.Collections;
+import java.util.Map;
+
 public class Result<T> {
     private int code;
     private String message;
+    private String messageKey;
+    private Map<String, Object> messageArgs;
     private T data;
     private long timestamp;
 
@@ -30,6 +35,22 @@ public class Result<T> {
 
     public void setMessage(String message) {
         this.message = message;
+    }
+
+    public String getMessageKey() {
+        return messageKey;
+    }
+
+    public void setMessageKey(String messageKey) {
+        this.messageKey = messageKey;
+    }
+
+    public Map<String, Object> getMessageArgs() {
+        return messageArgs;
+    }
+
+    public void setMessageArgs(Map<String, Object> messageArgs) {
+        this.messageArgs = messageArgs;
     }
 
     public T getData() {
@@ -60,11 +81,27 @@ public class Result<T> {
         return new Result<>(200, message, data, System.currentTimeMillis());
     }
 
+    public static <T> Result<T> error(int code, String messageKey, Map<String, Object> messageArgs) {
+        Result<T> result = new Result<>(code, messageKey, null, System.currentTimeMillis());
+        result.setMessageKey(messageKey);
+        result.setMessageArgs(messageArgs != null ? messageArgs : Collections.emptyMap());
+        result.setMessage(messageKey);
+        return result;
+    }
+
+    public static <T> Result<T> error(BusinessException e) {
+        return error(e.getCode(), e.getMessageKey(), e.getMessageArgs());
+    }
+
     public static <T> Result<T> error(String message) {
         return new Result<>(500, message, null, System.currentTimeMillis());
     }
 
     public static <T> Result<T> error(int code, String message) {
-        return new Result<>(code, message, null, System.currentTimeMillis());
+        Result<T> result = new Result<>(code, message, null, System.currentTimeMillis());
+        if (message != null && message.startsWith("errors.")) {
+            result.setMessageKey(message);
+        }
+        return result;
     }
 }

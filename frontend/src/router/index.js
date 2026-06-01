@@ -1,5 +1,7 @@
 import { createRouter, createWebHistory } from 'vue-router'
+import { message } from 'ant-design-vue'
 import { useAuthStore } from '@/stores/auth'
+import i18n from '@/locales'
 
 const routes = [
   {
@@ -30,38 +32,66 @@ const routes = [
         path: 'home',
         name: 'Home',
         component: () => import('@/views/home/Home.vue'),
-        meta: { title: '首页' },
+        meta: { titleKey: 'nav.home' },
       },
       {
         path: 'tasks',
         name: 'TaskList',
         component: () => import('@/views/task/TaskList.vue'),
-        meta: { title: '任务列表' },
+        meta: { titleKey: 'nav.tasks' },
+      },
+      {
+        path: 'task-records',
+        name: 'TaskRecords',
+        component: () => import('@/views/task/TaskRecords.vue'),
+        meta: { titleKey: 'nav.taskRecords' },
       },
       {
         path: 'tasks/:taskId',
         name: 'TaskEdit',
         component: () => import('@/views/task/TaskEdit.vue'),
-        meta: { title: '任务编辑' },
+        meta: { titleKey: 'nav.taskEdit' },
       },
       {
-        path: 'config',
-        name: 'Config',
-        component: () => import('@/views/config/Config.vue'),
-        meta: { title: '配置管理' },
+        path: 'settings',
+        component: () => import('@/components/SettingsLayout.vue'),
+        meta: { requiresAdmin: true },
+        redirect: '/settings/ai',
+        children: [
+          {
+            path: 'ai',
+            name: 'SettingsAi',
+            component: () => import('@/views/config/Config.vue'),
+            meta: { titleKey: 'settings.menu.ai', configModule: 'ai' },
+          },
+          {
+            path: 'feishu',
+            name: 'SettingsFeishu',
+            component: () => import('@/views/config/Config.vue'),
+            meta: { titleKey: 'settings.menu.feishu', configModule: 'feishu' },
+          },
+          {
+            path: 'users',
+            name: 'SettingsUsers',
+            component: () => import('@/views/settings/UserManagement.vue'),
+            meta: { titleKey: 'settings.menu.users' },
+          },
+          {
+            path: 'permissions',
+            name: 'SettingsPermissions',
+            component: () => import('@/views/settings/PermissionManagement.vue'),
+            meta: { titleKey: 'settings.menu.permissions' },
+          },
+          {
+            path: 'audit',
+            name: 'SettingsAudit',
+            component: () => import('@/views/audit/AuditLog.vue'),
+            meta: { titleKey: 'settings.menu.audit' },
+          },
+        ],
       },
-      {
-        path: 'audit',
-        name: 'AuditLog',
-        component: () => import('@/views/audit/AuditLog.vue'),
-        meta: { title: '审计日志' },
-      },
-      {
-        path: 'service',
-        name: 'Service',
-        component: () => import('@/views/service/Service.vue'),
-        meta: { title: '服务管理' },
-      },
+      { path: 'config', redirect: '/settings/ai' },
+      { path: 'audit', redirect: '/settings/audit' },
     ],
   },
   {
@@ -77,22 +107,37 @@ const router = createRouter({
 
 router.beforeEach(async (to, from, next) => {
   const authStore = useAuthStore()
-  const requiresAuth = to.matched.some((record) => record.meta.requiresAuth)
-  
-  console.log('路由守卫 - to:', to.path)
-  console.log('路由守卫 - isAuthenticated:', authStore.isAuthenticated)
-  console.log('路由守卫 - token:', authStore.token ? authStore.token.substring(0, 20) + '...' : '无')
-  
+  const requiresAuth = to.matched.some((record) => record.meta.requiresAuth !== false)
+  const requiresAdmin = to.matched.some((record) => record.meta.requiresAdmin)
+
   if (requiresAuth && !authStore.isAuthenticated) {
-    console.log('需要认证但未登录，跳转到登录页')
     next('/login')
-  } else if (to.path === '/login' && authStore.isAuthenticated) {
-    console.log('已登录但访问登录页，跳转到首页')
-    next('/')
-  } else {
-    console.log('正常通行')
-    next()
+    return
   }
+
+  if (to.path === '/login' && authStore.isAuthenticated) {
+    next('/')
+    return
+  }
+
+  if (requiresAdmin && authStore.isAuthenticated) {
+    if (!authStore.userInfo?.role) {
+      try {
+        await authStore.fetchUserInfo()
+      } catch {
+        next('/login')
+        return
+      }
+    }
+    if (!authStore.isAdmin) {
+      const t = i18n.global.t
+      message.warning(t('errors.adminRequired'))
+      next('/home')
+      return
+    }
+  }
+
+  next()
 })
 
 export default router

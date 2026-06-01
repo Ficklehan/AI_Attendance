@@ -1,24 +1,72 @@
 <template>
-  <div class="task-list-container">
-    <a-card class="task-card">
-      <div class="card-header">
-        <div class="header-left">
-          <h3 class="card-title">
-            <UnorderedListOutlined />
-            <span>{{ $t('tasks.title') }}</span>
-          </h3>
-          <p class="card-desc">{{ $t('tasks.subtitle') }}</p>
-        </div>
-        <a-button 
-          type="primary" 
-          @click="$router.push('/home')"
-          class="btn-primary-gradient"
-        >
+  <div class="task-list-container page-inner">
+    <PageShell :title="$t('tasks.title')" :subtitle="$t('tasks.subtitle')">
+      <template #extra>
+        <a-button :loading="exporting" @click="handleExport">
+          <DownloadOutlined />
+          {{ $t('export.startExport') }}
+        </a-button>
+        <a-button type="primary" @click="$router.push('/home')">
           <PlusOutlined />
           {{ $t('tasks.createNew') }}
         </a-button>
+      </template>
+    </PageShell>
+
+    <div v-if="taskSummary" class="task-summary-bar surface-card">
+      <div class="task-summary-bar__head">
+        <span class="task-summary-bar__title">{{ $t('tasks.summaryTitle') }}</span>
+        <a-tag v-if="taskSummary.allUsersScope" color="blue">{{ $t('tasks.summaryAllUsersHint') }}</a-tag>
       </div>
-      
+      <div class="task-summary-bar__metrics">
+        <button
+          type="button"
+          class="task-summary-metric"
+          :class="{ active: filterStatus === 'processing' }"
+          @click="applySummaryFilter('processing')"
+        >
+          <span class="task-summary-metric__num">{{ taskSummary.processing }}</span>
+          <span class="task-summary-metric__label">{{ $t('tasks.summaryProcessing') }}</span>
+        </button>
+        <button
+          type="button"
+          class="task-summary-metric highlight"
+          :class="{ active: filterStatus === 'processed' }"
+          @click="applySummaryFilter('processed')"
+        >
+          <span class="task-summary-metric__num">{{ taskSummary.review }}</span>
+          <span class="task-summary-metric__label">{{ $t('tasks.summaryReview') }}</span>
+        </button>
+        <button
+          type="button"
+          class="task-summary-metric"
+          :class="{ active: filterStatus === 'confirmed' }"
+          @click="applySummaryFilter('confirmed')"
+        >
+          <span class="task-summary-metric__num">{{ taskSummary.confirmed }}</span>
+          <span class="task-summary-metric__label">{{ $t('tasks.summaryConfirmed') }}</span>
+        </button>
+        <button
+          type="button"
+          class="task-summary-metric"
+          :class="{ active: filterStatus === 'failed' }"
+          @click="applySummaryFilter('failed')"
+        >
+          <span class="task-summary-metric__num">{{ taskSummary.failed }}</span>
+          <span class="task-summary-metric__label">{{ $t('tasks.summaryFailed') }}</span>
+        </button>
+      </div>
+      <a-button
+        v-if="taskSummary.review > 0"
+        type="primary"
+        class="task-summary-review-btn"
+        @click="goFirstReviewTask"
+      >
+        {{ $t('tasks.goReview', { count: taskSummary.review }) }}
+      </a-button>
+    </div>
+
+    <a-card class="task-card surface-card" :bordered="false">
       <div class="filter-bar">
         <a-select 
           v-model:value="filterStatus" 
@@ -34,19 +82,7 @@
           <a-select-option value="failed">{{ $t('tasks.statusFailed') }}</a-select-option>
           <a-select-option value="cancelled">{{ $t('tasks.statusCancelled') }}</a-select-option>
         </a-select>
-        
-        <a-select 
-          v-model:value="searchField" 
-          :placeholder="$t('tasks.searchField')" 
-          allow-clear 
-          class="search-field-select"
-        >
-          <a-select-option value="">{{ $t('tasks.allField') }}</a-select-option>
-          <a-select-option value="taskId">{{ $t('tasks.taskId') }}</a-select-option>
-          <a-select-option value="fileKey">{{ $t('tasks.fileName') }}</a-select-option>
-          <a-select-option value="userName">{{ $t('tasks.operator') }}</a-select-option>
-        </a-select>
-        
+
         <a-input
           v-model:value="keyword"
           :placeholder="$t('tasks.searchContent')"
@@ -56,20 +92,85 @@
           @keyup.enter="handleFilter"
           :prefix-icon="SearchOutlined"
         />
+        <a-tag v-if="searchFieldLabel" color="blue" closable @close="clearSearchField">
+          {{ searchFieldLabel }}
+        </a-tag>
+        <a-button
+          v-if="selectedRowKeys.length > 0"
+          danger
+          :loading="batchDeleting"
+          class="batch-delete-btn"
+          @click="handleBatchDelete"
+        >
+          <DeleteOutlined />
+          {{ $t('tasks.batchDelete', { count: selectedRowKeys.length }) }}
+        </a-button>
       </div>
       
       <a-table 
         :columns="columns" 
-        :data-source="tasks" 
+        :data-source="displayTasks" 
         :loading="loading" 
         :pagination="false"
-        class="task-table"
+        :row-key="(record) => record.taskId"
+        :row-selection="rowSelection"
+        class="task-table rich-table-header"
       >
+        <template #headerCell="{ column }">
+          <TableSortableHeader
+            :column="column"
+            :title="column.title"
+            @sort="onSorterToggle"
+          >
+            <template #extra>
+              <TableHeaderFilter
+                v-if="column.searchField"
+                :title="column.title"
+                :open="activeHeaderFilterField === column.searchField"
+                :active="isHeaderFilterActive(column)"
+                v-model:keyword="headerFilterKeyword"
+                :placeholder="column.searchField === 'createdAt' ? $t('tasks.searchCreateTime') : (column.filterType === 'status' ? $t('tasks.filterStatus') : $t('tasks.searchContent'))"
+                @openChange="(open) => handleHeaderPopoverOpen(column, open)"
+                @reset="clearHeaderFilter"
+                @apply="applyHeaderFilter"
+              >
+                <template v-if="column.filterType === 'status'" #field>
+                  <a-select
+                    v-model:value="headerFilterKeyword"
+                    class="table-header-filter-panel__input"
+                    :placeholder="$t('tasks.filterStatus')"
+                    allow-clear
+                  >
+                    <a-select-option value="processing">{{ $t('tasks.statusProcessing') }}</a-select-option>
+                    <a-select-option value="processed">{{ $t('tasks.statusProcessed') }}</a-select-option>
+                    <a-select-option value="confirmed">{{ $t('tasks.statusConfirmed') }}</a-select-option>
+                    <a-select-option value="failed">{{ $t('tasks.statusFailed') }}</a-select-option>
+                    <a-select-option value="cancelled">{{ $t('tasks.statusCancelled') }}</a-select-option>
+                  </a-select>
+                </template>
+              </TableHeaderFilter>
+            </template>
+          </TableSortableHeader>
+        </template>
         <template #bodyCell="{ column, record }">
+          <template v-if="column.key === 'taskId'">
+            <a-button type="link" size="small" class="task-id-link" @click="handleView(record)">
+              {{ record.taskId }}
+            </a-button>
+          </template>
           <template v-if="column.key === 'status'">
-            <a-tag :color="getStatusColor(record.status)" class="status-tag">
-              {{ getStatusText(record.status) }}
-            </a-tag>
+            <div class="status-cell">
+              <a-tag :color="getStatusColor(record.status)" class="status-tag">
+                {{ getStatusText(record.status) }}
+              </a-tag>
+              <a-tag
+                v-if="record.status === 'confirmed' && record.syncStatus && record.syncStatus !== 'none'"
+                :color="getSyncStatusColor(record.syncStatus)"
+                class="sync-tag"
+              >
+                {{ getSyncStatusText(record.syncStatus) }}
+              </a-tag>
+            </div>
           </template>
           <template v-if="column.key === 'fileKey'">
             <div class="file-cell" @click="previewImages(record)">
@@ -84,7 +185,14 @@
               <a-button type="text" size="small" @click="handleView(record)" class="view-btn">
                 <EyeOutlined />
               </a-button>
-              <a-button type="text" danger size="small" @click="handleDelete(record)" class="delete-btn">
+              <a-button
+                v-if="record.status !== 'confirmed'"
+                type="text"
+                danger
+                size="small"
+                @click="handleDelete(record)"
+                class="delete-btn"
+              >
                 <DeleteOutlined />
               </a-button>
             </div>
@@ -107,51 +215,17 @@
       </div>
     </a-card>
     
-    <a-modal
+    <ImagePreviewModal
       v-model:open="previewVisible"
-      :footer="null"
-      :width="800"
-      centered
+      :images="previewImagesList"
+      :initial-index="previewCurrentIndex"
       :title="$t('tasks.imagePreview')"
-      class="image-preview-modal"
-    >
-      <div v-if="previewImagesList.length > 0" class="preview-wrapper">
-        <div class="preview-header" v-if="previewImagesList.length > 1">
-          <span class="preview-count">{{ currentImageIndex + 1 }} / {{ previewImagesList.length }}</span>
-        </div>
-        <div class="preview-body" ref="previewBodyRef">
-          <img 
-            :src="previewImagesList[currentImageIndex]" 
-            class="preview-img" 
-            @error="handleImageError" 
-            @load="handleImageLoad"
-            :style="imageStyle"
-          />
-        </div>
-        <div class="preview-footer" v-if="previewImagesList.length > 1">
-          <a-button type="text" @click="prevImage" class="nav-btn">
-            {{ $t('tasks.previous') }}
-          </a-button>
-          <div class="preview-dots">
-            <span 
-              v-for="(_, idx) in previewImagesList" 
-              :key="idx"
-              :class="['dot', { active: currentImageIndex === idx }]"
-              @click="currentImageIndex = idx"
-            ></span>
-          </div>
-          <a-button type="text" @click="nextImage" class="nav-btn">
-            {{ $t('tasks.next') }}
-          </a-button>
-        </div>
-      </div>
-      <a-empty v-else :description="$t('tasks.noImages')" />
-    </a-modal>
+    />
   </div>
 </template>
 
 <script setup>
-import { ref, onMounted, watch } from 'vue'
+import { computed, ref, onMounted, watch } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import { useI18n } from 'vue-i18n'
 import { message, Modal } from 'ant-design-vue'
@@ -161,15 +235,27 @@ import {
   UnorderedListOutlined,
   EyeOutlined,
   DeleteOutlined,
-  FileImageOutlined
+  FileImageOutlined,
+  DownloadOutlined,
 } from '@ant-design/icons-vue'
-import { getTaskList, deleteTask } from '@/api/task'
+import { getTaskList, getTaskSummary, deleteTask } from '@/api/task'
+import { createTaskListExport } from '@/api/export'
+import { useExportCenter } from '@/composables/useExportCenter'
+import { resolveTaskImageUrls } from '@/utils/imageUrl'
+import PageShell from '@/components/PageShell.vue'
+import ImagePreviewModal from '@/components/ImagePreviewModal.vue'
+import TableSortableHeader from '@/components/TableSortableHeader.vue'
+import TableHeaderFilter from '@/components/TableHeaderFilter.vue'
+import { useTableColumnSort } from '@/composables/useTableColumnSort'
 
 const router = useRouter()
 const route = useRoute()
 const { t } = useI18n()
+const { openExportCenter, refreshExportSummary } = useExportCenter()
 
 const tasks = ref([])
+const taskSummary = ref(null)
+const exporting = ref(false)
 const loading = ref(false)
 const currentPage = ref(1)
 const pageSize = ref(20)
@@ -177,44 +263,130 @@ const total = ref(0)
 const filterStatus = ref('')
 const keyword = ref('')
 const searchField = ref('')
+const activeHeaderFilterField = ref('')
+const activeHeaderFilterColumn = ref(null)
+const headerFilterKeyword = ref('')
 const previewVisible = ref(false)
 const previewImagesList = ref([])
-const currentImageIndex = ref(0)
-const previewBodyRef = ref(null)
-const imageStyle = ref({
-  maxWidth: '100%',
-  maxHeight: '100%',
-  width: 'auto',
-  height: 'auto',
-  objectFit: 'contain',
-  display: 'block',
-  flexShrink: '0'
+const previewCurrentIndex = ref(0)
+const selectedRowKeys = ref([])
+const batchDeleting = ref(false)
+
+const rowSelection = computed(() => ({
+  selectedRowKeys: selectedRowKeys.value,
+  onChange: (keys) => {
+    selectedRowKeys.value = keys
+  },
+  getCheckboxProps: (record) => ({
+    disabled: record.status === 'confirmed',
+  }),
+}))
+
+const baseColumns = computed(() => [
+  { title: t('tasks.taskId'), dataIndex: 'taskId', key: 'taskId', width: 150, ellipsis: true, searchField: 'taskId' },
+  { title: t('tasks.fileName'), dataIndex: 'fileKey', key: 'fileKey', width: 260, ellipsis: true, searchField: 'fileKey' },
+  { title: t('tasks.operator'), dataIndex: 'userName', key: 'userName', width: 110, ellipsis: true, searchField: 'userName' },
+  { title: t('tasks.status'), dataIndex: 'status', key: 'status', width: 130, searchField: 'status', filterType: 'status' },
+  { title: t('tasks.createTime'), dataIndex: 'createdAt', key: 'createdAt', width: 170, searchField: 'createdAt' },
+  { title: t('tasks.operation'), key: 'action', width: 100, fixed: 'right' },
+])
+const { columns, onSorterToggle, sortRows } = useTableColumnSort(baseColumns, {
+  skipKeys: ['action'],
+  customHeader: true,
+})
+const displayTasks = computed(() => sortRows(tasks.value))
+
+const searchFieldLabel = computed(() => {
+  if (!searchField.value) return ''
+  const dict = {
+    taskId: t('tasks.taskId'),
+    fileKey: t('tasks.fileName'),
+    userName: t('tasks.operator'),
+    createdAt: t('tasks.createTime'),
+  }
+  return dict[searchField.value] || ''
 })
 
-const columns = [
-  { title: t('tasks.taskId'), dataIndex: 'taskId', key: 'taskId', width: 150, ellipsis: true },
-  { title: t('tasks.fileName'), dataIndex: 'fileKey', key: 'fileKey', ellipsis: true },
-  { title: t('tasks.operator'), dataIndex: 'userName', key: 'userName', width: 120, ellipsis: true },
-  { title: t('tasks.status'), dataIndex: 'status', key: 'status', width: 100 },
-  { title: t('tasks.createTime'), dataIndex: 'createdAt', key: 'createdAt', width: 180 },
-  { title: t('tasks.operation'), key: 'action', width: 100, fixed: 'right' },
-]
+const isHeaderFilterActive = (column) => {
+  if (column.filterType === 'status') return !!filterStatus.value
+  return searchField.value === column.searchField && !!keyword.value
+}
 
-const loadTasks = async () => {
-  loading.value = true
+const handleExport = async () => {
+  exporting.value = true
   try {
-    const response = await getTaskList({
-      current: currentPage.value,
-      size: pageSize.value,
+    await createTaskListExport({
       status: filterStatus.value,
       keyword: keyword.value,
       searchField: searchField.value,
     })
-    
-    tasks.value = response.data.records || []
-    total.value = response.data.total || 0
+    message.success(t('export.queued'))
+    await refreshExportSummary()
+    openExportCenter()
+  } catch (e) {
+    console.error(e)
+  } finally {
+    exporting.value = false
+  }
+}
+
+const loadTaskSummary = async () => {
+  try {
+    const response = await getTaskSummary()
+    taskSummary.value = response.data || null
+  } catch (error) {
+    console.error('加载任务汇总失败:', error)
+  }
+}
+
+const loadTasks = async () => {
+  loading.value = true
+  try {
+    const [listRes] = await Promise.all([
+      getTaskList({
+        current: currentPage.value,
+        size: pageSize.value,
+        status: filterStatus.value,
+        keyword: keyword.value,
+        searchField: searchField.value,
+      }),
+      loadTaskSummary(),
+    ])
+    tasks.value = listRes.data.records || []
+    total.value = listRes.data.total || 0
   } catch (error) {
     console.error('加载任务列表失败:', error)
+  } finally {
+    loading.value = false
+  }
+}
+
+const applySummaryFilter = (status) => {
+  filterStatus.value = status
+  currentPage.value = 1
+  loadTasks()
+}
+
+const goFirstReviewTask = async () => {
+  filterStatus.value = 'processed'
+  currentPage.value = 1
+  loading.value = true
+  try {
+    const response = await getTaskList({
+      current: 1,
+      size: 1,
+      status: 'processed',
+      keyword: keyword.value,
+      searchField: searchField.value,
+    })
+    const first = (response.data.records || [])[0]
+    if (first?.taskId) {
+      router.push(`/tasks/${first.taskId}`)
+      return
+    }
+    message.info(t('tasks.emptyTitle'))
+  } catch (error) {
+    console.error(error)
   } finally {
     loading.value = false
   }
@@ -231,77 +403,106 @@ const getImageCount = (record) => {
 }
 
 const previewImages = (record) => {
-  if (!record.imageUrls) {
+  const urls = resolveTaskImageUrls(record.imageUrls, record.fileKey)
+  if (!urls.length) {
     message.warning(t('tasks.noImages'))
     return
   }
-  
-  try {
-    const urls = typeof record.imageUrls === 'string' ? JSON.parse(record.imageUrls) : record.imageUrls
-    previewImagesList.value = urls.map(url => {
-      if (url.startsWith('http') || url.startsWith('/api')) {
-        return url
+  previewImagesList.value = urls
+  previewCurrentIndex.value = 0
+  previewVisible.value = true
+}
+
+const handleBatchDelete = () => {
+  const keys = selectedRowKeys.value.filter((id) => {
+    const row = tasks.value.find((item) => item.taskId === id)
+    return row && row.status !== 'confirmed'
+  })
+  if (!keys.length) {
+    message.warning(t('taskEdit.deleteNotAllowed'))
+    return
+  }
+  Modal.confirm({
+    title: t('tasks.batchDelete', { count: keys.length }),
+    content: t('tasks.batchDeleteConfirm', { count: keys.length }),
+    okText: t('common.delete'),
+    cancelText: t('common.cancel'),
+    okType: 'danger',
+    onOk: async () => {
+      batchDeleting.value = true
+      try {
+        await Promise.all(keys.map((id) => deleteTask(id)))
+        message.success(t('tasks.batchDeleteSuccess', { count: keys.length }))
+        selectedRowKeys.value = []
+        loadTasks()
+      } catch (error) {
+        message.error(t('messages.systemError'))
+        console.error(error)
+      } finally {
+        batchDeleting.value = false
       }
-      return `/api/local/image/${url}`
-    })
-    currentImageIndex.value = 0
-    previewVisible.value = true
-  } catch (e) {
-    console.error(t('messages.networkError'), e)
-    message.error(t('messages.systemError'))
-  }
-}
-
-const prevImage = () => {
-  if (currentImageIndex.value > 0) {
-    currentImageIndex.value--
-  } else {
-    currentImageIndex.value = previewImagesList.value.length - 1
-  }
-}
-
-const nextImage = () => {
-  if (currentImageIndex.value < previewImagesList.value.length - 1) {
-    currentImageIndex.value++
-  } else {
-    currentImageIndex.value = 0
-  }
-}
-
-const handleImageError = (event) => {
-  event.target.src = 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNDAwIiBoZWlnaHQ9IjMwMCIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48cmVjdCB3aWR0aD0iNDAwIiBoZWlnaHQ9IjMwMCIgZmlsbD0iI2Y1ZjVmNSIvPjx0ZXh0IHg9IjUwJSIgeT0iNTAlIiBkb21pbmFudC1iYXNlbGluZT0ibWlkZGxlIiB0ZXh0LWFuY2hvcj0ibWlkZGxlIiBmaWxsPSIjYmZiZmJmIiBmb250LXNpemU9IjE2Ij7lm77niYfliqDovb3lpLHotKU88L3RleHQ+PC9zdmc+'
-}
-
-const handleImageLoad = (event) => {
-  const img = event.target
-  const container = previewBodyRef.value
-  if (!container) return
-  
-  const containerWidth = container.offsetWidth
-  const containerHeight = container.offsetHeight
-  const imgWidth = img.naturalWidth
-  const imgHeight = img.naturalHeight
-  
-  const widthRatio = containerWidth / imgWidth
-  const heightRatio = containerHeight / imgHeight
-  const scale = Math.min(widthRatio, heightRatio)
-  
-  if (scale < 1) {
-    imageStyle.value = {
-      width: `${imgWidth * scale}px`,
-      height: `${imgHeight * scale}px`,
-      maxWidth: '100%',
-      maxHeight: '100%',
-      objectFit: 'contain',
-      display: 'block',
-      flexShrink: '0'
-    }
-  }
+    },
+  })
 }
 
 const handleFilter = () => {
   currentPage.value = 1
   loadTasks()
+}
+
+const clearSearchField = () => {
+  searchField.value = ''
+  handleFilter()
+}
+
+const handleHeaderPopoverOpen = (column, open) => {
+  const field = column.searchField
+  if (open) {
+    activeHeaderFilterField.value = field
+    activeHeaderFilterColumn.value = column
+    if (column.filterType === 'status') {
+      headerFilterKeyword.value = filterStatus.value || undefined
+    } else if (searchField.value === field) {
+      headerFilterKeyword.value = keyword.value
+    } else {
+      headerFilterKeyword.value = ''
+    }
+  } else if (activeHeaderFilterField.value === field) {
+    activeHeaderFilterField.value = ''
+    activeHeaderFilterColumn.value = null
+  }
+}
+
+const applyHeaderFilter = () => {
+  const column = activeHeaderFilterColumn.value
+  if (!column?.searchField) return
+  if (column.filterType === 'status') {
+    filterStatus.value = headerFilterKeyword.value || ''
+    activeHeaderFilterField.value = ''
+    activeHeaderFilterColumn.value = null
+    handleFilter()
+    return
+  }
+  searchField.value = column.searchField
+  keyword.value = (headerFilterKeyword.value || '').trim()
+  activeHeaderFilterField.value = ''
+  activeHeaderFilterColumn.value = null
+  handleFilter()
+}
+
+const clearHeaderFilter = () => {
+  const column = activeHeaderFilterColumn.value
+  if (!column?.searchField) return
+  if (column.filterType === 'status') {
+    filterStatus.value = ''
+  } else if (searchField.value === column.searchField) {
+    searchField.value = ''
+    keyword.value = ''
+  }
+  headerFilterKeyword.value = ''
+  activeHeaderFilterField.value = ''
+  activeHeaderFilterColumn.value = null
+  handleFilter()
 }
 
 const handleSizeChange = (val) => {
@@ -319,6 +520,10 @@ const handleView = (record) => {
 }
 
 const handleDelete = async (record) => {
+  if (record.status === 'confirmed') {
+    message.warning(t('taskEdit.deleteNotAllowed'))
+    return
+  }
   try {
     await Modal.confirm({
       title: t('common.delete'),
@@ -328,6 +533,7 @@ const handleDelete = async (record) => {
       onOk: async () => {
         await deleteTask(record.taskId)
         message.success(t('tasks.deleteSuccess'))
+        selectedRowKeys.value = selectedRowKeys.value.filter((id) => id !== record.taskId)
         loadTasks()
       },
     })
@@ -358,6 +564,24 @@ const getStatusText = (status) => {
   return textMap[status] || status
 }
 
+const getSyncStatusColor = (syncStatus) => {
+  const map = {
+    pending: 'processing',
+    synced: 'success',
+    sync_failed: 'error',
+  }
+  return map[syncStatus] || 'default'
+}
+
+const getSyncStatusText = (syncStatus) => {
+  const map = {
+    pending: t('taskEdit.syncPending'),
+    synced: t('taskEdit.syncSynced'),
+    sync_failed: t('taskEdit.syncFailed'),
+  }
+  return map[syncStatus] || syncStatus
+}
+
 onMounted(() => {
   loadTasks()
 })
@@ -372,123 +596,158 @@ watch(() => route.path, (newPath, oldPath) => {
 
 <style lang="scss" scoped>
 .task-list-container {
-  .task-card {
-    border-radius: 14px;
-    border: none;
-    box-shadow: 0 2px 12px rgba(0, 0, 0, 0.06);
-    overflow: hidden;
-    
-    .card-header {
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      padding: 20px 24px 16px;
-      border-bottom: 1px solid #F0F1F5;
-      
-      .header-left {
-        display: flex;
-        flex-direction: column;
-        
-        .card-title {
-          display: flex;
-          align-items: center;
-          gap: 8px;
-          font-size: 17px;
-          font-weight: 600;
-          color: #1F2329;
-          margin: 0 0 4px;
-          
-          svg {
-            color: #5B8FF9;
-          }
-        }
-        
-        .card-desc {
-          margin: 0;
-          font-size: 13px;
-          color: #8F959E;
-        }
-      }
-      
-      .btn-primary-gradient {
-        padding: 8px 20px;
-        border-radius: 10px;
-        font-weight: 500;
-        display: flex;
-        align-items: center;
-        gap: 6px;
-        background: linear-gradient(135deg, #5B8FF9 0%, #7B61FF 100%);
-        border: none;
-        
-        &:hover {
-          opacity: 0.95;
-          transform: translateY(-1px);
-        }
-      }
+  .task-summary-bar {
+    margin-bottom: $space-4;
+    padding: $space-4 $space-5;
+    border-radius: $radius-xl;
+    border: 1px solid rgba($border, 0.6);
+  }
+
+  .task-summary-bar__head {
+    display: flex;
+    align-items: center;
+    gap: $space-3;
+    margin-bottom: $space-4;
+  }
+
+  .task-summary-bar__title {
+    font-weight: $font-weight-semibold;
+    color: $text-strong;
+  }
+
+  .task-summary-bar__metrics {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: $space-3;
+    margin-bottom: $space-4;
+
+    @media (max-width: 768px) {
+      grid-template-columns: repeat(2, 1fr);
     }
+  }
+
+  .task-summary-metric {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 2px;
+    padding: $space-3;
+    border-radius: $radius-lg;
+    border: 1px solid transparent;
+    background: $bg-muted;
+    cursor: pointer;
+    transition: border-color $duration-base $ease-smooth, background $duration-base $ease-smooth;
+
+    &:hover,
+    &.active {
+      border-color: rgba($primary, 0.35);
+      background: $primary-light;
+    }
+
+    &.highlight .task-summary-metric__num {
+      color: $primary;
+    }
+  }
+
+  .task-summary-metric__num {
+    font-size: $font-size-2xl;
+    font-weight: $font-weight-bold;
+    font-variant-numeric: tabular-nums;
+    color: $text-strong;
+  }
+
+  .task-summary-metric__label {
+    font-size: $font-size-xs;
+    color: $text-tertiary;
+  }
+
+  .task-summary-review-btn {
+    width: 100%;
+  }
+
+  .task-card {
+    border-radius: $radius-xl;
+    border: none;
+    box-shadow: $shadow-card;
+    overflow: visible;
     
     .filter-bar {
       display: flex;
-      gap: 12px;
-      padding: 16px 24px;
-      background: #FAFBFC;
+      align-items: center;
+      gap: 10px;
+      padding: 0 0 16px;
+      flex-wrap: wrap;
       
       .status-select {
         width: 140px;
         
         :deep(.ant-select-selector) {
-          border-radius: 8px;
-          border-color: #E5E6EB;
+          border-radius: $radius-md;
+          border-color: $border;
         }
       }
       
       .search-input {
-        width: 240px;
+        width: 260px;
         
         :deep(.ant-input) {
-          border-radius: 8px;
-          border-color: #E5E6EB;
+          border-radius: $radius-md;
+          border-color: $border;
         }
+      }
+
+      .batch-delete-btn {
+        margin-left: auto;
       }
     }
     
     .task-table {
       padding: 0 24px;
+      overflow: visible;
       
       :deep(.ant-table) {
-        border-radius: 10px;
+        border-radius: $radius-lg;
         overflow: hidden;
       }
       
-      :deep(.ant-table-thead > tr > th) {
-        background: #FAFBFC;
-        border-bottom: 1px solid #F0F1F5;
-        font-weight: 600;
-        font-size: 13px;
-        color: #4E5969;
-        padding: 12px 16px;
-      }
       
       :deep(.ant-table-tbody > tr) {
-        transition: all 0.2s ease;
+        transition: all $duration-base $ease-smooth;
         
         &:hover {
-          background: #FAFBFC;
+          background: $bg-muted;
         }
       }
       
       :deep(.ant-table-tbody > tr > td) {
         padding: 12px 16px;
         font-size: 13px;
-        color: #1F2329;
-        border-bottom: 1px solid #F5F7FA;
+        color: $text-strong;
+        border-bottom: 1px solid $bg-muted;
       }
       
-      .status-tag {
-        border-radius: 6px;
-        font-size: 12px;
-        font-weight: 500;
+      .task-id-link {
+        padding: 0;
+        height: auto;
+        font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+        font-size: 13px;
+        font-weight: $font-weight-medium;
+      }
+
+      .status-cell {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 6px;
+        align-items: center;
+      }
+
+      .status-tag,
+      .sync-tag {
+        border-radius: $radius-sm;
+        font-size: $font-size-sm;
+        font-weight: $font-weight-medium;
         padding: 2px 10px;
+        margin: 0;
       }
       
       .action-buttons {
@@ -496,38 +755,39 @@ watch(() => route.path, (newPath, oldPath) => {
         gap: 8px;
         
         .view-btn {
-          color: #5B8FF9;
+          color: $primary;
           
           &:hover {
-            color: #4070F4;
-            background: rgba(91, 143, 249, 0.1);
-            border-radius: 6px;
+            color: $primary;
+            background: rgba($primary, 0.1);
+            border-radius: $radius-sm;
           }
         }
         
         .delete-btn {
-          color: #FF4D4F;
+          color: $danger;
           
           &:hover {
-            color: #FF7875;
-            background: rgba(255, 77, 79, 0.1);
-            border-radius: 6px;
+            color: $danger;
+            background: rgba($danger, 0.1);
+            border-radius: $radius-sm;
           }
         }
       }
+
     }
     
     .pagination-wrapper {
       padding: 20px 24px;
-      border-top: 1px solid #F0F1F5;
+      border-top: 1px solid $border;
       
       .pagination {
         display: flex;
         justify-content: flex-end;
         
         :deep(.ant-pagination-item-active) {
-          background: #5B8FF9;
-          border-color: #5B8FF9;
+          background: $primary;
+          border-color: $primary;
         }
       }
     }
@@ -536,8 +796,8 @@ watch(() => route.path, (newPath, oldPath) => {
       width: 120px;
       
       :deep(.ant-select-selector) {
-        border-radius: 8px;
-        border-color: #E5E6EB;
+        border-radius: $radius-md;
+        border-color: $border;
       }
     }
     
@@ -546,15 +806,15 @@ watch(() => route.path, (newPath, oldPath) => {
       align-items: center;
       gap: 6px;
       cursor: pointer;
-      color: #5B8FF9;
+      color: $primary;
       
       &:hover {
-        color: #4070F4;
+        color: $primary;
         text-decoration: underline;
       }
       
       .file-icon {
-        font-size: 14px;
+        font-size: $font-size-md;
       }
       
       .file-name {
@@ -565,119 +825,16 @@ watch(() => route.path, (newPath, oldPath) => {
       }
       
       .image-count {
-        font-size: 12px;
-        color: #8F959E;
+        font-size: $font-size-sm;
+        color: $text-secondary;
       }
       
       .preview-icon {
-        font-size: 12px;
+        font-size: $font-size-sm;
         opacity: 0.7;
       }
     }
   }
-  
-  .image-preview-modal {
-    :deep(.ant-modal-content) {
-      border-radius: 12px;
-      box-shadow: 0 8px 24px rgba(0, 0, 0, 0.12);
-      width: 800px !important;
-      max-width: 95vw !important;
-    }
-    
-    :deep(.ant-modal-body) {
-      padding: 16px;
-      max-height: 70vh;
-      height: 70vh;
-      overflow: hidden;
-      box-sizing: border-box;
-      display: flex;
-      flex-direction: column;
-    }
-    
-    .preview-wrapper {
-      display: flex;
-      flex-direction: column;
-      gap: 12px;
-      width: 100%;
-      flex: 1;
-      min-height: 0;
-      box-sizing: border-box;
-    }
-    
-    .preview-header {
-      text-align: center;
-      flex-shrink: 0;
-      
-      .preview-count {
-        font-size: 14px;
-        color: #646A73;
-        font-weight: 500;
-      }
-    }
-    
-    .preview-body {
-      flex: 1;
-      display: flex;
-      justify-content: center;
-      align-items: center;
-      background: #F5F7FA;
-      border-radius: 8px;
-      padding: 10px;
-      overflow: hidden;
-      min-height: 0;
-      position: relative;
-    }
-    
-    :deep(.preview-body img) {
-      max-width: 100% !important;
-      max-height: 100% !important;
-      width: auto !important;
-      height: auto !important;
-      object-fit: contain !important;
-      display: block !important;
-      border-radius: 6px;
-      flex-shrink: 0;
-    }
-    
-    .preview-footer {
-      display: flex;
-      justify-content: center;
-      align-items: center;
-      gap: 16px;
-      flex-shrink: 0;
-      
-      .nav-btn {
-        color: #5B8FF9;
-        font-size: 14px;
-        
-        &:hover {
-          color: #4070F4;
-        }
-      }
-      
-      .preview-dots {
-        display: flex;
-        gap: 8px;
-        
-        .dot {
-          width: 8px;
-          height: 8px;
-          border-radius: 50%;
-          background: #D0D3D9;
-          cursor: pointer;
-          transition: all 0.2s;
-          
-          &.active {
-            background: #5B8FF9;
-            transform: scale(1.2);
-          }
-          
-          &:hover {
-            background: #8F959E;
-          }
-        }
-      }
-    }
-  }
+
 }
 </style>

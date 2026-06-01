@@ -3,55 +3,61 @@
     "pages/login/index",
     "pages/index/index",
     "pages/camera/index",
+    "pages/recognizing/index",
     "pages/result/index",
     "pages/chat/index",
     "pages/tasks/index",
-    "pages/profile/index"
+    "pages/profile/index",
+    "pages/settings/index",
+    "pages/image-preview/index",
+    "pages/record-calibrate/index",
+    "pages/record-edit/index"
   ],
   "window": {
-    "navigationBarTitleText": "AI考勤助手",
+    "navigationBarTitleText": "识别",
     "navigationBarBackgroundColor": "#ffffff",
     "navigationBarTextStyle": "black",
-    "backgroundColor": "#f5f5f5",
+    "backgroundColor": "#F8FAFC",
+    "enablePullDownRefresh": false,
     "backgroundTextStyle": "dark"
   },
   "tabBar": {
-    "color": "#999999",
-    "selectedColor": "#5B8FF9",
+    "color": "#64748B",
+    "selectedColor": "#2563EB",
     "borderStyle": "black",
     "backgroundColor": "#ffffff",
     "list": [
       {
         "pagePath": "pages/index/index",
-        "text": "识别"
-      },
-      {
-        "pagePath": "pages/chat/index",
-        "text": "AI助手"
+        "text": "识别",
+        "iconPath": "assets/camera.png",
+        "selectedIconPath": "assets/camera-active.png"
       },
       {
         "pagePath": "pages/tasks/index",
-        "text": "任务"
+        "text": "任务",
+        "iconPath": "assets/task.png",
+        "selectedIconPath": "assets/task-active.png"
       },
       {
         "pagePath": "pages/profile/index",
-        "text": "我的"
+        "text": "我的",
+        "iconPath": "assets/user.png",
+        "selectedIconPath": "assets/user-active.png"
       }
     ]
   },
   "networkTimeout": {
-    "request": 30000,
-    "downloadFile": 30000
+    "request": 300000,
+    "uploadFile": 300000,
+    "downloadFile": 120000
   },
   "debug": false,
   "permission": {
-    "scope.userLocation": {
-      "desc": "用于拍照识别考勤表"
+    "scope.camera": {
+      "desc": "用于拍摄考勤表照片"
     }
   },
-  "requiredPrivateInfos": [
-    "location"
-  ],
   "newFramework": {
     "enabled": true,
     "minimumSupportedVersion": "5.12"

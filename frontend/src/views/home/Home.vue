@@ -1,240 +1,280 @@
 <template>
-  <div class="home-container" :class="{ 'result-mode': showResult }">
-    <!-- 初始状态 - 居中布局 -->
-    <div v-if="!showResult" class="initial-mode">
-      <!-- 顶部引导区 -->
-      <div class="guide-section">
-        <div class="guide-steps">
-          <div class="step-item">
-            <div class="step-number">1</div>
-            <div class="step-content">
-              <div class="step-title">{{ $t('home.guideStep1Title') }}</div>
-              <div class="step-desc">{{ $t('home.guideStep1Desc') }}</div>
-            </div>
+  <div class="home" :class="{ 'result-mode': showResult }">
+    <!-- ──────────── Initial Mode ──────────── -->
+    <div v-if="!showResult" class="home__initial">
+      <!-- Hero Banner -->
+      <section class="hero">
+        <div class="hero__content">
+          <div class="hero__badge">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none">
+              <path d="M13 2L3 14H12L11 22L21 10H12L13 2Z" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+            </svg>
+            <span>AI-Powered</span>
           </div>
-          <div class="step-item">
-            <div class="step-number">2</div>
-            <div class="step-content">
-              <div class="step-title">{{ $t('home.guideStep2Title') }}</div>
-              <div class="step-desc">{{ $t('home.guideStep2Desc') }}</div>
-            </div>
-          </div>
-          <div class="step-item">
-            <div class="step-number">3</div>
-            <div class="step-content">
-              <div class="step-title">{{ $t('home.guideStep3Title') }}</div>
-              <div class="step-desc">{{ $t('home.guideStep3Desc') }}</div>
-            </div>
-          </div>
+          <h1 class="hero__title">{{ $t('home.uploadTitle') }}</h1>
+          <p class="hero__desc">{{ $t('home.uploadDesc') }}</p>
         </div>
+        <div class="hero__deco" aria-hidden="true">
+          <div class="hero__orb hero__orb--1"></div>
+          <div class="hero__orb hero__orb--2"></div>
+          <div class="hero__orb hero__orb--3"></div>
+        </div>
+      </section>
+
+      <!-- Working country context -->
+      <div class="country-context surface-card">
+        <div class="country-context__main">
+          <span class="country-context__label">{{ $t('home.workingCountry') }}</span>
+          <span class="country-context__value">{{ localizedWorkingCountryLabel }}</span>
+          <a-space v-if="countryStore.bundle" size="small" wrap class="country-context__tags">
+            <a-tag v-if="countryStore.promptFromGlobalFallback" color="orange" size="small">
+              {{ $t('config.aiFallbackGlobal') }}
+            </a-tag>
+            <a-tag v-else color="blue" size="small">{{ $t('config.aiCountrySpecific') }}</a-tag>
+            <a-tag v-if="countryStore.feishuFromGlobalFallback" color="orange" size="small">
+              {{ $t('config.feishuFallbackGlobal') }}
+            </a-tag>
+            <a-tag v-else color="green" size="small">{{ $t('config.feishuCountrySpecific') }}</a-tag>
+          </a-space>
+        </div>
+        <a-button type="link" size="small" @click="router.push('/config')">
+          {{ $t('home.changeCountry') }}
+        </a-button>
       </div>
 
-      <!-- 上传卡片 -->
-      <a-card class="upload-card-simple">
-        <div class="card-header">
-          <h3 class="card-title">
-            <ImageIcon />
-            <span>{{ $t('home.uploadTitle') }}</span>
-          </h3>
-          <p class="card-desc">{{ $t('home.uploadDesc') }}</p>
+      <!-- Step Guide -->
+      <StepGuide :steps="guideSteps" />
+
+      <!-- Upload Card -->
+      <div class="upload-card">
+        <div class="upload-card__header">
+          <div class="upload-card__icon">
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none">
+              <path d="M23 19C23 20.1046 22.1046 21 21 21H3C1.89543 21 1 20.1046 1 19V8C1 6.89543 1.89543 6 3 6H7L9 3H15L17 6H21C22.1046 6 23 6.89543 23 8V19Z" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+              <circle cx="12" cy="13" r="4" stroke="currentColor" stroke-width="2"/>
+            </svg>
+          </div>
+          <div>
+            <h3 class="upload-card__title">{{ $t('home.uploadTitle') }}</h3>
+            <p class="upload-card__subtitle">{{ $t('home.uploadHint') }}</p>
+          </div>
         </div>
-        
-        <div class="upload-area-wrapper">
+
+        <div class="dropzone">
           <a-upload
             :multiple="true"
             :file-list="fileList"
             :before-upload="beforeUpload"
             :custom-request="customUpload"
+            @preview="handleFilePreview"
+            @remove="handleFileRemove"
             accept="image/*"
             list-type="picture-card"
-            class="upload-area"
+            class="dropzone__upload"
           >
-            <div class="upload-trigger">
-              <UploadOutlined class="upload-icon" />
-              <div class="upload-text">{{ $t('home.uploadArea') }}</div>
-              <div class="upload-hint">{{ $t('home.uploadHint') }}</div>
+            <div class="dropzone__trigger">
+              <div class="dropzone__icon-ring">
+                <svg width="28" height="28" viewBox="0 0 24 24" fill="none">
+                  <path d="M12 16V4" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+                  <path d="M8 8L12 4L16 8" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                  <path d="M4 14V18C4 19.1046 4.89543 20 6 20H18C19.1046 20 20 19.1046 20 18V14" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                </svg>
+              </div>
+              <div class="dropzone__text">{{ $t('home.uploadArea') }}</div>
+              <div class="dropzone__hint">JPG, PNG &mdash; {{ $t('home.uploadHint') }}</div>
             </div>
           </a-upload>
         </div>
-        
+
+        <!-- File Summary -->
         <div v-if="fileList.length > 0" class="upload-summary">
-          <a-alert type="info" :closable="false" class="summary-alert">
-            <template #message>
-              <div class="summary-content">
-                <FileTextOutlined />
-                <span>{{ $t('home.selectedCount', { count: fileList.length }) }}</span>
-                <span class="size-info">{{ $t('home.totalSize', { size: totalSizeDisplay }) }}</span>
-              </div>
-            </template>
-          </a-alert>
+          <div class="upload-summary__icon">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none">
+              <path d="M14 2H6C4.89543 2 4 2.89543 4 4V20C4 21.1046 4.89543 22 6 22H18C19.1046 22 20 21.1046 20 20V8L14 2Z" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+              <path d="M14 2V8H20" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+            </svg>
+          </div>
+          <span class="upload-summary__text">{{ $t('home.selectedCount', { count: fileList.length }) }}</span>
+          <span v-if="isPreparingImages" class="upload-summary__preparing">{{ $t('home.compressingImage') }}</span>
+          <span class="upload-summary__size">{{ $t('home.totalSize', { size: totalSizeDisplay }) }}</span>
         </div>
-        
+
+        <!-- Actions -->
         <div class="upload-actions">
-          <a-button
-            type="primary"
-            size="large"
-            :loading="uploading"
+          <button
+            class="btn-recognize"
+            :class="{ 'btn-recognize--loading': uploading }"
+            :disabled="!canStartRecognize"
             @click="handleUpload"
-            class="btn-primary-gradient"
-            :disabled="fileList.length === 0"
           >
-            <RobotOutlined v-if="!uploading" />
-            {{ uploading ? $t('home.recognizing') : $t('home.startRecognize') }}
-          </a-button>
-          <a-button size="large" @click="handleClear" class="btn-secondary" :disabled="uploading">
-            <DeleteOutlined />
+            <svg v-if="!uploading && !isPreparingImages" width="18" height="18" viewBox="0 0 24 24" fill="none">
+              <path d="M12 16V4M12 4L8 8.5M12 4L16 8.5" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+              <path d="M4 14V18C4 19.1046 4.89543 20 6 20H18C19.1046 20 20 19.1046 20 18V14" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+            </svg>
+            <span v-if="uploading || isPreparingImages" class="btn-spinner"></span>
+            {{ uploading ? $t('home.recognizing') : (isPreparingImages ? $t('home.compressingImage') : $t('home.startRecognize')) }}
+          </button>
+          <button class="btn-clear" :disabled="uploading" @click="handleClear">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none">
+              <path d="M3 6H21" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+              <path d="M8 6V4C8 3.44772 8.44772 3 9 3H15C15.5523 3 16 3.44772 16 4V6" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+              <path d="M5 6L6 20C6 20.5523 6.44772 21 7 21H17C17.5523 21 18 20.5523 18 20L19 6" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+            </svg>
             {{ $t('home.clear') }}
-          </a-button>
+          </button>
         </div>
-      </a-card>
+      </div>
     </div>
 
-    <!-- 识别结果模式 - 左右布局 -->
-    <div v-else class="main-content">
-      <!-- 左侧上传区域 -->
-      <div class="left-section compressed">
-        <a-card class="upload-card">
-          <div class="card-header">
-            <h3 class="card-title">
-              <ImageIcon />
-              <span>{{ $t('home.uploadTitle') }}</span>
-            </h3>
+    <!-- ──────────── Result Mode ──────────── -->
+    <div v-else class="home__result">
+      <!-- Left: Upload sidebar -->
+      <aside class="sidebar">
+        <div class="sidebar__card">
+          <div class="sidebar__header">
+            <div class="sidebar__icon">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none">
+                <path d="M23 19C23 20.1046 22.1046 21 21 21H3C1.89543 21 1 20.1046 1 19V8C1 6.89543 1.89543 6 3 6H7L9 3H15L17 6H21C22.1046 6 23 6.89543 23 8V19Z" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                <circle cx="12" cy="13" r="4" stroke="currentColor" stroke-width="2"/>
+              </svg>
+            </div>
+            <h3 class="sidebar__title">{{ $t('home.uploadTitle') }}</h3>
           </div>
-          
-          <div class="upload-actions">
-            <a-button
-              type="primary"
-              size="large"
-              :loading="uploading"
+
+          <div class="sidebar__actions">
+            <button
+              class="btn-recognize btn-recognize--sm"
+              :class="{ 'btn-recognize--loading': uploading }"
+              :disabled="!canStartRecognize"
               @click="handleUpload"
-              class="btn-primary-gradient"
-              :disabled="fileList.length === 0"
             >
-              {{ uploading ? $t('home.recognizing') : $t('home.continueRecognize') }}
-            </a-button>
-            <a-button size="large" @click="handleClear" class="btn-secondary">
-              <DeleteOutlined />
+              <span v-if="uploading || isPreparingImages" class="btn-spinner"></span>
+              {{ uploading ? $t('home.recognizing') : (isPreparingImages ? $t('home.compressingImage') : $t('home.continueRecognize')) }}
+            </button>
+            <button class="btn-clear btn-clear--sm" @click="handleClear">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none">
+                <path d="M3 6H21" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+                <path d="M8 6V4C8 3.44772 8.44772 3 9 3H15C15.5523 3 16 3.44772 16 4V6" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                <path d="M5 6L6 20C6 20.5523 6.44772 21 7 21H17C17.5523 21 18 20.5523 18 20L19 6" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+              </svg>
               {{ $t('home.uploadAgain') }}
-            </a-button>
+            </button>
           </div>
-          
-          <div v-if="uploading" class="processing-indicator">
-            <a-spin size="large" />
+
+          <div v-if="uploading" class="sidebar__processing">
+            <div class="processing-ring"></div>
             <p>{{ $t('home.recognizing') }}</p>
+            <button type="button" class="btn-cancel-recognize" @click="cancelRecognition">
+              {{ $t('home.cancelRecognize') }}
+            </button>
           </div>
-        </a-card>
-      </div>
+        </div>
+      </aside>
 
-      <!-- 右侧识别结果区域 -->
-      <div class="right-section active">
-        <a-card class="result-card">
-          <div class="result-header">
-            <h3 class="result-title">
-              <DatabaseOutlined />
-              {{ $t('home.resultTitle') }}
-            </h3>
-            <span v-if="records.length > 0" class="record-count">{{ $t('home.recordsCount', { count: records.length }) }}</span>
-          </div>
-          
-          <!-- 统计概览 -->
-          <div v-if="records.length > 0" class="stats-overview">
-            <div class="stat-item normal">
-              <div class="stat-icon">✓</div>
-              <div class="stat-info">
-                <div class="stat-number">{{ stats.normal }}</div>
-                <div class="stat-label">{{ $t('home.statsNormal') }}</div>
+      <!-- Right: Results -->
+      <main class="results">
+        <div class="results__card">
+          <!-- Results Header -->
+          <div class="results__header">
+            <div class="results__header-left">
+              <div class="results__header-icon">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none">
+                  <path d="M4 7V4H7" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                  <path d="M17 4H20V7" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                  <path d="M20 17V20H17" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                  <path d="M7 20H4V17" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                  <path d="M4 12H20" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+                  <path d="M12 4V20" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+                </svg>
               </div>
+              <h3 class="results__title">{{ $t('home.resultTitle') }}</h3>
             </div>
-            <div class="stat-item handwriting">
-              <div class="stat-icon">✎</div>
-              <div class="stat-info">
-                <div class="stat-number">{{ stats.handwriting }}</div>
-                <div class="stat-label">{{ $t('home.statsHandwriting') }}</div>
-              </div>
-            </div>
-            <div class="stat-item blurred">
-              <div class="stat-icon">◐</div>
-              <div class="stat-info">
-                <div class="stat-number">{{ stats.blurred }}</div>
-                <div class="stat-label">{{ $t('home.statsBlurred') }}</div>
-              </div>
-            </div>
-            <div class="stat-item night">
-              <div class="stat-icon">🌙</div>
-              <div class="stat-info">
-                <div class="stat-number">{{ stats.night }}</div>
-                <div class="stat-label">{{ $t('home.statsNight') }}</div>
-              </div>
-            </div>
-            <div class="stat-item absent">
-              <div class="stat-icon">✗</div>
-              <div class="stat-info">
-                <div class="stat-number">{{ stats.absent }}</div>
-                <div class="stat-label">{{ $t('home.statsAbsent') }}</div>
-              </div>
-            </div>
-            <div class="stat-item deleted">
-              <div class="stat-icon">🗑</div>
-              <div class="stat-info">
-                <div class="stat-number">{{ stats.deleted }}</div>
-                <div class="stat-label">{{ $t('home.statsDeleted') }}</div>
-              </div>
-            </div>
+            <span v-if="records.length > 0" class="results__count">{{ $t('home.recordsCount', { count: records.length }) }}</span>
           </div>
 
-          <div v-if="anomalyAlerts.length > 0" class="anomaly-alert-section">
-            <a-alert type="warning" show-icon class="anomaly-alert">
-              <template #message>
-                <div class="anomaly-header" @click="showAnomalyDetail = !showAnomalyDetail">
-                  <span class="anomaly-title">{{ $t('home.anomalyAlert', { count: anomalyAlerts.length }) }}</span>
-                  <span class="anomaly-toggle">{{ showAnomalyDetail ? $t('home.collapse') : $t('home.expand') }}</span>
-                </div>
-              </template>
-              <template #description>
-                <div v-if="showAnomalyDetail" class="anomaly-detail-list">
-                  <div v-for="(alert, idx) in anomalyAlerts" :key="idx" class="anomaly-item">
-                    <span class="anomaly-index">#{{ alert.index + 1 }}</span>
-                    <span class="anomaly-name">{{ alert.name }}</span>
-                    <span class="anomaly-reasons">
-                      <a-tag v-for="(reason, rIdx) in alert.reasons" :key="rIdx" color="error" size="small">{{ reason }}</a-tag>
-                    </span>
-                  </div>
-                </div>
-              </template>
-            </a-alert>
+          <!-- Stats -->
+          <StatOverview v-if="records.length > 0" :items="statItems" />
+
+          <!-- Anomaly Alerts -->
+          <div v-if="anomalyAlerts.length > 0" class="anomaly-section">
+            <div class="anomaly-banner" @click="showAnomalyDetail = !showAnomalyDetail">
+              <div class="anomaly-banner__left">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none">
+                  <path d="M10.29 3.86L1.82 18C1.64526 18.3024 1.55285 18.6453 1.55201 18.9945C1.55117 19.3437 1.64192 19.6871 1.81518 19.9905C1.98844 20.2939 2.23714 20.5464 2.53782 20.7241C2.83851 20.9018 3.18048 20.9977 3.53 21H20.47C20.8195 20.9977 21.1615 20.9018 21.4622 20.7241C21.7629 20.5464 22.0116 20.2939 22.1848 19.9905C22.3581 19.6871 22.4488 19.3437 22.448 18.9945C22.4472 18.6453 22.3547 18.3024 22.18 18L13.71 3.86C13.5317 3.56611 13.2807 3.32312 12.9812 3.15448C12.6817 2.98585 12.3437 2.89722 12 2.89722C11.6563 2.89722 11.3183 2.98585 11.0188 3.15448C10.7193 3.32312 10.4683 3.56611 10.29 3.86Z" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                  <path d="M12 9V13" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+                  <circle cx="12" cy="17" r="1" fill="currentColor"/>
+                </svg>
+                <span class="anomaly-banner__title">{{ $t('home.anomalyAlert', { count: anomalyAlerts.length }) }}</span>
+              </div>
+              <span class="anomaly-banner__toggle">{{ showAnomalyDetail ? $t('home.collapse') : $t('home.expand') }}</span>
+            </div>
+            <div v-if="showAnomalyDetail" class="anomaly-list">
+              <div v-for="(alert, idx) in anomalyAlerts" :key="idx" class="anomaly-item">
+                <span class="anomaly-item__idx">#{{ alert.index + 1 }}</span>
+                <span class="anomaly-item__name">{{ alert.name }}</span>
+                <span class="anomaly-item__tags">
+                  <TruncatedTag
+                    v-for="(reason, rIdx) in alert.reasons"
+                    :key="rIdx"
+                    :text="reason"
+                    :color="getAnomalyTagColor(reason)"
+                    size="small"
+                  />
+                </span>
+              </div>
+            </div>
           </div>
 
-          <!-- 识别数据表格 -->
-          <div v-if="records.length > 0" class="records-wrapper">
-            <a-table 
-              :columns="columns" 
-              :data-source="records" 
-              :pagination="false" 
-              :scroll="{ y: 'calc(100vh - 380px)' }"
+          <!-- Data Table -->
+          <div v-if="records.length > 0" class="table-wrap">
+            <a-table
+              :columns="columns"
+              :data-source="tableRecords"
+              :pagination="false"
+              :scroll="{ x: scrollX, y: 'calc(100vh - 420px)' }"
               :size="'small'"
-              class="records-table"
+              class="data-table rich-table-header"
               :row-class-name="getRowClassName"
             >
               <template #bodyCell="{ column, record, index }">
-                <template v-if="column.key === 'rowType'">
-                  <a-tag :color="getRowTypeColor(record)" class="mark-tag">{{ getRowTypeLabel(record) }}</a-tag>
+                <template v-if="column.key === 'anomalyReasons'">
+                  <div v-if="getRecordAnomalyReasons(record).length > 0" class="inline-anomaly-tags">
+                    <TruncatedTag
+                      v-for="(reason, reasonIdx) in getRecordAnomalyReasons(record)"
+                      :key="reasonIdx"
+                      :text="reason"
+                      :color="getAnomalyTagColor(reason)"
+                      size="small"
+                    />
+                  </div>
+                  <span v-else class="cell-muted">&mdash;</span>
                 </template>
                 <template v-if="column.key === 'SmartMark'">
-                  <a-tag :color="getMarkColor(record.SmartMark)" class="mark-tag">
-                    {{ record.SmartMark }}
+                  <a-tag :color="getMarkColor(getDisplaySmartMark(record))" class="mark-tag">
+                    {{ translateSmartMark(getDisplaySmartMark(record), t) }}
                   </a-tag>
+                </template>
+                <template v-if="column.key === 'PAUSE'">
+                  <span class="cell-text">{{ formatPauseDisplay(record.PAUSE) }}</span>
                 </template>
                 <template v-if="column.key === 'action'">
                   <a-tooltip :title="record.isDeleted ? $t('common.undo') : $t('common.delete')">
-                    <a-button 
+                    <a-button
                       type="text"
                       :danger="!record.isDeleted"
                       shape="circle"
-                      size="small" 
-                      @click="deleteRecord(index)"
+                      size="small"
+                      @click="deleteRecord(record)"
                     >
-                      <DeleteOutlined v-if="!record.isDeleted" />
-                      <UndoOutlined v-else />
+                      <svg v-if="!record.isDeleted" width="14" height="14" viewBox="0 0 24 24" fill="none">
+                        <path d="M3 6H21" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+                        <path d="M8 6V4C8 3.44772 8.44772 3 9 3H15C15.5523 3 16 3.44772 16 4V6" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                        <path d="M5 6L6 20C6 20.5523 6.44772 21 7 21H17C17.5523 21 18 20.5523 18 20L19 6" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                      </svg>
+                      <svg v-else width="14" height="14" viewBox="0 0 24 24" fill="none">
+                        <path d="M1 4V10H7" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                        <path d="M3.51 15C4.15839 16.8404 5.38734 18.4202 7.01166 19.5014C8.63598 20.5826 10.5677 21.1066 12.5157 20.9945C14.4637 20.8824 16.3226 20.1402 17.8121 18.8798C19.3017 17.6193 20.3413 15.9074 20.7742 14.0064C21.2072 12.1053 21.0101 10.1158 20.2126 8.33953C19.4152 6.56328 18.0605 5.09319 16.3528 4.15275C14.6451 3.21231 12.6769 2.8519 10.7447 3.12488C8.81245 3.39786 7.02091 4.28915 5.64 5.66L1 10" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                      </svg>
                     </a-button>
                   </a-tooltip>
                 </template>
@@ -242,42 +282,86 @@
             </a-table>
           </div>
 
-          <!-- 空状态 -->
+          <!-- Empty State -->
           <div v-else class="empty-state">
-            <div class="empty-icon">📋</div>
+            <div class="empty-state__icon">
+              <svg width="48" height="48" viewBox="0 0 24 24" fill="none">
+                <path d="M4 7V4H7" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+                <path d="M17 4H20V7" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+                <path d="M20 17V20H17" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+                <path d="M7 20H4V17" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+                <path d="M4 12H20" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
+                <path d="M12 4V20" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
+              </svg>
+            </div>
             <p>{{ $t('home.noRecords') }}</p>
           </div>
-          
-          <div v-if="records.length > 0 && !uploading" class="action-buttons">
-            <a-button type="success" size="large" :loading="submitting" @click="handleConfirm">
-              <CheckCircleOutlined />
+
+          <!-- Confirm Button -->
+          <div v-if="records.length > 0 && !uploading" class="results__footer">
+            <button class="btn-confirm" @click="handleConfirm">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none">
+                <path d="M9 12L11 14L15 10" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
+                <circle cx="12" cy="12" r="9" stroke="currentColor" stroke-width="2"/>
+              </svg>
               {{ $t('home.confirmAndEdit') }}
-            </a-button>
+            </button>
           </div>
-        </a-card>
-      </div>
+        </div>
+      </main>
     </div>
+
+    <!-- Image Preview Modal -->
+    <a-modal
+      v-model:open="previewVisible"
+      :title="previewTitle"
+      :footer="null"
+      centered
+      class="upload-preview-modal"
+    >
+      <img v-if="previewImage" :src="previewImage" class="upload-preview-image" />
+    </a-modal>
   </div>
 </template>
 
 <script setup>
-import { ref, computed, h, onMounted } from 'vue'
+import { ref, computed, onMounted, onBeforeUnmount } from 'vue'
 import { useRouter } from 'vue-router'
 import { useI18n } from 'vue-i18n'
 import { message } from 'ant-design-vue'
-import { 
-  LoadingOutlined, 
-  CheckCircleOutlined, 
-  UploadOutlined,
-  DeleteOutlined,
-  UndoOutlined,
-  FileTextOutlined,
-  DatabaseOutlined,
-} from '@ant-design/icons-vue'
 import { compressImage, getImageHash, getFileSizeDisplay } from '@/utils/image'
+import StatOverview from '@/components/StatOverview.vue'
+import TruncatedTag from '@/components/TruncatedTag.vue'
+import StepGuide from '@/components/StepGuide.vue'
+import { useCountryStore } from '@/stores/country'
+import { buildAuthCountryHeaders, getCachedWorkingCountry } from '@/utils/countryHeader'
+import { applyMissingPays } from '@/utils/countryDefaults'
+import {
+  translateAnomalyReason,
+  translateSmartMark,
+  markContains,
+  anomalyReasonKind,
+} from '@/utils/recognitionLabels'
+import { buildRecognitionTableColumns } from '@/utils/recognitionTableColumns'
+import { useTableColumnSort } from '@/composables/useTableColumnSort'
+import { useAutoSizedColumns } from '@/composables/useAutoSizedColumns'
+import { hasRequiredMissing } from '@/utils/requiredRecordFields'
+import { formatCountryLabel } from '@/utils/countryLabels'
+import { showApiError } from '@/utils/translateError'
 
 const router = useRouter()
-const { t } = useI18n()
+const { t, locale } = useI18n()
+const countryStore = useCountryStore()
+
+const localizedWorkingCountryLabel = computed(() => {
+  void locale.value
+  const code = countryStore.workingCountry || 'default'
+  const found = (countryStore.options || []).find((item) => item.code === code)
+  if (found) return formatCountryLabel(found.code, found.flag, found.name)
+  return countryStore.workingCountryLabel
+})
+
+const cellStr = (v) => (v == null || v === '' ? '' : String(v))
 
 const fileList = ref([])
 const uploading = ref(false)
@@ -286,8 +370,29 @@ const records = ref([])
 const currentTaskId = ref(null)
 const processedHashes = ref(new Set())
 const showResult = ref(false)
+const previewVisible = ref(false)
+const previewImage = ref('')
+const previewTitle = ref('')
+
+const RECOGNITION_TIMEOUT_MS = 300000
+let uploadAbortController = null
+
+const cancelRecognition = () => {
+  if (uploadAbortController) {
+    uploadAbortController.abort()
+  }
+  uploading.value = false
+  message.info(t('home.recognitionCancelled'))
+}
+
+const guideSteps = computed(() => [
+  { title: t('home.guideStep1Title'), desc: t('home.guideStep1Desc') },
+  { title: t('home.guideStep2Title'), desc: t('home.guideStep2Desc') },
+  { title: t('home.guideStep3Title'), desc: t('home.guideStep3Desc') }
+])
 
 const resetState = () => {
+  fileList.value.forEach(revokePreviewUrl)
   fileList.value = []
   uploading.value = false
   submitting.value = false
@@ -295,339 +400,409 @@ const resetState = () => {
   currentTaskId.value = null
   processedHashes.value = new Set()
   showResult.value = false
+  previewVisible.value = false
+  previewImage.value = ''
+  previewTitle.value = ''
 }
 
-onMounted(() => {
+onMounted(async () => {
   resetState()
+  try {
+    await countryStore.hydrate()
+  } catch (error) {
+    console.error('加载工作国家失败:', error)
+  }
+})
+onBeforeUnmount(() => {
+  if (uploadAbortController) uploadAbortController.abort()
+  fileList.value.forEach(revokePreviewUrl)
 })
 
-// 统计计算
 const stats = computed(() => {
-  const result = {
-    normal: 0,
-    handwriting: 0,
-    blurred: 0,
-    night: 0,
-    absent: 0,
-    deleted: 0,
-  }
-  
+  const result = { normal: 0, handwriting: 0, blurred: 0, night: 0, absent: 0, deleted: 0 }
   records.value.forEach(record => {
-    if (record.isDeleted) {
-      result.deleted++
-      return
-    }
-    
-    const anomalies = record.anomalies || []
-    const mark = record.SmartMark || ''
-    
-    // 正常 - 根据 anomalies 判断
-    if (anomalies.length === 0) {
-      result.normal++
-    }
-    
-    // 手写 - 根据工号和姓名判断
-    const noValue = record.NO || ''
-    const nomPrenomValue = record.NOM_PRENOM || ''
-    if (noValue.includes('手写') || nomPrenomValue.includes('手写')) {
-      result.handwriting++
-    }
-    
+    if (record.isDeleted) { result.deleted++; return }
+    const anomalies = getEffectiveAnomalies(record)
+    const mark = getDisplaySmartMark(record)
+    if (anomalies.length === 0 && !hasRequiredMissing(record)) result.normal++
+    if (mark.includes('手写')) result.handwriting++
     if (mark.includes('模糊')) result.blurred++
     if (mark.includes('夜班')) result.night++
     if (mark.includes('未出勤')) result.absent++
   })
-  
   return result
 })
 
+const statItems = computed(() => [
+  { key: 'normal', variant: 'normal', value: stats.value.normal, label: t('home.statsNormal') },
+  { key: 'handwriting', variant: 'handwriting', value: stats.value.handwriting, label: t('home.statsHandwriting') },
+  { key: 'blurred', variant: 'blurred', value: stats.value.blurred, label: t('home.statsBlurred') },
+  { key: 'night', variant: 'night', value: stats.value.night, label: t('home.statsNight') },
+  { key: 'absent', variant: 'absent', value: stats.value.absent, label: t('home.statsAbsent') },
+  { key: 'deleted', variant: 'deleted', value: stats.value.deleted, label: t('home.statsDeleted') },
+])
+
 const isAbsentRow = (record) => {
-  const mark = record?.SmartMark || ''
+  const mark = cellStr(record?.SmartMark)
   return mark.includes('未出勤') && !record?._restored
 }
 
-const cellStyle = (record, index) => {
+const normalizePauseMinutes = (value) => {
+  if (value === null || value === undefined || value === '') return ''
+  const normalized = String(value).trim().toLowerCase().replace(',', '.').replace(/\s+/g, '').replace(/minutes?|mins?|mn/g, 'min')
+  if (!normalized || normalized === '???' || normalized === '??' || normalized === 'illegible') return ''
+  const hourMatch = normalized.match(/^(\d+(?:\.\d+)?)h(\d+(?:\.\d+)?)?(?:min|m)?$/)
+  if (hourMatch) {
+    const hours = Number(hourMatch[1])
+    const minutes = hourMatch[2] ? Number(hourMatch[2]) : 0
+    return Number.isNaN(hours) || Number.isNaN(minutes) ? value : Math.round(hours * 60 + minutes)
+  }
+  const colonMatch = normalized.match(/^(\d{1,2}):(\d{1,2})$/)
+  if (colonMatch) return Number(colonMatch[1]) * 60 + Number(colonMatch[2])
+  const minuteMatch = normalized.match(/^(\d+(?:\.\d+)?)(?:min|m)?$/)
+  if (minuteMatch) {
+    const minutes = Number(minuteMatch[1])
+    return Number.isNaN(minutes) ? value : Math.round(minutes)
+  }
+  return value
+}
+
+const normalizeRecordPause = (record) => applyMissingPays(
+  { ...record, PAUSE: normalizePauseMinutes(record?.PAUSE) },
+  getCachedWorkingCountry()
+)
+
+const formatPauseDisplay = (value) => {
+  const minutes = normalizePauseMinutes(value)
+  return minutes === '' ? '-' : `${minutes} min`
+}
+
+const getEffectiveAnomalies = (record) => {
+  const anomalies = Array.isArray(record?.anomalies) ? record.anomalies : []
+  return anomalies.filter(reason => reason && !String(reason).includes(t('home.statsNight')) && !String(reason).includes('夜班'))
+}
+
+const getRecordAnomalyReasons = (record) => {
+  if (!record || record.isDeleted) return []
+  const mark = getDisplaySmartMark(record)
+  const reasons = getEffectiveAnomalies(record).map((r) => translateAnomalyReason(r, t))
+  if (markContains(mark, 'blurred')) reasons.push(t('taskEdit.blurredContent'))
+  if (markContains(mark, 'handwriting')) reasons.push(t('taskEdit.handwrittenContent'))
+  if (markContains(mark, 'absent')) reasons.push(t('taskEdit.absentReason'))
+  if (hasRequiredMissing(record)) reasons.push(t('taskEdit.requiredFieldMissingShort'))
+  return [...new Set(reasons)]
+}
+
+const cellStyle = (record) => {
   if (!record) return {}
   if (record?.isDeleted || isAbsentRow(record)) {
-    return {
-      style: {
-        backgroundColor: '#fff1f0',
-        color: '#b3736e',
-        fontStyle: 'italic',
-        textDecoration: 'line-through',
-        textDecorationColor: '#d4a5a0',
-      }
-    }
+    return { style: { backgroundColor: '#FFF0F0', color: '#D94040', fontStyle: 'italic', textDecoration: 'line-through', textDecorationColor: '#E8A0A0' } }
   }
-  if ((record?.SmartMark || '').includes('模糊')) {
-    return {
-      style: {
-        backgroundColor: '#fefce8',
-      }
-    }
-  }
+  if (hasRequiredMissing(record)) return { style: { backgroundColor: '#FFF9EC' } }
+  if (getDisplaySmartMark(record).includes('模糊')) return { style: { backgroundColor: '#FFF9EC' } }
   return {}
 }
 
-const columns = [
-  { title: '识别结果', key: 'rowType', width: 85, customCell: cellStyle },
-  { title: '工号', dataIndex: 'NO', key: 'NO', width: 70, ellipsis: true, customCell: cellStyle },
-  { title: '姓名', dataIndex: 'NOM_PRENOM', key: 'NOM_PRENOM', width: 90, ellipsis: true, customCell: cellStyle },
-  { title: '日期', dataIndex: 'Date', key: 'Date', width: 90, customCell: cellStyle },
-  { title: '到达', dataIndex: 'ARRIVEE', key: 'ARRIVEE', width: 60, customCell: cellStyle },
-  { title: '离开', dataIndex: 'DEPAR', key: 'DEPAR', width: 60, customCell: cellStyle },
-  { title: '休息', dataIndex: 'PAUSE', key: 'PAUSE', width: 50, customCell: cellStyle },
-  { title: '标记', dataIndex: 'SmartMark', key: 'SmartMark', width: 90, customCell: cellStyle },
-  { title: '操作', key: 'action', width: 50, fixed: 'right', customCell: cellStyle },
-]
+const baseColumns = computed(() => buildRecognitionTableColumns(t, { cellStyle }))
+const { columns: sortedColumns, sortRows } = useTableColumnSort(baseColumns)
+const tableRecords = computed(() => sortRows(records.value))
+const { columns, scrollX } = useAutoSizedColumns(sortedColumns, tableRecords, { actionWidth: 50 })
 
 const totalSizeDisplay = computed(() => {
   const total = fileList.value.reduce((sum, file) => sum + (file.size || 0), 0)
   return getFileSizeDisplay(total)
 })
 
-const ImageIcon = {
-  render() {
-    return h('svg', {
-      width: '18',
-      height: '18',
-      viewBox: '0 0 24 24',
-      fill: 'none',
-      stroke: 'currentColor',
-      strokeWidth: '2'
-    }, [
-      h('rect', { x: '3', y: '3', width: '18', height: '18', rx: '2', ry: '2' }),
-      h('circle', { cx: '8.5', cy: '8.5', r: '1.5', fill: 'currentColor' }),
-      h('polyline', { points: '21 15 16 10 5 21' })
-    ])
+const isPreparingImages = computed(() => fileList.value.some((file) => file.status === 'uploading'))
+const readyFiles = computed(() => fileList.value.filter((file) => file.status === 'done' && file.raw))
+const canStartRecognize = computed(() => readyFiles.value.length > 0 && !uploading.value && !isPreparingImages.value)
+
+const updateFileEntry = (uid, patch) => {
+  fileList.value = fileList.value.map((item) => (item.uid === uid ? { ...item, ...patch } : item))
+}
+
+const removeFileEntry = (uid) => {
+  const target = fileList.value.find((item) => item.uid === uid)
+  if (target) revokePreviewUrl(target)
+  fileList.value = fileList.value.filter((item) => item.uid !== uid)
+}
+
+const prepareSelectedFile = async (file) => {
+  const previewUrl = URL.createObjectURL(file)
+  const uid = file.uid
+  fileList.value.push({
+    uid,
+    name: file.name,
+    size: file.size,
+    url: previewUrl,
+    thumbUrl: previewUrl,
+    status: 'uploading',
+    raw: null,
+  })
+
+  try {
+    const hash = await getImageHash(file)
+    if (processedHashes.value.has(hash)) {
+      removeFileEntry(uid)
+      message.warning(t('home.duplicateImage'))
+      return
+    }
+
+    const compressedFile = await compressImage(file, {
+      maxSizeKB: 2000,
+      maxWidth: 1600,
+      maxHeight: 1600,
+      quality: 0.85,
+    })
+    processedHashes.value.add(hash)
+
+    const compressedUrl = URL.createObjectURL(compressedFile)
+    URL.revokeObjectURL(previewUrl)
+    updateFileEntry(uid, {
+      size: compressedFile.size,
+      raw: compressedFile,
+      hash,
+      url: compressedUrl,
+      thumbUrl: compressedUrl,
+      status: 'done',
+    })
+  } catch (error) {
+    console.error('图片压缩失败:', error)
+    removeFileEntry(uid)
+    message.error(t('home.compressFailed'))
   }
 }
 
-const beforeUpload = async (file) => {
-  const hash = await getImageHash(file)
-  
-  if (processedHashes.value.has(hash)) {
-    message.warning(t('home.duplicateImage'))
-    return false
-  }
-  
-  const compressedFile = await compressImage(file, {
-    maxSizeKB: 2000,
-    maxWidth: 1600,
-    maxHeight: 1600,
-    quality: 0.85
-  })
-  
-  processedHashes.value.add(hash)
-  
-  const newFile = {
-    uid: file.uid,
-    name: file.name,
-    size: compressedFile.size,
-    raw: compressedFile,
-    status: 'done',
-  }
-  
-  fileList.value.push(newFile)
-  
+const beforeUpload = (file) => {
+  prepareSelectedFile(file)
   return false
 }
 
 const customUpload = () => {}
 
+const revokePreviewUrl = (file) => {
+  if (file && file.url && file.url.startsWith('blob:')) URL.revokeObjectURL(file.url)
+}
+
+const handleFilePreview = (file) => {
+  const target = fileList.value.find(item => item.uid === file.uid) || file
+  previewImage.value = target.url || target.thumbUrl || ''
+  previewTitle.value = target.name || ''
+  previewVisible.value = Boolean(previewImage.value)
+}
+
+const handleFileRemove = (file) => {
+  const target = fileList.value.find(item => item.uid === file.uid)
+  if (target) {
+    revokePreviewUrl(target)
+    if (target.hash) {
+      const nextHashes = new Set(processedHashes.value)
+      nextHashes.delete(target.hash)
+      processedHashes.value = nextHashes
+    }
+  }
+  fileList.value = fileList.value.filter(item => item.uid !== file.uid)
+  if (previewVisible.value && previewTitle.value === file.name) {
+    previewVisible.value = false
+    previewImage.value = ''
+    previewTitle.value = ''
+  }
+  return false
+}
+
+const processSsePayload = (currentEvent, data, ctx) => {
+  if (currentEvent === 'start') {
+    if (!ctx.sharedTaskId) ctx.sharedTaskId = data.taskId
+    if (data.imagePreviewUrl) ctx.imagePreviewUrls.push(data.imagePreviewUrl)
+    return
+  }
+  if (currentEvent === 'record') {
+    if (data.record) {
+      records.value.push(normalizeRecordPause({ ...data.record, isDeleted: false }))
+    }
+    return
+  }
+  if (currentEvent === 'complete') {
+    ctx.fileComplete = true
+    return
+  }
+  if (currentEvent === 'error') {
+    showApiError(data)
+    ctx.hadError = true
+    ctx.fileComplete = true
+    return
+  }
+  if (!currentEvent) {
+    if (data.taskId && !data.record && data.rowCount !== undefined) {
+      ctx.fileComplete = true
+    } else if (data.record) {
+      records.value.push(normalizeRecordPause({ ...data.record, isDeleted: false }))
+    }
+  }
+}
+
+const consumeSseResponse = async (response, ctx) => {
+  const reader = response.body.getReader()
+  const decoder = new TextDecoder()
+  let currentEvent = null
+  let currentData = null
+  let buffer = ''
+
+  const flushEvent = () => {
+    if (!currentData) {
+      currentEvent = null
+      return
+    }
+    try {
+      processSsePayload(currentEvent, JSON.parse(currentData), ctx)
+    } catch (e) {
+      console.warn('Failed to parse SSE data:', e, currentData)
+    }
+    currentEvent = null
+    currentData = null
+  }
+
+  while (true) {
+    const { done, value } = await reader.read()
+    if (value) {
+      buffer += decoder.decode(value, { stream: true })
+      const lines = buffer.split(/\r?\n/)
+      buffer = lines.pop() || ''
+      for (const rawLine of lines) {
+        const line = rawLine.trimEnd()
+        if (line.startsWith('event:')) {
+          currentEvent = line.slice(6).trim()
+        } else if (line.startsWith('data:')) {
+          const chunk = line.slice(5).trim()
+          currentData = currentData ? `${currentData}${chunk}` : chunk
+        } else if (line === '') {
+          flushEvent()
+        }
+      }
+    }
+    if (done) {
+      if (buffer.trim()) {
+        const tail = buffer.trim()
+        if (tail.startsWith('data:')) {
+          currentData = tail.slice(5).trim()
+        }
+      }
+      flushEvent()
+      if (!ctx.fileComplete && !ctx.hadError) {
+        ctx.hadError = true
+        message.error(t('home.recognitionIncomplete'))
+      }
+      break
+    }
+    if (ctx.fileComplete) break
+  }
+
+  try {
+    await reader.cancel()
+  } catch {
+    // ignore
+  }
+}
+
 const handleUpload = async () => {
-  if (fileList.value.length === 0) {
+  if (isPreparingImages.value) {
+    message.info(t('home.preparingImages'))
+    return
+  }
+  const filesToUpload = readyFiles.value
+  if (filesToUpload.length === 0) {
     message.warning(t('home.selectAtLeastOne'))
     return
   }
-  
   uploading.value = true
   showResult.value = true
   records.value = []
-  let isComplete = false
   let sharedTaskId = null
-  let completedCount = 0
   const imagePreviewUrls = []
-  
+  let hadError = false
+
+  uploadAbortController = new AbortController()
+  const timeoutId = setTimeout(() => {
+    if (uploadAbortController) {
+      uploadAbortController.abort()
+      message.error(t('home.recognitionTimeout'))
+    }
+  }, RECOGNITION_TIMEOUT_MS)
+
   try {
-    for (const file of fileList.value) {
+    for (const file of filesToUpload) {
+      if (uploadAbortController.signal.aborted) break
+
+      const country = getCachedWorkingCountry()
       const formData = new FormData()
       formData.append('image', file.raw)
-      if (sharedTaskId) {
-        formData.append('taskId', sharedTaskId)
-      }
-      
-      const token = localStorage.getItem('attendance_token')
-      
+      formData.append('country', country)
+      if (sharedTaskId) formData.append('taskId', sharedTaskId)
+
       const response = await fetch('/api/local/upload-stream', {
         method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${token}`,
-        },
+        headers: buildAuthCountryHeaders(),
         body: formData,
+        signal: uploadAbortController.signal,
       })
-      
+
       if (!response.ok) {
-        const errorText = await response.text()
+        await response.text()
         message.error(t('home.uploadFailed', { status: response.status, statusText: response.statusText }))
+        hadError = true
         continue
       }
-      
-      const reader = response.body.getReader()
-      const decoder = new TextDecoder()
-      
-      let currentEvent = null
-      let currentData = null
-      let buffer = ''
-      let thisFileComplete = false
-      
-      const timeoutId = setTimeout(() => {
-        if (!thisFileComplete) {
-          thisFileComplete = true
-          reader.cancel()
-        }
-      }, 120000)
-      
-      try {
-        while (true) {
-          const { done, value } = await reader.read()
-          
-          if (done || thisFileComplete) {
-            break
-          }
-          
-          const text = decoder.decode(value, { stream: true })
-          buffer += text
-          
-          let lines = buffer.split('\n')
-          buffer = lines.pop()
-          
-          for (const line of lines) {
-            const trimmedLine = line.trim()
-            
-            if (trimmedLine.startsWith('event:')) {
-              currentEvent = trimmedLine.slice(6).trim()
-            } else if (trimmedLine.startsWith('data:')) {
-              const newData = trimmedLine.slice(5).trim()
-              currentData = currentData ? currentData + newData : newData
-            } else if (!trimmedLine && (currentEvent || currentData)) {
-              if (currentData) {
-                try {
-                  const data = JSON.parse(currentData)
-                  
-                  if (currentEvent === 'start') {
-                    if (!sharedTaskId) {
-                      sharedTaskId = data.taskId
-                    }
-                    if (data.imagePreviewUrl) {
-                      imagePreviewUrls.push(data.imagePreviewUrl)
-                    }
-                  } else if (currentEvent === 'record') {
-                    if (data.record) {
-                      const record = {
-                        ...data.record,
-                        isDeleted: false,
-                      }
-                      records.value.push(record)
-                    }
-                  } else if (currentEvent === 'complete') {
-                    thisFileComplete = true
-                    completedCount++
-                  } else if (currentEvent === 'error') {
-                    message.error(data.message || '识别出错')
-                    thisFileComplete = true
-                    completedCount++
-                  } else if (currentEvent === 'info') {
-                  } else if (!currentEvent) {
-                    if (data.taskId && !data.record && data.rowCount !== undefined) {
-                      thisFileComplete = true
-                      completedCount++
-                    } else if (data.record) {
-                      const record = {
-                        ...data.record,
-                        isDeleted: false,
-                      }
-                      records.value.push(record)
-                    }
-                  }
-                } catch (e) {
-                  console.warn('Failed to parse SSE data:', e)
-                }
-              }
-              currentEvent = null
-              currentData = null
-            }
-          }
-        }
-      } finally {
-        clearTimeout(timeoutId)
-        reader.cancel()
+
+      const ctx = {
+        sharedTaskId,
+        imagePreviewUrls,
+        fileComplete: false,
+        hadError: false,
       }
+      await consumeSseResponse(response, ctx)
+      sharedTaskId = ctx.sharedTaskId || sharedTaskId
+      if (ctx.hadError) hadError = true
     }
-    
+
+    if (uploadAbortController.signal.aborted) {
+      return
+    }
     if (records.value.length > 0) {
       message.success(t('home.recognizeSuccess', { count: records.value.length }))
-      if (sharedTaskId) {
-        router.push(`/tasks/${sharedTaskId}`)
-      }
-    } else {
+      if (sharedTaskId) router.push(`/tasks/${sharedTaskId}`)
+    } else if (!hadError) {
       message.warning(t('home.noRecordsFound'))
     }
   } catch (error) {
-    console.error('Upload error:', error)
-    if (error.name !== 'AbortError') {
-      message.error('上传失败: ' + (error.message || '未知错误'))
+    if (error.name === 'AbortError') {
+      // timeout or user cancel — message already shown
+    } else {
+      console.error('Upload error:', error)
+      message.error(t('home.uploadFailedGeneric', { reason: error.message || t('errors.requestFailed') }))
     }
   } finally {
+    clearTimeout(timeoutId)
+    uploadAbortController = null
     uploading.value = false
-    isComplete = true
   }
 }
 
 const handleConfirm = () => {
-  if (!currentTaskId.value) {
-    message.warning(t('home.selectAtLeastOne'))
-    return
-  }
+  if (!currentTaskId.value) { message.warning(t('home.selectAtLeastOne')); return }
   router.push(`/tasks/${currentTaskId.value}`)
 }
 
-const handleClear = () => {
-  resetState()
-}
+const handleClear = () => { resetState() }
 
-const deleteRecord = (index) => {
-  const record = records.value[index]
+const deleteRecord = (record) => {
   if (record) {
     record.isDeleted = !record.isDeleted
-    if (record.isDeleted) {
-      record._prevMark = record.SmartMark
-      record.SmartMark = '已删除'
-    } else {
-      if (record._prevMark) {
-        record.SmartMark = record._prevMark
-        delete record._prevMark
-      } else {
-        record.SmartMark = '正常'
-      }
+    if (record.isDeleted) { record._prevMark = record.SmartMark; record.SmartMark = '已删除' }
+    else {
+      if (record._prevMark) { record.SmartMark = record._prevMark; delete record._prevMark }
+      else record.SmartMark = '正常'
     }
   }
-}
-
-const getRowTypeLabel = (record) => {
-  if (record?.isDeleted) return '已删除'
-  const mark = record?.SmartMark || ''
-  if (mark.includes('未出勤')) return '未出勤'
-  if (mark.includes('模糊')) return '模糊'
-  return '正常'
-}
-
-const getRowTypeColor = (record) => {
-  if (record?.isDeleted) return 'default'
-  const mark = record?.SmartMark || ''
-  if (mark.includes('未出勤')) return 'error'
-  if (mark.includes('模糊')) return 'warning'
-  return 'success'
 }
 
 const showAnomalyDetail = ref(true)
@@ -636,740 +811,851 @@ const anomalyAlerts = computed(() => {
   return records.value
     .map((record, index) => {
       if (record.isDeleted) return null
-      const anomalies = record.anomalies || []
-      const mark = record.SmartMark || ''
-      const reasons = []
-      
-      if (anomalies.length > 0) {
-        reasons.push(...anomalies)
-      }
-      if (mark.includes('模糊')) reasons.push('内容模糊')
-      if (mark.includes('手写')) reasons.push('手写内容')
-      if (mark.includes('未出勤')) reasons.push('未出勤')
-      
+      const reasons = getRecordAnomalyReasons(record)
       if (reasons.length === 0) return null
-      const no = record.NO || '?'
-      const name = record.NOM_PRENOM || '?'
-      return {
-        index,
-        name: no + ' - ' + name,
-        reasons: [...new Set(reasons)]
-      }
+      const no = cellStr(record.NO) || '?'
+      const name = cellStr(record.NOM_PRENOM) || '?'
+      return { index, name: no + ' - ' + name, reasons: [...new Set(reasons)] }
     })
     .filter(Boolean)
 })
 
 const getRowClassName = (record, index) => {
   if (!record || record?.isDeleted) return 'deleted-row'
-  const mark = record?.SmartMark || ''
-  if (mark.includes('未出勤')) return 'absent-row'
-  if (mark.includes('模糊')) return 'blurred-row'
+  const mark = getDisplaySmartMark(record)
+  if (hasRequiredMissing(record)) return 'incomplete-row'
+  if (markContains(mark, 'absent')) return 'absent-row'
+  if (markContains(mark, 'blurred')) return 'blurred-row'
   return ''
 }
 
-const getMarkColor = (mark) => {
-  if (!mark) return 'default'
-  if (mark.includes('正常')) return 'success'
-  if (mark.includes('手写')) return 'processing'
-  if (mark.includes('模糊')) return 'warning'
-  if (mark.includes('夜班')) return 'purple'
-  if (mark.includes('未出勤')) return 'error'
+const getAnomalyTagColor = (reason) => {
+  const kind = anomalyReasonKind(reason)
+  if (kind === 'absent' || kind === 'missing') return 'red'
+  if (kind === 'blurred' || kind === 'duplicate') return 'orange'
+  if (kind === 'handwriting') return 'blue'
   return 'default'
+}
+
+const getMarkColor = (mark) => {
+  const m = cellStr(mark)
+  if (!m) return 'default'
+  if (markContains(m, 'absent')) return 'error'
+  if (markContains(m, 'blurred')) return 'warning'
+  if (markContains(m, 'handwriting')) return 'processing'
+  if (markContains(m, 'nightShift')) return 'purple'
+  if (markContains(m, 'normal')) return 'success'
+  return 'default'
+}
+
+const hasHandwrittenText = (value) => {
+  const text = cellStr(value).toLowerCase()
+  return text.includes('手写') || text.includes('handwritten') || text.includes('manuscrit') || text.includes('manuscrite') || text.includes('ecrit main') || text.includes('écrit main') || text.includes('ecrit a la main') || text.includes('écrit à la main')
+}
+
+const hasHandwrittenIdentity = (record) => {
+  const anomalyText = Array.isArray(record?.anomalies) ? record.anomalies.join(' ') : ''
+  return hasHandwrittenText(record?.NO) || hasHandwrittenText(record?.NOM_PRENOM) || hasHandwrittenText(record?.Mark) || hasHandwrittenText(record?.mark) || hasHandwrittenText(record?.smartMark) || hasHandwrittenText(anomalyText)
+}
+
+const getDisplaySmartMark = (record) => {
+  const sourceMarks = [record?.SmartMark, record?.Mark, record?.mark, record?.smartMark].map(v => cellStr(v)).filter(Boolean)
+  const raw = [...new Set(sourceMarks.join(';').split(/[;；,，]/).map(v => v.trim()).filter(Boolean))].join(';')
+  const hasHandwritten = hasHandwrittenIdentity(record) || raw.includes('手写')
+  if (!hasHandwritten || raw.includes('已删除') || raw.includes('未出勤')) return raw || '-'
+  if (!raw || raw === '-' || raw === '正常') return '手写'
+  if (raw.includes('手写')) return raw
+  return `${raw};手写`
 }
 </script>
 
 <style lang="scss" scoped>
-.home-container {
-  padding: 20px;
-  
+// ═══════════════════════════════════════════════════════════
+// Home Page — Atelier v4
+// ═══════════════════════════════════════════════════════════
+
+.home {
+  padding: $space-5;
+  min-height: calc(100vh - #{$header-height});
+
   &.result-mode {
-    height: calc(100vh - 64px);
-    padding: 20px;
+    height: calc(100vh - #{$header-height});
+    padding: $space-5;
   }
 }
 
-// 初始模式
-.initial-mode {
-  width: 100%;
-  max-width: 1400px;
-  margin: 0 auto;
+// ── Hero Section ──
+.hero {
+  position: relative;
+  overflow: hidden;
+  border-radius: $radius-2xl;
+  padding: $space-10 $space-8;
+  background: linear-gradient(135deg, #4A58D9 0%, $primary 40%, #8B9AFF 70%, #B4C0FF 100%);
+  background-size: 200% 200%;
+  animation: gradientShift 8s ease infinite;
+  margin-bottom: $space-5;
+  color: white;
+
+  &__content {
+    position: relative;
+    z-index: 2;
+  }
+
+  &__badge {
+    display: inline-flex;
+    align-items: center;
+    gap: $space-2;
+    padding: $space-1 $space-3;
+    background: rgba(255, 255, 255, 0.2);
+    backdrop-filter: blur(10px);
+    border-radius: $radius-full;
+    font-size: $font-size-xs;
+    font-weight: $font-weight-semibold;
+    letter-spacing: 0.5px;
+    text-transform: uppercase;
+    margin-bottom: $space-4;
+    border: 1px solid rgba(255, 255, 255, 0.25);
+  }
+
+  &__title {
+    font-size: $font-size-4xl;
+    font-weight: $font-weight-extrabold;
+    line-height: $line-height-tight;
+    margin: 0 0 $space-3;
+    letter-spacing: -0.02em;
+    text-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+  }
+
+  &__desc {
+    font-size: $font-size-lg;
+    opacity: 0.9;
+    margin: 0;
+    max-width: 560px;
+    line-height: $line-height-relaxed;
+  }
+
+  // Decorative orbs
+  &__deco {
+    position: absolute;
+    top: 0;
+    right: 0;
+    bottom: 0;
+    width: 50%;
+    pointer-events: none;
+    z-index: 1;
+  }
+
+  &__orb {
+    position: absolute;
+    border-radius: 50%;
+    opacity: 0.15;
+    background: white;
+
+    &--1 {
+      width: 200px;
+      height: 200px;
+      top: -40px;
+      right: -20px;
+      animation: float 6s $ease-smooth infinite;
+    }
+
+    &--2 {
+      width: 120px;
+      height: 120px;
+      bottom: -30px;
+      right: 120px;
+      animation: float 4s $ease-smooth infinite 1s;
+    }
+
+    &--3 {
+      width: 80px;
+      height: 80px;
+      top: 30px;
+      right: 200px;
+      opacity: 0.1;
+      animation: float 5s $ease-smooth infinite 0.5s;
+    }
+  }
+}
+
+// ── Initial Mode ──
+.home__initial {
   display: flex;
   flex-direction: column;
-  gap: 20px;
+  gap: $space-5;
+  width: 100%;
+  max-width: 100%;
+  margin: 0;
 }
 
-.guide-section {
-  background: #ffffff;
-  border-radius: 12px;
-  padding: 16px 20px;
-  box-shadow: 0 1px 2px rgba(31, 35, 41, 0.06);
-  
-  .guide-steps {
-    display: grid;
-    grid-template-columns: repeat(3, 1fr);
-    gap: 12px;
-    
-    .step-item {
-      display: flex;
-      align-items: flex-start;
-      gap: 10px;
-      padding: 12px;
-      background: #FAFBFC;
-      border-radius: 8px;
-      border: 1px solid #F0F1F5;
-      transition: all 0.2s ease;
-      
-      &:hover {
-        border-color: #5B8FF9;
-        background: #F5F9FF;
-      }
-      
-      .step-number {
-        width: 24px;
-        height: 24px;
-        border-radius: 50%;
-        background: linear-gradient(135deg, #5B8FF9 0%, #7B61FF 100%);
-        color: #fff;
-        font-size: 12px;
-        font-weight: 600;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        flex-shrink: 0;
-      }
-      
-      .step-content {
-        flex: 1;
-        
-        .step-title {
-          font-size: 13px;
-          font-weight: 600;
-          color: #1F2329;
-          margin-bottom: 2px;
-        }
-        
-        .step-desc {
-          font-size: 12px;
-          color: #8F959E;
-          line-height: 1.4;
-        }
-      }
-    }
-  }
-}
-
-.upload-card-simple {
-  background: #ffffff;
-  border-radius: 12px;
-  border: none;
-  box-shadow: 0 1px 2px rgba(31, 35, 41, 0.06);
-  
-  :deep(.ant-card-body) {
-    padding: 20px;
-  }
-  
-  .card-header {
-    padding-bottom: 16px;
-    border-bottom: 1px solid #F0F1F5;
-    margin-bottom: 20px;
-    
-    .card-title {
-      display: flex;
-      align-items: center;
-      gap: 8px;
-      font-size: 15px;
-      font-weight: 600;
-      color: #1F2329;
-      margin: 0 0 4px;
-      
-      svg {
-        color: #5B8FF9;
-      }
-    }
-    
-    .card-desc {
-      margin: 0;
-      font-size: 13px;
-      color: #8F959E;
-    }
-  }
-  
-  .upload-area-wrapper {
-    .upload-area {
-      width: 100%;
-      
-      :deep(.ant-upload-select) {
-        width: 100% !important;
-        height: 140px !important;
-        margin: 0 !important;
-        border: 2px dashed #E5E6EB !important;
-        border-radius: 8px !important;
-        background: #FAFBFC !important;
-        transition: all 0.3s ease !important;
-        
-        &:hover {
-          border-color: #5B8FF9 !important;
-          background: #F5F9FF !important;
-        }
-      }
-      
-      .upload-trigger {
-        display: flex;
-        flex-direction: column;
-        align-items: center;
-        justify-content: center;
-        height: 100%;
-        gap: 6px;
-        
-        .upload-icon {
-          font-size: 32px;
-          color: #8F959E;
-        }
-        
-        .upload-text {
-          font-size: 14px;
-          font-weight: 500;
-          color: #1F2329;
-        }
-        
-        .upload-hint {
-          font-size: 12px;
-          color: #8F959E;
-        }
-      }
-    }
-  }
-  
-  .upload-summary {
-    margin-top: 16px;
-    
-    .summary-alert {
-      border: none;
-      background: #F5F9FF;
-      border-radius: 6px;
-      
-      .summary-content {
-        display: flex;
-        align-items: center;
-        gap: 8px;
-        font-size: 13px;
-        color: #5B8FF9;
-        
-        .size-info {
-          margin-left: auto;
-          color: #8F959E;
-        }
-      }
-    }
-  }
-  
-  .upload-actions {
-    margin-top: 20px;
-    display: flex;
-    gap: 12px;
-    
-    .btn-primary-gradient {
-      flex: 1;
-      height: 40px;
-      border-radius: 6px;
-      font-weight: 500;
-    }
-    
-    .btn-secondary {
-      width: 100px;
-      height: 40px;
-      border-radius: 6px;
-    }
-  }
-}
-
-// 结果模式
-.main-content {
+.country-context {
   display: flex;
-  gap: 20px;
+  align-items: center;
+  justify-content: space-between;
+  gap: $space-4;
+  padding: $space-3 $space-4;
+  border-radius: $radius-lg;
+  background: $bg-surface;
+  border: 1px solid $border-light;
+
+  &__main {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: $space-2;
+    min-width: 0;
+  }
+
+  &__label {
+    font-size: $font-size-sm;
+    color: $text-secondary;
+  }
+
+  &__value {
+    font-weight: $font-weight-semibold;
+    color: $text-strong;
+  }
+
+  &__tags {
+    margin-left: $space-1;
+  }
+}
+
+// ── Upload Card ──
+.upload-card {
+  background: $bg-surface;
+  border-radius: $radius-xl;
+  box-shadow: $shadow-card;
+  border: 1px solid rgba($border, 0.5);
+  padding: $space-6;
+  animation: fadeUp 0.5s $ease-out 0.25s both;
+
+  &__header {
+    display: flex;
+    align-items: center;
+    gap: $space-4;
+    margin-bottom: $space-5;
+    padding-bottom: $space-5;
+    border-bottom: 1px solid $border-light;
+  }
+
+  &__icon {
+    width: 44px;
+    height: 44px;
+    border-radius: $radius-lg;
+    background: linear-gradient(135deg, $primary-light 0%, $primary-lighter 100%);
+    color: $primary;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+  }
+
+  &__title {
+    font-size: $font-size-xl;
+    font-weight: $font-weight-bold;
+    color: $text-strong;
+    margin: 0 0 2px;
+    line-height: $line-height-tight;
+  }
+
+  &__subtitle {
+    font-size: $font-size-sm;
+    color: $text-tertiary;
+    margin: 0;
+  }
+}
+
+// ── Dropzone ──
+.dropzone {
+  &__upload {
+    width: 100%;
+
+    :deep(.ant-upload-select) {
+      width: 100% !important;
+      height: 180px !important;
+      margin: 0 0 $space-3 0 !important;
+      border: 2px dashed rgba($primary, 0.25) !important;
+      border-radius: $radius-xl !important;
+      background: linear-gradient(135deg, $primary-lighter 0%, $bg-muted 100%) !important;
+      transition: all $duration-base $ease-smooth !important;
+      cursor: pointer;
+
+      &:hover {
+        border-color: $primary !important;
+        background: linear-gradient(135deg, $primary-light 0%, $primary-lighter 100%) !important;
+        box-shadow: $shadow-glow;
+        transform: translateY(-1px);
+      }
+    }
+  }
+
+  &__trigger {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    height: 100%;
+    gap: $space-3;
+  }
+
+  &__icon-ring {
+    width: 56px;
+    height: 56px;
+    border-radius: 50%;
+    background: $primary-gradient-deep;
+    color: white;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    box-shadow: $shadow-glow;
+    transition: transform $duration-base $ease-bounce;
+
+    .dropzone__upload :deep(.ant-upload-select):hover & {
+      transform: scale(1.08);
+    }
+  }
+
+  &__text {
+    font-size: $font-size-md;
+    font-weight: $font-weight-semibold;
+    color: $text-strong;
+  }
+
+  &__hint {
+    font-size: $font-size-sm;
+    color: $text-tertiary;
+  }
+}
+
+// ── Upload Summary ──
+.upload-summary {
+  display: flex;
+  align-items: center;
+  gap: $space-3;
+  padding: $space-3 $space-4;
+  background: $bg-brand-subtle;
+  border-radius: $radius-md;
+  margin-bottom: $space-5;
+  animation: scaleIn 0.25s $ease-bounce;
+
+  &__icon {
+    color: $primary;
+    display: flex;
+    align-items: center;
+  }
+
+  &__text {
+    font-size: $font-size-md;
+    font-weight: $font-weight-medium;
+    color: $primary;
+  }
+
+  &__preparing {
+    font-size: $font-size-sm;
+    color: $text-secondary;
+  }
+
+  &__size {
+    margin-left: auto;
+    font-size: $font-size-sm;
+    color: $text-tertiary;
+  }
+}
+
+// ── Action Buttons ──
+.upload-actions {
+  display: flex;
+  gap: $space-3;
+  margin-top: $space-5;
+}
+
+.btn-recognize {
+  flex: 1;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: $space-2;
+  height: 46px;
+  padding: 0 $space-6;
+  border: none;
+  border-radius: $radius-lg;
+  background: $primary-gradient;
+  color: white;
+  font-size: $font-size-md;
+  font-weight: $font-weight-bold;
+  cursor: pointer;
+  box-shadow: $shadow-glow;
+  transition: all $duration-base $ease-smooth;
+
+  &:hover:not(:disabled) {
+    box-shadow: $shadow-glow-lg;
+    transform: translateY(-1px);
+  }
+
+  &:active:not(:disabled) {
+    transform: translateY(0);
+  }
+
+  &:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+    box-shadow: none;
+  }
+
+  &--loading {
+    pointer-events: none;
+  }
+
+  &--sm {
+    height: 38px;
+    font-size: $font-size-base;
+    padding: 0 $space-4;
+  }
+}
+
+.btn-spinner {
+  display: inline-block;
+  width: 16px;
+  height: 16px;
+  border: 2px solid rgba(255, 255, 255, 0.3);
+  border-top-color: white;
+  border-radius: 50%;
+  animation: spin 0.6s linear infinite;
+}
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+
+.btn-clear {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: $space-2;
+  height: 46px;
+  padding: 0 $space-5;
+  border: 1px solid $border;
+  border-radius: $radius-lg;
+  background: $bg-surface;
+  color: $text-secondary;
+  font-size: $font-size-md;
+  font-weight: $font-weight-medium;
+  cursor: pointer;
+  transition: all $duration-base $ease-smooth;
+
+  &:hover:not(:disabled) {
+    border-color: $border-hover;
+    color: $text-primary;
+    background: $bg-hover;
+  }
+
+  &:disabled {
+    opacity: 0.4;
+    cursor: not-allowed;
+  }
+
+  &--sm {
+    height: 38px;
+    font-size: $font-size-base;
+    padding: 0 $space-3;
+  }
+}
+
+// ═══════════════════════════════════════════════════════════
+// Result Mode
+// ═══════════════════════════════════════════════════════════
+
+.home__result {
+  display: flex;
+  gap: $space-5;
   height: 100%;
+  animation: fadeUp 0.4s $ease-out;
 }
 
-// 左侧上传区域
-.left-section {
-  width: 380px;
+// ── Sidebar ──
+.sidebar {
+  width: 300px;
   flex-shrink: 0;
-  transition: width 0.3s ease;
-  
-  &.compressed {
-    width: 300px;
-    
-    .upload-card {
-      .card-title {
-        font-size: 14px;
-      }
-      
-      .upload-summary {
-        .summary-content {
-          font-size: 12px;
-        }
-      }
-    }
-  }
-  
-  .upload-card {
+  animation: slideInLeft 0.4s $ease-out;
+
+  &__card {
     height: 100%;
+    background: $bg-surface;
+    border-radius: $radius-xl;
+    box-shadow: $shadow-card;
+    border: 1px solid rgba($border, 0.5);
     display: flex;
     flex-direction: column;
-    
-    :deep(.ant-card-body) {
-      flex: 1;
-      display: flex;
-      flex-direction: column;
-      padding: 16px;
-    }
-    
-    .card-header {
-      margin-bottom: 16px;
-      
-      .card-title {
-        display: flex;
-        align-items: center;
-        gap: 6px;
-        font-size: 15px;
-        font-weight: 600;
-        color: #1F2329;
-        margin: 0 0 4px;
-        
-        svg {
-          color: #5B8FF9;
-        }
-      }
-      
-      .card-desc {
-        margin: 0;
-        font-size: 12px;
-        color: #8F959E;
-      }
-    }
-    
-    .upload-area-wrapper {
-      flex-shrink: 0;
-      margin-bottom: 12px;
-      
-      .upload-area {
-        width: 100%;
-        
-        :deep(.ant-upload-select) {
-          width: 100% !important;
-          height: 120px !important;
-          margin: 0 !important;
-          border: 2px dashed #E5E6EB !important;
-          border-radius: 8px !important;
-          background: #FAFBFC !important;
-          transition: all 0.3s ease !important;
-          
-          &:hover {
-            border-color: #5B8FF9 !important;
-            background: #F5F9FF !important;
-          }
-        }
-        
-        .upload-trigger {
-          display: flex;
-          flex-direction: column;
-          align-items: center;
-          justify-content: center;
-          height: 100%;
-          gap: 4px;
-          
-          .upload-icon {
-            font-size: 28px;
-            color: #8F959E;
-          }
-          
-          .upload-text {
-            font-size: 13px;
-            font-weight: 500;
-            color: #1F2329;
-          }
-          
-          .upload-hint {
-            font-size: 11px;
-            color: #8F959E;
-          }
-        }
-      }
-    }
-    
-    .upload-summary {
-      flex-shrink: 0;
-      margin-bottom: 12px;
-      
-      .summary-content {
-        display: flex;
-        align-items: center;
-        gap: 6px;
-        font-size: 13px;
-        color: #5B8FF9;
-        background: #F5F9FF;
-        padding: 10px 12px;
-        border-radius: 6px;
-      }
-    }
-    
-    .upload-actions {
-      flex-shrink: 0;
-      display: flex;
-      gap: 10px;
-      
-      .btn-primary-gradient {
-        flex: 1;
-        height: 38px;
-        border-radius: 6px;
-        font-weight: 500;
-      }
-      
-      .btn-secondary {
-        height: 38px;
-        border-radius: 6px;
-      }
-    }
-    
-    .processing-indicator {
-      flex: 1;
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      justify-content: center;
-      padding: 20px;
-      background: linear-gradient(135deg, #F5F9FF 0%, #EEF5FF 100%);
-      border-radius: 8px;
-      margin-top: 12px;
-      
-      p {
-        margin: 12px 0 0;
-        color: #4E5969;
-        font-size: 12px;
-      }
+    padding: $space-5;
+  }
+
+  &__header {
+    display: flex;
+    align-items: center;
+    gap: $space-3;
+    margin-bottom: $space-5;
+    padding-bottom: $space-4;
+    border-bottom: 1px solid $border-light;
+  }
+
+  &__icon {
+    width: 36px;
+    height: 36px;
+    border-radius: $radius-md;
+    background: linear-gradient(135deg, $primary-light 0%, $primary-lighter 100%);
+    color: $primary;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+  }
+
+  &__title {
+    font-size: $font-size-lg;
+    font-weight: $font-weight-semibold;
+    color: $text-strong;
+    margin: 0;
+  }
+
+  &__actions {
+    display: flex;
+    flex-direction: column;
+    gap: $space-3;
+  }
+
+  &__processing {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: $space-4;
+    padding: $space-6;
+    background: $bg-brand-subtle;
+    border-radius: $radius-lg;
+    margin-top: $space-4;
+
+    p {
+      font-size: $font-size-sm;
+      color: $text-secondary;
+      margin: 0;
     }
   }
 }
 
-// 右侧结果区域
-.right-section {
-  flex: 0 0 0;
-  opacity: 0;
-  transform: translateX(20px);
-  transition: all 0.3s ease;
-  pointer-events: none;
-  overflow: hidden;
-  
-  &.active {
-    flex: 1;
-    opacity: 1;
-    transform: translateX(0);
-    pointer-events: auto;
+.processing-ring {
+  width: 40px;
+  height: 40px;
+  border: 3px solid $primary-light;
+  border-top-color: $primary;
+  border-radius: 50%;
+  animation: spin 0.8s linear infinite;
+}
+
+.btn-cancel-recognize {
+  margin-top: $space-2;
+  padding: $space-2 $space-4;
+  font-size: $font-size-sm;
+  color: $text-secondary;
+  background: $bg-surface;
+  border: 1px solid $border;
+  border-radius: $radius-md;
+  cursor: pointer;
+
+  &:hover {
+    color: $text-primary;
+    border-color: $primary;
   }
-  
-  .result-card {
+}
+
+// ── Results Panel ──
+.results {
+  flex: 1;
+  min-width: 0;
+  animation: slideInRight 0.4s $ease-out 0.1s both;
+
+  &__card {
     height: 100%;
+    background: $bg-surface;
+    border-radius: $radius-xl;
+    box-shadow: $shadow-card;
+    border: 1px solid rgba($border, 0.5);
     display: flex;
     flex-direction: column;
-    
-    :deep(.ant-card-body) {
-      flex: 1;
-      display: flex;
-      flex-direction: column;
-      padding: 16px;
+    overflow: hidden;
+  }
+
+  &__header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: $space-5;
+    border-bottom: 1px solid $border-light;
+    flex-shrink: 0;
+  }
+
+  &__header-left {
+    display: flex;
+    align-items: center;
+    gap: $space-3;
+  }
+
+  &__header-icon {
+    width: 36px;
+    height: 36px;
+    border-radius: $radius-md;
+    background: $bg-brand-subtle;
+    color: $primary;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  &__title {
+    font-size: $font-size-lg;
+    font-weight: $font-weight-semibold;
+    color: $text-strong;
+    margin: 0;
+  }
+
+  &__count {
+    font-size: $font-size-sm;
+    font-weight: $font-weight-medium;
+    background: $primary-light;
+    color: $primary;
+    padding: $space-1 $space-3;
+    border-radius: $radius-full;
+    border: 1px solid rgba($primary, 0.15);
+  }
+
+  &__footer {
+    padding: $space-4 $space-5;
+    border-top: 1px solid $border-light;
+    text-align: center;
+    flex-shrink: 0;
+  }
+}
+
+// ── Anomaly Section ──
+.anomaly-section {
+  margin: $space-4 $space-5 0;
+}
+
+.anomaly-banner {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: $space-3 $space-4;
+  background: linear-gradient(135deg, $warning-light 0%, #FFFAE0 100%);
+  border: 1px solid rgba($warning, 0.2);
+  border-radius: $radius-lg;
+  cursor: pointer;
+  transition: all $duration-fast $ease-smooth;
+
+  &:hover {
+    border-color: rgba($warning, 0.35);
+  }
+
+  &__left {
+    display: flex;
+    align-items: center;
+    gap: $space-2;
+    color: $warning-dark;
+  }
+
+  &__title {
+    font-size: $font-size-base;
+    font-weight: $font-weight-semibold;
+  }
+
+  &__toggle {
+    font-size: $font-size-xs;
+    color: $text-tertiary;
+  }
+}
+
+.anomaly-list {
+  max-height: 200px;
+  overflow-y: auto;
+  margin-top: $space-3;
+  padding: $space-2 0;
+}
+
+.anomaly-item {
+  display: flex;
+  align-items: center;
+  gap: $space-3;
+  padding: $space-2 $space-3;
+  border-radius: $radius-md;
+  font-size: $font-size-sm;
+  transition: background $duration-fast;
+
+  &:hover {
+    background: $bg-hover;
+  }
+
+  &__idx {
+    color: $text-tertiary;
+    font-weight: $font-weight-medium;
+    min-width: 30px;
+    font-variant-numeric: tabular-nums;
+  }
+
+  &__name {
+    color: $text-primary;
+    font-weight: $font-weight-medium;
+    min-width: 120px;
+  }
+
+  &__tags {
+    display: flex;
+    gap: $space-1;
+    flex-wrap: wrap;
+  }
+}
+
+// ── Data Table ──
+.table-wrap {
+  flex: 1;
+  overflow: hidden;
+  padding: 0 $space-4;
+
+  .data-table {
+    height: 100%;
+
+    :deep(.ant-table) {
+      border-radius: $radius-lg;
       overflow: hidden;
     }
-    
-    .result-header {
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      margin-bottom: 16px;
-      padding-bottom: 12px;
-      border-bottom: 1px solid #F0F1F5;
-      
-      .result-title {
-        display: flex;
-        align-items: center;
-        gap: 6px;
-        font-size: 15px;
-        font-weight: 600;
-        color: #1F2329;
-        margin: 0;
-        
-        svg {
-          color: #5B8FF9;
-        }
-      }
-      
-      .record-count {
-        font-size: 13px;
-        color: #8F959E;
-        background: #F5F7FA;
-        padding: 4px 10px;
-        border-radius: 12px;
-      }
+
+    :deep(.ant-table-tbody > tr > td) {
+      padding: $space-3;
+      font-size: $font-size-sm;
+      color: $text-primary;
+      border-bottom: 1px solid $border-light;
+      transition: background $duration-fast;
     }
-    
-    // 统计概览
-    .stats-overview {
-      display: grid;
-      grid-template-columns: repeat(6, 1fr);
-      gap: 10px;
-      margin-bottom: 16px;
-      
-      .stat-item {
-        display: flex;
-        align-items: center;
-        gap: 8px;
-        padding: 10px 12px;
-        border-radius: 8px;
-        background: #F5F7FA;
-        transition: all 0.2s ease;
-        
-        &:hover {
-          transform: translateY(-2px);
-          box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
-        }
-        
-        &.normal {
-          background: linear-gradient(135deg, #E8FFEA 0%, #D3F4D6 100%);
-          
-          .stat-icon {
-            color: #00B42A;
-          }
-        }
-        
-        &.handwriting {
-          background: linear-gradient(135deg, #E8F3FF 0%, #D3E5FF 100%);
-          
-          .stat-icon {
-            color: #1677FF;
-          }
-        }
-        
-        &.blurred {
-          background: linear-gradient(135deg, #FFF7E8 0%, #FFECC7 100%);
-          
-          .stat-icon {
-            color: #FF7D00;
-          }
-        }
-        
-        &.night {
-          background: linear-gradient(135deg, #F5F0FF 0%, #E7DEFF 100%);
-          
-          .stat-icon {
-            color: #722ED1;
-          }
-        }
-        
-        &.absent {
-          background: linear-gradient(135deg, #FFF0F0 0%, #FFD8D8 100%);
-          
-          .stat-icon {
-            color: #F53F3F;
-          }
-        }
-        
-        &.deleted {
-          background: linear-gradient(135deg, #F5F5F5 0%, #E8E8E8 100%);
-          
-          .stat-icon {
-            color: #86909C;
-          }
-        }
-        
-        .stat-icon {
-          font-size: 20px;
-          line-height: 1;
-        }
-        
-        .stat-info {
-          flex: 1;
-          
-          .stat-number {
-            font-size: 18px;
-            font-weight: 700;
-            color: #1F2329;
-            line-height: 1.2;
-          }
-          
-          .stat-label {
-            font-size: 11px;
-            color: #8F959E;
-            line-height: 1.2;
-          }
-        }
-      }
+
+    :deep(.ant-table-tbody > tr:hover > td) {
+      background: $bg-hover;
     }
-    
-    .anomaly-alert-section {
-      margin-bottom: 16px;
-      
-      .anomaly-alert {
-        border-radius: 8px;
-        border: 1px solid #ffe58f;
-        background: #fffbe6;
-      }
-      
-      .anomaly-header {
-        display: flex;
-        justify-content: space-between;
-        align-items: center;
-        cursor: pointer;
-        
-        .anomaly-title {
-          font-weight: 600;
-          font-size: 13px;
-          color: #d48806;
-        }
-        
-        .anomaly-toggle {
-          font-size: 12px;
-          color: #8c8c8c;
-        }
-      }
-      
-      .anomaly-detail-list {
-        max-height: 200px;
-        overflow-y: auto;
-        margin-top: 8px;
-        
-        .anomaly-item {
-          display: flex;
-          align-items: center;
-          gap: 8px;
-          padding: 6px 0;
-          border-bottom: 1px solid #fff1b8;
-          font-size: 12px;
-          
-          &:last-child {
-            border-bottom: none;
-          }
-          
-          .anomaly-index {
-            color: #8c8c8c;
-            font-weight: 500;
-            min-width: 30px;
-          }
-          
-          .anomaly-name {
-            color: #434343;
-            font-weight: 500;
-            min-width: 120px;
-          }
-          
-          .anomaly-reasons {
-            display: flex;
-            gap: 4px;
-            flex-wrap: wrap;
-          }
-        }
-      }
+
+    :deep(.ant-table-body) {
+      &::-webkit-scrollbar { width: 4px; }
+      &::-webkit-scrollbar-thumb { background: rgba($text-tertiary, 0.25); border-radius: 4px; }
     }
-    
-    // 记录表格
-    .records-wrapper {
-      flex: 1;
-      overflow: hidden;
-      
-      .records-table {
-        height: 100%;
-        
-        :deep(.ant-table) {
-          border-radius: 8px;
-          overflow: hidden;
-          height: 100%;
-        }
-        
-        :deep(.ant-table-container) {
-          height: 100%;
-        }
-        
-        :deep(.ant-table-body) {
-          &::-webkit-scrollbar {
-            width: 6px;
-          }
-          
-          &::-webkit-scrollbar-thumb {
-            background: #D9D9D9;
-            border-radius: 3px;
-          }
-        }
-        
-        :deep(.ant-table-thead > tr > th) {
-          background: #FAFBFC;
-          border-bottom: 1px solid #F0F1F5;
-          font-size: 11px;
-          font-weight: 600;
-          color: #646A73;
-          padding: 8px 10px;
-        }
-        
-        :deep(.ant-table-tbody > tr:hover > td) {
-          background: #FAFBFC;
-        }
-        
-        :deep(.ant-table-tbody > tr > td) {
-          padding: 8px 10px;
-          font-size: 11px;
-          color: #1F2329;
-          border-bottom: 1px solid #F5F7FA;
-        }
-        
-        .mark-tag {
-          border-radius: 4px;
-          font-size: 10px;
-          padding: 1px 6px;
-        }
-      }
-    }
-    
-    // 空状态
-    .empty-state {
-      flex: 1;
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      justify-content: center;
-      color: #8F959E;
-      
-      .empty-icon {
-        font-size: 64px;
-        margin-bottom: 16px;
-        opacity: 0.5;
-      }
-      
-      p {
-        font-size: 14px;
-        margin: 0;
-      }
-    }
-    
-    // 操作按钮
-    .action-buttons {
-      margin-top: 16px;
-      padding-top: 16px;
-      border-top: 1px solid #F0F1F5;
-      text-align: center;
-      
-      :deep(.ant-btn-success) {
-        height: 40px;
-        padding: 0 32px;
-        border-radius: 6px;
-        font-weight: 500;
-      }
-    }
+  }
+
+  .mark-tag {
+    border-radius: $radius-sm;
+    font-size: $font-size-xs;
+    padding: 1px $space-2;
+  }
+}
+
+.inline-anomaly-tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: $space-1;
+  align-items: center;
+
+  :deep(.ant-tag) {
+    margin-right: 0;
+    line-height: 20px;
+  }
+}
+
+.cell-muted {
+  color: $text-tertiary;
+  font-size: $font-size-sm;
+}
+
+// ── Empty State ──
+.empty-state {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: $space-12;
+
+  &__icon {
+    width: 80px;
+    height: 80px;
+    border-radius: 50%;
+    background: $bg-muted;
+    color: $text-tertiary;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin-bottom: $space-5;
+    opacity: 0.6;
+  }
+
+  p {
+    font-size: $font-size-md;
+    color: $text-tertiary;
+    margin: 0;
+    text-align: center;
+  }
+}
+
+// ── Confirm Button ──
+.btn-confirm {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: $space-2;
+  height: 46px;
+  padding: 0 $space-8;
+  border: none;
+  border-radius: $radius-lg;
+  background: linear-gradient(135deg, $success 0%, #4DD98A 100%);
+  color: white;
+  font-size: $font-size-md;
+  font-weight: $font-weight-semibold;
+  cursor: pointer;
+  box-shadow: 0 4px 16px rgba($success, 0.25);
+  transition: all $duration-base $ease-smooth;
+
+  &:hover {
+    box-shadow: 0 6px 24px rgba($success, 0.35);
+    transform: translateY(-1px);
+  }
+
+  &:active {
+    transform: translateY(0);
+  }
+}
+
+// ── Preview Modal ──
+:deep(.upload-preview-modal) {
+  .ant-modal-body {
+    padding: 0;
+  }
+
+  .upload-preview-image {
+    display: block;
+    width: 100%;
+    max-height: 70vh;
+    object-fit: contain;
+    border-radius: $radius-lg;
+    background: $bg-muted;
   }
 }
 </style>
 
 <style lang="scss">
-.records-table {
+// Unscoped overrides for Ant table rows
+.data-table {
   .ant-table-tbody > tr.deleted-row:hover > td,
   .ant-table-tbody > tr.absent-row:hover > td {
-    background-color: #fff1f0 !important;
+    background-color: $danger-light !important;
+  }
+
+  .ant-table-tbody > tr.incomplete-row:hover > td {
+    background-color: $warning-light !important;
   }
 }
 </style>

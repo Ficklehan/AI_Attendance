@@ -1,0 +1,340 @@
+@import "../../styles/design.ttss";
+
+/**
+ * 识别页宽度：仅 .home-content 左右 padding，子元素 100% 宽
+ * 覆盖 design.ttss 中 hero/action-grid/banner/status 等各自 margin
+ */
+.home-page {
+  --home-gutter: 32rpx;
+  display: flex;
+  flex-direction: column;
+  height: 100vh;
+  width: 100%;
+  padding: var(--sp-2) 0 0;
+  padding-bottom: 0;
+  overflow: hidden;
+  background: var(--surface-0);
+  box-sizing: border-box;
+}
+
+.home-scroll {
+  flex: 1;
+  width: 100%;
+  height: 0;
+  box-sizing: border-box;
+}
+
+.home-scroll-inner {
+  width: 100%;
+  box-sizing: border-box;
+  padding-bottom: var(--sp-4);
+}
+
+.home-bottom-dock {
+  flex-shrink: 0;
+  width: 100%;
+  padding: 20rpx var(--home-gutter) calc(20rpx + env(safe-area-inset-bottom));
+  background: linear-gradient(180deg, rgba(248, 250, 252, 0.92) 0%, #FFFFFF 24%);
+  border-top: 1rpx solid var(--border);
+  box-shadow: 0 -12rpx 32rpx rgba(15, 23, 42, 0.06);
+  box-sizing: border-box;
+  z-index: 20;
+}
+
+.home-dock-hint {
+  display: block;
+  margin-bottom: 12rpx;
+  font-size: 24rpx;
+  color: var(--text-3);
+  text-align: center;
+}
+
+.home-bottom-dock .home-cta {
+  width: 100%;
+  max-width: 100%;
+  min-height: 92rpx;
+  border-radius: 24rpx;
+  font-size: 30rpx;
+  font-weight: 800;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 8rpx 20rpx rgba(37, 99, 235, 0.22);
+}
+
+.home-content {
+  width: 100%;
+  padding-left: var(--home-gutter);
+  padding-right: var(--home-gutter);
+  box-sizing: border-box;
+}
+
+.home-zone {
+  width: 100%;
+  box-sizing: border-box;
+}
+
+.home-zone-primary {
+  flex-shrink: 0;
+}
+
+.home-zone-secondary {
+  margin-top: var(--sp-4);
+}
+
+/* —— 清零 design 全局横向 margin / padding，统一 100% 宽 —— */
+.home-page .home-content .banner,
+.home-page .home-content .hero,
+.home-page .home-content .workbench-top,
+.home-page .home-content .action-grid,
+.home-page .home-content .flow-hint,
+.home-page .home-content .section-label,
+.home-page .home-content .card-flush,
+.home-page .home-content .home-recent-section,
+.home-page .home-content .home-footer-panel,
+.home-page .home-content .home-status-bar,
+.home-page .home-content .status-overview-card {
+  margin-left: 0;
+  margin-right: 0;
+  width: 100%;
+  max-width: 100%;
+  box-sizing: border-box;
+}
+
+.home-page .home-content .action-grid {
+  padding-left: 0;
+  padding-right: 0;
+  padding-bottom: var(--sp-4);
+  display: flex;
+  gap: var(--sp-3);
+}
+
+.home-page .home-content .section-label {
+  padding-left: 0;
+  padding-right: 0;
+}
+
+.home-page .home-content .flow-hint {
+  margin-bottom: 0;
+  padding: 14rpx var(--sp-4);
+  background: #E8EFFE;
+  border: 1rpx solid #BFDBFE;
+}
+
+.home-page .home-content .flow-step {
+  font-size: 26rpx;
+  color: #64748B;
+}
+
+.home-page .home-content .flow-step.active {
+  color: var(--primary-hover);
+}
+
+.home-page .home-content .flow-arrow {
+  color: #94A3B8;
+}
+
+.home-page .home-content .banner {
+  margin-bottom: var(--sp-3);
+}
+
+.home-page .home-content .hero,
+.home-page .home-content .workbench-top {
+  margin-top: 0;
+  margin-bottom: var(--sp-4);
+  padding: 28rpx 28rpx;
+  background: linear-gradient(135deg, #F8FBFF 0%, #FFFFFF 88%);
+  border-color: #DBEAFE;
+}
+
+.home-page .home-content .hero-title {
+  font-size: 34rpx;
+  line-height: 1.25;
+  font-weight: 800;
+}
+
+.home-page .home-content .hero-chips {
+  margin-top: 12rpx;
+}
+
+.home-page .home-content .hero-chip {
+  font-size: 24rpx;
+  color: var(--text-3);
+}
+
+.home-page .home-content .hero-art {
+  width: 108rpx;
+  height: 80rpx;
+}
+
+.home-page .home-content .action-tile {
+  flex: 1;
+  min-width: 0;
+  min-height: 200rpx;
+  padding: 24rpx 20rpx;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  justify-content: flex-start;
+  background: var(--surface-1);
+  border: 1rpx solid var(--border);
+  box-shadow: var(--shadow-sm);
+}
+
+.home-page .home-content .action-tile::before {
+  opacity: 0;
+}
+
+.home-page .home-content .action-tile:active::before {
+  opacity: 1;
+}
+
+.home-page .home-content .action-icon-wrap {
+  width: 84rpx;
+  height: 84rpx;
+  margin-bottom: 18rpx;
+}
+
+.home-page .home-content .action-icon {
+  width: 84rpx;
+  height: 84rpx;
+  border-radius: 22rpx;
+}
+
+.home-page .home-content .action-title,
+.home-page .home-content .action-desc {
+  width: 100%;
+}
+
+.home-recent-section {
+  flex-shrink: 0;
+}
+
+.home-recent-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: var(--sp-3);
+  width: 100%;
+}
+
+.home-recent-title {
+  font-size: var(--font-xxs);
+  font-weight: 700;
+  color: var(--text-4);
+  letter-spacing: 0.04em;
+}
+
+.home-recent-link {
+  font-size: 26rpx;
+  font-weight: 700;
+  color: var(--primary);
+  flex-shrink: 0;
+}
+
+.home-recent-list,
+.home-recent-empty {
+  width: 100%;
+  border-radius: var(--radius-lg);
+  background: var(--surface-1);
+  border: 1rpx solid var(--border);
+  box-sizing: border-box;
+}
+
+.home-recent-list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-3);
+  padding: 0;
+  background: transparent;
+  border: none;
+  box-shadow: none;
+  overflow: visible;
+}
+
+.home-recent-empty {
+  padding: 36rpx 28rpx;
+  border-style: dashed;
+  border-color: #CBD5E1;
+  text-align: center;
+}
+
+.home-recent-empty-txt {
+  font-size: 26rpx;
+  color: var(--text-3);
+}
+
+.home-recent-item {
+  padding: 22rpx 24rpx;
+  border-radius: var(--radius-lg);
+  background: var(--surface-1);
+  border: 1rpx solid var(--border);
+  box-shadow: var(--shadow-xs);
+  box-sizing: border-box;
+}
+
+.home-recent-item .task-row-list {
+  align-items: center;
+  min-height: 72rpx;
+}
+
+.home-recent-item .task-main {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+}
+
+.home-recent-item .task-aside {
+  justify-content: center;
+  min-height: 72rpx;
+}
+
+.home-recent-item:active {
+  background: var(--primary-light);
+}
+
+.home-footer-panel {
+  margin-top: var(--sp-5);
+  padding: 0;
+}
+
+.home-page .home-content .home-status-bar {
+  margin-top: 0;
+  margin-bottom: var(--sp-4);
+  padding: 20rpx 24rpx 18rpx;
+  box-shadow: var(--shadow-xs);
+}
+
+.home-page .home-content .home-status-head {
+  margin-bottom: 10rpx;
+}
+
+.home-page .home-content .home-status-metrics {
+  padding-top: 0;
+}
+
+.home-page .home-content .home-metric {
+  padding: 4rpx 4rpx 0;
+}
+
+.home-page .home-content .home-metric-num {
+  font-size: 38rpx;
+  color: var(--text-1);
+}
+
+.home-page .home-content .home-metric.highlight .home-metric-num {
+  color: var(--text-1);
+}
+
+.home-page .home-content .home-metric-label {
+  font-size: 22rpx;
+  margin-top: 4rpx;
+}
+
+.home-queue-panel {
+  padding: var(--sp-3) 0 8rpx;
+}
+
+.home-page .home-content .home-thumb-img {
+  border: 1rpx solid var(--border);
+}

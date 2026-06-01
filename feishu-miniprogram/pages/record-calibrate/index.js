@@ -1,0 +1,177 @@
+const App = getApp()
+const { t } = require('../../utils/i18n')
+const { isApiSuccess, getApiData, getApiMessage } = require('../../utils/response')
+const { parseRecords } = require('../../utils/task')
+const {
+  CALIBRATABLE_FIELDS,
+  FIELD_LABEL_KEYS,
+  normalizeCalibValue
+} = require('../../utils/calibratableFields')
+const {
+  buildCalibrationHistoryUi,
+  formatCalibDisplayValue
+} = require('../../utils/calibrationHistory')
+
+Page({
+  data: {
+    taskId: '',
+    rowKey: '',
+    reason: '',
+    original: {},
+    draft: {},
+    fields: [],
+    historyEntries: [],
+    submitting: false,
+    texts: {}
+  },
+
+  onLoad: function (options) {
+    this.refreshTexts()
+    const taskId = options.taskId || ''
+    const rowKey = options.rowKey || ''
+    if (!taskId || !rowKey) {
+      tt.showToast({ title: t('result.missingTaskId'), icon: 'none' })
+      return
+    }
+    this.setData({ taskId, rowKey })
+    this.loadRecord()
+  },
+
+  refreshTexts: function () {
+    this.setData({
+      texts: {
+        hint: t('calibration.hint'),
+        reason: t('calibration.reason'),
+        reasonPlaceholder: t('calibration.reasonPlaceholder'),
+        originalValue: t('calibration.originalValue'),
+        historyTitle: t('calibration.historyTitle'),
+        submit: t('calibration.submit'),
+        cancel: t('common.cancel')
+      }
+    })
+  },
+
+  loadRecord: function () {
+    tt.showLoading({ title: t('common.loading') })
+    tt.request({
+      url: `${App.globalData.baseUrl}/tasks/${this.data.taskId}`,
+      header: {
+        Authorization: App.globalData.token ? `Bearer ${App.globalData.token}` : ''
+      },
+      success: (res) => {
+        if (!isApiSuccess(res.data)) {
+          tt.showToast({ title: getApiMessage(res.data, t('result.loadFail')), icon: 'none' })
+          return
+        }
+        const task = getApiData(res.data) || {}
+        if (task.status !== 'confirmed') {
+          tt.showToast({ title: t('calibration.notConfirmed'), icon: 'none' })
+          return
+        }
+        const payload = task.confirmedData || task.rawData
+        const records = parseRecords(payload)
+        const record = records.find((r) => r._rowKey === this.data.rowKey)
+        if (!record) {
+          tt.showToast({ title: t('calibration.recordNotFound'), icon: 'none' })
+          return
+        }
+        const original = {}
+        const draft = {}
+        CALIBRATABLE_FIELDS.forEach((key) => {
+          original[key] = record[key]
+          draft[key] = record[key]
+        })
+        const historyEntries = buildCalibrationHistoryUi(record)
+        this.setData({ original, draft, historyEntries }, () => this.rebuildForm())
+      },
+      fail: () => {
+        tt.showToast({ title: t('common.networkFail'), icon: 'none' })
+      },
+      complete: () => tt.hideLoading()
+    })
+  },
+
+  rebuildForm: function () {
+    const fields = CALIBRATABLE_FIELDS.map((key) => ({
+      key,
+      label: t(FIELD_LABEL_KEYS[key] || key),
+      value: this.data.draft[key] === undefined || this.data.draft[key] === null
+        ? ''
+        : String(this.data.draft[key]),
+      originalDisplay: formatCalibDisplayValue(this.data.original[key])
+    }))
+    this.setData({ fields })
+  },
+
+  onFieldInput: function (e) {
+    const key = e.currentTarget.dataset.key
+    const value = e.detail.value
+    const draft = { ...this.data.draft, [key]: value }
+    this.setData({ draft }, () => this.rebuildForm())
+  },
+
+  onReasonInput: function (e) {
+    this.setData({ reason: e.detail.value })
+  },
+
+  buildUpdates: function () {
+    const updates = {}
+    CALIBRATABLE_FIELDS.forEach((key) => {
+      const from = normalizeCalibValue(this.data.original[key])
+      const to = normalizeCalibValue(this.data.draft[key])
+      if (from !== to) {
+        updates[key] = this.data.draft[key]
+      }
+    })
+    return updates
+  },
+
+  submit: function () {
+    if (this.data.submitting) return
+    const reason = (this.data.reason || '').trim()
+    if (!reason) {
+      tt.showToast({ title: t('calibration.reasonRequired'), icon: 'none' })
+      return
+    }
+    const updates = this.buildUpdates()
+    if (Object.keys(updates).length === 0) {
+      tt.showToast({ title: t('calibration.noChanges'), icon: 'none' })
+      return
+    }
+    this.setData({ submitting: true })
+    tt.request({
+      url: `${App.globalData.baseUrl}/tasks/${this.data.taskId}/calibrate-record`,
+      method: 'POST',
+      header: {
+        'Content-Type': 'application/json',
+        Authorization: App.globalData.token ? `Bearer ${App.globalData.token}` : ''
+      },
+      data: {
+        rowKey: this.data.rowKey,
+        updates,
+        reason
+      },
+      success: (res) => {
+        if (isApiSuccess(res.data)) {
+          tt.showToast({ title: t('calibration.success'), icon: 'success' })
+          const pages = getCurrentPages()
+          const prev = pages.length > 1 ? pages[pages.length - 2] : null
+          if (prev && typeof prev.loadTaskResult === 'function') {
+            prev.loadTaskResult(true)
+          }
+          setTimeout(() => tt.navigateBack(), 500)
+        } else {
+          tt.showToast({ title: getApiMessage(res.data, t('calibration.submitFail')), icon: 'none' })
+        }
+      },
+      fail: () => {
+        tt.showToast({ title: t('common.networkFail'), icon: 'none' })
+      },
+      complete: () => this.setData({ submitting: false })
+    })
+  },
+
+  goBack: function () {
+    tt.navigateBack()
+  }
+})

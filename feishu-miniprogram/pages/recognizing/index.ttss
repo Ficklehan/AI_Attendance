@@ -1,0 +1,90 @@
+@import "../../styles/design.ttss";
+
+/* ═══ Recognizing page — progress atmosphere ═══ */
+
+/* Hero section — enhanced gradient overlay */
+.rec-page .rec-hero {
+  background: linear-gradient(135deg, #E0E5FF 0%, #F0EDFA 50%, #EDE8FF 100%);
+}
+
+.rec-page .rec-hero-mask {
+  height: 140rpx;
+  background: linear-gradient(180deg, transparent 0%, var(--surface-0) 100%);
+}
+
+/* Progress ring — breathing glow */
+.rec-page .rec-ring {
+  background: linear-gradient(135deg, var(--primary-light) 0%, rgba(240, 241, 255, 0.80) 100%);
+  box-shadow: 0 8rpx 32rpx rgba(91, 108, 247, 0.12);
+  animation: ringGlow 3s ease-in-out infinite;
+}
+
+@keyframes ringGlow {
+  0%, 100% { box-shadow: 0 8rpx 32rpx rgba(91, 108, 247, 0.12); }
+  50% { box-shadow: 0 8rpx 40rpx rgba(91, 108, 247, 0.22); }
+}
+
+/* Step dots — refined active glow */
+.rec-page .rec-step.active .rec-step-dot {
+  box-shadow: var(--shadow-primary), 0 0 20rpx rgba(91, 108, 247, 0.20);
+}
+
+/* Step line — smooth transition */
+.rec-page .rec-step-line {
+  transition: background 0.3s ease;
+}
+
+.rec-page .rec-step-line.done {
+  box-shadow: 0 0 8rpx rgba(52, 199, 123, 0.25);
+}
+
+/* Card — refined glass surface */
+.rec-page .rec-card {
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.95) 0%, rgba(251, 249, 247, 0.90) 100%);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border: 1rpx solid rgba(255, 255, 255, 0.80);
+}
+
+/* Count — refined typography */
+.rec-page .rec-count {
+  letter-spacing: -0.04em;
+}
+
+/* Context pill — polished */
+.rec-page .rec-context {
+  box-shadow: var(--shadow-xs);
+}
+
+/* Tags — refined spacing */
+.rec-page .rec-tag {
+  transition: opacity 0.2s ease;
+}
+
+/* Background hint — subtle accent */
+.rec-page .rec-bg-hint {
+  opacity: 0.85;
+}
+
+.rec-page .rec-batch {
+  display: block;
+  margin-top: var(--sp-2);
+  font-size: var(--font-sm);
+  font-weight: 600;
+  color: var(--primary);
+  text-align: center;
+}
+
+.rec-page .rec-dock {
+  z-index: 210;
+}
+
+/* Progress count — entrance animation */
+.rec-page .rec-progress {
+  animation: countFadeIn 0.4s ease both;
+}
+
+@keyframes countFadeIn {
+  from { opacity: 0; transform: translateY(8rpx); }
+  to { opacity: 1; transform: translateY(0); }
+}

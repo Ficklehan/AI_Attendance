@@ -26,6 +26,7 @@ export const useAuthStore = defineStore('auth', {
     username: (state) => state.userInfo?.username || '',
     realName: (state) => state.userInfo?.realName || '',
     isAdmin: (state) => state.roles.includes('admin'),
+    canCalibrateRecord: (state) => state.userInfo?.permissions?.recordCalibrate === true,
   },
 
   actions: {

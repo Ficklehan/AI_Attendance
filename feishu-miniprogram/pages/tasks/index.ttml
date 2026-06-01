@@ -1,0 +1,109 @@
+<view class="page tasks-page {{showReviewDock ? 'tasks-has-dock' : ''}}">
+  <view class="tasks-filter-wrap">
+    <view class="tasks-search-bar">
+      <view class="tasks-search-input-wrap">
+        <input
+          class="tasks-search-input"
+          type="text"
+          value="{{keyword}}"
+          placeholder="{{texts.searchPlaceholder}}"
+          confirm-type="search"
+          bindinput="onSearchInput"
+          bindconfirm="onSearchConfirm"
+        />
+        <text
+          tt:if="{{keyword}}"
+          class="tasks-search-clear"
+          catchtap="clearSearch"
+        >×</text>
+      </view>
+      <view class="tasks-search-btn" bindtap="onSearchConfirm">{{texts.search}}</view>
+    </view>
+    <view class="segmented">
+      <view
+        tt:for="{{tabs}}"
+        tt:key="value"
+        class="seg-item {{currentTab === item.value ? 'active' : ''}}"
+        bindtap="switchTab"
+        data-value="{{item.value}}"
+      >
+        {{item.label}}
+      </view>
+    </view>
+    <text class="tasks-tab-hint">{{headerHint}}</text>
+  </view>
+
+  <scroll-view
+    scroll-y
+    class="tasks-scroll"
+    bindscrolltolower="loadMore"
+  >
+    <view tt:if="{{loading && tasks.length === 0}}" class="tasks-loading">
+      <view class="spinner"></view>
+      <text class="tasks-loading-txt">{{texts.loading}}</text>
+    </view>
+
+    <view tt:elif="{{loadError && tasks.length === 0}}" class="error-panel tasks-error">
+      <text class="error-title">{{texts.loadFailTitle}}</text>
+      <text class="error-desc">{{texts.loadFailDesc}}</text>
+      <view class="error-action" bindtap="retryLoad">{{texts.retry}}</view>
+    </view>
+
+    <view
+      tt:for="{{tasks}}"
+      tt:key="id"
+      class="task-swipe"
+    >
+      <view class="task-swipe-delete" bindtap="confirmDeleteTask" data-id="{{item.id}}">
+        <text>{{texts.delete}}</text>
+      </view>
+      <view
+        class="task-swipe-body"
+        style="transform: translateX({{item.swipeX}}px);"
+        bindtouchstart="handleTouchStart"
+        bindtouchmove="handleTouchMove"
+        bindtouchend="handleTouchEnd"
+        data-index="{{index}}"
+      >
+        <view
+          class="task-card"
+          bindtap="goToDetail"
+          data-id="{{item.id}}"
+          data-status="{{item.status}}"
+        >
+          <view class="task-card-body">
+            <view class="task-row task-row-list">
+              <view class="task-main">
+                <text class="task-title">{{item.name}}</text>
+                <text class="task-meta">{{item.timeText}}</text>
+              </view>
+              <view class="task-aside">
+                <view class="badge {{item.statusTag}}">{{item.statusText}}</view>
+                <text tt:if="{{item.syncLabel}}" class="task-sync-label">{{item.syncLabel}}</text>
+              </view>
+            </view>
+          </view>
+        </view>
+      </view>
+    </view>
+
+    <view tt:if="{{!loading && !loadError && tasks.length === 0}}" class="empty tasks-empty">
+      <image class="empty-img" src="/assets/attendance-empty-state.png" mode="aspectFit" />
+      <text class="empty-title">{{keyword ? texts.searchEmptyTitle : texts.emptyTitle}}</text>
+      <text class="empty-desc">{{keyword ? texts.searchEmptyDesc : texts.emptyDesc}}</text>
+      <view class="btn btn-primary tasks-empty-btn" bindtap="goToHome">{{texts.startRecognize}}</view>
+    </view>
+
+    <view tt:if="{{hasMore && tasks.length > 0}}" class="tasks-more">
+      <text>{{texts.loadMore}}</text>
+    </view>
+
+    <view class="tasks-scroll-pad"></view>
+  </scroll-view>
+
+  <view tt:if="{{showReviewDock}}" class="tasks-bottom-bar">
+    <view class="btn btn-primary" catchtap="onReviewDock">
+      {{primaryCtaLabel}}
+    </view>
+  </view>
+</view>

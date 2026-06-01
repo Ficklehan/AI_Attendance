@@ -1,11 +1,5 @@
 <template>
   <div class="login-container">
-    <div class="background-decoration">
-      <div class="bg-blob b1"></div>
-      <div class="bg-blob b2"></div>
-      <div class="bg-blob b3"></div>
-    </div>
-    
     <div class="login-wrapper">
       <div class="login-card">
         <div class="card-header">
@@ -160,55 +154,17 @@ const handleFeishuLogin = () => {
 </script>
 
 <style lang="scss" scoped>
+// Login — Atelier v4
 .login-container {
   min-height: 100vh;
   display: flex;
   align-items: center;
   justify-content: center;
-  background: linear-gradient(135deg, #F5F7FA 0%, #E8F0FE 50%, #F0F4FF 100%);
-  position: relative;
-  overflow: hidden;
-  
-  .background-decoration {
-    position: absolute;
-    width: 100%;
-    height: 100%;
-    pointer-events: none;
-    
-    .bg-blob {
-      position: absolute;
-      border-radius: 50%;
-      filter: blur(100px);
-      
-      &.b1 {
-        width: 500px;
-        height: 500px;
-        background: rgba(91, 143, 249, 0.25);
-        top: -150px;
-        left: -100px;
-        animation: float-blob 12s ease-in-out infinite;
-      }
-      
-      &.b2 {
-        width: 450px;
-        height: 450px;
-        background: rgba(123, 97, 255, 0.2);
-        bottom: -100px;
-        right: -80px;
-        animation: float-blob 10s ease-in-out infinite 3s;
-      }
-      
-      &.b3 {
-        width: 350px;
-        height: 350px;
-        background: rgba(71, 143, 222, 0.2);
-        top: 40%;
-        right: 15%;
-        animation: float-blob 14s ease-in-out infinite 6s;
-      }
-    }
-  }
-  
+  background: $bg-body;
+  background-image:
+    radial-gradient(ellipse 80% 60% at 50% 30%, rgba($primary, 0.05) 0%, transparent 100%),
+    radial-gradient(ellipse 40% 40% at 80% 70%, rgba($accent, 0.03) 0%, transparent 100%);
+
   .login-wrapper {
     position: relative;
     z-index: 2;
@@ -216,207 +172,209 @@ const handleFeishuLogin = () => {
     flex-direction: column;
     align-items: center;
     gap: 24px;
-    
+
     .login-card {
       width: 420px;
-      background: #ffffff;
-      border-radius: 24px;
+      background: $bg-surface;
+      border-radius: $radius-2xl;
       padding: 40px;
-      box-shadow: 
-        0 20px 60px rgba(91, 143, 249, 0.15),
-        0 8px 24px rgba(0, 0, 0, 0.08);
-      
+      border: 1px solid rgba($border, 0.5);
+      box-shadow: $shadow-lg;
+      animation: fadeUp 0.5s $ease-out both;
+
       .card-header {
         margin-bottom: 32px;
         text-align: center;
-        
+
         .logo-section {
           display: flex;
           align-items: center;
           justify-content: center;
           gap: 14px;
-          
+
           .logo-icon {
             width: 52px;
             height: 52px;
             border-radius: 14px;
-            background: linear-gradient(135deg, #5B8FF9 0%, #7B61FF 100%);
+            background: $primary-gradient-deep;
             display: flex;
             align-items: center;
             justify-content: center;
             font-size: 26px;
-            color: #fff;
-            box-shadow: 0 8px 24px rgba(91, 143, 249, 0.4);
+            color: $text-inverted;
+            box-shadow: $shadow-glow;
           }
-          
+
           .logo-text {
             text-align: left;
             h2 {
               margin: 0 0 4px;
               font-size: 22px;
-              font-weight: 700;
-              color: #1F2329;
+              font-weight: $font-weight-extrabold;
+              color: $text-strong;
+              letter-spacing: -0.02em;
             }
-            
+
             p {
               margin: 0;
-              font-size: 13px;
-              color: #86909C;
+              font-size: $font-size-base;
+              color: $text-tertiary;
               letter-spacing: 0.5px;
             }
           }
         }
       }
-      
+
       .login-form {
         :deep(.ant-form-item) {
           margin-bottom: 20px;
         }
-        
+
         :deep(.ant-form-item-label > label) {
-          font-weight: 500;
-          color: #4E5969;
+          font-weight: $font-weight-medium;
+          color: $text-primary;
         }
-        
+
         .input-wrapper {
           position: relative;
-          
+
           .input-icon {
             position: absolute;
             left: 16px;
             top: 50%;
             transform: translateY(-50%);
-            color: #86909C;
+            color: $text-tertiary;
             font-size: 18px;
             z-index: 1;
           }
-          
+
           .form-input {
             width: 100%;
-            background: #F7F8FA;
+            background: $bg-muted;
             border: 2px solid transparent;
-            border-radius: 12px;
-            color: #1F2329;
+            border-radius: $radius-lg;
+            color: $text-strong;
             padding-left: 48px;
-            transition: all 0.3s ease;
-            
+            transition: all 0.3s $ease-smooth;
+
             &::placeholder {
-              color: #B4B9C0;
+              color: $text-tertiary;
             }
-            
+
             &:hover {
-              background: #F0F2F5;
+              background: $bg-hover;
             }
-            
+
             &:focus {
-              background: #ffffff;
-              border-color: #5B8FF9;
-              box-shadow: 0 0 0 4px rgba(91, 143, 249, 0.1);
+              background: $bg-surface;
+              border-color: $primary;
+              box-shadow: 0 0 0 3px $primary-glow;
             }
           }
-          
+
           .password-input {
             :deep(.ant-input-password) {
-              background: #F7F8FA;
+              background: $bg-muted;
               border: 2px solid transparent;
-              border-radius: 12px;
+              border-radius: $radius-lg;
               padding-left: 48px;
-              transition: all 0.3s ease;
-              
+              transition: all 0.3s $ease-smooth;
+
               &:hover {
-                background: #F0F2F5;
+                background: $bg-hover;
               }
-              
+
               &.ant-input-password-focused {
-                background: #ffffff;
-                border-color: #5B8FF9;
-                box-shadow: 0 0 0 4px rgba(91, 143, 249, 0.1);
+                background: $bg-surface;
+                border-color: $primary;
+                box-shadow: 0 0 0 4px $primary-glow;
               }
             }
-            
+
             :deep(.ant-input) {
               background: transparent !important;
               border: none !important;
               box-shadow: none !important;
               padding-left: 0 !important;
             }
-            
+
             :deep(.ant-input-suffix) {
-              color: #86909C;
+              color: $text-tertiary;
             }
           }
         }
-        
+
         .form-actions {
           margin-bottom: 0;
           margin-top: 8px;
-          
+
           .login-btn {
             width: 100%;
-            background: linear-gradient(135deg, #5B8FF9 0%, #7B61FF 100%);
+            background: $primary-gradient;
             border: none;
-            border-radius: 12px;
+            border-radius: $radius-lg;
             height: 48px;
-            font-size: 15px;
-            font-weight: 600;
+            font-size: $font-size-lg;
+            font-weight: $font-weight-bold;
             display: flex;
             align-items: center;
             justify-content: center;
             gap: 8px;
-            box-shadow: 0 6px 20px rgba(91, 143, 249, 0.4);
-            transition: all 0.3s ease;
-            
+            box-shadow: $shadow-glow;
+            transition: all 0.2s $ease-smooth;
+
             &:hover {
-              transform: translateY(-2px);
-              box-shadow: 0 10px 30px rgba(91, 143, 249, 0.5);
+              background: $primary-gradient-deep;
+              box-shadow: $shadow-glow-lg;
+              transform: translateY(-1px);
             }
-            
+
             &:active {
               transform: translateY(0);
             }
           }
         }
-        
+
         .divider-wrapper {
           display: flex;
           align-items: center;
           gap: 16px;
           margin: 24px 0;
-          
+
           .divider-line {
             flex: 1;
             height: 1px;
-            background: #E5E6EB;
+            background: $border;
           }
-          
+
           .divider-text {
-            font-size: 14px;
-            color: #86909C;
-            font-weight: 500;
+            font-size: $font-size-md;
+            color: $text-tertiary;
+            font-weight: $font-weight-medium;
           }
         }
-        
+
         .feishu-btn {
           width: 100%;
-          background: #F0F7FF;
-          border: 2px solid #D4E6FF;
-          border-radius: 12px;
+          background: $bg-surface;
+          border: 1px solid $border-accent;
+          border-radius: $radius-lg;
           height: 48px;
-          font-size: 15px;
-          font-weight: 500;
-          color: #478FDE;
+          font-size: $font-size-lg;
+          font-weight: $font-weight-bold;
+          color: $primary;
           display: flex;
           align-items: center;
           justify-content: center;
           gap: 10px;
-          transition: all 0.3s ease;
-          
+          transition: all 0.2s $ease-smooth;
+
           &:hover {
-            background: #E6F0FF;
-            border-color: #A8C8FF;
-            transform: translateY(-1px);
+            background: $primary-light;
+            border-color: $primary;
+            box-shadow: $shadow-glow;
           }
-          
+
           svg {
             width: 20px;
             height: 20px;
@@ -424,23 +382,15 @@ const handleFeishuLogin = () => {
         }
       }
     }
-    
+
     .footer-info {
       p {
         margin: 0;
-        font-size: 13px;
-        color: #86909C;
+        font-size: $font-size-base;
+        color: $text-tertiary;
       }
     }
   }
 }
 
-@keyframes float-blob {
-  0%, 100% {
-    transform: translate(0, 0) scale(1);
-  }
-  50% {
-    transform: translate(30px, -30px) scale(1.1);
-  }
-}
 </style>

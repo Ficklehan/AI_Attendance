@@ -27,12 +27,16 @@ mybatis:
     log-impl: org.apache.ibatis.logging.stdout.StdOutImpl
 
 jwt:
-  secret: attendance-jwt-secret-key-2024-change-in-production
-  expiration: 604800000
+  secret: ${JWT_SECRET:}
+  expiration: ${JWT_EXPIRATION:604800000}
 
 upload:
   path: ./uploads
   max-size: 10485760
+
+export:
+  path: ./exports
+  retention-days: 7
 
 feishu:
   app-id: ${FEISHU_APP_ID:}
@@ -44,9 +48,23 @@ feishu:
     app-token: ${BITABLE_APP_TOKEN:}
     table-id: ${BITABLE_TABLE_ID:}
 
+attendance:
+  prompt:
+    # 内置标准模板版本；升级表头/字段后递增，启动时会刷新未自定义的国家提示词
+    seed-version: 2
+    seed-on-startup: true
+    # 设为 true 时每次启动强制覆盖全部国家提示词（等同重新初始化）
+    force-seed-on-startup: false
+    import-markdown-when-empty: true
+
 mimo:
   api-key: ${MIMO_API_KEY:}
   api-url: ${MIMO_API_URL:https://api.xiaomimimo.com/v1}
+  # 识图须用 mimo-v2.5 或 mimo-v2-omni；mimo-v2.5-pro 不支持 image_url
+  model: ${MIMO_MODEL:mimo-v2.5}
+  temperature: ${MIMO_TEMPERATURE:0.3}
+  max-tokens: ${MIMO_MAX_TOKENS:8192}
+  top-p: ${MIMO_TOP_P:0.9}
 
 logging:
   level:

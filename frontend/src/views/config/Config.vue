@@ -1,66 +1,180 @@
 <template>
-  <div class="config-container">
-    <a-alert
-      v-if="!wizardCompleted"
-      message="快速配置向导"
-      description="点击这里，5分钟完成所有配置！"
-      type="info"
-      show-icon
-      class="wizard-banner"
-      @click="showWizard = true"
-    />
-    
-    <a-card class="country-selector-card">
+  <div class="config-page page-inner">
+    <PageShell :title="pageTitle" :subtitle="pageSubtitle">
+      <template #extra>
+        <a-button v-if="!wizardCompleted" type="primary" @click="showWizard = true">
+          {{ $t('config.wizard.title') }}
+        </a-button>
+        <a-button @click="reloadConfigs">
+          <template #icon><ReloadOutlined /></template>
+          {{ $t('config.reloadFromFile') }}
+        </a-button>
+        <a-button
+          v-if="promptLegacy"
+          danger
+          @click="resetPromptsToStandard"
+        >
+          重置提示词为标准模板
+        </a-button>
+      </template>
+    </PageShell>
+
+    <a-card class="country-bar surface-card" :bordered="false">
       <div class="country-selector">
         <div class="selector-info">
-          <span class="label">当前配置国家：</span>
+          <span class="label">{{ $t('config.countryLabel') }}：</span>
           <a-select
             v-model:value="selectedCountry"
             style="width: 200px"
             @change="loadCountryConfigs"
             :options="countryOptions"
           />
-          <a-tag :color="isUsingDefault ? 'orange' : 'green'" style="margin-left: 8px">
-            {{ isUsingDefault ? '使用默认配置' : '使用特定配置' }}
+          <a-tag v-if="countryBundle.promptFromGlobalFallback" color="orange">
+            {{ $t('config.aiFallbackGlobal') }}
           </a-tag>
+          <a-tag v-else color="blue">{{ $t('config.aiCountrySpecific') }}</a-tag>
+          <a-tag v-if="countryBundle.feishuFromGlobalFallback" color="orange">
+            {{ $t('config.feishuFallbackGlobal') }}
+          </a-tag>
+          <a-tag v-else color="green">{{ $t('config.feishuCountrySpecific') }}</a-tag>
         </div>
-        <a-space>
+        <a-space wrap>
           <a-button type="primary" @click="setAsCurrentCountry">
             <template #icon><CheckCircleOutlined /></template>
-            设为当前工作国家
-          </a-button>
-          <a-button @click="reloadConfigs">
-            <template #icon><ReloadOutlined /></template>
-            从配置文件刷新
+            {{ $t('config.setWorkingCountry') }}
           </a-button>
           <a-button @click="loadCountryConfigs">
             <template #icon><SyncOutlined /></template>
-            刷新显示
+            {{ $t('config.refreshView') }}
           </a-button>
         </a-space>
       </div>
     </a-card>
 
-    <div class="module-nav">
-      <div
-        v-for="module in modules"
-        :key="module.key"
-        class="module-card"
-        :class="{ active: activeModule === module.key }"
-        @click="activeModule = module.key"
-      >
-        <div class="module-icon" :style="{ backgroundColor: module.color }">
-          <component :is="module.icon" />
-        </div>
-        <div class="module-info">
-          <h4 class="module-title">{{ t(module.titleKey) }}</h4>
-          <p class="module-desc">{{ t(module.descKey) }}</p>
-        </div>
-      </div>
-    </div>
+    <a-collapse v-model:activeKey="effectiveCollapseKeys" class="effective-collapse">
+      <a-collapse-panel key="effective" :header="$t('config.effective.panelTitle')">
+        <a-spin :spinning="bundleLoading">
+          <div class="effective-config-panel">
+            <div class="panel-header">
+              <a-space size="small" wrap>
+                <a-tag color="purple">
+                  {{ $t('config.effective.workingCountry') }}：{{ formatCountryCode(currentWorkingCountry) }}
+                </a-tag>
+                <a-tag>
+                  {{ $t('config.effective.editCountry') }}：{{ formatCountryCode(selectedCountry) }}
+                </a-tag>
+                <a-button type="link" size="small" @click="openPromptPreview">
+                  {{ $t('config.effective.previewPrompt') }}
+                </a-button>
+              </a-space>
+            </div>
+          <a-row :gutter="16">
+            <a-col :xs="24" :md="12">
+              <div class="effective-block">
+                <h4 class="block-title">
+                  <RobotOutlined />
+                  {{ $t('config.effective.aiSection') }}
+                </h4>
+                <a-descriptions :column="1" size="small" bordered>
+                  <a-descriptions-item :label="$t('config.effective.requestCountry')">
+                    {{ formatCountryCode(countryBundle.requestCountry) }}
+                  </a-descriptions-item>
+                  <a-descriptions-item :label="$t('config.effective.effective')">
+                    <a-tag :color="countryBundle.promptFromGlobalFallback ? 'orange' : 'blue'">
+                      {{ formatCountryCode(countryBundle.effectivePromptCountry) }}
+                    </a-tag>
+                  </a-descriptions-item>
+                  <a-descriptions-item :label="$t('config.effective.mdSection')">
+                    {{ countryBundle.promptSection || '—' }}
+                  </a-descriptions-item>
+                  <a-descriptions-item :label="$t('config.effective.promptLength')">
+                    {{ $t('config.effective.chars', { n: (countryBundle.aiPrompt || '').length }) }}
+                  </a-descriptions-item>
+                  <a-descriptions-item :label="$t('config.effective.continueLength')">
+                    {{ $t('config.effective.chars', { n: (countryBundle.continuePrompt || '').length }) }}
+                  </a-descriptions-item>
+                </a-descriptions>
+                <p v-if="countryBundle.promptFromGlobalFallback" class="block-hint">
+                  {{ $t('config.effective.promptFallbackHint') }}
+                </p>
+              </div>
+            </a-col>
+            <a-col :xs="24" :md="12">
+              <div class="effective-block">
+                <h4 class="block-title">
+                  <LinkOutlined />
+                  {{ $t('config.effective.feishuSection') }}
+                </h4>
+                <a-descriptions :column="1" size="small" bordered>
+                  <a-descriptions-item :label="$t('config.effective.requestCountry')">
+                    {{ formatCountryCode(countryBundle.requestCountry) }}
+                  </a-descriptions-item>
+                  <a-descriptions-item :label="$t('config.effective.effective')">
+                    <a-tag :color="countryBundle.feishuFromGlobalFallback ? 'orange' : 'green'">
+                      {{ formatCountryCode(countryBundle.effectiveFeishuCountry) }}
+                    </a-tag>
+                  </a-descriptions-item>
+                  <a-descriptions-item :label="$t('config.effective.appToken')">
+                    <a-tag :color="feishuTokenConfigured ? 'success' : 'default'">
+                      {{ feishuTokenConfigured ? $t('config.effective.configured') : $t('config.effective.notConfigured') }}
+                    </a-tag>
+                    <span v-if="feishuTokenConfigured" class="token-mask">
+                      {{ maskToken(countryBundle.appToken) }}
+                    </span>
+                  </a-descriptions-item>
+                  <a-descriptions-item :label="$t('config.effective.tableId')">
+                    <a-tag :color="feishuTableConfigured ? 'success' : 'default'">
+                      {{ feishuTableConfigured ? $t('config.effective.configured') : $t('config.effective.notConfigured') }}
+                    </a-tag>
+                    <span v-if="feishuTableConfigured" class="token-mask">
+                      {{ countryBundle.tableId }}
+                    </span>
+                  </a-descriptions-item>
+                  <a-descriptions-item :label="$t('config.effective.fieldMapping')">
+                    {{ $t('config.effective.mappingCount', { n: fieldMappingCount }) }}
+                  </a-descriptions-item>
+                </a-descriptions>
+                <p v-if="countryBundle.feishuFromGlobalFallback" class="block-hint">
+                  {{ $t('config.effective.feishuFallbackHint') }}
+                </p>
+                <p v-if="!feishuReady" class="block-hint warn">
+                  {{ $t('config.effective.feishuIncomplete') }}
+                </p>
+              </div>
+            </a-col>
+          </a-row>
+          </div>
+        </a-spin>
+      </a-collapse-panel>
+    </a-collapse>
 
-    <div class="module-content">
-      <div v-if="activeModule === 'ai'" class="module-panel">
+    <a-modal
+      v-model:open="showPromptPreview"
+      title="MiMo 实际请求提示词预览"
+      width="720px"
+      :footer="null"
+    >
+      <a-descriptions v-if="promptPreview" :column="1" size="small" bordered class="preview-meta">
+        <a-descriptions-item label="请求国家">{{ promptPreview.requestCountry }}</a-descriptions-item>
+        <a-descriptions-item label="生效 AI 国家">{{ promptPreview.effectivePromptCountry || promptPreview.effectiveCountry }}</a-descriptions-item>
+        <a-descriptions-item label="生效飞书国家">{{ promptPreview.effectiveFeishuCountry }}</a-descriptions-item>
+        <a-descriptions-item label="章节">{{ promptPreview.promptSection }}</a-descriptions-item>
+        <a-descriptions-item label="含示例块">{{ promptPreview.includesExampleBlock ? '是' : '否' }}</a-descriptions-item>
+        <a-descriptions-item label="API 长度">{{ promptPreview.apiPromptLength }} 字符</a-descriptions-item>
+      </a-descriptions>
+      <a-typography-paragraph v-if="promptPreview?.apiPromptPreview" class="preview-text">
+        <pre>{{ promptPreview.apiPromptPreview }}</pre>
+      </a-typography-paragraph>
+    </a-modal>
+
+    <a-tabs
+      v-model:activeKey="activeModule"
+      type="card"
+      class="config-tabs"
+      :tab-bar-style="showModuleTabs ? undefined : { display: 'none' }"
+    >
+      <a-tab-pane v-if="visibleTabKeys.includes('ai')" key="ai" :tab="$t('config.tabs.ai')">
+      <div class="module-panel">
         <a-card class="config-card">
           <template #title>
             <div class="card-header-flex">
@@ -69,12 +183,6 @@
                 <p class="card-desc">{{ t('config.aiConfig.subtitle') }}</p>
               </div>
               <div class="header-actions">
-                <a-select
-                  v-model:value="selectedCountry"
-                  style="width: 150px; margin-right: 8px"
-                  :options="countryOptions"
-                  @change="loadCountryConfigs"
-                />
                 <a-button @click="loadCountryTemplate">
                   <template #icon><FileTextOutlined /></template>
                   {{ t('config.aiConfig.templateLoad') }}
@@ -83,13 +191,28 @@
             </div>
           </template>
 
+          <a-alert
+            v-if="promptLegacy"
+            type="warning"
+            show-icon
+            class="prompt-legacy-alert"
+            :message="t('config.aiConfig.legacyPromptTitle')"
+            :description="t('config.aiConfig.legacyPromptDesc')"
+          >
+            <template #action>
+              <a-button size="small" @click="applyLatestPrompts">
+                {{ t('config.aiConfig.applyLatestPrompts') }}
+              </a-button>
+            </template>
+          </a-alert>
+
           <a-form layout="vertical">
             <a-form-item :label="t('config.aiConfig.aiPrompt')">
               <template #label>
                 <span>
                   {{ t('config.aiConfig.aiPrompt') }}
                   <a-tooltip :title="t('config.aiConfig.aiPromptDesc')">
-                    <QuestionCircleOutlined style="margin-left: 4px; color: #8c8c8c" />
+                    <QuestionCircleOutlined style="margin-left: 4px; color: #73707F" />
                   </a-tooltip>
                 </span>
               </template>
@@ -105,7 +228,7 @@
                 <span>
                   {{ t('config.aiConfig.continuePrompt') }}
                   <a-tooltip :title="t('config.aiConfig.continuePromptDesc')">
-                    <QuestionCircleOutlined style="margin-left: 4px; color: #8c8c8c" />
+                    <QuestionCircleOutlined style="margin-left: 4px; color: #73707F" />
                   </a-tooltip>
                 </span>
               </template>
@@ -124,8 +247,10 @@
           </a-form>
         </a-card>
       </div>
+      </a-tab-pane>
 
-      <div v-if="activeModule === 'feishu'" class="module-panel">
+      <a-tab-pane v-if="visibleTabKeys.includes('feishu')" key="feishu" :tab="$t('config.tabs.feishu')">
+      <div class="module-panel">
         <a-card class="config-card">
           <template #title>
             <div class="card-header-flex">
@@ -156,7 +281,7 @@
                 <span>
                   飞书多维表链接
                   <a-tooltip title="粘贴飞书多维表链接，自动提取App Token和Table ID">
-                    <QuestionCircleOutlined style="margin-left: 4px; color: #8c8c8c" />
+                    <QuestionCircleOutlined style="margin-left: 4px; color: #73707F" />
                   </a-tooltip>
                 </span>
               </template>
@@ -198,7 +323,7 @@
                 <span>
                   {{ t('config.feishuConfig.appToken') }}
                   <a-tooltip :title="t('config.feishuConfig.appTokenDesc')">
-                    <QuestionCircleOutlined style="margin-left: 4px; color: #8c8c8c" />
+                    <QuestionCircleOutlined style="margin-left: 4px; color: #73707F" />
                   </a-tooltip>
                 </span>
               </template>
@@ -213,7 +338,7 @@
                 <span>
                   {{ t('config.feishuConfig.tableId') }}
                   <a-tooltip :title="t('config.feishuConfig.tableIdDesc')">
-                    <QuestionCircleOutlined style="margin-left: 4px; color: #8c8c8c" />
+                    <QuestionCircleOutlined style="margin-left: 4px; color: #73707F" />
                   </a-tooltip>
                 </span>
               </template>
@@ -235,8 +360,10 @@
           </a-form>
         </a-card>
       </div>
+      </a-tab-pane>
 
-      <div v-if="activeModule === 'mapping'" class="module-panel">
+      <a-tab-pane v-if="visibleTabKeys.includes('mapping')" key="mapping" :tab="$t('config.tabs.mapping')">
+      <div class="module-panel">
         <a-card class="config-card">
           <template #title>
             <div class="card-header-flex">
@@ -299,8 +426,10 @@
           </div>
         </a-card>
       </div>
+      </a-tab-pane>
 
-      <div v-if="activeModule === 'system'" class="module-panel">
+      <a-tab-pane v-if="visibleTabKeys.includes('system')" key="system" :tab="$t('config.tabs.system')">
+      <div class="module-panel">
         <a-card class="config-card">
           <template #title>
             <div class="card-header-flex">
@@ -341,7 +470,7 @@
                 <span>
                   {{ t('config.systemConfig.batchSize') }}
                   <a-tooltip :title="t('config.systemConfig.batchSizeDesc')">
-                    <QuestionCircleOutlined style="margin-left: 4px; color: #8c8c8c" />
+                    <QuestionCircleOutlined style="margin-left: 4px; color: #73707F" />
                   </a-tooltip>
                 </span>
               </template>
@@ -359,7 +488,8 @@
           </a-form>
         </a-card>
       </div>
-    </div>
+      </a-tab-pane>
+    </a-tabs>
 
     <a-modal
       v-model:open="showWizard"
@@ -386,13 +516,13 @@
             <div class="welcome-icon">🎉</div>
             <h2>{{ t('config.wizard.step1') }}</h2>
             <p>{{ t('config.wizard.step1Desc') }}</p>
-            <p style="color: #8c8c8c; margin-top: 16px">此向导将帮助您完成所有必要配置，只需5分钟即可开始使用！</p>
+            <p style="color: #73707F; margin-top: 16px">此向导将帮助您完成所有必要配置，只需5分钟即可开始使用！</p>
           </div>
         </div>
 
         <div v-if="wizardStep === 2" class="wizard-step-content">
           <h3>{{ t('config.aiConfig.countrySelect') }}</h3>
-          <p style="color: #8c8c8c; margin-bottom: 24px">{{ t('config.aiConfig.countrySelectDesc') }}</p>
+          <p style="color: #73707F; margin-bottom: 24px">{{ t('config.aiConfig.countrySelectDesc') }}</p>
           <div class="country-selector-grid">
             <div
               v-for="country in countries"
@@ -402,14 +532,14 @@
               @click="wizardCountry = country.code"
             >
               <span class="country-flag">{{ country.flag }}</span>
-              <span class="country-name">{{ country.name }}</span>
+              <span class="country-name">{{ translateCountryName(country.code, country.name) }}</span>
             </div>
           </div>
         </div>
 
         <div v-if="wizardStep === 3" class="wizard-step-content">
           <h3>{{ t('config.feishuConfig.title') }}</h3>
-          <p style="color: #8c8c8c; margin-bottom: 24px">{{ t('config.feishuConfig.subtitle') }}</p>
+          <p style="color: #73707F; margin-bottom: 24px">{{ t('config.feishuConfig.subtitle') }}</p>
           <a-form layout="vertical">
             <a-form-item :label="t('config.feishuConfig.appToken')">
               <a-input v-model:value="wizardAppToken" :placeholder="t('config.feishuConfig.appTokenPlaceholder')" />
@@ -422,7 +552,7 @@
 
         <div v-if="wizardStep === 4" class="wizard-step-content">
           <h3>{{ t('config.mappingConfig.title') }}</h3>
-          <p style="color: #8c8c8c; margin-bottom: 24px">{{ t('config.mappingConfig.subtitle') }}</p>
+          <p style="color: #73707F; margin-bottom: 24px">{{ t('config.mappingConfig.subtitle') }}</p>
           <a-alert type="info" :description="`将为 ${wizardCountryName} 自动加载推荐的字段映射模板`" show-icon />
         </div>
 
@@ -430,10 +560,10 @@
           <div class="welcome-content">
             <div class="welcome-icon">✅</div>
             <h2>{{ t('config.wizard.step5') }}</h2>
-            <p style="color: #52c41a; font-size: 16px; margin-top: 16px">
+            <p style="color: #34C77B; font-size: 16px; margin-top: 16px">
               {{ t('config.wizard.step5Desc') }}
             </p>
-            <p style="color: #8c8c8c; margin-top: 16px">点击"完成配置"保存所有设置并开始使用！</p>
+            <p style="color: #73707F; margin-top: 16px">点击"完成配置"保存所有设置并开始使用！</p>
           </div>
         </div>
       </div>
@@ -457,8 +587,9 @@
 </template>
 
 <script setup>
-import { ref, reactive, computed, onMounted } from 'vue'
+import { ref, reactive, computed, onMounted, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
+import { useRoute } from 'vue-router'
 import { message, Modal } from 'ant-design-vue'
 import {
   SettingOutlined,
@@ -475,10 +606,50 @@ import {
 } from '@ant-design/icons-vue';
 import request from '@/api/index'
 import { parseFeishuBitableUrl } from '@/utils/feishu'
+import PageShell from '@/components/PageShell.vue'
+import { useCountryStore } from '@/stores/country'
+import { setCachedWorkingCountry } from '@/utils/countryHeader'
+import { formatCountryLabel, translateCountryName, buildCountrySelectOption } from '@/utils/countryLabels'
+import { withTableSorters } from '@/utils/tableSort'
 
-const { t } = useI18n()
+const { t, locale } = useI18n()
+const route = useRoute()
+const countryStore = useCountryStore()
+
+const routeModule = computed(() => route.meta.configModule || '')
+const visibleTabKeys = computed(() => {
+  const m = routeModule.value
+  if (m === 'ai') return ['ai']
+  if (m === 'feishu') return ['feishu', 'mapping', 'system']
+  return ['ai', 'feishu', 'mapping', 'system']
+})
+const showModuleTabs = computed(() => visibleTabKeys.value.length > 1)
+const pageTitle = computed(() => {
+  if (routeModule.value === 'ai') return t('settings.menu.ai')
+  if (routeModule.value === 'feishu') return t('settings.menu.feishu')
+  return t('config.title')
+})
+const pageSubtitle = computed(() => {
+  if (routeModule.value === 'ai') return t('config.aiConfig.subtitle')
+  if (routeModule.value === 'feishu') return t('config.feishuConfig.subtitle')
+  return t('config.subtitle')
+})
+
+const effectiveCollapseKeys = ref([])
 
 const activeModule = ref('ai')
+
+watch(
+  routeModule,
+  (m) => {
+    if (m === 'ai') activeModule.value = 'ai'
+    else if (m === 'feishu' && !visibleTabKeys.value.includes(activeModule.value)) {
+      activeModule.value = 'feishu'
+    }
+  },
+  { immediate: true }
+)
+
 const showWizard = ref(false)
 const wizardCompleted = ref(false)
 const wizardStep = ref(1)
@@ -494,6 +665,24 @@ const currentWorkingCountry = ref('default')
 const feishuUrl = ref('')
 const parsingUrl = ref(false)
 const urlParseResult = ref(null)
+const bundleLoading = ref(false)
+const showPromptPreview = ref(false)
+const promptPreview = ref(null)
+const promptLegacy = ref(false)
+
+const countryBundle = ref({
+  requestCountry: 'default',
+  effectivePromptCountry: 'default',
+  effectiveFeishuCountry: 'default',
+  promptSection: '',
+  aiPrompt: '',
+  continuePrompt: '',
+  appToken: '',
+  tableId: '',
+  fieldMapping: [],
+  promptFromGlobalFallback: false,
+  feishuFromGlobalFallback: false
+})
 
 const configs = reactive({
   aiPrompt: '',
@@ -508,39 +697,105 @@ const configs = reactive({
 const fieldMappings = ref([])
 
 const modules = [
-  { key: 'ai', titleKey: 'config.modules.ai', descKey: 'config.modules.aiDesc', icon: RobotOutlined, color: '#5B8FF9' },
+  { key: 'ai', titleKey: 'config.modules.ai', descKey: 'config.modules.aiDesc', icon: RobotOutlined, color: '#5B6CF7' },
   { key: 'feishu', titleKey: 'config.modules.feishu', descKey: 'config.modules.feishuDesc', icon: LinkOutlined, color: '#61DDAA' },
   { key: 'mapping', titleKey: 'config.modules.mapping', descKey: 'config.modules.mappingDesc', icon: SwapOutlined, color: '#F7BA1E' },
   { key: 'system', titleKey: 'config.modules.system', descKey: 'config.modules.systemDesc', icon: SettingOutlined, color: '#F55F74' }
 ]
 
-const countries = [
-  { code: 'default', flag: '🌐', name: '全局默认' },
+const DEFAULT_COUNTRIES = [
+  { code: 'default', flag: '🇺🇳', name: '全局默认' },
   { code: 'CN', flag: '🇨🇳', name: '中国' },
   { code: 'FR', flag: '🇫🇷', name: '法国' },
   { code: 'DE', flag: '🇩🇪', name: '德国' },
+  { code: 'US', flag: '🇺🇸', name: '美国' },
   { code: 'PL', flag: '🇵🇱', name: '波兰' },
   { code: 'NL', flag: '🇳🇱', name: '荷兰' },
+  { code: 'IT', flag: '🇮🇹', name: '意大利' },
+  { code: 'ES', flag: '🇪🇸', name: '西班牙' },
   { code: 'CZ', flag: '🇨🇿', name: '捷克' }
 ]
 
-const countryOptions = countries.map(c => ({ value: c.code, label: `${c.flag} ${c.name}` }))
+const countries = ref([...DEFAULT_COUNTRIES])
 
-const wizardCountryName = computed(() => {
-  const c = countries.find(c => c.code === wizardCountry.value)
-  return c ? c.name : wizardCountry.value
+const countryOptions = computed(() => {
+  void locale.value
+  return countries.value.map((c) => buildCountrySelectOption(c))
 })
 
-const isUsingDefault = computed(() => selectedCountry.value === 'default')
+const wizardCountryName = computed(() => {
+  void locale.value
+  const c = countries.value.find((c) => c.code === wizardCountry.value)
+  return c ? translateCountryName(c.code, c.name) : wizardCountry.value
+})
 
-const mappingColumns = [
-  { title: 'AI字段', dataIndex: 'aiField', key: 'aiField', width: 150 },
-  { title: '飞书字段', dataIndex: 'feishuField', key: 'feishuField', width: 150 },
-  { title: '字段类型', dataIndex: 'type', key: 'type', width: 120 },
-  { title: '必填', dataIndex: 'required', key: 'required', width: 100 },
-  { title: '描述', dataIndex: 'description', key: 'description' },
-  { title: '操作', key: 'action', width: 80, fixed: 'right' }
-]
+const fieldMappingCount = computed(() => {
+  const m = countryBundle.value.fieldMapping
+  return Array.isArray(m) ? m.length : 0
+})
+
+const feishuTokenConfigured = computed(() => {
+  const t = countryBundle.value.appToken
+  return t != null && String(t).trim().length > 0
+})
+
+const feishuTableConfigured = computed(() => {
+  const t = countryBundle.value.tableId
+  return t != null && String(t).trim().length > 0
+})
+
+const feishuReady = computed(() => feishuTokenConfigured.value && feishuTableConfigured.value)
+
+const formatCountryCode = (code) => {
+  void locale.value
+  if (!code || code === 'default') {
+    return `${formatCountryLabel('default', '🇺🇳', '全局默认')} (default)`
+  }
+  const c = countries.value.find((item) => item.code === code)
+  return c ? `${formatCountryLabel(c.code, c.flag, c.name)} (${code})` : code
+}
+
+const maskToken = (token) => {
+  if (!token) return ''
+  const s = String(token)
+  if (s.length <= 12) return '***'
+  return `${s.slice(0, 6)}…${s.slice(-4)}`
+}
+
+const loadCountryBundle = async (countryCode) => {
+  const code = countryCode || selectedCountry.value
+  bundleLoading.value = true
+  try {
+    const res = await request({ url: '/config/country-bundle', params: { country: code } })
+    countryBundle.value = { ...countryBundle.value, ...(res.data || {}) }
+  } catch (error) {
+    console.error('加载国家配置摘要失败:', error)
+  } finally {
+    bundleLoading.value = false
+  }
+}
+
+const openPromptPreview = async () => {
+  try {
+    const res = await request({
+      url: '/config/recognition-prompt-preview',
+      params: { country: selectedCountry.value }
+    })
+    promptPreview.value = res.data
+    showPromptPreview.value = true
+  } catch (error) {
+    console.error('加载提示词预览失败:', error)
+  }
+}
+
+const mappingColumns = computed(() => withTableSorters([
+  { title: t('config.mappingConfig.aiField'), dataIndex: 'aiField', key: 'aiField', width: 150 },
+  { title: t('config.mappingConfig.feishuField'), dataIndex: 'feishuField', key: 'feishuField', width: 150 },
+  { title: t('config.mappingConfig.fieldType'), dataIndex: 'type', key: 'type', width: 120 },
+  { title: t('config.mappingConfig.required'), dataIndex: 'required', key: 'required', width: 100 },
+  { title: t('config.mappingConfig.description'), dataIndex: 'description', key: 'description' },
+  { title: t('config.mappingConfig.action'), key: 'action', width: 80, fixed: 'right' },
+]))
 
 const wizardSteps = [
   { titleKey: 'config.wizard.step1', descKey: 'config.wizard.step1Desc' },
@@ -550,90 +805,148 @@ const wizardSteps = [
   { titleKey: 'config.wizard.step5', descKey: 'config.wizard.step5Desc' }
 ]
 
+const isLegacyPromptText = (text) => {
+  if (!text) return true
+  if (text.includes('Pays,Entrepot') || text.includes('Pays, Entrepot')) return false
+  return text.includes('检查器')
+    || text.includes('CHECKER')
+    || text.includes('[NO,姓名,中介')
+    || text.includes('第10个字段')
+}
+
 const defaultPrompts = {
-  default: `识别法国考勤表格，逐行返回单个JSON数组：[NO,姓名,中介,班次,日期,到达,离开,休息,检查器,标记,已删除]。
+  default: `识别考勤表格，表头可能为中文、法语、荷兰语或意大利语，但字段顺序一致。逐行返回单个JSON数组：[NO,Pays,Entrepot,Date,NOM_PRENOM,AGENCE_INTERIMAIRE,HORAIRES_DU_TRAVAIL,ARRIVEE,DEPAR,PAUSE,SIGNATURE,Observations,标记,已删除]。
 
 规则：
 1. 只返回真实数据，禁止编造
 2. 标记列：手写/模糊/正常；夜班（20:00后到或06:00前走，跨午夜）；未出勤（到达离开都空或???）
-3. 标记用;分隔，如"正常;夜班"
-4. 删除线=true否则=false
-5. 时间统一转HH:MM（24h）：6h→06:00,6h30→06:30,6.30→06:30,630→06:30,6→06:00,18h30→18:30
-6. 日期统一转YYYY-MM-DD：17/05/2026→2026-05-17,17-05-2026→2026-05-17,17-05-26→2026-05-17
-7. 每行单独数组，不要包大数组
+3. 必须观察工号（NO）和姓名两列的视觉笔迹：只要任一单元格是手写，第13个字段标记必须包含"手写"，不得输出"正常"
+4. 标记用;分隔，如"手写;夜班"，只有工号和姓名都非手写且非模糊/未出勤时才允许输出"正常"
+5. 删除线=true否则=false
+6. 时间统一转HH:MM（24h）：6h→06:00,6h30→06:30,6.30→06:30,630→06:30,6→06:00,18h30→18:30
+7. 日期统一转YYYY-MM-DD：17/05/2026→2026-05-17,17-05-2026→2026-05-17,17-05-26→2026-05-17
+8. 表头对应关系：国家/Pays/Country/Paese→Pays；仓库/Entrepôt/Warehouse/Magazzino→Entrepot；员工签名/SIGNATURE/Signature/Firma→SIGNATURE；备注/Observations/Remarks/Osservazioni→Observations
+9. 休息字段只输出分钟数值，不带单位：30min、30mn、0h30、00:30都输出30
+10. 每行单独数组，不要包大数组
 
 示例：
-["1","张三","中介A","MATIN","2026-05-17","08:00","18:00","60","","正常",false]
-["2","李四","中介B","NUIT","2026-05-17","22:00","06:00","60","","正常;夜班",false]
-["3","王五","中介C","MATIN","2026-05-17","08:30","17:30","60","","手写",false]
-["4","???","中介D","SOIR","2026-05-17","???","???","30","","模糊;未出勤",false]`,
-  CN: `识别中国考勤表格，逐行返回单个 JSON 数组。
+["1","Netherlands","AMS","2026-05-17","张三","中介A","MATIN","08:00","18:00","60","员工签名","备注","正常",false]
+["2","France","PAR","2026-05-17","李四","中介B","NUIT","22:00","06:00","60","SIGNATURE","Observations","正常;夜班",false]
+["3","Netherlands","AMS","2026-05-17","王五","中介C","MATIN","08:30","17:30","60","","","手写",false]
+["4","","","2026-05-17","???","中介D","SOIR","???","???","30","","","模糊;未出勤",false]`,
+  CN: `识别中国考勤表格，表头可能为中文、法语、荷兰语或意大利语，但字段顺序一致。逐行返回单个JSON数组：[NO,Pays,Entrepot,Date,NOM_PRENOM,AGENCE_INTERIMAIRE,HORAIRES_DU_TRAVAIL,ARRIVEE,DEPAR,PAUSE,SIGNATURE,Observations,标记,已删除]。
 
 规则：
 1. 只返回真实数据，禁止编造
-2. 仔细观察工号和姓名列，识别记录质量：
-   - 如果内容是手写的，标记为"手写"
-   - 如果内容模糊不清楚（如???），标记为"模糊"
-   - 如果内容清晰可辨认，标记为"正常"
-3. 根据到达时间和离开时间判断是否为夜班：
-   - 到达时间在22:00之后，或离开时间在06:00之前
-   - 跨越午夜的班次
-   - 如果是夜班，添加"夜班"标记
-4. 第10个字段（标记）使用分号分隔多个标记，如"正常;夜班"或"手写"
-5. 删除线标记第11个字段设为 true，否则 false
-6. 每一行就是一条记录，格式为：[工号,姓名,中介,班次,日期,到达,离开,休息,检查器,标记,已删除]`,
-  FR: `识别法国考勤表格，逐行返回单个 JSON 数组。
+2. 标记列：手写/模糊/正常；夜班（20:00后到或06:00前走，跨午夜）；未出勤（到达离开都空或???）
+3. 必须观察工号（NO）和姓名两列的视觉笔迹：只要任一单元格是手写，第13个字段标记必须包含"手写"，不得输出"正常"；其他列的手写不影响标记
+4. 标记用;分隔，如"手写;夜班"，只有工号和姓名都非手写且非模糊/未出勤时才允许输出"正常"
+5. 删除线=true否则=false
+6. 时间统一转HH:MM（24h）：6h→06:00,6h30→06:30,6.30→06:30,630→06:30,6→06:00,18h30→18:30
+7. 日期统一转YYYY-MM-DD：2026-05-17
+8. 表头对应关系：国家/Pays/Country/Paese→Pays；仓库/Entrepôt/Warehouse/Magazzino→Entrepot；员工签名/SIGNATURE/Signature/Firma→SIGNATURE；备注/Observations/Remarks/Osservazioni→Observations
+9. 休息字段只输出分钟数值，不带单位：30min、30mn、0h30、00:30都输出30
+10. 每行单独数组，不要包大数组
+
+示例：
+["1","中国","上海仓","2026-05-17","张三","中介A","上午","08:00","18:00","60","员工签名","备注","正常",false]
+["2","中国","上海仓","2026-05-17","李四","中介B","夜班","22:00","06:00","60","","","正常;夜班",false]
+["3","中国","上海仓","2026-05-17","王五","中介C","上午","08:30","17:30","60","","","手写",false]
+["4","","","2026-05-17","???","中介D","下午","???","???","30","","","模糊;未出勤",false]`,
+  FR: `识别法国考勤表格，表头可能为中文、法语、荷兰语或意大利语，但字段顺序一致。逐行返回单个JSON数组：[NO,Pays,Entrepot,Date,NOM_PRENOM,AGENCE_INTERIMAIRE,HORAIRES_DU_TRAVAIL,ARRIVEE,DEPAR,PAUSE,SIGNATURE,Observations,标记,已删除]。
 
 规则：
 1. 只返回真实数据，禁止编造
-2. 仔细观察工号和姓名列，识别记录质量：
-   - 如果内容是手写的，标记为"手写"
-   - 如果内容模糊不清楚（如???），标记为"模糊"
-   - 如果内容清晰可辨认，标记为"正常"
-3. 根据到达时间和离开时间判断是否为夜班（法国出勤规则）：
-   - 到达时间在20:00之后，或离开时间在06:00之前
-   - 跨越午夜的班次（如22:00到06:00）
-   - 如果是夜班，添加"夜班"标记
-4. 第10个字段（标记）使用分号分隔多个标记
-5. 每一行就是一条记录，格式为：[NO,NOM_PRENOM,AGENCE_INTERIMAIRE,HORAIRES_DU_TRAVAIL,Date,ARRIVEE,DEPART,PAUSE,CHECKER,SmartMark,已删除]`
+2. 标记列：手写/模糊/正常；夜班（20:00后到或06:00前走，跨午夜）；未出勤（到达离开都空或???）
+3. 必须观察工号（NO）和姓名两列的视觉笔迹：只要任一单元格是手写，第13个字段标记必须包含"手写"，不得输出"正常"；其他列的手写不影响标记
+4. 标记用;分隔，如"手写;夜班"，只有工号和姓名都非手写且非模糊/未出勤时才允许输出"正常"
+5. 删除线=true否则=false
+6. 时间统一转HH:MM（24h）：6h→06:00,6h30→06:30,6.30→06:30,630→06:30,6→06:00,18h30→18:30
+7. 日期统一转YYYY-MM-DD：17/05/2026→2026-05-17,17-05-2026→2026-05-17,17-05-26→2026-05-17
+8. 表头对应关系：国家/Pays/Country/Paese→Pays；仓库/Entrepôt/Warehouse/Magazzino→Entrepot；员工签名/SIGNATURE/Signature/Firma→SIGNATURE；备注/Observations/Remarks/Osservazioni→Observations
+9. 休息字段只输出分钟数值，不带单位：30min、30mn、0h30、00:30都输出30
+10. 每行单独数组，不要包大数组
+
+示例：
+["1","Netherlands","AMS","2026-05-17","张三","中介A","MATIN","08:00","18:00","60","员工签名","备注","正常",false]
+["2","France","PAR","2026-05-17","李四","中介B","NUIT","22:00","06:00","60","SIGNATURE","Observations","正常;夜班",false]
+["3","Netherlands","AMS","2026-05-17","王五","中介C","MATIN","08:30","17:30","60","","","手写",false]
+["4","","","2026-05-17","???","中介D","SOIR","???","???","30","","","模糊;未出勤",false]`
 }
 
 const defaultContinuePrompt = '请接续上文继续输出，不要重复已有内容，保持相同格式。'
 
 const defaultFieldMapping = [
   { aiField: 'NO', feishuField: 'NO', type: 'string', required: true, description: '工号' },
+  { aiField: 'Pays', feishuField: 'Pays', type: 'string', required: false, description: '国家' },
+  { aiField: 'Entrepot', feishuField: 'Entrepôt', type: 'string', required: false, description: '仓库' },
   { aiField: 'NOM_PRENOM', feishuField: 'NOM', type: 'string', required: true, description: '姓名' },
   { aiField: 'AGENCE_INTERIMAIRE', feishuField: 'AGENCE', type: 'string', required: false, description: '中介' },
   { aiField: 'SHIFT', feishuField: 'SHIFT', type: 'string', required: false, description: '班次' },
   { aiField: 'Date', feishuField: 'DATE', type: 'date', required: true, description: '日期' },
   { aiField: 'ARRIVEE', feishuField: 'ARRIVE', type: 'datetime', required: true, description: '到达时间' },
-  { aiField: 'DEPART', feishuField: 'DEPART', type: 'datetime', required: true, description: '离开时间' },
+  { aiField: 'DEPAR', feishuField: 'DEPAR', type: 'datetime', required: true, description: '离开时间' },
   { aiField: 'PAUSE', feishuField: 'PAUS', type: 'number', required: true, description: '休息时间' },
-  { aiField: 'CHECKER', feishuField: 'CHECKER', type: 'string', required: false, description: '检查器' },
+  { aiField: 'SIGNATURE', feishuField: 'SIGNATURE', type: 'string', required: false, description: '员工签名' },
+  { aiField: 'Observations', feishuField: 'Observations', type: 'string', required: false, description: '备注' },
   { aiField: 'SmartMark', feishuField: 'Mark', type: 'string', required: false, description: '标记' }
 ]
 
-const reloadConfigs = async () => {
+const reloadConfigs = async (silent = false) => {
   try {
-    await request({ url: '/config/reload', method: 'POST' });
-    message.success('配置文件已从 prompts.md/feishu.md 重新加载成功！');
-    await loadConfigs();
+    await request({ url: '/config/reload', method: 'POST' })
+    if (!silent) {
+      message.success('配置已重新加载（飞书/国家配置）')
+    }
+    await loadConfigs()
+    await loadCountryBundle(selectedCountry.value)
   } catch (error) {
     console.error('刷新配置失败:', error);
-    message.error('刷新配置失败，请检查控制台');
+    if (!silent) {
+      message.error(t('config.refreshFailed'));
+    }
   }
 };
+
+const applyLatestPrompts = async () => {
+  await resetPromptsToStandard()
+}
+
+const resetPromptsToStandard = async () => {
+  try {
+    await request({ url: '/config/reset-prompts', method: 'POST' })
+    message.success(t('config.aiConfig.applyLatestPromptsDone'))
+    promptLegacy.value = false
+    await reloadConfigs(true)
+  } catch (error) {
+    console.error('重置提示词失败:', error)
+    message.error(t('config.resetPromptFailed'))
+  }
+}
 
 const loadConfigs = async () => {
   loading.value = true
   try {
-    const [aiRes, feishuRes, countryRes] = await Promise.all([
+    const [aiRes, feishuRes, countryRes, optionsRes, statusRes] = await Promise.all([
       request({ url: '/config/ai-prompt', params: { country: selectedCountry.value } }),
       request({ url: '/config/feishu', params: { country: selectedCountry.value } }),
-      request({ url: '/config/current-country' })
+      request({ url: '/config/current-country' }),
+      request({ url: '/config/country-options' }),
+      request({ url: '/config/prompt-status' })
     ])
 
-    configs.aiPrompt = aiRes.data.ai_prompt || defaultPrompts.default
+    if (optionsRes.data?.length) {
+      countries.value = optionsRes.data
+    }
+
+    const apiPrompt = aiRes.data.ai_prompt || ''
+    const legacyFromApi = aiRes.data.legacy_prompt === 'true' || aiRes.data.legacy_prompt === true
+    promptLegacy.value = legacyFromApi
+      || statusRes.data?.legacy === true
+      || isLegacyPromptText(apiPrompt)
+    configs.aiPrompt = (!promptLegacy.value && apiPrompt)
+      ? apiPrompt
+      : (defaultPrompts[selectedCountry.value] || defaultPrompts.default)
     configs.continuePrompt = aiRes.data.continue_prompt || defaultContinuePrompt
     configs.appToken = feishuRes.data.appToken || ''
     configs.tableId = feishuRes.data.tableId || ''
@@ -645,6 +958,15 @@ const loadConfigs = async () => {
     }
     
     currentWorkingCountry.value = countryRes.data.country || 'default'
+    selectedCountry.value = currentWorkingCountry.value
+    setCachedWorkingCountry(currentWorkingCountry.value)
+    countryStore.workingCountry = currentWorkingCountry.value
+    if (optionsRes.data?.length) {
+      countryStore.options = optionsRes.data
+    }
+    countryStore.hydrated = true
+    await loadCountryBundle(selectedCountry.value)
+    await countryStore.loadBundle(selectedCountry.value)
   } catch (error) {
     console.error('加载配置失败:', error)
   } finally {
@@ -653,17 +975,38 @@ const loadConfigs = async () => {
 }
 
 const loadCountryConfigs = async () => {
-  await loadConfigs()
+  loading.value = true
+  try {
+    const [aiRes, feishuRes] = await Promise.all([
+      request({ url: '/config/ai-prompt', params: { country: selectedCountry.value } }),
+      request({ url: '/config/feishu', params: { country: selectedCountry.value } })
+    ])
+    const apiPrompt = aiRes.data.ai_prompt || ''
+    promptLegacy.value = aiRes.data.legacy_prompt === 'true'
+      || aiRes.data.legacy_prompt === true
+      || isLegacyPromptText(apiPrompt)
+    configs.aiPrompt = (!promptLegacy.value && apiPrompt)
+      ? apiPrompt
+      : (defaultPrompts[selectedCountry.value] || defaultPrompts.default)
+    configs.continuePrompt = aiRes.data.continue_prompt || defaultContinuePrompt
+    configs.appToken = feishuRes.data.appToken || ''
+    configs.tableId = feishuRes.data.tableId || ''
+    if (feishuRes.data.fieldMapping && Array.isArray(feishuRes.data.fieldMapping)) {
+      fieldMappings.value = feishuRes.data.fieldMapping
+    }
+    await loadCountryBundle(selectedCountry.value)
+  } catch (error) {
+    console.error('加载国家配置失败:', error)
+  } finally {
+    loading.value = false
+  }
 }
 
 const setAsCurrentCountry = async () => {
   try {
-    await request({
-      url: '/config/current-country',
-      method: 'put',
-      data: { country: selectedCountry.value }
-    })
+    await countryStore.setWorkingCountry(selectedCountry.value)
     currentWorkingCountry.value = selectedCountry.value
+    await loadCountryBundle(selectedCountry.value)
     message.success('已设置为当前工作国家')
   } catch (error) {
     console.error('设置失败:', error)
@@ -682,7 +1025,9 @@ const saveAiConfig = async () => {
         continue_prompt: configs.continuePrompt
       }
     })
+    promptLegacy.value = isLegacyPromptText(configs.aiPrompt)
     message.success(t('config.saveSuccess'))
+    await loadCountryBundle(selectedCountry.value)
   } catch (error) {
     console.error('保存失败:', error)
   } finally {
@@ -705,6 +1050,7 @@ const saveFeishuConfig = async () => {
       }
     })
     message.success(t('config.saveSuccess'))
+    await loadCountryBundle(selectedCountry.value)
   } catch (error) {
     console.error('保存失败:', error)
   } finally {
@@ -724,6 +1070,7 @@ const saveMappingConfig = async () => {
       }
     })
     message.success(t('config.saveSuccess'))
+    await loadCountryBundle(selectedCountry.value)
   } catch (error) {
     console.error('保存失败:', error)
   } finally {
@@ -766,7 +1113,7 @@ const handleFeishuUrlParse = async () => {
     }
   } catch (error) {
     console.error('解析链接失败:', error)
-    message.error('解析链接失败')
+    message.error(t('config.parseLinkFailed'))
   } finally {
     parsingUrl.value = false
   }
@@ -786,10 +1133,30 @@ const testFeishuConnection = async () => {
   }
 }
 
-const loadCountryTemplate = () => {
-  configs.aiPrompt = defaultPrompts[selectedCountry.value] || defaultPrompts.default
-  configs.continuePrompt = defaultContinuePrompt
-  message.success(t('config.aiConfig.templateLoadSuccess'))
+const loadCountryTemplate = async () => {
+  try {
+    await request({ url: '/config/reload', method: 'POST' })
+    const aiRes = await request({
+      url: '/config/ai-prompt',
+      params: { country: selectedCountry.value }
+    })
+    const apiPrompt = aiRes.data.ai_prompt || ''
+    promptLegacy.value = aiRes.data.legacy_prompt === 'true'
+      || aiRes.data.legacy_prompt === true
+      || isLegacyPromptText(apiPrompt)
+    if (!promptLegacy.value && apiPrompt) {
+      configs.aiPrompt = apiPrompt
+      configs.continuePrompt = aiRes.data.continue_prompt || defaultContinuePrompt
+    } else {
+      configs.aiPrompt = defaultPrompts[selectedCountry.value] || defaultPrompts.default
+      configs.continuePrompt = defaultContinuePrompt
+    }
+    message.success(t('config.aiConfig.templateLoadSuccess'))
+  } catch (error) {
+    configs.aiPrompt = defaultPrompts[selectedCountry.value] || defaultPrompts.default
+    configs.continuePrompt = defaultContinuePrompt
+    message.success(t('config.aiConfig.templateLoadSuccess'))
+  }
 }
 
 const loadMappingTemplate = () => {
@@ -860,12 +1227,8 @@ const completeWizard = async () => {
       })
     }
     
-    await request({
-      url: '/config/current-country',
-      method: 'put',
-      data: { country: wizardCountry.value }
-    })
-    
+    await countryStore.setWorkingCountry(wizardCountry.value)
+
     wizardCompleted.value = true
     showWizard.value = false
     selectedCountry.value = wizardCountry.value
@@ -878,37 +1241,133 @@ const completeWizard = async () => {
   }
 }
 
-onMounted(() => {
-  loadConfigs()
+onMounted(async () => {
+  await reloadConfigs(true)
 })
 </script>
 
 <style lang="scss" scoped>
-.config-container {
-  padding: 0;
+.config-page {
+  display: flex;
+  flex-direction: column;
+  gap: $spacing-lg;
 }
 
-.wizard-banner {
-  margin-bottom: 24px;
-  border-radius: 8px;
-  cursor: pointer;
+.prompt-legacy-alert {
+  margin-bottom: $spacing-md;
 }
 
-.country-selector-card {
-  margin-bottom: 24px;
+.country-bar {
+  :deep(.ant-card-body) {
+    padding: $spacing-lg;
+  }
+}
+
+.effective-collapse {
+  background: transparent;
+  border: none;
+
+  :deep(.ant-collapse-item) {
+    border: 1px solid $border-light;
+    border-radius: $border-radius-lg;
+    overflow: hidden;
+    background: $bg-card;
+  }
+}
+
+.config-tabs {
+  :deep(.ant-tabs-nav) {
+    margin-bottom: $spacing-md;
+  }
+
+  :deep(.ant-tabs-tab) {
+    font-weight: $font-weight-medium;
+  }
 }
 
 .country-selector {
   display: flex;
   justify-content: space-between;
   align-items: center;
+  flex-wrap: wrap;
+  gap: 12px;
+  margin-bottom: 16px;
+}
+
+.effective-config-panel {
+  padding-top: 4px;
+  border-top: 1px solid $border;
+}
+
+.panel-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-bottom: 12px;
+}
+
+.panel-title {
+  font-size: $font-size-lg;
+  font-weight: $font-weight-semibold;
+  color: $text-strong;
+}
+
+.effective-block {
+  margin-bottom: 8px;
+}
+
+.block-title {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 0 0 10px;
+  font-size: $font-size-md;
+  font-weight: $font-weight-semibold;
+  color: $text-strong;
+}
+
+.block-hint {
+  margin: 10px 0 0;
+  font-size: $font-size-sm;
+  color: $text-secondary;
+  line-height: 1.5;
+
+  &.warn {
+    color: $warning-dark;
+  }
+}
+
+.token-mask {
+  margin-left: 8px;
+  font-size: $font-size-sm;
+  color: $text-secondary;
+  font-family: ui-monospace, monospace;
+}
+
+.preview-meta {
+  margin-bottom: 12px;
+}
+
+.preview-text pre {
+  margin: 0;
+  padding: 12px;
+  max-height: 360px;
+  overflow: auto;
+  font-size: $font-size-sm;
+  line-height: 1.5;
+  background: $bg-muted;
+  border-radius: $radius-sm;
+  white-space: pre-wrap;
+  word-break: break-word;
 }
 
 .url-parse-result {
   margin-top: 12px;
 
   :deep(.ant-alert) {
-    border-radius: 6px;
+    border-radius: $radius-sm;
   }
 }
 
@@ -919,8 +1378,8 @@ onMounted(() => {
 }
 
 .label {
-  font-weight: 500;
-  font-size: 15px;
+  font-weight: $font-weight-medium;
+  font-size: $font-size-lg;
 }
 
 .module-nav {
@@ -932,31 +1391,31 @@ onMounted(() => {
 
 .module-card {
   background: white;
-  border-radius: 12px;
+  border-radius: $radius-lg;
   padding: 20px;
   display: flex;
   align-items: center;
   gap: 16px;
   cursor: pointer;
-  transition: all 0.2s ease;
+  transition: all $duration-base $ease-smooth;
   border: 2px solid transparent;
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
 
   &:hover {
-    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+    box-shadow: $shadow-md;
     transform: translateY(-2px);
   }
 
   &.active {
-    border-color: #5B8FF9;
-    background: linear-gradient(135deg, rgba(91, 143, 249, 0.05) 0%, rgba(123, 97, 255, 0.05) 100%);
+    border-color: $primary;
+    background: $primary-light;
   }
 }
 
 .module-icon {
   width: 56px;
   height: 56px;
-  border-radius: 12px;
+  border-radius: $radius-lg;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -971,22 +1430,22 @@ onMounted(() => {
 
 .module-title {
   margin: 0 0 4px 0;
-  font-size: 15px;
-  font-weight: 600;
-  color: #1F2329;
+  font-size: $font-size-lg;
+  font-weight: $font-weight-semibold;
+  color: $text-strong;
 }
 
 .module-desc {
   margin: 0;
   font-size: 13px;
-  color: #8F959E;
+  color: $text-secondary;
 }
 
 .module-panel {
   .config-card {
-    border-radius: 12px;
+    border-radius: $radius-lg;
     border: none;
-    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
+    box-shadow: $shadow-card;
   }
 }
 
@@ -998,16 +1457,17 @@ onMounted(() => {
 }
 
 .card-title {
-  margin: 0 0 4px 0;
-  font-size: 17px;
-  font-weight: 600;
-  color: #1F2329;
+  margin: 0 0 $space-1 0;
+  font-size: $font-size-xl;
+  font-weight: $font-weight-extrabold;
+  color: $text-strong;
+  letter-spacing: -0.02em;
 }
 
 .card-desc {
   margin: 0;
   font-size: 13px;
-  color: #8F959E;
+  color: $text-secondary;
 }
 
 .header-actions {
@@ -1019,8 +1479,8 @@ onMounted(() => {
   display: flex;
   gap: 16px;
   padding: 16px;
-  background: linear-gradient(135deg, #F8F9FF 0%, #F0F4FF 100%);
-  border-radius: 10px;
+  background: $bg-surface;
+  border-radius: $radius-lg;
 }
 
 .help-icon {
@@ -1032,15 +1492,15 @@ onMounted(() => {
 
   h4 {
     margin: 0 0 8px 0;
-    font-size: 14px;
-    font-weight: 600;
-    color: #1F2329;
+    font-size: $font-size-md;
+    font-weight: $font-weight-semibold;
+    color: $text-strong;
   }
 
   p {
     margin: 0;
     font-size: 13px;
-    color: #8F959E;
+    color: $text-secondary;
   }
 }
 
@@ -1049,7 +1509,7 @@ onMounted(() => {
   justify-content: space-between;
   align-items: center;
   padding: 16px 0;
-  border-bottom: 1px solid #F0F1F5;
+  border-bottom: 1px solid $border;
 
   &:last-child {
     border-bottom: none;
@@ -1059,21 +1519,21 @@ onMounted(() => {
 .setting-info {
   h4 {
     margin: 0 0 4px 0;
-    font-size: 14px;
-    font-weight: 600;
-    color: #1F2329;
+    font-size: $font-size-md;
+    font-weight: $font-weight-semibold;
+    color: $text-strong;
   }
 
   .setting-desc {
     margin: 0;
     font-size: 13px;
-    color: #8F959E;
+    color: $text-secondary;
   }
 }
 
 .wizard-modal {
   :deep(.ant-modal-content) {
-    border-radius: 12px;
+    border-radius: $radius-lg;
     overflow: hidden;
   }
 }
@@ -1091,12 +1551,12 @@ onMounted(() => {
   gap: 12px;
 
   &.active .step-number {
-    background: #5B8FF9;
+    background: $primary;
     color: white;
   }
 
   &.completed .step-number {
-    background: #52c41a;
+    background: $success;
     color: white;
   }
 }
@@ -1105,37 +1565,37 @@ onMounted(() => {
   width: 36px;
   height: 36px;
   border-radius: 50%;
-  background: #F0F1F5;
-  color: #8F959E;
+  background: $border;
+  color: $text-secondary;
   display: flex;
   align-items: center;
   justify-content: center;
-  font-weight: 600;
-  font-size: 14px;
-  transition: all 0.2s ease;
+  font-weight: $font-weight-semibold;
+  font-size: $font-size-md;
+  transition: all $duration-base $ease-smooth;
 }
 
 .step-info {
   .step-title {
     font-size: 13px;
-    font-weight: 600;
-    color: #1F2329;
+    font-weight: $font-weight-semibold;
+    color: $text-strong;
   }
 
   .step-desc {
-    font-size: 12px;
-    color: #8F959E;
+    font-size: $font-size-sm;
+    color: $text-secondary;
   }
 }
 
 .step-divider {
   width: 40px;
   height: 2px;
-  background: #F0F1F5;
+  background: $border;
   margin: 0 8px;
 
   &.active {
-    background: #5B8FF9;
+    background: $primary;
   }
 }
 
@@ -1149,7 +1609,7 @@ onMounted(() => {
 
   h3 {
     margin-bottom: 16px;
-    color: #1F2329;
+    color: $text-strong;
   }
 }
 
@@ -1162,16 +1622,17 @@ onMounted(() => {
   }
 
   h2 {
-    margin: 0 0 16px 0;
-    font-size: 24px;
-    font-weight: 700;
-    color: #1F2329;
+    margin: 0 0 $space-4 0;
+    font-size: $font-size-3xl;
+    font-weight: $font-weight-extrabold;
+    color: $text-strong;
+    letter-spacing: -0.02em;
   }
 
   p {
     margin: 0;
-    font-size: 15px;
-    color: #8F959E;
+    font-size: $font-size-lg;
+    color: $text-secondary;
   }
 }
 
@@ -1187,19 +1648,19 @@ onMounted(() => {
   align-items: center;
   gap: 8px;
   padding: 20px;
-  border: 2px solid #F0F1F5;
-  border-radius: 10px;
+  border: 2px solid $border;
+  border-radius: $radius-lg;
   cursor: pointer;
-  transition: all 0.2s ease;
+  transition: all $duration-base $ease-smooth;
 
   &:hover {
-    border-color: #5B8FF9;
-    background: rgba(91, 143, 249, 0.05);
+    border-color: $primary;
+    background: rgba($primary, 0.05);
   }
 
   &.selected {
-    border-color: #5B8FF9;
-    background: rgba(91, 143, 249, 0.1);
+    border-color: $primary;
+    background: rgba($primary, 0.1);
   }
 }
 
@@ -1208,9 +1669,9 @@ onMounted(() => {
 }
 
 .country-name {
-  font-size: 14px;
-  font-weight: 600;
-  color: #1F2329;
+  font-size: $font-size-md;
+  font-weight: $font-weight-semibold;
+  color: $text-strong;
 }
 
 .wizard-footer {
@@ -1218,7 +1679,7 @@ onMounted(() => {
   gap: 12px;
   justify-content: flex-end;
   padding-top: 24px;
-  border-top: 1px solid #F0F1F5;
+  border-top: 1px solid $border;
   margin-top: 24px;
 }
 </style>

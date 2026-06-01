@@ -2,6 +2,8 @@ package com.attendance.common;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.core.env.Environment;
 import org.springframework.http.HttpStatus;
 import org.springframework.validation.BindException;
 import org.springframework.web.HttpRequestMethodNotSupportedException;
@@ -13,8 +15,10 @@ import org.springframework.web.bind.annotation.RestControllerAdvice;
 import org.springframework.web.multipart.MaxUploadSizeExceededException;
 import org.springframework.web.servlet.NoHandlerFoundException;
 
-import jakarta.validation.ConstraintViolation;
-import jakarta.validation.ConstraintViolationException;
+import javax.validation.ConstraintViolation;
+import javax.validation.ConstraintViolationException;
+import java.sql.SQLException;
+import java.util.Map;
 import java.util.stream.Collectors;
 
 @RestControllerAdvice
@@ -22,67 +26,117 @@ public class GlobalExceptionHandler {
     
     private static final Logger log = LoggerFactory.getLogger(GlobalExceptionHandler.class);
 
+    @Autowired
+    private Environment environment;
+
     @ExceptionHandler(BusinessException.class)
     public Result<Void> handleBusinessException(BusinessException e) {
-        log.error("业务异常: code={}, message={}", e.getCode(), e.getMessage());
-        return Result.error(e.getCode(), e.getMessage());
+        log.error("业务异常: code={}, messageKey={}", e.getCode(), e.getMessageKey());
+        return Result.error(e);
     }
 
     @ExceptionHandler(MethodArgumentNotValidException.class)
     public Result<Void> handleValidationException(MethodArgumentNotValidException e) {
-        String message = e.getBindingResult().getFieldErrors().stream()
+        String detail = e.getBindingResult().getFieldErrors().stream()
                 .map(error -> error.getField() + ": " + error.getDefaultMessage())
                 .collect(Collectors.joining(", "));
-        log.error("参数校验异常: {}", message);
-        return Result.error(400, message);
+        log.error("参数校验异常: {}", detail);
+        return Result.error(400, ErrorKeys.VALIDATION_FAILED, Map.of("detail", detail));
     }
 
     @ExceptionHandler(BindException.class)
     public Result<Void> handleBindException(BindException e) {
-        String message = e.getBindingResult().getFieldErrors().stream()
+        String detail = e.getBindingResult().getFieldErrors().stream()
                 .map(error -> error.getField() + ": " + error.getDefaultMessage())
                 .collect(Collectors.joining(", "));
-        log.error("参数绑定异常: {}", message);
-        return Result.error(400, message);
+        log.error("参数绑定异常: {}", detail);
+        return Result.error(400, ErrorKeys.VALIDATION_FAILED, Map.of("detail", detail));
     }
 
     @ExceptionHandler(ConstraintViolationException.class)
     public Result<Void> handleConstraintViolationException(ConstraintViolationException e) {
-        String message = e.getConstraintViolations().stream()
+        String detail = e.getConstraintViolations().stream()
                 .map(ConstraintViolation::getMessage)
                 .collect(Collectors.joining(", "));
-        log.error("约束违规异常: {}", message);
-        return Result.error(400, message);
+        log.error("约束违规异常: {}", detail);
+        return Result.error(400, ErrorKeys.VALIDATION_FAILED, Map.of("detail", detail));
     }
 
     @ExceptionHandler(MissingServletRequestParameterException.class)
     public Result<Void> handleMissingServletRequestParameterException(MissingServletRequestParameterException e) {
         log.error("缺少请求参数: {}", e.getMessage());
-        return Result.error(400, "缺少请求参数: " + e.getParameterName());
+        return Result.error(400, ErrorKeys.MISSING_PARAMETER, Map.of("name", e.getParameterName()));
     }
 
     @ExceptionHandler(MaxUploadSizeExceededException.class)
     public Result<Void> handleMaxUploadSizeExceededException(MaxUploadSizeExceededException e) {
         log.error("文件大小超出限制: {}", e.getMessage());
-        return Result.error(400, "文件大小超出限制，最大支持10MB");
+        return Result.error(400, ErrorKeys.FILE_SIZE_EXCEEDED);
     }
 
     @ExceptionHandler(NoHandlerFoundException.class)
     @ResponseStatus(HttpStatus.NOT_FOUND)
     public Result<Void> handleNoHandlerFoundException(NoHandlerFoundException e) {
         log.error("接口不存在: {}", e.getRequestURL());
-        return Result.error(404, "接口不存在");
+        return Result.error(404, ErrorKeys.API_NOT_FOUND);
     }
 
     @ExceptionHandler(HttpRequestMethodNotSupportedException.class)
     public Result<Void> handleHttpRequestMethodNotSupportedException(HttpRequestMethodNotSupportedException e) {
         log.error("请求方法不支持: {}", e.getMessage());
-        return Result.error(405, "请求方法不支持");
+        return Result.error(405, ErrorKeys.METHOD_NOT_ALLOWED);
+    }
+
+    @ExceptionHandler(SQLException.class)
+    public Result<Void> handleSQLException(SQLException e) {
+        log.error("数据库异常: {}", e.getMessage(), e);
+        return resolveDbError(e);
     }
 
     @ExceptionHandler(Exception.class)
     public Result<Void> handleException(Exception e) {
+        SQLException sql = findSQLException(e);
+        if (sql != null) {
+            log.error("数据库异常: {}", sql.getMessage(), e);
+            return resolveDbError(sql);
+        }
         log.error("系统异常", e);
-        return Result.error("系统异常，请稍后重试");
+        return Result.error(500, ErrorKeys.SYSTEM_ERROR);
+    }
+
+    private Result<Void> resolveDbError(SQLException e) {
+        String msg = e.getMessage();
+        if (msg != null) {
+            if (msg.contains("export_jobs") && msg.contains("doesn't exist")) {
+                return Result.error(500, ErrorKeys.DB_MIGRATION_REQUIRED);
+            }
+            if (isDevProfile() && (msg.contains("Unknown column") || msg.contains("doesn't exist"))) {
+                return Result.error(500, ErrorKeys.DB_MIGRATION_REQUIRED);
+            }
+        }
+        return Result.error(500, ErrorKeys.SYSTEM_ERROR);
+    }
+
+    private boolean isDevProfile() {
+        if (environment == null) {
+            return false;
+        }
+        for (String profile : environment.getActiveProfiles()) {
+            if ("dev".equalsIgnoreCase(profile)) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    private SQLException findSQLException(Throwable e) {
+        Throwable cur = e;
+        while (cur != null) {
+            if (cur instanceof SQLException) {
+                return (SQLException) cur;
+            }
+            cur = cur.getCause();
+        }
+        return null;
     }
 }
