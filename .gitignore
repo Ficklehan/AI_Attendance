@@ -3,9 +3,6 @@ logs/
 backend/logs/
 *.log
 
-# 上传文件目录
-uploads/
-
 # 编译产物
 backend/target/
 backend/*.jar
@@ -50,6 +47,8 @@ target/
 *.key
 .env
 .env.*
+!.env.example
+!**/.env.example
 
 # 移动端 Node.js
 mobile/node_modules/
@@ -60,6 +59,8 @@ mysql_data/
 
 # 本地导出与 IDE
 backend/exports/
-.cursor/
+.cursor/*
+!.cursor/skills/
+!.cursor/skills/**
 frontend/tmp-screenshots/
 frontend/tmp_capture.mjs
