@@ -1,0 +1,1349 @@
+2026-06-02 10:04:31 [main] INFO  com.attendance.AttendanceApplication - Starting AttendanceApplication using Java 24.0.1 on macdeMacBook-Air-49.local with PID 42463 (/Users/apple/Desktop/智能体/AttendanceAgent/backend/target/classes started by apple in /Users/apple/Desktop/智能体/AttendanceAgent/backend)
+2026-06-02 10:04:31 [main] DEBUG com.attendance.AttendanceApplication - Running with Spring Boot v2.7.18, Spring v5.3.31
+2026-06-02 10:04:31 [main] INFO  com.attendance.AttendanceApplication - The following 1 profile is active: "dev"
+2026-06-02 10:04:32 [main] INFO  o.s.b.w.e.tomcat.TomcatWebServer - Tomcat initialized with port(s): 3000 (http)
+2026-06-02 10:04:32 [main] INFO  o.a.catalina.core.StandardService - Starting service [Tomcat]
+2026-06-02 10:04:32 [main] INFO  o.a.catalina.core.StandardEngine - Starting Servlet engine: [Apache Tomcat/9.0.83]
+2026-06-02 10:04:32 [main] INFO  o.a.c.c.C.[.[localhost].[/api] - Initializing Spring embedded WebApplicationContext
+2026-06-02 10:04:32 [main] INFO  o.s.b.w.s.c.ServletWebServerApplicationContext - Root WebApplicationContext: initialization completed in 548 ms
+2026-06-02 10:04:32 [main] DEBUG c.a.security.JwtAuthenticationFilter - Filter 'jwtAuthenticationFilter' configured for use
+2026-06-02 10:04:32 [main] INFO  c.a.d.s.b.a.DruidDataSourceAutoConfigure - Init DruidDataSource
+2026-06-02 10:04:32 [main] INFO  c.alibaba.druid.pool.DruidDataSource - {dataSource-1} inited
+2026-06-02 10:04:32 [main] INFO  c.a.service.MarkdownConfigService - 开始加载配置文件...
+2026-06-02 10:04:32 [main] INFO  c.a.service.MarkdownConfigService - 当前工作目录: /Users/apple/Desktop/智能体/AttendanceAgent/backend
+2026-06-02 10:04:32 [main] INFO  c.a.config.ConfigPathResolver - base-config 目录: /Users/apple/Desktop/智能体/AttendanceAgent/base-config
+2026-06-02 10:04:32 [main] INFO  c.a.service.MarkdownConfigService - 配置基础路径: /Users/apple/Desktop/智能体/AttendanceAgent/base-config
+2026-06-02 10:04:32 [main] INFO  c.a.service.MarkdownConfigService - 读取文件: feishu.md, 绝对路径: /Users/apple/Desktop/智能体/AttendanceAgent/base-config/feishu.md
+2026-06-02 10:04:32 [main] INFO  c.a.service.MarkdownConfigService - 文件 feishu.md 读取成功，长度: 10975
+2026-06-02 10:04:32 [main] INFO  c.a.service.MarkdownConfigService - 读取文件: countries.md, 绝对路径: /Users/apple/Desktop/智能体/AttendanceAgent/base-config/countries.md
+2026-06-02 10:04:32 [main] INFO  c.a.service.MarkdownConfigService - 文件 countries.md 读取成功，长度: 9959
+2026-06-02 10:04:32 [main] INFO  c.a.service.MarkdownConfigService - prompts.md 长度: 10131
+2026-06-02 10:04:32 [main] INFO  c.a.service.MarkdownConfigService - feishu.md 长度: 10975
+2026-06-02 10:04:32 [main] INFO  c.a.service.MarkdownConfigService - countries.md 长度: 9959
+2026-06-02 10:04:32 [main] INFO  c.a.service.MarkdownConfigService - 配置文件加载成功
+2026-06-02 10:04:33 [main] DEBUG o.s.w.s.m.m.a.RequestMappingHandlerMapping - 64 mappings in 'requestMappingHandlerMapping'
+2026-06-02 10:04:33 [main] DEBUG o.s.w.s.h.SimpleUrlHandlerMapping - Patterns [/webjars/**, /**] in 'resourceHandlerMapping'
+2026-06-02 10:04:33 [main] INFO  o.s.s.web.DefaultSecurityFilterChain - Will secure any request with [org.springframework.security.web.session.DisableEncodeUrlFilter@6ad6ae45, org.springframework.security.web.context.request.async.WebAsyncManagerIntegrationFilter@7c4d1c7b, org.springframework.security.web.context.SecurityContextPersistenceFilter@394a6d2b, org.springframework.security.web.header.HeaderWriterFilter@221b77d7, org.springframework.web.filter.CorsFilter@7893c715, org.springframework.security.web.authentication.logout.LogoutFilter@f03ee8f, com.attendance.security.JwtAuthenticationFilter@285c6918, org.springframework.security.web.savedrequest.RequestCacheAwareFilter@55adcf9e, org.springframework.security.web.servletapi.SecurityContextHolderAwareRequestFilter@1515f782, org.springframework.security.web.authentication.AnonymousAuthenticationFilter@36f6d25c, org.springframework.security.web.session.SessionManagementFilter@5c70d7f0, org.springframework.security.web.access.ExceptionTranslationFilter@50a7c72b, org.springframework.security.web.access.intercept.FilterSecurityInterceptor@734a149a]
+2026-06-02 10:04:33 [main] DEBUG o.s.w.s.m.m.a.RequestMappingHandlerAdapter - ControllerAdvice beans: 0 @ModelAttribute, 0 @InitBinder, 1 RequestBodyAdvice, 1 ResponseBodyAdvice
+2026-06-02 10:04:33 [main] DEBUG o.s.w.s.m.m.a.ExceptionHandlerExceptionResolver - ControllerAdvice beans: 1 @ExceptionHandler, 1 ResponseBodyAdvice
+2026-06-02 10:04:33 [main] INFO  o.s.b.w.e.tomcat.TomcatWebServer - Tomcat started on port(s): 3000 (http) with context path '/api'
+2026-06-02 10:04:33 [main] INFO  com.attendance.AttendanceApplication - Started AttendanceApplication in 1.706 seconds (JVM running for 1.875)
+2026-06-02 10:04:33 [main] INFO  c.a.c.ExportJobDatabaseBootstrap - export_jobs 表已就绪
+2026-06-02 10:04:33 [main] INFO  c.a.service.RecognitionPromptService - 识别提示词播种完成: countries=8, force=false, seedVersion=2
+2026-06-02 10:04:33 [main] INFO  c.a.config.PromptDatabaseBootstrap - 提示词数据库已存在且非旧版，仅补全缺失国家/版本（不覆盖用户自定义）
+2026-06-02 10:04:33 [main] INFO  c.a.config.MimoStartupLogger - MiMo AI 已配置，将使用 PC/服务端提示词调用真实识别 API: https://api.xiaomimimo.com/v1, model=mimo-v2.5
+2026-06-02 10:04:36 [http-nio-3000-exec-1] INFO  o.a.c.c.C.[.[localhost].[/api] - Initializing Spring DispatcherServlet 'dispatcherServlet'
+2026-06-02 10:04:36 [http-nio-3000-exec-1] INFO  o.s.web.servlet.DispatcherServlet - Initializing Servlet 'dispatcherServlet'
+2026-06-02 10:04:36 [http-nio-3000-exec-1] DEBUG o.s.web.servlet.DispatcherServlet - Detected StandardServletMultipartResolver
+2026-06-02 10:04:36 [http-nio-3000-exec-1] DEBUG o.s.web.servlet.DispatcherServlet - Detected AcceptHeaderLocaleResolver
+2026-06-02 10:04:36 [http-nio-3000-exec-1] DEBUG o.s.web.servlet.DispatcherServlet - Detected FixedThemeResolver
+2026-06-02 10:04:36 [http-nio-3000-exec-1] DEBUG o.s.web.servlet.DispatcherServlet - Detected org.springframework.web.servlet.view.DefaultRequestToViewNameTranslator@79b87565
+2026-06-02 10:04:36 [http-nio-3000-exec-1] DEBUG o.s.web.servlet.DispatcherServlet - Detected org.springframework.web.servlet.support.SessionFlashMapManager@1d51148d
+2026-06-02 10:04:36 [http-nio-3000-exec-1] DEBUG o.s.web.servlet.DispatcherServlet - enableLoggingRequestDetails='false': request parameters and headers will be masked to prevent unsafe logging of potentially sensitive data
+2026-06-02 10:04:36 [http-nio-3000-exec-1] INFO  o.s.web.servlet.DispatcherServlet - Completed initialization in 1 ms
+2026-06-02 10:04:36 [http-nio-3000-exec-1] DEBUG o.s.w.s.m.m.a.RequestMappingHandlerMapping - Mapped to com.attendance.controller.ConfigController#getCountryOptions()
+2026-06-02 10:04:36 [http-nio-3000-exec-1] DEBUG o.s.web.servlet.DispatcherServlet - GET "/api/config/country-options", parameters={}
+2026-06-02 10:04:36 [http-nio-3000-exec-1] DEBUG o.s.w.s.m.m.a.RequestMappingHandlerMapping - Mapped to com.attendance.controller.ConfigController#getCountryOptions()
+2026-06-02 10:04:36 [http-nio-3000-exec-1] DEBUG o.s.w.s.m.m.a.RequestResponseBodyMethodProcessor - Using 'application/json', given [*/*] and supported [application/json, application/*+json, application/json, application/*+json]
+2026-06-02 10:04:36 [http-nio-3000-exec-1] DEBUG o.s.w.s.m.m.a.RequestResponseBodyMethodProcessor - Writing [com.attendance.common.Result@1e36da5e]
+2026-06-02 10:04:36 [http-nio-3000-exec-1] DEBUG o.s.web.servlet.DispatcherServlet - Completed 200 OK
+2026-06-02 10:04:53 [http-nio-3000-exec-3] DEBUG o.s.w.s.m.m.a.RequestMappingHandlerMapping - Mapped to com.attendance.controller.ConfigController#getCountryOptions()
+2026-06-02 10:04:53 [http-nio-3000-exec-2] DEBUG o.s.w.s.m.m.a.RequestMappingHandlerMapping - Mapped to com.attendance.controller.ConfigController#getCurrentCountry()
+2026-06-02 10:04:53 [http-nio-3000-exec-2] DEBUG o.s.web.servlet.DispatcherServlet - GET "/api/config/current-country", parameters={}
+2026-06-02 10:04:53 [http-nio-3000-exec-2] DEBUG o.s.w.s.m.m.a.RequestMappingHandlerMapping - Mapped to com.attendance.controller.ConfigController#getCurrentCountry()
+2026-06-02 10:04:53 [http-nio-3000-exec-3] DEBUG o.s.web.servlet.DispatcherServlet - GET "/api/config/country-options", parameters={}
+2026-06-02 10:04:53 [http-nio-3000-exec-3] DEBUG o.s.w.s.m.m.a.RequestMappingHandlerMapping - Mapped to com.attendance.controller.ConfigController#getCountryOptions()
+2026-06-02 10:04:53 [http-nio-3000-exec-2] DEBUG o.s.w.s.m.m.a.RequestResponseBodyMethodProcessor - Using 'application/json', given [application/json, text/plain, */*] and supported [application/json, application/*+json, application/json, application/*+json]
+2026-06-02 10:04:53 [http-nio-3000-exec-3] DEBUG o.s.w.s.m.m.a.RequestResponseBodyMethodProcessor - Using 'application/json', given [application/json, text/plain, */*] and supported [application/json, application/*+json, application/json, application/*+json]
+2026-06-02 10:04:53 [http-nio-3000-exec-2] DEBUG o.s.w.s.m.m.a.RequestResponseBodyMethodProcessor - Writing [com.attendance.common.Result@6240408c]
+2026-06-02 10:04:53 [http-nio-3000-exec-3] DEBUG o.s.w.s.m.m.a.RequestResponseBodyMethodProcessor - Writing [com.attendance.common.Result@4e2532eb]
+2026-06-02 10:04:53 [http-nio-3000-exec-3] DEBUG o.s.web.servlet.DispatcherServlet - Completed 200 OK
+2026-06-02 10:04:53 [http-nio-3000-exec-2] DEBUG o.s.web.servlet.DispatcherServlet - Completed 200 OK
+2026-06-02 10:04:53 [http-nio-3000-exec-5] DEBUG o.s.w.s.m.m.a.RequestMappingHandlerMapping - Mapped to com.attendance.controller.ConfigController#getCurrentCountry()
+2026-06-02 10:04:53 [http-nio-3000-exec-4] DEBUG o.s.w.s.m.m.a.RequestMappingHandlerMapping - Mapped to com.attendance.controller.ConfigController#getCountryOptions()
+2026-06-02 10:04:53 [http-nio-3000-exec-6] DEBUG o.s.w.s.m.m.a.RequestMappingHandlerMapping - Mapped to com.attendance.controller.ConfigController#getCountryBundle(String)
+2026-06-02 10:04:53 [http-nio-3000-exec-4] DEBUG o.s.web.servlet.DispatcherServlet - GET "/api/config/country-options", parameters={}
+2026-06-02 10:04:53 [http-nio-3000-exec-4] DEBUG o.s.w.s.m.m.a.RequestMappingHandlerMapping - Mapped to com.attendance.controller.ConfigController#getCountryOptions()
+2026-06-02 10:04:53 [http-nio-3000-exec-5] DEBUG o.s.web.servlet.DispatcherServlet - GET "/api/config/current-country", parameters={}
+2026-06-02 10:04:53 [http-nio-3000-exec-5] DEBUG o.s.w.s.m.m.a.RequestMappingHandlerMapping - Mapped to com.attendance.controller.ConfigController#getCurrentCountry()
+2026-06-02 10:04:53 [http-nio-3000-exec-4] DEBUG o.s.w.s.m.m.a.RequestResponseBodyMethodProcessor - Using 'application/json', given [application/json, text/plain, */*] and supported [application/json, application/*+json, application/json, application/*+json]
+2026-06-02 10:04:53 [http-nio-3000-exec-4] DEBUG o.s.w.s.m.m.a.RequestResponseBodyMethodProcessor - Writing [com.attendance.common.Result@61eae5bf]
+2026-06-02 10:04:53 [http-nio-3000-exec-5] DEBUG o.s.w.s.m.m.a.RequestResponseBodyMethodProcessor - Using 'application/json', given [application/json, text/plain, */*] and supported [application/json, application/*+json, application/json, application/*+json]
+2026-06-02 10:04:53 [http-nio-3000-exec-5] DEBUG o.s.w.s.m.m.a.RequestResponseBodyMethodProcessor - Writing [com.attendance.common.Result@55bc7c79]
+2026-06-02 10:04:53 [http-nio-3000-exec-4] DEBUG o.s.web.servlet.DispatcherServlet - Completed 200 OK
+2026-06-02 10:04:53 [http-nio-3000-exec-5] DEBUG o.s.web.servlet.DispatcherServlet - Completed 200 OK
+2026-06-02 10:04:53 [http-nio-3000-exec-6] DEBUG o.s.web.servlet.DispatcherServlet - GET "/api/config/country-bundle?country=default", parameters={masked}
+2026-06-02 10:04:53 [http-nio-3000-exec-6] DEBUG o.s.w.s.m.m.a.RequestMappingHandlerMapping - Mapped to com.attendance.controller.ConfigController#getCountryBundle(String)
+2026-06-02 10:04:53 [http-nio-3000-exec-6] INFO  c.a.service.MarkdownConfigService - getAiPrompt(DB) request=default, effective=default
+2026-06-02 10:04:53 [http-nio-3000-exec-6] INFO  c.a.service.MarkdownConfigService - 最终提示词长度: 1187
+2026-06-02 10:04:53 [http-nio-3000-exec-6] INFO  c.a.service.MarkdownConfigService - getFeishuConfig request=default, effectiveFeishu=default
+2026-06-02 10:04:53 [http-nio-3000-exec-6] INFO  c.a.service.MarkdownConfigService - extractSection 被调用，sectionName=全局默认配置, codeStart=```yaml, codeEnd=```
+2026-06-02 10:04:53 [http-nio-3000-exec-6] INFO  c.a.service.MarkdownConfigService - 原始 content 长度: 10975, 前300字符: # 飞书多维表配置
+
+## 全局默认配置
+
+```yaml
+bitable_app_token: 'MssZb4YXQaEeR5swLencoIcRnLc'
+bitable_table_id: 'tbl5WHAQbm0f6JyE'
+field_mapping:
+  - aiField: 'NO'
+    feishuField: 'NO'
+    type: 'string'
+    required: true
+    description: '工号'
+  - aiField: 'Pays'
+    feishuField: 'Pays'
+    type: 'string'
+    re
+2026-06-02 10:04:53 [http-nio-3000-exec-6] INFO  c.a.service.MarkdownConfigService - 使用正则表达式: (?:##+\s*)\Q全局默认配置\E(.*?)(?=##|$)
+2026-06-02 10:04:53 [http-nio-3000-exec-6] INFO  c.a.service.MarkdownConfigService - 找到了匹配的 section
+2026-06-02 10:04:53 [http-nio-3000-exec-6] INFO  c.a.service.MarkdownConfigService - 提取的 sectionContent 长度: 1845, 前300字符: 
+
+```yaml
+bitable_app_token: 'MssZb4YXQaEeR5swLencoIcRnLc'
+bitable_table_id: 'tbl5WHAQbm0f6JyE'
+field_mapping:
+  - aiField: 'NO'
+    feishuField: 'NO'
+    type: 'string'
+    required: true
+    description: '工号'
+  - aiField: 'Pays'
+    feishuField: 'Pays'
+    type: 'string'
+    required: false
+    de
+2026-06-02 10:04:53 [http-nio-3000-exec-6] INFO  c.a.service.MarkdownConfigService - 查找 codeStart '```yaml' 位置: 2
+2026-06-02 10:04:53 [http-nio-3000-exec-6] INFO  c.a.service.MarkdownConfigService - 查找 codeEnd '```' 位置: 1840
+2026-06-02 10:04:53 [http-nio-3000-exec-6] INFO  c.a.service.MarkdownConfigService - 提取结果长度: 1829, 前300字符: bitable_app_token: 'MssZb4YXQaEeR5swLencoIcRnLc'
+bitable_table_id: 'tbl5WHAQbm0f6JyE'
+field_mapping:
+  - aiField: 'NO'
+    feishuField: 'NO'
+    type: 'string'
+    required: true
+    description: '工号'
+  - aiField: 'Pays'
+    feishuField: 'Pays'
+    type: 'string'
+    required: false
+    description:
+2026-06-02 10:04:53 [http-nio-3000-exec-6] INFO  c.a.service.MarkdownConfigService - 开始提取字段映射，yaml 内容长度: 1829
+2026-06-02 10:04:53 [http-nio-3000-exec-6] INFO  c.a.service.MarkdownConfigService - yaml 内容前500字符: bitable_app_token: 'MssZb4YXQaEeR5swLencoIcRnLc'
+bitable_table_id: 'tbl5WHAQbm0f6JyE'
+field_mapping:
+  - aiField: 'NO'
+    feishuField: 'NO'
+    type: 'string'
+    required: true
+    description: '工号'
+  - aiField: 'Pays'
+    feishuField: 'Pays'
+    type: 'string'
+    required: false
+    description: '国家'
+  - aiField: 'Entrepot'
+    feishuField: 'Entrepôt'
+    type: 'string'
+    required: false
+    description: '仓库'
+  - aiField: 'NOM_PRENOM'
+    feishuField: 'NOM PRENOM'
+    type: 'string'
+    re
+2026-06-02 10:04:53 [http-nio-3000-exec-6] INFO  c.a.service.MarkdownConfigService - 提取到 15 个字段映射
+2026-06-02 10:04:53 [http-nio-3000-exec-6] INFO  c.a.service.MarkdownConfigService - 字段映射 0: {aiField=NO, feishuField=NO, description=工号, type=string, required=true}
+2026-06-02 10:04:53 [http-nio-3000-exec-6] INFO  c.a.service.MarkdownConfigService - 字段映射 1: {aiField=Pays, feishuField=Pays, description=国家, type=string, required=false}
+2026-06-02 10:04:53 [http-nio-3000-exec-6] INFO  c.a.service.MarkdownConfigService - 字段映射 2: {aiField=Entrepot, feishuField=Entrepôt, description=仓库, type=string, required=false}
+2026-06-02 10:04:53 [http-nio-3000-exec-6] INFO  c.a.service.MarkdownConfigService - 字段映射 3: {aiField=NOM_PRENOM, feishuField=NOM PRENOM, description=姓名, type=string, required=false}
+2026-06-02 10:04:53 [http-nio-3000-exec-6] INFO  c.a.service.MarkdownConfigService - 字段映射 4: {aiField=AGENCE_INTERIMAIRE, feishuField=AGENCE D'INTERIMAIR, description=中介机构, type=string, required=false}
+2026-06-02 10:04:53 [http-nio-3000-exec-6] INFO  c.a.service.MarkdownConfigService - 字段映射 5: {aiField=HORAIRES_DU_TRAVAIL, feishuField=HORAIRES DU TRAVAI, description=工作时间, type=string, required=false}
+2026-06-02 10:04:53 [http-nio-3000-exec-6] INFO  c.a.service.MarkdownConfigService - 字段映射 6: {aiField=Date, feishuField=Date, description=日期, type=date, required=true}
+2026-06-02 10:04:53 [http-nio-3000-exec-6] INFO  c.a.service.MarkdownConfigService - 字段映射 7: {aiField=ARRIVEE_DATETIME, feishuField=ARRIVE, description=到达时间, type=datetime, required=true}
+2026-06-02 10:04:53 [http-nio-3000-exec-6] INFO  c.a.service.MarkdownConfigService - 字段映射 8: {aiField=DEPAR_DATETIME, feishuField=DEPAR, description=离开时间, type=datetime, required=true}
+2026-06-02 10:04:53 [http-nio-3000-exec-6] INFO  c.a.service.MarkdownConfigService - 字段映射 9: {aiField=PAUSE, feishuField=PAUS, description=休息(分钟), type=number, required=true}
+2026-06-02 10:04:53 [http-nio-3000-exec-6] INFO  c.a.service.MarkdownConfigService - 字段映射 10: {aiField=SIGNATURE, feishuField=SIGNATURE, description=员工签名, type=string, required=false}
+2026-06-02 10:04:53 [http-nio-3000-exec-6] INFO  c.a.service.MarkdownConfigService - 字段映射 11: {aiField=Observations, feishuField=Observations, description=备注, type=string, required=false}
+2026-06-02 10:04:53 [http-nio-3000-exec-6] INFO  c.a.service.MarkdownConfigService - 字段映射 12: {aiField=SmartMark, feishuField=Mark, description=标记, type=string, required=false}
+2026-06-02 10:04:53 [http-nio-3000-exec-6] INFO  c.a.service.MarkdownConfigService - 字段映射 13: {aiField=TASK_ID, feishuField=任务id, description=任务id, type=string, required=false}
+2026-06-02 10:04:53 [http-nio-3000-exec-6] INFO  c.a.service.MarkdownConfigService - 字段映射 14: {aiField=UPLOADED_BY, feishuField=上传人员, description=上传人员, type=user, required=false}
+2026-06-02 10:04:53 [http-nio-3000-exec-6] DEBUG o.s.w.s.m.m.a.RequestResponseBodyMethodProcessor - Using 'application/json', given [application/json, text/plain, */*] and supported [application/json, application/*+json, application/json, application/*+json]
+2026-06-02 10:04:53 [http-nio-3000-exec-6] DEBUG o.s.w.s.m.m.a.RequestResponseBodyMethodProcessor - Writing [com.attendance.common.Result@7474757e]
+2026-06-02 10:04:53 [http-nio-3000-exec-6] DEBUG o.s.web.servlet.DispatcherServlet - Completed 200 OK
+2026-06-02 10:04:53 [http-nio-3000-exec-7] DEBUG o.s.w.s.m.m.a.RequestMappingHandlerMapping - Mapped to com.attendance.controller.ConfigController#getCountryBundle(String)
+2026-06-02 10:04:53 [http-nio-3000-exec-7] DEBUG o.s.web.servlet.DispatcherServlet - GET "/api/config/country-bundle?country=default", parameters={masked}
+2026-06-02 10:04:53 [http-nio-3000-exec-7] DEBUG o.s.w.s.m.m.a.RequestMappingHandlerMapping - Mapped to com.attendance.controller.ConfigController#getCountryBundle(String)
+2026-06-02 10:04:53 [http-nio-3000-exec-7] INFO  c.a.service.MarkdownConfigService - getAiPrompt(DB) request=default, effective=default
+2026-06-02 10:04:53 [http-nio-3000-exec-7] INFO  c.a.service.MarkdownConfigService - 最终提示词长度: 1187
+2026-06-02 10:04:53 [http-nio-3000-exec-7] INFO  c.a.service.MarkdownConfigService - getFeishuConfig request=default, effectiveFeishu=default
+2026-06-02 10:04:53 [http-nio-3000-exec-7] INFO  c.a.service.MarkdownConfigService - extractSection 被调用，sectionName=全局默认配置, codeStart=```yaml, codeEnd=```
+2026-06-02 10:04:53 [http-nio-3000-exec-7] INFO  c.a.service.MarkdownConfigService - 原始 content 长度: 10975, 前300字符: # 飞书多维表配置
+
+## 全局默认配置
+
+```yaml
+bitable_app_token: 'MssZb4YXQaEeR5swLencoIcRnLc'
+bitable_table_id: 'tbl5WHAQbm0f6JyE'
+field_mapping:
+  - aiField: 'NO'
+    feishuField: 'NO'
+    type: 'string'
+    required: true
+    description: '工号'
+  - aiField: 'Pays'
+    feishuField: 'Pays'
+    type: 'string'
+    re
+2026-06-02 10:04:53 [http-nio-3000-exec-7] INFO  c.a.service.MarkdownConfigService - 使用正则表达式: (?:##+\s*)\Q全局默认配置\E(.*?)(?=##|$)
+2026-06-02 10:04:53 [http-nio-3000-exec-7] INFO  c.a.service.MarkdownConfigService - 找到了匹配的 section
+2026-06-02 10:04:53 [http-nio-3000-exec-7] INFO  c.a.service.MarkdownConfigService - 提取的 sectionContent 长度: 1845, 前300字符: 
+
+```yaml
+bitable_app_token: 'MssZb4YXQaEeR5swLencoIcRnLc'
+bitable_table_id: 'tbl5WHAQbm0f6JyE'
+field_mapping:
+  - aiField: 'NO'
+    feishuField: 'NO'
+    type: 'string'
+    required: true
+    description: '工号'
+  - aiField: 'Pays'
+    feishuField: 'Pays'
+    type: 'string'
+    required: false
+    de
+2026-06-02 10:04:53 [http-nio-3000-exec-7] INFO  c.a.service.MarkdownConfigService - 查找 codeStart '```yaml' 位置: 2
+2026-06-02 10:04:53 [http-nio-3000-exec-7] INFO  c.a.service.MarkdownConfigService - 查找 codeEnd '```' 位置: 1840
+2026-06-02 10:04:53 [http-nio-3000-exec-7] INFO  c.a.service.MarkdownConfigService - 提取结果长度: 1829, 前300字符: bitable_app_token: 'MssZb4YXQaEeR5swLencoIcRnLc'
+bitable_table_id: 'tbl5WHAQbm0f6JyE'
+field_mapping:
+  - aiField: 'NO'
+    feishuField: 'NO'
+    type: 'string'
+    required: true
+    description: '工号'
+  - aiField: 'Pays'
+    feishuField: 'Pays'
+    type: 'string'
+    required: false
+    description:
+2026-06-02 10:04:53 [http-nio-3000-exec-7] INFO  c.a.service.MarkdownConfigService - 开始提取字段映射，yaml 内容长度: 1829
+2026-06-02 10:04:53 [http-nio-3000-exec-7] INFO  c.a.service.MarkdownConfigService - yaml 内容前500字符: bitable_app_token: 'MssZb4YXQaEeR5swLencoIcRnLc'
+bitable_table_id: 'tbl5WHAQbm0f6JyE'
+field_mapping:
+  - aiField: 'NO'
+    feishuField: 'NO'
+    type: 'string'
+    required: true
+    description: '工号'
+  - aiField: 'Pays'
+    feishuField: 'Pays'
+    type: 'string'
+    required: false
+    description: '国家'
+  - aiField: 'Entrepot'
+    feishuField: 'Entrepôt'
+    type: 'string'
+    required: false
+    description: '仓库'
+  - aiField: 'NOM_PRENOM'
+    feishuField: 'NOM PRENOM'
+    type: 'string'
+    re
+2026-06-02 10:04:53 [http-nio-3000-exec-7] INFO  c.a.service.MarkdownConfigService - 提取到 15 个字段映射
+2026-06-02 10:04:53 [http-nio-3000-exec-7] INFO  c.a.service.MarkdownConfigService - 字段映射 0: {aiField=NO, feishuField=NO, description=工号, type=string, required=true}
+2026-06-02 10:04:53 [http-nio-3000-exec-7] INFO  c.a.service.MarkdownConfigService - 字段映射 1: {aiField=Pays, feishuField=Pays, description=国家, type=string, required=false}
+2026-06-02 10:04:53 [http-nio-3000-exec-7] INFO  c.a.service.MarkdownConfigService - 字段映射 2: {aiField=Entrepot, feishuField=Entrepôt, description=仓库, type=string, required=false}
+2026-06-02 10:04:53 [http-nio-3000-exec-7] INFO  c.a.service.MarkdownConfigService - 字段映射 3: {aiField=NOM_PRENOM, feishuField=NOM PRENOM, description=姓名, type=string, required=false}
+2026-06-02 10:04:53 [http-nio-3000-exec-7] INFO  c.a.service.MarkdownConfigService - 字段映射 4: {aiField=AGENCE_INTERIMAIRE, feishuField=AGENCE D'INTERIMAIR, description=中介机构, type=string, required=false}
+2026-06-02 10:04:53 [http-nio-3000-exec-7] INFO  c.a.service.MarkdownConfigService - 字段映射 5: {aiField=HORAIRES_DU_TRAVAIL, feishuField=HORAIRES DU TRAVAI, description=工作时间, type=string, required=false}
+2026-06-02 10:04:53 [http-nio-3000-exec-7] INFO  c.a.service.MarkdownConfigService - 字段映射 6: {aiField=Date, feishuField=Date, description=日期, type=date, required=true}
+2026-06-02 10:04:53 [http-nio-3000-exec-7] INFO  c.a.service.MarkdownConfigService - 字段映射 7: {aiField=ARRIVEE_DATETIME, feishuField=ARRIVE, description=到达时间, type=datetime, required=true}
+2026-06-02 10:04:53 [http-nio-3000-exec-7] INFO  c.a.service.MarkdownConfigService - 字段映射 8: {aiField=DEPAR_DATETIME, feishuField=DEPAR, description=离开时间, type=datetime, required=true}
+2026-06-02 10:04:53 [http-nio-3000-exec-7] INFO  c.a.service.MarkdownConfigService - 字段映射 9: {aiField=PAUSE, feishuField=PAUS, description=休息(分钟), type=number, required=true}
+2026-06-02 10:04:53 [http-nio-3000-exec-7] INFO  c.a.service.MarkdownConfigService - 字段映射 10: {aiField=SIGNATURE, feishuField=SIGNATURE, description=员工签名, type=string, required=false}
+2026-06-02 10:04:53 [http-nio-3000-exec-7] INFO  c.a.service.MarkdownConfigService - 字段映射 11: {aiField=Observations, feishuField=Observations, description=备注, type=string, required=false}
+2026-06-02 10:04:53 [http-nio-3000-exec-7] INFO  c.a.service.MarkdownConfigService - 字段映射 12: {aiField=SmartMark, feishuField=Mark, description=标记, type=string, required=false}
+2026-06-02 10:04:53 [http-nio-3000-exec-7] INFO  c.a.service.MarkdownConfigService - 字段映射 13: {aiField=TASK_ID, feishuField=任务id, description=任务id, type=string, required=false}
+2026-06-02 10:04:53 [http-nio-3000-exec-7] INFO  c.a.service.MarkdownConfigService - 字段映射 14: {aiField=UPLOADED_BY, feishuField=上传人员, description=上传人员, type=user, required=false}
+2026-06-02 10:04:53 [http-nio-3000-exec-7] DEBUG o.s.w.s.m.m.a.RequestResponseBodyMethodProcessor - Using 'application/json', given [application/json, text/plain, */*] and supported [application/json, application/*+json, application/json, application/*+json]
+2026-06-02 10:04:53 [http-nio-3000-exec-7] DEBUG o.s.w.s.m.m.a.RequestResponseBodyMethodProcessor - Writing [com.attendance.common.Result@394a4136]
+2026-06-02 10:04:53 [http-nio-3000-exec-7] DEBUG o.s.web.servlet.DispatcherServlet - Completed 200 OK
+2026-06-02 10:04:53 [http-nio-3000-exec-8] DEBUG o.s.w.s.m.m.a.RequestMappingHandlerMapping - Mapped to com.attendance.controller.ExportController#summary()
+2026-06-02 10:04:53 [http-nio-3000-exec-8] DEBUG o.s.web.servlet.DispatcherServlet - GET "/api/exports/summary", parameters={}
+2026-06-02 10:04:53 [http-nio-3000-exec-8] DEBUG o.s.w.s.m.m.a.RequestMappingHandlerMapping - Mapped to com.attendance.controller.ExportController#summary()
+2026-06-02 10:04:53 [http-nio-3000-exec-8] DEBUG o.s.w.s.m.m.a.RequestResponseBodyMethodProcessor - Using 'application/json', given [application/json, text/plain, */*] and supported [application/json, application/*+json, application/json, application/*+json]
+2026-06-02 10:04:53 [http-nio-3000-exec-8] DEBUG o.s.w.s.m.m.a.RequestResponseBodyMethodProcessor - Writing [com.attendance.common.Result@f59acdc]
+2026-06-02 10:04:53 [http-nio-3000-exec-8] DEBUG o.s.web.servlet.DispatcherServlet - Completed 200 OK
+2026-06-02 10:04:55 [http-nio-3000-exec-10] DEBUG o.s.w.s.m.m.a.RequestMappingHandlerMapping - Mapped to com.attendance.controller.TaskController#getTaskList(TaskQuery)
+2026-06-02 10:04:55 [http-nio-3000-exec-9] DEBUG o.s.w.s.m.m.a.RequestMappingHandlerMapping - Mapped to com.attendance.controller.TaskController#getTaskSummary()
+2026-06-02 10:04:55 [http-nio-3000-exec-9] DEBUG o.s.web.servlet.DispatcherServlet - GET "/api/tasks/summary", parameters={}
+2026-06-02 10:04:55 [http-nio-3000-exec-10] DEBUG o.s.web.servlet.DispatcherServlet - GET "/api/tasks?current=1&size=20&status=&keyword=&searchField=", parameters={masked}
+2026-06-02 10:04:55 [http-nio-3000-exec-10] DEBUG o.s.w.s.m.m.a.RequestMappingHandlerMapping - Mapped to com.attendance.controller.TaskController#getTaskList(TaskQuery)
+2026-06-02 10:04:55 [http-nio-3000-exec-9] DEBUG o.s.w.s.m.m.a.RequestMappingHandlerMapping - Mapped to com.attendance.controller.TaskController#getTaskSummary()
+2026-06-02 10:04:55 [http-nio-3000-exec-9] DEBUG o.s.w.s.m.m.a.RequestResponseBodyMethodProcessor - Using 'application/json', given [application/json, text/plain, */*] and supported [application/json, application/*+json, application/json, application/*+json]
+2026-06-02 10:04:55 [http-nio-3000-exec-9] DEBUG o.s.w.s.m.m.a.RequestResponseBodyMethodProcessor - Writing [com.attendance.common.Result@7371e3fa]
+2026-06-02 10:04:55 [http-nio-3000-exec-9] DEBUG o.s.web.servlet.DispatcherServlet - Completed 200 OK
+2026-06-02 10:04:55 [http-nio-3000-exec-10] DEBUG o.s.w.s.m.m.a.RequestResponseBodyMethodProcessor - Using 'application/json', given [application/json, text/plain, */*] and supported [application/json, application/*+json, application/json, application/*+json]
+2026-06-02 10:04:55 [http-nio-3000-exec-10] DEBUG o.s.w.s.m.m.a.RequestResponseBodyMethodProcessor - Writing [com.attendance.common.Result@37327a95]
+2026-06-02 10:04:55 [http-nio-3000-exec-10] DEBUG o.s.web.servlet.DispatcherServlet - Completed 200 OK
+2026-06-02 10:04:59 [http-nio-3000-exec-1] DEBUG o.s.w.s.m.m.a.RequestMappingHandlerMapping - Mapped to com.attendance.controller.TaskController#getTaskDetail(String)
+2026-06-02 10:04:59 [http-nio-3000-exec-1] DEBUG o.s.web.servlet.DispatcherServlet - GET "/api/tasks/20260529_033", parameters={}
+2026-06-02 10:04:59 [http-nio-3000-exec-1] DEBUG o.s.w.s.m.m.a.RequestMappingHandlerMapping - Mapped to com.attendance.controller.TaskController#getTaskDetail(String)
+2026-06-02 10:04:59 [http-nio-3000-exec-1] DEBUG o.s.w.s.m.m.a.RequestResponseBodyMethodProcessor - Using 'application/json', given [application/json, text/plain, */*] and supported [application/json, application/*+json, application/json, application/*+json]
+2026-06-02 10:04:59 [http-nio-3000-exec-1] DEBUG o.s.w.s.m.m.a.RequestResponseBodyMethodProcessor - Writing [com.attendance.common.Result@324ff80b]
+2026-06-02 10:04:59 [http-nio-3000-exec-1] DEBUG o.s.web.servlet.DispatcherServlet - Completed 200 OK
+2026-06-02 10:04:59 [http-nio-3000-exec-3] DEBUG o.s.w.s.m.m.a.RequestMappingHandlerMapping - Mapped to com.attendance.controller.TaskController#duplicateCheck(String, Map)
+2026-06-02 10:04:59 [http-nio-3000-exec-3] DEBUG o.s.web.servlet.DispatcherServlet - POST "/api/tasks/20260529_033/duplicate-check", parameters={}
+2026-06-02 10:04:59 [http-nio-3000-exec-3] DEBUG o.s.w.s.m.m.a.RequestMappingHandlerMapping - Mapped to com.attendance.controller.TaskController#duplicateCheck(String, Map)
+2026-06-02 10:04:59 [http-nio-3000-exec-3] DEBUG o.s.w.s.m.m.a.RequestResponseBodyMethodProcessor - Read "application/json;charset=UTF-8" to [{records=[{_rowKey=20260529_033-0-1780365899630, NO=49, Pays=Netherlands, Entrepot=, Date=2026-05-11 (truncated)...]
+2026-06-02 10:04:59 [http-nio-3000-exec-3] DEBUG o.s.w.s.m.m.a.RequestResponseBodyMethodProcessor - Using 'application/json', given [application/json, text/plain, */*] and supported [application/json, application/*+json, application/json, application/*+json]
+2026-06-02 10:04:59 [http-nio-3000-exec-3] DEBUG o.s.w.s.m.m.a.RequestResponseBodyMethodProcessor - Writing [com.attendance.common.Result@5d7bbe5c]
+2026-06-02 10:04:59 [http-nio-3000-exec-3] DEBUG o.s.web.servlet.DispatcherServlet - Completed 200 OK
+2026-06-02 10:05:08 [http-nio-3000-exec-2] DEBUG o.s.w.s.m.m.a.RequestMappingHandlerMapping - Mapped to com.attendance.controller.ExportController#summary()
+2026-06-02 10:05:08 [http-nio-3000-exec-2] DEBUG o.s.web.servlet.DispatcherServlet - GET "/api/exports/summary", parameters={}
+2026-06-02 10:05:08 [http-nio-3000-exec-2] DEBUG o.s.w.s.m.m.a.RequestMappingHandlerMapping - Mapped to com.attendance.controller.ExportController#summary()
+2026-06-02 10:05:08 [http-nio-3000-exec-2] DEBUG o.s.w.s.m.m.a.RequestResponseBodyMethodProcessor - Using 'application/json', given [application/json, text/plain, */*] and supported [application/json, application/*+json, application/json, application/*+json]
+2026-06-02 10:05:08 [http-nio-3000-exec-2] DEBUG o.s.w.s.m.m.a.RequestResponseBodyMethodProcessor - Writing [com.attendance.common.Result@6937435a]
+2026-06-02 10:05:08 [http-nio-3000-exec-2] DEBUG o.s.web.servlet.DispatcherServlet - Completed 200 OK
+2026-06-02 10:05:16 [http-nio-3000-exec-4] DEBUG o.s.w.s.m.m.a.RequestMappingHandlerMapping - Mapped to com.attendance.controller.TaskController#getTaskList(TaskQuery)
+2026-06-02 10:05:16 [http-nio-3000-exec-5] DEBUG o.s.w.s.m.m.a.RequestMappingHandlerMapping - Mapped to com.attendance.controller.TaskController#getTaskSummary()
+2026-06-02 10:05:16 [http-nio-3000-exec-5] DEBUG o.s.web.servlet.DispatcherServlet - GET "/api/tasks/summary", parameters={}
+2026-06-02 10:05:16 [http-nio-3000-exec-4] DEBUG o.s.web.servlet.DispatcherServlet - GET "/api/tasks?current=1&size=20&status=&keyword=&searchField=", parameters={masked}
+2026-06-02 10:05:16 [http-nio-3000-exec-5] DEBUG o.s.w.s.m.m.a.RequestMappingHandlerMapping - Mapped to com.attendance.controller.TaskController#getTaskSummary()
+2026-06-02 10:05:16 [http-nio-3000-exec-4] DEBUG o.s.w.s.m.m.a.RequestMappingHandlerMapping - Mapped to com.attendance.controller.TaskController#getTaskList(TaskQuery)
+2026-06-02 10:05:16 [http-nio-3000-exec-5] DEBUG o.s.w.s.m.m.a.RequestResponseBodyMethodProcessor - Using 'application/json', given [application/json, text/plain, */*] and supported [application/json, application/*+json, application/json, application/*+json]
+2026-06-02 10:05:16 [http-nio-3000-exec-5] DEBUG o.s.w.s.m.m.a.RequestResponseBodyMethodProcessor - Writing [com.attendance.common.Result@2ea05b25]
+2026-06-02 10:05:16 [http-nio-3000-exec-5] DEBUG o.s.web.servlet.DispatcherServlet - Completed 200 OK
+2026-06-02 10:05:16 [http-nio-3000-exec-4] DEBUG o.s.w.s.m.m.a.RequestResponseBodyMethodProcessor - Using 'application/json', given [application/json, text/plain, */*] and supported [application/json, application/*+json, application/json, application/*+json]
+2026-06-02 10:05:16 [http-nio-3000-exec-4] DEBUG o.s.w.s.m.m.a.RequestResponseBodyMethodProcessor - Writing [com.attendance.common.Result@4a98d7b5]
+2026-06-02 10:05:16 [http-nio-3000-exec-4] DEBUG o.s.web.servlet.DispatcherServlet - Completed 200 OK
+2026-06-02 10:05:17 [http-nio-3000-exec-6] DEBUG o.s.w.s.m.m.a.RequestMappingHandlerMapping - Mapped to com.attendance.controller.TaskController#getEmployeeRecords(TaskQuery)
+2026-06-02 10:05:17 [http-nio-3000-exec-6] DEBUG o.s.web.servlet.DispatcherServlet - GET "/api/tasks/records?current=1&size=20&status=&filters=%5B%5D", parameters={masked}
+2026-06-02 10:05:17 [http-nio-3000-exec-6] DEBUG o.s.w.s.m.m.a.RequestMappingHandlerMapping - Mapped to com.attendance.controller.TaskController#getEmployeeRecords(TaskQuery)
+2026-06-02 10:05:17 [http-nio-3000-exec-6] DEBUG o.s.w.s.m.m.a.RequestResponseBodyMethodProcessor - Using 'application/json', given [application/json, text/plain, */*] and supported [application/json, application/*+json, application/json, application/*+json]
+2026-06-02 10:05:17 [http-nio-3000-exec-6] DEBUG o.s.w.s.m.m.a.RequestResponseBodyMethodProcessor - Writing [com.attendance.common.Result@73179678]
+2026-06-02 10:05:17 [http-nio-3000-exec-6] DEBUG o.s.web.servlet.DispatcherServlet - Completed 200 OK
+2026-06-02 10:05:18 [http-nio-3000-exec-7] DEBUG o.s.w.s.m.m.a.RequestMappingHandlerMapping - Mapped to com.attendance.controller.ConfigController#reloadConfigs()
+2026-06-02 10:05:18 [http-nio-3000-exec-7] DEBUG o.s.web.servlet.DispatcherServlet - POST "/api/config/reload", parameters={}
+2026-06-02 10:05:18 [http-nio-3000-exec-7] DEBUG o.s.w.s.m.m.a.RequestMappingHandlerMapping - Mapped to com.attendance.controller.ConfigController#reloadConfigs()
+2026-06-02 10:05:18 [http-nio-3000-exec-7] INFO  c.a.service.MarkdownConfigService - 开始加载配置文件...
+2026-06-02 10:05:18 [http-nio-3000-exec-7] INFO  c.a.service.MarkdownConfigService - 当前工作目录: /Users/apple/Desktop/智能体/AttendanceAgent/backend
+2026-06-02 10:05:18 [http-nio-3000-exec-7] INFO  c.a.service.MarkdownConfigService - 配置基础路径: /Users/apple/Desktop/智能体/AttendanceAgent/base-config
+2026-06-02 10:05:18 [http-nio-3000-exec-7] INFO  c.a.service.MarkdownConfigService - 读取文件: feishu.md, 绝对路径: /Users/apple/Desktop/智能体/AttendanceAgent/base-config/feishu.md
+2026-06-02 10:05:18 [http-nio-3000-exec-7] INFO  c.a.service.MarkdownConfigService - 文件 feishu.md 读取成功，长度: 10975
+2026-06-02 10:05:18 [http-nio-3000-exec-7] INFO  c.a.service.MarkdownConfigService - 读取文件: countries.md, 绝对路径: /Users/apple/Desktop/智能体/AttendanceAgent/base-config/countries.md
+2026-06-02 10:05:18 [http-nio-3000-exec-7] INFO  c.a.service.MarkdownConfigService - 文件 countries.md 读取成功，长度: 9959
+2026-06-02 10:05:18 [http-nio-3000-exec-7] INFO  c.a.service.MarkdownConfigService - prompts.md 长度: 10131
+2026-06-02 10:05:18 [http-nio-3000-exec-7] INFO  c.a.service.MarkdownConfigService - feishu.md 长度: 10975
+2026-06-02 10:05:18 [http-nio-3000-exec-7] INFO  c.a.service.MarkdownConfigService - countries.md 长度: 9959
+2026-06-02 10:05:18 [http-nio-3000-exec-7] INFO  c.a.service.MarkdownConfigService - 配置文件加载成功
+2026-06-02 10:05:18 [http-nio-3000-exec-7] INFO  c.a.controller.ConfigController - 配置已重新加载（仅飞书/国家配置），AI 提示词不做强制覆盖
+2026-06-02 10:05:18 [http-nio-3000-exec-7] DEBUG o.s.w.s.m.m.a.RequestResponseBodyMethodProcessor - Using 'application/json', given [application/json, text/plain, */*] and supported [application/json, application/*+json, application/json, application/*+json]
+2026-06-02 10:05:18 [http-nio-3000-exec-7] DEBUG o.s.w.s.m.m.a.RequestResponseBodyMethodProcessor - Writing [com.attendance.common.Result@330b36a5]
+2026-06-02 10:05:18 [http-nio-3000-exec-7] DEBUG o.s.web.servlet.DispatcherServlet - Completed 200 OK
+2026-06-02 10:05:18 [http-nio-3000-exec-8] DEBUG o.s.w.s.m.m.a.RequestMappingHandlerMapping - Mapped to com.attendance.controller.ConfigController#getAiPrompts(String)
+2026-06-02 10:05:18 [http-nio-3000-exec-9] DEBUG o.s.w.s.m.m.a.RequestMappingHandlerMapping - Mapped to com.attendance.controller.ConfigController#getFeishuConfig(String)
+2026-06-02 10:05:18 [http-nio-3000-exec-10] DEBUG o.s.w.s.m.m.a.RequestMappingHandlerMapping - Mapped to com.attendance.controller.ConfigController#getCurrentCountry()
+2026-06-02 10:05:18 [http-nio-3000-exec-1] DEBUG o.s.w.s.m.m.a.RequestMappingHandlerMapping - Mapped to com.attendance.controller.ConfigController#getCountryOptions()
+2026-06-02 10:05:18 [http-nio-3000-exec-3] DEBUG o.s.w.s.m.m.a.RequestMappingHandlerMapping - Mapped to com.attendance.controller.ConfigController#getPromptStatus()
+2026-06-02 10:05:18 [http-nio-3000-exec-10] DEBUG o.s.web.servlet.DispatcherServlet - GET "/api/config/current-country", parameters={}
+2026-06-02 10:05:18 [http-nio-3000-exec-8] DEBUG o.s.web.servlet.DispatcherServlet - GET "/api/config/ai-prompt?country=default", parameters={masked}
+2026-06-02 10:05:18 [http-nio-3000-exec-10] DEBUG o.s.w.s.m.m.a.RequestMappingHandlerMapping - Mapped to com.attendance.controller.ConfigController#getCurrentCountry()
+2026-06-02 10:05:18 [http-nio-3000-exec-8] DEBUG o.s.w.s.m.m.a.RequestMappingHandlerMapping - Mapped to com.attendance.controller.ConfigController#getAiPrompts(String)
+2026-06-02 10:05:18 [http-nio-3000-exec-1] DEBUG o.s.web.servlet.DispatcherServlet - GET "/api/config/country-options", parameters={}
+2026-06-02 10:05:18 [http-nio-3000-exec-3] DEBUG o.s.web.servlet.DispatcherServlet - GET "/api/config/prompt-status", parameters={}
+2026-06-02 10:05:18 [http-nio-3000-exec-9] DEBUG o.s.web.servlet.DispatcherServlet - GET "/api/config/feishu?country=default", parameters={masked}
+2026-06-02 10:05:18 [http-nio-3000-exec-1] DEBUG o.s.w.s.m.m.a.RequestMappingHandlerMapping - Mapped to com.attendance.controller.ConfigController#getCountryOptions()
+2026-06-02 10:05:18 [http-nio-3000-exec-10] DEBUG o.s.w.s.m.m.a.RequestResponseBodyMethodProcessor - Using 'application/json', given [application/json, text/plain, */*] and supported [application/json, application/*+json, application/json, application/*+json]
+2026-06-02 10:05:18 [http-nio-3000-exec-3] DEBUG o.s.w.s.m.m.a.RequestMappingHandlerMapping - Mapped to com.attendance.controller.ConfigController#getPromptStatus()
+2026-06-02 10:05:18 [http-nio-3000-exec-9] DEBUG o.s.w.s.m.m.a.RequestMappingHandlerMapping - Mapped to com.attendance.controller.ConfigController#getFeishuConfig(String)
+2026-06-02 10:05:18 [http-nio-3000-exec-10] DEBUG o.s.w.s.m.m.a.RequestResponseBodyMethodProcessor - Writing [com.attendance.common.Result@4d50c232]
+2026-06-02 10:05:18 [http-nio-3000-exec-10] DEBUG o.s.web.servlet.DispatcherServlet - Completed 200 OK
+2026-06-02 10:05:18 [http-nio-3000-exec-1] DEBUG o.s.w.s.m.m.a.RequestResponseBodyMethodProcessor - Using 'application/json', given [application/json, text/plain, */*] and supported [application/json, application/*+json, application/json, application/*+json]
+2026-06-02 10:05:18 [http-nio-3000-exec-1] DEBUG o.s.w.s.m.m.a.RequestResponseBodyMethodProcessor - Writing [com.attendance.common.Result@5f6b0e17]
+2026-06-02 10:05:18 [http-nio-3000-exec-1] DEBUG o.s.web.servlet.DispatcherServlet - Completed 200 OK
+2026-06-02 10:05:18 [http-nio-3000-exec-8] INFO  c.a.service.MarkdownConfigService - getAiPrompt(DB) request=default, effective=default
+2026-06-02 10:05:18 [http-nio-3000-exec-9] INFO  c.a.service.MarkdownConfigService - getFeishuConfig request=default, effectiveFeishu=default
+2026-06-02 10:05:18 [http-nio-3000-exec-9] INFO  c.a.service.MarkdownConfigService - extractSection 被调用，sectionName=全局默认配置, codeStart=```yaml, codeEnd=```
+2026-06-02 10:05:18 [http-nio-3000-exec-9] INFO  c.a.service.MarkdownConfigService - 原始 content 长度: 10975, 前300字符: # 飞书多维表配置
+
+## 全局默认配置
+
+```yaml
+bitable_app_token: 'MssZb4YXQaEeR5swLencoIcRnLc'
+bitable_table_id: 'tbl5WHAQbm0f6JyE'
+field_mapping:
+  - aiField: 'NO'
+    feishuField: 'NO'
+    type: 'string'
+    required: true
+    description: '工号'
+  - aiField: 'Pays'
+    feishuField: 'Pays'
+    type: 'string'
+    re
+2026-06-02 10:05:18 [http-nio-3000-exec-9] INFO  c.a.service.MarkdownConfigService - 使用正则表达式: (?:##+\s*)\Q全局默认配置\E(.*?)(?=##|$)
+2026-06-02 10:05:18 [http-nio-3000-exec-9] INFO  c.a.service.MarkdownConfigService - 找到了匹配的 section
+2026-06-02 10:05:18 [http-nio-3000-exec-9] INFO  c.a.service.MarkdownConfigService - 提取的 sectionContent 长度: 1845, 前300字符: 
+
+```yaml
+bitable_app_token: 'MssZb4YXQaEeR5swLencoIcRnLc'
+bitable_table_id: 'tbl5WHAQbm0f6JyE'
+field_mapping:
+  - aiField: 'NO'
+    feishuField: 'NO'
+    type: 'string'
+    required: true
+    description: '工号'
+  - aiField: 'Pays'
+    feishuField: 'Pays'
+    type: 'string'
+    required: false
+    de
+2026-06-02 10:05:18 [http-nio-3000-exec-9] INFO  c.a.service.MarkdownConfigService - 查找 codeStart '```yaml' 位置: 2
+2026-06-02 10:05:18 [http-nio-3000-exec-9] INFO  c.a.service.MarkdownConfigService - 查找 codeEnd '```' 位置: 1840
+2026-06-02 10:05:18 [http-nio-3000-exec-9] INFO  c.a.service.MarkdownConfigService - 提取结果长度: 1829, 前300字符: bitable_app_token: 'MssZb4YXQaEeR5swLencoIcRnLc'
+bitable_table_id: 'tbl5WHAQbm0f6JyE'
+field_mapping:
+  - aiField: 'NO'
+    feishuField: 'NO'
+    type: 'string'
+    required: true
+    description: '工号'
+  - aiField: 'Pays'
+    feishuField: 'Pays'
+    type: 'string'
+    required: false
+    description:
+2026-06-02 10:05:18 [http-nio-3000-exec-9] INFO  c.a.service.MarkdownConfigService - 开始提取字段映射，yaml 内容长度: 1829
+2026-06-02 10:05:18 [http-nio-3000-exec-9] INFO  c.a.service.MarkdownConfigService - yaml 内容前500字符: bitable_app_token: 'MssZb4YXQaEeR5swLencoIcRnLc'
+bitable_table_id: 'tbl5WHAQbm0f6JyE'
+field_mapping:
+  - aiField: 'NO'
+    feishuField: 'NO'
+    type: 'string'
+    required: true
+    description: '工号'
+  - aiField: 'Pays'
+    feishuField: 'Pays'
+    type: 'string'
+    required: false
+    description: '国家'
+  - aiField: 'Entrepot'
+    feishuField: 'Entrepôt'
+    type: 'string'
+    required: false
+    description: '仓库'
+  - aiField: 'NOM_PRENOM'
+    feishuField: 'NOM PRENOM'
+    type: 'string'
+    re
+2026-06-02 10:05:18 [http-nio-3000-exec-9] INFO  c.a.service.MarkdownConfigService - 提取到 15 个字段映射
+2026-06-02 10:05:18 [http-nio-3000-exec-8] INFO  c.a.service.MarkdownConfigService - 最终提示词长度: 1187
+2026-06-02 10:05:18 [http-nio-3000-exec-9] INFO  c.a.service.MarkdownConfigService - 字段映射 0: {aiField=NO, feishuField=NO, description=工号, type=string, required=true}
+2026-06-02 10:05:18 [http-nio-3000-exec-9] INFO  c.a.service.MarkdownConfigService - 字段映射 1: {aiField=Pays, feishuField=Pays, description=国家, type=string, required=false}
+2026-06-02 10:05:18 [http-nio-3000-exec-9] INFO  c.a.service.MarkdownConfigService - 字段映射 2: {aiField=Entrepot, feishuField=Entrepôt, description=仓库, type=string, required=false}
+2026-06-02 10:05:18 [http-nio-3000-exec-9] INFO  c.a.service.MarkdownConfigService - 字段映射 3: {aiField=NOM_PRENOM, feishuField=NOM PRENOM, description=姓名, type=string, required=false}
+2026-06-02 10:05:18 [http-nio-3000-exec-9] INFO  c.a.service.MarkdownConfigService - 字段映射 4: {aiField=AGENCE_INTERIMAIRE, feishuField=AGENCE D'INTERIMAIR, description=中介机构, type=string, required=false}
+2026-06-02 10:05:18 [http-nio-3000-exec-9] INFO  c.a.service.MarkdownConfigService - 字段映射 5: {aiField=HORAIRES_DU_TRAVAIL, feishuField=HORAIRES DU TRAVAI, description=工作时间, type=string, required=false}
+2026-06-02 10:05:18 [http-nio-3000-exec-9] INFO  c.a.service.MarkdownConfigService - 字段映射 6: {aiField=Date, feishuField=Date, description=日期, type=date, required=true}
+2026-06-02 10:05:18 [http-nio-3000-exec-9] INFO  c.a.service.MarkdownConfigService - 字段映射 7: {aiField=ARRIVEE_DATETIME, feishuField=ARRIVE, description=到达时间, type=datetime, required=true}
+2026-06-02 10:05:18 [http-nio-3000-exec-9] INFO  c.a.service.MarkdownConfigService - 字段映射 8: {aiField=DEPAR_DATETIME, feishuField=DEPAR, description=离开时间, type=datetime, required=true}
+2026-06-02 10:05:18 [http-nio-3000-exec-9] INFO  c.a.service.MarkdownConfigService - 字段映射 9: {aiField=PAUSE, feishuField=PAUS, description=休息(分钟), type=number, required=true}
+2026-06-02 10:05:18 [http-nio-3000-exec-9] INFO  c.a.service.MarkdownConfigService - 字段映射 10: {aiField=SIGNATURE, feishuField=SIGNATURE, description=员工签名, type=string, required=false}
+2026-06-02 10:05:18 [http-nio-3000-exec-9] INFO  c.a.service.MarkdownConfigService - 字段映射 11: {aiField=Observations, feishuField=Observations, description=备注, type=string, required=false}
+2026-06-02 10:05:18 [http-nio-3000-exec-9] INFO  c.a.service.MarkdownConfigService - 字段映射 12: {aiField=SmartMark, feishuField=Mark, description=标记, type=string, required=false}
+2026-06-02 10:05:18 [http-nio-3000-exec-9] INFO  c.a.service.MarkdownConfigService - 字段映射 13: {aiField=TASK_ID, feishuField=任务id, description=任务id, type=string, required=false}
+2026-06-02 10:05:18 [http-nio-3000-exec-9] INFO  c.a.service.MarkdownConfigService - 字段映射 14: {aiField=UPLOADED_BY, feishuField=上传人员, description=上传人员, type=user, required=false}
+2026-06-02 10:05:18 [http-nio-3000-exec-9] DEBUG o.s.w.s.m.m.a.RequestResponseBodyMethodProcessor - Using 'application/json', given [application/json, text/plain, */*] and supported [application/json, application/*+json, application/json, application/*+json]
+2026-06-02 10:05:18 [http-nio-3000-exec-9] DEBUG o.s.w.s.m.m.a.RequestResponseBodyMethodProcessor - Writing [com.attendance.common.Result@22bc8370]
+2026-06-02 10:05:18 [http-nio-3000-exec-9] DEBUG o.s.web.servlet.DispatcherServlet - Completed 200 OK
+2026-06-02 10:05:18 [http-nio-3000-exec-8] DEBUG o.s.w.s.m.m.a.RequestResponseBodyMethodProcessor - Using 'application/json', given [application/json, text/plain, */*] and supported [application/json, application/*+json, application/json, application/*+json]
+2026-06-02 10:05:18 [http-nio-3000-exec-8] DEBUG o.s.w.s.m.m.a.RequestResponseBodyMethodProcessor - Writing [com.attendance.common.Result@33cfe8cd]
+2026-06-02 10:05:18 [http-nio-3000-exec-8] DEBUG o.s.web.servlet.DispatcherServlet - Completed 200 OK
+2026-06-02 10:05:18 [http-nio-3000-exec-3] DEBUG o.s.w.s.m.m.a.RequestResponseBodyMethodProcessor - Using 'application/json', given [application/json, text/plain, */*] and supported [application/json, application/*+json, application/json, application/*+json]
+2026-06-02 10:05:18 [http-nio-3000-exec-3] DEBUG o.s.w.s.m.m.a.RequestResponseBodyMethodProcessor - Writing [com.attendance.common.Result@7d247130]
+2026-06-02 10:05:18 [http-nio-3000-exec-3] DEBUG o.s.web.servlet.DispatcherServlet - Completed 200 OK
+2026-06-02 10:05:18 [http-nio-3000-exec-2] DEBUG o.s.w.s.m.m.a.RequestMappingHandlerMapping - Mapped to com.attendance.controller.ConfigController#getCountryBundle(String)
+2026-06-02 10:05:18 [http-nio-3000-exec-2] DEBUG o.s.web.servlet.DispatcherServlet - GET "/api/config/country-bundle?country=default", parameters={masked}
+2026-06-02 10:05:18 [http-nio-3000-exec-2] DEBUG o.s.w.s.m.m.a.RequestMappingHandlerMapping - Mapped to com.attendance.controller.ConfigController#getCountryBundle(String)
+2026-06-02 10:05:18 [http-nio-3000-exec-2] INFO  c.a.service.MarkdownConfigService - getAiPrompt(DB) request=default, effective=default
+2026-06-02 10:05:18 [http-nio-3000-exec-2] INFO  c.a.service.MarkdownConfigService - 最终提示词长度: 1187
+2026-06-02 10:05:18 [http-nio-3000-exec-2] INFO  c.a.service.MarkdownConfigService - getFeishuConfig request=default, effectiveFeishu=default
+2026-06-02 10:05:18 [http-nio-3000-exec-2] INFO  c.a.service.MarkdownConfigService - extractSection 被调用，sectionName=全局默认配置, codeStart=```yaml, codeEnd=```
+2026-06-02 10:05:18 [http-nio-3000-exec-2] INFO  c.a.service.MarkdownConfigService - 原始 content 长度: 10975, 前300字符: # 飞书多维表配置
+
+## 全局默认配置
+
+```yaml
+bitable_app_token: 'MssZb4YXQaEeR5swLencoIcRnLc'
+bitable_table_id: 'tbl5WHAQbm0f6JyE'
+field_mapping:
+  - aiField: 'NO'
+    feishuField: 'NO'
+    type: 'string'
+    required: true
+    description: '工号'
+  - aiField: 'Pays'
+    feishuField: 'Pays'
+    type: 'string'
+    re
+2026-06-02 10:05:18 [http-nio-3000-exec-2] INFO  c.a.service.MarkdownConfigService - 使用正则表达式: (?:##+\s*)\Q全局默认配置\E(.*?)(?=##|$)
+2026-06-02 10:05:18 [http-nio-3000-exec-2] INFO  c.a.service.MarkdownConfigService - 找到了匹配的 section
+2026-06-02 10:05:18 [http-nio-3000-exec-2] INFO  c.a.service.MarkdownConfigService - 提取的 sectionContent 长度: 1845, 前300字符: 
+
+```yaml
+bitable_app_token: 'MssZb4YXQaEeR5swLencoIcRnLc'
+bitable_table_id: 'tbl5WHAQbm0f6JyE'
+field_mapping:
+  - aiField: 'NO'
+    feishuField: 'NO'
+    type: 'string'
+    required: true
+    description: '工号'
+  - aiField: 'Pays'
+    feishuField: 'Pays'
+    type: 'string'
+    required: false
+    de
+2026-06-02 10:05:18 [http-nio-3000-exec-2] INFO  c.a.service.MarkdownConfigService - 查找 codeStart '```yaml' 位置: 2
+2026-06-02 10:05:18 [http-nio-3000-exec-2] INFO  c.a.service.MarkdownConfigService - 查找 codeEnd '```' 位置: 1840
+2026-06-02 10:05:18 [http-nio-3000-exec-2] INFO  c.a.service.MarkdownConfigService - 提取结果长度: 1829, 前300字符: bitable_app_token: 'MssZb4YXQaEeR5swLencoIcRnLc'
+bitable_table_id: 'tbl5WHAQbm0f6JyE'
+field_mapping:
+  - aiField: 'NO'
+    feishuField: 'NO'
+    type: 'string'
+    required: true
+    description: '工号'
+  - aiField: 'Pays'
+    feishuField: 'Pays'
+    type: 'string'
+    required: false
+    description:
+2026-06-02 10:05:18 [http-nio-3000-exec-2] INFO  c.a.service.MarkdownConfigService - 开始提取字段映射，yaml 内容长度: 1829
+2026-06-02 10:05:18 [http-nio-3000-exec-2] INFO  c.a.service.MarkdownConfigService - yaml 内容前500字符: bitable_app_token: 'MssZb4YXQaEeR5swLencoIcRnLc'
+bitable_table_id: 'tbl5WHAQbm0f6JyE'
+field_mapping:
+  - aiField: 'NO'
+    feishuField: 'NO'
+    type: 'string'
+    required: true
+    description: '工号'
+  - aiField: 'Pays'
+    feishuField: 'Pays'
+    type: 'string'
+    required: false
+    description: '国家'
+  - aiField: 'Entrepot'
+    feishuField: 'Entrepôt'
+    type: 'string'
+    required: false
+    description: '仓库'
+  - aiField: 'NOM_PRENOM'
+    feishuField: 'NOM PRENOM'
+    type: 'string'
+    re
+2026-06-02 10:05:18 [http-nio-3000-exec-2] INFO  c.a.service.MarkdownConfigService - 提取到 15 个字段映射
+2026-06-02 10:05:18 [http-nio-3000-exec-2] INFO  c.a.service.MarkdownConfigService - 字段映射 0: {aiField=NO, feishuField=NO, description=工号, type=string, required=true}
+2026-06-02 10:05:18 [http-nio-3000-exec-2] INFO  c.a.service.MarkdownConfigService - 字段映射 1: {aiField=Pays, feishuField=Pays, description=国家, type=string, required=false}
+2026-06-02 10:05:18 [http-nio-3000-exec-2] INFO  c.a.service.MarkdownConfigService - 字段映射 2: {aiField=Entrepot, feishuField=Entrepôt, description=仓库, type=string, required=false}
+2026-06-02 10:05:18 [http-nio-3000-exec-2] INFO  c.a.service.MarkdownConfigService - 字段映射 3: {aiField=NOM_PRENOM, feishuField=NOM PRENOM, description=姓名, type=string, required=false}
+2026-06-02 10:05:18 [http-nio-3000-exec-2] INFO  c.a.service.MarkdownConfigService - 字段映射 4: {aiField=AGENCE_INTERIMAIRE, feishuField=AGENCE D'INTERIMAIR, description=中介机构, type=string, required=false}
+2026-06-02 10:05:18 [http-nio-3000-exec-2] INFO  c.a.service.MarkdownConfigService - 字段映射 5: {aiField=HORAIRES_DU_TRAVAIL, feishuField=HORAIRES DU TRAVAI, description=工作时间, type=string, required=false}
+2026-06-02 10:05:18 [http-nio-3000-exec-2] INFO  c.a.service.MarkdownConfigService - 字段映射 6: {aiField=Date, feishuField=Date, description=日期, type=date, required=true}
+2026-06-02 10:05:18 [http-nio-3000-exec-2] INFO  c.a.service.MarkdownConfigService - 字段映射 7: {aiField=ARRIVEE_DATETIME, feishuField=ARRIVE, description=到达时间, type=datetime, required=true}
+2026-06-02 10:05:18 [http-nio-3000-exec-2] INFO  c.a.service.MarkdownConfigService - 字段映射 8: {aiField=DEPAR_DATETIME, feishuField=DEPAR, description=离开时间, type=datetime, required=true}
+2026-06-02 10:05:18 [http-nio-3000-exec-2] INFO  c.a.service.MarkdownConfigService - 字段映射 9: {aiField=PAUSE, feishuField=PAUS, description=休息(分钟), type=number, required=true}
+2026-06-02 10:05:18 [http-nio-3000-exec-2] INFO  c.a.service.MarkdownConfigService - 字段映射 10: {aiField=SIGNATURE, feishuField=SIGNATURE, description=员工签名, type=string, required=false}
+2026-06-02 10:05:18 [http-nio-3000-exec-2] INFO  c.a.service.MarkdownConfigService - 字段映射 11: {aiField=Observations, feishuField=Observations, description=备注, type=string, required=false}
+2026-06-02 10:05:18 [http-nio-3000-exec-2] INFO  c.a.service.MarkdownConfigService - 字段映射 12: {aiField=SmartMark, feishuField=Mark, description=标记, type=string, required=false}
+2026-06-02 10:05:18 [http-nio-3000-exec-2] INFO  c.a.service.MarkdownConfigService - 字段映射 13: {aiField=TASK_ID, feishuField=任务id, description=任务id, type=string, required=false}
+2026-06-02 10:05:18 [http-nio-3000-exec-2] INFO  c.a.service.MarkdownConfigService - 字段映射 14: {aiField=UPLOADED_BY, feishuField=上传人员, description=上传人员, type=user, required=false}
+2026-06-02 10:05:18 [http-nio-3000-exec-2] DEBUG o.s.w.s.m.m.a.RequestResponseBodyMethodProcessor - Using 'application/json', given [application/json, text/plain, */*] and supported [application/json, application/*+json, application/json, application/*+json]
+2026-06-02 10:05:18 [http-nio-3000-exec-2] DEBUG o.s.w.s.m.m.a.RequestResponseBodyMethodProcessor - Writing [com.attendance.common.Result@555efc7e]
+2026-06-02 10:05:18 [http-nio-3000-exec-2] DEBUG o.s.web.servlet.DispatcherServlet - Completed 200 OK
+2026-06-02 10:05:18 [http-nio-3000-exec-5] DEBUG o.s.w.s.m.m.a.RequestMappingHandlerMapping - Mapped to com.attendance.controller.ConfigController#getCountryBundle(String)
+2026-06-02 10:05:18 [http-nio-3000-exec-5] DEBUG o.s.web.servlet.DispatcherServlet - GET "/api/config/country-bundle?country=default", parameters={masked}
+2026-06-02 10:05:18 [http-nio-3000-exec-5] DEBUG o.s.w.s.m.m.a.RequestMappingHandlerMapping - Mapped to com.attendance.controller.ConfigController#getCountryBundle(String)
+2026-06-02 10:05:18 [http-nio-3000-exec-5] INFO  c.a.service.MarkdownConfigService - getAiPrompt(DB) request=default, effective=default
+2026-06-02 10:05:18 [http-nio-3000-exec-5] INFO  c.a.service.MarkdownConfigService - 最终提示词长度: 1187
+2026-06-02 10:05:18 [http-nio-3000-exec-5] INFO  c.a.service.MarkdownConfigService - getFeishuConfig request=default, effectiveFeishu=default
+2026-06-02 10:05:18 [http-nio-3000-exec-5] INFO  c.a.service.MarkdownConfigService - extractSection 被调用，sectionName=全局默认配置, codeStart=```yaml, codeEnd=```
+2026-06-02 10:05:18 [http-nio-3000-exec-5] INFO  c.a.service.MarkdownConfigService - 原始 content 长度: 10975, 前300字符: # 飞书多维表配置
+
+## 全局默认配置
+
+```yaml
+bitable_app_token: 'MssZb4YXQaEeR5swLencoIcRnLc'
+bitable_table_id: 'tbl5WHAQbm0f6JyE'
+field_mapping:
+  - aiField: 'NO'
+    feishuField: 'NO'
+    type: 'string'
+    required: true
+    description: '工号'
+  - aiField: 'Pays'
+    feishuField: 'Pays'
+    type: 'string'
+    re
+2026-06-02 10:05:18 [http-nio-3000-exec-5] INFO  c.a.service.MarkdownConfigService - 使用正则表达式: (?:##+\s*)\Q全局默认配置\E(.*?)(?=##|$)
+2026-06-02 10:05:18 [http-nio-3000-exec-5] INFO  c.a.service.MarkdownConfigService - 找到了匹配的 section
+2026-06-02 10:05:18 [http-nio-3000-exec-5] INFO  c.a.service.MarkdownConfigService - 提取的 sectionContent 长度: 1845, 前300字符: 
+
+```yaml
+bitable_app_token: 'MssZb4YXQaEeR5swLencoIcRnLc'
+bitable_table_id: 'tbl5WHAQbm0f6JyE'
+field_mapping:
+  - aiField: 'NO'
+    feishuField: 'NO'
+    type: 'string'
+    required: true
+    description: '工号'
+  - aiField: 'Pays'
+    feishuField: 'Pays'
+    type: 'string'
+    required: false
+    de
+2026-06-02 10:05:18 [http-nio-3000-exec-5] INFO  c.a.service.MarkdownConfigService - 查找 codeStart '```yaml' 位置: 2
+2026-06-02 10:05:18 [http-nio-3000-exec-5] INFO  c.a.service.MarkdownConfigService - 查找 codeEnd '```' 位置: 1840
+2026-06-02 10:05:18 [http-nio-3000-exec-5] INFO  c.a.service.MarkdownConfigService - 提取结果长度: 1829, 前300字符: bitable_app_token: 'MssZb4YXQaEeR5swLencoIcRnLc'
+bitable_table_id: 'tbl5WHAQbm0f6JyE'
+field_mapping:
+  - aiField: 'NO'
+    feishuField: 'NO'
+    type: 'string'
+    required: true
+    description: '工号'
+  - aiField: 'Pays'
+    feishuField: 'Pays'
+    type: 'string'
+    required: false
+    description:
+2026-06-02 10:05:18 [http-nio-3000-exec-5] INFO  c.a.service.MarkdownConfigService - 开始提取字段映射，yaml 内容长度: 1829
+2026-06-02 10:05:18 [http-nio-3000-exec-5] INFO  c.a.service.MarkdownConfigService - yaml 内容前500字符: bitable_app_token: 'MssZb4YXQaEeR5swLencoIcRnLc'
+bitable_table_id: 'tbl5WHAQbm0f6JyE'
+field_mapping:
+  - aiField: 'NO'
+    feishuField: 'NO'
+    type: 'string'
+    required: true
+    description: '工号'
+  - aiField: 'Pays'
+    feishuField: 'Pays'
+    type: 'string'
+    required: false
+    description: '国家'
+  - aiField: 'Entrepot'
+    feishuField: 'Entrepôt'
+    type: 'string'
+    required: false
+    description: '仓库'
+  - aiField: 'NOM_PRENOM'
+    feishuField: 'NOM PRENOM'
+    type: 'string'
+    re
+2026-06-02 10:05:18 [http-nio-3000-exec-5] INFO  c.a.service.MarkdownConfigService - 提取到 15 个字段映射
+2026-06-02 10:05:18 [http-nio-3000-exec-5] INFO  c.a.service.MarkdownConfigService - 字段映射 0: {aiField=NO, feishuField=NO, description=工号, type=string, required=true}
+2026-06-02 10:05:18 [http-nio-3000-exec-5] INFO  c.a.service.MarkdownConfigService - 字段映射 1: {aiField=Pays, feishuField=Pays, description=国家, type=string, required=false}
+2026-06-02 10:05:18 [http-nio-3000-exec-5] INFO  c.a.service.MarkdownConfigService - 字段映射 2: {aiField=Entrepot, feishuField=Entrepôt, description=仓库, type=string, required=false}
+2026-06-02 10:05:18 [http-nio-3000-exec-5] INFO  c.a.service.MarkdownConfigService - 字段映射 3: {aiField=NOM_PRENOM, feishuField=NOM PRENOM, description=姓名, type=string, required=false}
+2026-06-02 10:05:18 [http-nio-3000-exec-5] INFO  c.a.service.MarkdownConfigService - 字段映射 4: {aiField=AGENCE_INTERIMAIRE, feishuField=AGENCE D'INTERIMAIR, description=中介机构, type=string, required=false}
+2026-06-02 10:05:18 [http-nio-3000-exec-5] INFO  c.a.service.MarkdownConfigService - 字段映射 5: {aiField=HORAIRES_DU_TRAVAIL, feishuField=HORAIRES DU TRAVAI, description=工作时间, type=string, required=false}
+2026-06-02 10:05:18 [http-nio-3000-exec-5] INFO  c.a.service.MarkdownConfigService - 字段映射 6: {aiField=Date, feishuField=Date, description=日期, type=date, required=true}
+2026-06-02 10:05:18 [http-nio-3000-exec-5] INFO  c.a.service.MarkdownConfigService - 字段映射 7: {aiField=ARRIVEE_DATETIME, feishuField=ARRIVE, description=到达时间, type=datetime, required=true}
+2026-06-02 10:05:18 [http-nio-3000-exec-5] INFO  c.a.service.MarkdownConfigService - 字段映射 8: {aiField=DEPAR_DATETIME, feishuField=DEPAR, description=离开时间, type=datetime, required=true}
+2026-06-02 10:05:18 [http-nio-3000-exec-5] INFO  c.a.service.MarkdownConfigService - 字段映射 9: {aiField=PAUSE, feishuField=PAUS, description=休息(分钟), type=number, required=true}
+2026-06-02 10:05:18 [http-nio-3000-exec-5] INFO  c.a.service.MarkdownConfigService - 字段映射 10: {aiField=SIGNATURE, feishuField=SIGNATURE, description=员工签名, type=string, required=false}
+2026-06-02 10:05:18 [http-nio-3000-exec-5] INFO  c.a.service.MarkdownConfigService - 字段映射 11: {aiField=Observations, feishuField=Observations, description=备注, type=string, required=false}
+2026-06-02 10:05:18 [http-nio-3000-exec-5] INFO  c.a.service.MarkdownConfigService - 字段映射 12: {aiField=SmartMark, feishuField=Mark, description=标记, type=string, required=false}
+2026-06-02 10:05:18 [http-nio-3000-exec-5] INFO  c.a.service.MarkdownConfigService - 字段映射 13: {aiField=TASK_ID, feishuField=任务id, description=任务id, type=string, required=false}
+2026-06-02 10:05:18 [http-nio-3000-exec-5] INFO  c.a.service.MarkdownConfigService - 字段映射 14: {aiField=UPLOADED_BY, feishuField=上传人员, description=上传人员, type=user, required=false}
+2026-06-02 10:05:18 [http-nio-3000-exec-5] DEBUG o.s.w.s.m.m.a.RequestResponseBodyMethodProcessor - Using 'application/json', given [application/json, text/plain, */*] and supported [application/json, application/*+json, application/json, application/*+json]
+2026-06-02 10:05:18 [http-nio-3000-exec-5] DEBUG o.s.w.s.m.m.a.RequestResponseBodyMethodProcessor - Writing [com.attendance.common.Result@40528de2]
+2026-06-02 10:05:18 [http-nio-3000-exec-5] DEBUG o.s.web.servlet.DispatcherServlet - Completed 200 OK
+2026-06-02 10:05:18 [http-nio-3000-exec-4] DEBUG o.s.w.s.m.m.a.RequestMappingHandlerMapping - Mapped to com.attendance.controller.ConfigController#getCountryBundle(String)
+2026-06-02 10:05:18 [http-nio-3000-exec-4] DEBUG o.s.web.servlet.DispatcherServlet - GET "/api/config/country-bundle?country=default", parameters={masked}
+2026-06-02 10:05:18 [http-nio-3000-exec-4] DEBUG o.s.w.s.m.m.a.RequestMappingHandlerMapping - Mapped to com.attendance.controller.ConfigController#getCountryBundle(String)
+2026-06-02 10:05:18 [http-nio-3000-exec-4] INFO  c.a.service.MarkdownConfigService - getAiPrompt(DB) request=default, effective=default
+2026-06-02 10:05:18 [http-nio-3000-exec-4] INFO  c.a.service.MarkdownConfigService - 最终提示词长度: 1187
+2026-06-02 10:05:18 [http-nio-3000-exec-4] INFO  c.a.service.MarkdownConfigService - getFeishuConfig request=default, effectiveFeishu=default
+2026-06-02 10:05:18 [http-nio-3000-exec-4] INFO  c.a.service.MarkdownConfigService - extractSection 被调用，sectionName=全局默认配置, codeStart=```yaml, codeEnd=```
+2026-06-02 10:05:18 [http-nio-3000-exec-4] INFO  c.a.service.MarkdownConfigService - 原始 content 长度: 10975, 前300字符: # 飞书多维表配置
+
+## 全局默认配置
+
+```yaml
+bitable_app_token: 'MssZb4YXQaEeR5swLencoIcRnLc'
+bitable_table_id: 'tbl5WHAQbm0f6JyE'
+field_mapping:
+  - aiField: 'NO'
+    feishuField: 'NO'
+    type: 'string'
+    required: true
+    description: '工号'
+  - aiField: 'Pays'
+    feishuField: 'Pays'
+    type: 'string'
+    re
+2026-06-02 10:05:18 [http-nio-3000-exec-4] INFO  c.a.service.MarkdownConfigService - 使用正则表达式: (?:##+\s*)\Q全局默认配置\E(.*?)(?=##|$)
+2026-06-02 10:05:18 [http-nio-3000-exec-4] INFO  c.a.service.MarkdownConfigService - 找到了匹配的 section
+2026-06-02 10:05:18 [http-nio-3000-exec-4] INFO  c.a.service.MarkdownConfigService - 提取的 sectionContent 长度: 1845, 前300字符: 
+
+```yaml
+bitable_app_token: 'MssZb4YXQaEeR5swLencoIcRnLc'
+bitable_table_id: 'tbl5WHAQbm0f6JyE'
+field_mapping:
+  - aiField: 'NO'
+    feishuField: 'NO'
+    type: 'string'
+    required: true
+    description: '工号'
+  - aiField: 'Pays'
+    feishuField: 'Pays'
+    type: 'string'
+    required: false
+    de
+2026-06-02 10:05:18 [http-nio-3000-exec-4] INFO  c.a.service.MarkdownConfigService - 查找 codeStart '```yaml' 位置: 2
+2026-06-02 10:05:18 [http-nio-3000-exec-4] INFO  c.a.service.MarkdownConfigService - 查找 codeEnd '```' 位置: 1840
+2026-06-02 10:05:18 [http-nio-3000-exec-4] INFO  c.a.service.MarkdownConfigService - 提取结果长度: 1829, 前300字符: bitable_app_token: 'MssZb4YXQaEeR5swLencoIcRnLc'
+bitable_table_id: 'tbl5WHAQbm0f6JyE'
+field_mapping:
+  - aiField: 'NO'
+    feishuField: 'NO'
+    type: 'string'
+    required: true
+    description: '工号'
+  - aiField: 'Pays'
+    feishuField: 'Pays'
+    type: 'string'
+    required: false
+    description:
+2026-06-02 10:05:18 [http-nio-3000-exec-4] INFO  c.a.service.MarkdownConfigService - 开始提取字段映射，yaml 内容长度: 1829
+2026-06-02 10:05:18 [http-nio-3000-exec-4] INFO  c.a.service.MarkdownConfigService - yaml 内容前500字符: bitable_app_token: 'MssZb4YXQaEeR5swLencoIcRnLc'
+bitable_table_id: 'tbl5WHAQbm0f6JyE'
+field_mapping:
+  - aiField: 'NO'
+    feishuField: 'NO'
+    type: 'string'
+    required: true
+    description: '工号'
+  - aiField: 'Pays'
+    feishuField: 'Pays'
+    type: 'string'
+    required: false
+    description: '国家'
+  - aiField: 'Entrepot'
+    feishuField: 'Entrepôt'
+    type: 'string'
+    required: false
+    description: '仓库'
+  - aiField: 'NOM_PRENOM'
+    feishuField: 'NOM PRENOM'
+    type: 'string'
+    re
+2026-06-02 10:05:18 [http-nio-3000-exec-4] INFO  c.a.service.MarkdownConfigService - 提取到 15 个字段映射
+2026-06-02 10:05:18 [http-nio-3000-exec-4] INFO  c.a.service.MarkdownConfigService - 字段映射 0: {aiField=NO, feishuField=NO, description=工号, type=string, required=true}
+2026-06-02 10:05:18 [http-nio-3000-exec-4] INFO  c.a.service.MarkdownConfigService - 字段映射 1: {aiField=Pays, feishuField=Pays, description=国家, type=string, required=false}
+2026-06-02 10:05:18 [http-nio-3000-exec-4] INFO  c.a.service.MarkdownConfigService - 字段映射 2: {aiField=Entrepot, feishuField=Entrepôt, description=仓库, type=string, required=false}
+2026-06-02 10:05:18 [http-nio-3000-exec-4] INFO  c.a.service.MarkdownConfigService - 字段映射 3: {aiField=NOM_PRENOM, feishuField=NOM PRENOM, description=姓名, type=string, required=false}
+2026-06-02 10:05:18 [http-nio-3000-exec-4] INFO  c.a.service.MarkdownConfigService - 字段映射 4: {aiField=AGENCE_INTERIMAIRE, feishuField=AGENCE D'INTERIMAIR, description=中介机构, type=string, required=false}
+2026-06-02 10:05:18 [http-nio-3000-exec-4] INFO  c.a.service.MarkdownConfigService - 字段映射 5: {aiField=HORAIRES_DU_TRAVAIL, feishuField=HORAIRES DU TRAVAI, description=工作时间, type=string, required=false}
+2026-06-02 10:05:18 [http-nio-3000-exec-4] INFO  c.a.service.MarkdownConfigService - 字段映射 6: {aiField=Date, feishuField=Date, description=日期, type=date, required=true}
+2026-06-02 10:05:18 [http-nio-3000-exec-4] INFO  c.a.service.MarkdownConfigService - 字段映射 7: {aiField=ARRIVEE_DATETIME, feishuField=ARRIVE, description=到达时间, type=datetime, required=true}
+2026-06-02 10:05:18 [http-nio-3000-exec-4] INFO  c.a.service.MarkdownConfigService - 字段映射 8: {aiField=DEPAR_DATETIME, feishuField=DEPAR, description=离开时间, type=datetime, required=true}
+2026-06-02 10:05:18 [http-nio-3000-exec-4] INFO  c.a.service.MarkdownConfigService - 字段映射 9: {aiField=PAUSE, feishuField=PAUS, description=休息(分钟), type=number, required=true}
+2026-06-02 10:05:18 [http-nio-3000-exec-4] INFO  c.a.service.MarkdownConfigService - 字段映射 10: {aiField=SIGNATURE, feishuField=SIGNATURE, description=员工签名, type=string, required=false}
+2026-06-02 10:05:18 [http-nio-3000-exec-4] INFO  c.a.service.MarkdownConfigService - 字段映射 11: {aiField=Observations, feishuField=Observations, description=备注, type=string, required=false}
+2026-06-02 10:05:18 [http-nio-3000-exec-4] INFO  c.a.service.MarkdownConfigService - 字段映射 12: {aiField=SmartMark, feishuField=Mark, description=标记, type=string, required=false}
+2026-06-02 10:05:18 [http-nio-3000-exec-4] INFO  c.a.service.MarkdownConfigService - 字段映射 13: {aiField=TASK_ID, feishuField=任务id, description=任务id, type=string, required=false}
+2026-06-02 10:05:18 [http-nio-3000-exec-4] INFO  c.a.service.MarkdownConfigService - 字段映射 14: {aiField=UPLOADED_BY, feishuField=上传人员, description=上传人员, type=user, required=false}
+2026-06-02 10:05:18 [http-nio-3000-exec-4] DEBUG o.s.w.s.m.m.a.RequestResponseBodyMethodProcessor - Using 'application/json', given [application/json, text/plain, */*] and supported [application/json, application/*+json, application/json, application/*+json]
+2026-06-02 10:05:18 [http-nio-3000-exec-4] DEBUG o.s.w.s.m.m.a.RequestResponseBodyMethodProcessor - Writing [com.attendance.common.Result@2e8768d9]
+2026-06-02 10:05:18 [http-nio-3000-exec-4] DEBUG o.s.web.servlet.DispatcherServlet - Completed 200 OK
+2026-06-02 10:05:20 [http-nio-3000-exec-6] DEBUG o.s.w.s.m.m.a.RequestMappingHandlerMapping - Mapped to com.attendance.controller.TaskController#getEmployeeRecords(TaskQuery)
+2026-06-02 10:05:20 [http-nio-3000-exec-6] DEBUG o.s.web.servlet.DispatcherServlet - GET "/api/tasks/records?current=1&size=20&status=&filters=%5B%5D", parameters={masked}
+2026-06-02 10:05:20 [http-nio-3000-exec-6] DEBUG o.s.w.s.m.m.a.RequestMappingHandlerMapping - Mapped to com.attendance.controller.TaskController#getEmployeeRecords(TaskQuery)
+2026-06-02 10:05:20 [http-nio-3000-exec-6] DEBUG o.s.w.s.m.m.a.RequestResponseBodyMethodProcessor - Using 'application/json', given [application/json, text/plain, */*] and supported [application/json, application/*+json, application/json, application/*+json]
+2026-06-02 10:05:20 [http-nio-3000-exec-6] DEBUG o.s.w.s.m.m.a.RequestResponseBodyMethodProcessor - Writing [com.attendance.common.Result@313edf5b]
+2026-06-02 10:05:20 [http-nio-3000-exec-6] DEBUG o.s.web.servlet.DispatcherServlet - Completed 200 OK
+2026-06-02 10:05:21 [http-nio-3000-exec-7] DEBUG o.s.w.s.m.m.a.RequestMappingHandlerMapping - Mapped to com.attendance.controller.TaskController#getTaskList(TaskQuery)
+2026-06-02 10:05:21 [http-nio-3000-exec-10] DEBUG o.s.w.s.m.m.a.RequestMappingHandlerMapping - Mapped to com.attendance.controller.TaskController#getTaskSummary()
+2026-06-02 10:05:21 [http-nio-3000-exec-10] DEBUG o.s.web.servlet.DispatcherServlet - GET "/api/tasks/summary", parameters={}
+2026-06-02 10:05:21 [http-nio-3000-exec-7] DEBUG o.s.web.servlet.DispatcherServlet - GET "/api/tasks?current=1&size=20&status=&keyword=&searchField=", parameters={masked}
+2026-06-02 10:05:21 [http-nio-3000-exec-10] DEBUG o.s.w.s.m.m.a.RequestMappingHandlerMapping - Mapped to com.attendance.controller.TaskController#getTaskSummary()
+2026-06-02 10:05:21 [http-nio-3000-exec-7] DEBUG o.s.w.s.m.m.a.RequestMappingHandlerMapping - Mapped to com.attendance.controller.TaskController#getTaskList(TaskQuery)
+2026-06-02 10:05:21 [http-nio-3000-exec-10] DEBUG o.s.w.s.m.m.a.RequestResponseBodyMethodProcessor - Using 'application/json', given [application/json, text/plain, */*] and supported [application/json, application/*+json, application/json, application/*+json]
+2026-06-02 10:05:21 [http-nio-3000-exec-10] DEBUG o.s.w.s.m.m.a.RequestResponseBodyMethodProcessor - Writing [com.attendance.common.Result@7b14c57c]
+2026-06-02 10:05:21 [http-nio-3000-exec-10] DEBUG o.s.web.servlet.DispatcherServlet - Completed 200 OK
+2026-06-02 10:05:21 [http-nio-3000-exec-7] DEBUG o.s.w.s.m.m.a.RequestResponseBodyMethodProcessor - Using 'application/json', given [application/json, text/plain, */*] and supported [application/json, application/*+json, application/json, application/*+json]
+2026-06-02 10:05:21 [http-nio-3000-exec-7] DEBUG o.s.w.s.m.m.a.RequestResponseBodyMethodProcessor - Writing [com.attendance.common.Result@66157e1b]
+2026-06-02 10:05:21 [http-nio-3000-exec-7] DEBUG o.s.web.servlet.DispatcherServlet - Completed 200 OK
+2026-06-02 10:05:23 [http-nio-3000-exec-1] DEBUG o.s.w.s.m.m.a.RequestMappingHandlerMapping - Mapped to com.attendance.controller.ExportController#summary()
+2026-06-02 10:05:23 [http-nio-3000-exec-1] DEBUG o.s.web.servlet.DispatcherServlet - GET "/api/exports/summary", parameters={}
+2026-06-02 10:05:23 [http-nio-3000-exec-1] DEBUG o.s.w.s.m.m.a.RequestMappingHandlerMapping - Mapped to com.attendance.controller.ExportController#summary()
+2026-06-02 10:05:23 [http-nio-3000-exec-1] DEBUG o.s.w.s.m.m.a.RequestResponseBodyMethodProcessor - Using 'application/json', given [application/json, text/plain, */*] and supported [application/json, application/*+json, application/json, application/*+json]
+2026-06-02 10:05:23 [http-nio-3000-exec-1] DEBUG o.s.w.s.m.m.a.RequestResponseBodyMethodProcessor - Writing [com.attendance.common.Result@3f0485f9]
+2026-06-02 10:05:23 [http-nio-3000-exec-1] DEBUG o.s.web.servlet.DispatcherServlet - Completed 200 OK
+2026-06-02 10:05:38 [http-nio-3000-exec-9] DEBUG o.s.w.s.m.m.a.RequestMappingHandlerMapping - Mapped to com.attendance.controller.ExportController#summary()
+2026-06-02 10:05:38 [http-nio-3000-exec-9] DEBUG o.s.web.servlet.DispatcherServlet - GET "/api/exports/summary", parameters={}
+2026-06-02 10:05:38 [http-nio-3000-exec-9] DEBUG o.s.w.s.m.m.a.RequestMappingHandlerMapping - Mapped to com.attendance.controller.ExportController#summary()
+2026-06-02 10:05:38 [http-nio-3000-exec-9] DEBUG o.s.w.s.m.m.a.RequestResponseBodyMethodProcessor - Using 'application/json', given [application/json, text/plain, */*] and supported [application/json, application/*+json, application/json, application/*+json]
+2026-06-02 10:05:38 [http-nio-3000-exec-9] DEBUG o.s.w.s.m.m.a.RequestResponseBodyMethodProcessor - Writing [com.attendance.common.Result@639ecc34]
+2026-06-02 10:05:38 [http-nio-3000-exec-9] DEBUG o.s.web.servlet.DispatcherServlet - Completed 200 OK
+2026-06-02 10:05:39 [http-nio-3000-exec-8] DEBUG o.s.w.s.m.m.a.RequestMappingHandlerMapping - Mapped to com.attendance.controller.TaskController#getTaskList(TaskQuery)
+2026-06-02 10:05:39 [http-nio-3000-exec-3] DEBUG o.s.w.s.m.m.a.RequestMappingHandlerMapping - Mapped to com.attendance.controller.TaskController#getTaskSummary()
+2026-06-02 10:05:39 [http-nio-3000-exec-8] DEBUG o.s.web.servlet.DispatcherServlet - GET "/api/tasks?current=1&size=20&status=&keyword=&searchField=", parameters={masked}
+2026-06-02 10:05:39 [http-nio-3000-exec-3] DEBUG o.s.web.servlet.DispatcherServlet - GET "/api/tasks/summary", parameters={}
+2026-06-02 10:05:39 [http-nio-3000-exec-8] DEBUG o.s.w.s.m.m.a.RequestMappingHandlerMapping - Mapped to com.attendance.controller.TaskController#getTaskList(TaskQuery)
+2026-06-02 10:05:39 [http-nio-3000-exec-3] DEBUG o.s.w.s.m.m.a.RequestMappingHandlerMapping - Mapped to com.attendance.controller.TaskController#getTaskSummary()
+2026-06-02 10:05:39 [http-nio-3000-exec-3] DEBUG o.s.w.s.m.m.a.RequestResponseBodyMethodProcessor - Using 'application/json', given [application/json, text/plain, */*] and supported [application/json, application/*+json, application/json, application/*+json]
+2026-06-02 10:05:39 [http-nio-3000-exec-3] DEBUG o.s.w.s.m.m.a.RequestResponseBodyMethodProcessor - Writing [com.attendance.common.Result@3d0db518]
+2026-06-02 10:05:39 [http-nio-3000-exec-3] DEBUG o.s.web.servlet.DispatcherServlet - Completed 200 OK
+2026-06-02 10:05:39 [http-nio-3000-exec-8] DEBUG o.s.w.s.m.m.a.RequestResponseBodyMethodProcessor - Using 'application/json', given [application/json, text/plain, */*] and supported [application/json, application/*+json, application/json, application/*+json]
+2026-06-02 10:05:39 [http-nio-3000-exec-8] DEBUG o.s.w.s.m.m.a.RequestResponseBodyMethodProcessor - Writing [com.attendance.common.Result@4480385b]
+2026-06-02 10:05:39 [http-nio-3000-exec-8] DEBUG o.s.web.servlet.DispatcherServlet - Completed 200 OK
+2026-06-02 10:05:40 [http-nio-3000-exec-2] DEBUG o.s.w.s.m.m.a.RequestMappingHandlerMapping - Mapped to com.attendance.controller.TaskController#getEmployeeRecords(TaskQuery)
+2026-06-02 10:05:40 [http-nio-3000-exec-2] DEBUG o.s.web.servlet.DispatcherServlet - GET "/api/tasks/records?current=1&size=20&status=&filters=%5B%5D", parameters={masked}
+2026-06-02 10:05:40 [http-nio-3000-exec-2] DEBUG o.s.w.s.m.m.a.RequestMappingHandlerMapping - Mapped to com.attendance.controller.TaskController#getEmployeeRecords(TaskQuery)
+2026-06-02 10:05:40 [http-nio-3000-exec-2] DEBUG o.s.w.s.m.m.a.RequestResponseBodyMethodProcessor - Using 'application/json', given [application/json, text/plain, */*] and supported [application/json, application/*+json, application/json, application/*+json]
+2026-06-02 10:05:40 [http-nio-3000-exec-2] DEBUG o.s.w.s.m.m.a.RequestResponseBodyMethodProcessor - Writing [com.attendance.common.Result@56a07217]
+2026-06-02 10:05:40 [http-nio-3000-exec-2] DEBUG o.s.web.servlet.DispatcherServlet - Completed 200 OK
+2026-06-02 10:05:41 [http-nio-3000-exec-5] DEBUG o.s.w.s.m.m.a.RequestMappingHandlerMapping - Mapped to com.attendance.controller.ConfigController#reloadConfigs()
+2026-06-02 10:05:41 [http-nio-3000-exec-5] DEBUG o.s.web.servlet.DispatcherServlet - POST "/api/config/reload", parameters={}
+2026-06-02 10:05:41 [http-nio-3000-exec-5] DEBUG o.s.w.s.m.m.a.RequestMappingHandlerMapping - Mapped to com.attendance.controller.ConfigController#reloadConfigs()
+2026-06-02 10:05:41 [http-nio-3000-exec-5] INFO  c.a.service.MarkdownConfigService - 开始加载配置文件...
+2026-06-02 10:05:41 [http-nio-3000-exec-5] INFO  c.a.service.MarkdownConfigService - 当前工作目录: /Users/apple/Desktop/智能体/AttendanceAgent/backend
+2026-06-02 10:05:41 [http-nio-3000-exec-5] INFO  c.a.service.MarkdownConfigService - 配置基础路径: /Users/apple/Desktop/智能体/AttendanceAgent/base-config
+2026-06-02 10:05:41 [http-nio-3000-exec-5] INFO  c.a.service.MarkdownConfigService - 读取文件: feishu.md, 绝对路径: /Users/apple/Desktop/智能体/AttendanceAgent/base-config/feishu.md
+2026-06-02 10:05:41 [http-nio-3000-exec-5] INFO  c.a.service.MarkdownConfigService - 文件 feishu.md 读取成功，长度: 10975
+2026-06-02 10:05:41 [http-nio-3000-exec-5] INFO  c.a.service.MarkdownConfigService - 读取文件: countries.md, 绝对路径: /Users/apple/Desktop/智能体/AttendanceAgent/base-config/countries.md
+2026-06-02 10:05:41 [http-nio-3000-exec-5] INFO  c.a.service.MarkdownConfigService - 文件 countries.md 读取成功，长度: 9959
+2026-06-02 10:05:41 [http-nio-3000-exec-5] INFO  c.a.service.MarkdownConfigService - prompts.md 长度: 10131
+2026-06-02 10:05:41 [http-nio-3000-exec-5] INFO  c.a.service.MarkdownConfigService - feishu.md 长度: 10975
+2026-06-02 10:05:41 [http-nio-3000-exec-5] INFO  c.a.service.MarkdownConfigService - countries.md 长度: 9959
+2026-06-02 10:05:41 [http-nio-3000-exec-5] INFO  c.a.service.MarkdownConfigService - 配置文件加载成功
+2026-06-02 10:05:41 [http-nio-3000-exec-5] INFO  c.a.controller.ConfigController - 配置已重新加载（仅飞书/国家配置），AI 提示词不做强制覆盖
+2026-06-02 10:05:41 [http-nio-3000-exec-5] DEBUG o.s.w.s.m.m.a.RequestResponseBodyMethodProcessor - Using 'application/json', given [application/json, text/plain, */*] and supported [application/json, application/*+json, application/json, application/*+json]
+2026-06-02 10:05:41 [http-nio-3000-exec-5] DEBUG o.s.w.s.m.m.a.RequestResponseBodyMethodProcessor - Writing [com.attendance.common.Result@1abed05b]
+2026-06-02 10:05:41 [http-nio-3000-exec-5] DEBUG o.s.web.servlet.DispatcherServlet - Completed 200 OK
+2026-06-02 10:05:41 [http-nio-3000-exec-6] DEBUG o.s.w.s.m.m.a.RequestMappingHandlerMapping - Mapped to com.attendance.controller.ConfigController#getFeishuConfig(String)
+2026-06-02 10:05:41 [http-nio-3000-exec-4] DEBUG o.s.w.s.m.m.a.RequestMappingHandlerMapping - Mapped to com.attendance.controller.ConfigController#getAiPrompts(String)
+2026-06-02 10:05:41 [http-nio-3000-exec-10] DEBUG o.s.w.s.m.m.a.RequestMappingHandlerMapping - Mapped to com.attendance.controller.ConfigController#getCurrentCountry()
+2026-06-02 10:05:41 [http-nio-3000-exec-7] DEBUG o.s.w.s.m.m.a.RequestMappingHandlerMapping - Mapped to com.attendance.controller.ConfigController#getCountryOptions()
+2026-06-02 10:05:41 [http-nio-3000-exec-1] DEBUG o.s.w.s.m.m.a.RequestMappingHandlerMapping - Mapped to com.attendance.controller.ConfigController#getPromptStatus()
+2026-06-02 10:05:41 [http-nio-3000-exec-4] DEBUG o.s.web.servlet.DispatcherServlet - GET "/api/config/ai-prompt?country=default", parameters={masked}
+2026-06-02 10:05:41 [http-nio-3000-exec-6] DEBUG o.s.web.servlet.DispatcherServlet - GET "/api/config/feishu?country=default", parameters={masked}
+2026-06-02 10:05:41 [http-nio-3000-exec-4] DEBUG o.s.w.s.m.m.a.RequestMappingHandlerMapping - Mapped to com.attendance.controller.ConfigController#getAiPrompts(String)
+2026-06-02 10:05:41 [http-nio-3000-exec-6] DEBUG o.s.w.s.m.m.a.RequestMappingHandlerMapping - Mapped to com.attendance.controller.ConfigController#getFeishuConfig(String)
+2026-06-02 10:05:41 [http-nio-3000-exec-7] DEBUG o.s.web.servlet.DispatcherServlet - GET "/api/config/country-options", parameters={}
+2026-06-02 10:05:41 [http-nio-3000-exec-7] DEBUG o.s.w.s.m.m.a.RequestMappingHandlerMapping - Mapped to com.attendance.controller.ConfigController#getCountryOptions()
+2026-06-02 10:05:41 [http-nio-3000-exec-10] DEBUG o.s.web.servlet.DispatcherServlet - GET "/api/config/current-country", parameters={}
+2026-06-02 10:05:41 [http-nio-3000-exec-10] DEBUG o.s.w.s.m.m.a.RequestMappingHandlerMapping - Mapped to com.attendance.controller.ConfigController#getCurrentCountry()
+2026-06-02 10:05:41 [http-nio-3000-exec-7] DEBUG o.s.w.s.m.m.a.RequestResponseBodyMethodProcessor - Using 'application/json', given [application/json, text/plain, */*] and supported [application/json, application/*+json, application/json, application/*+json]
+2026-06-02 10:05:41 [http-nio-3000-exec-7] DEBUG o.s.w.s.m.m.a.RequestResponseBodyMethodProcessor - Writing [com.attendance.common.Result@72aadd89]
+2026-06-02 10:05:41 [http-nio-3000-exec-1] DEBUG o.s.web.servlet.DispatcherServlet - GET "/api/config/prompt-status", parameters={}
+2026-06-02 10:05:41 [http-nio-3000-exec-1] DEBUG o.s.w.s.m.m.a.RequestMappingHandlerMapping - Mapped to com.attendance.controller.ConfigController#getPromptStatus()
+2026-06-02 10:05:41 [http-nio-3000-exec-10] DEBUG o.s.w.s.m.m.a.RequestResponseBodyMethodProcessor - Using 'application/json', given [application/json, text/plain, */*] and supported [application/json, application/*+json, application/json, application/*+json]
+2026-06-02 10:05:41 [http-nio-3000-exec-7] DEBUG o.s.web.servlet.DispatcherServlet - Completed 200 OK
+2026-06-02 10:05:41 [http-nio-3000-exec-10] DEBUG o.s.w.s.m.m.a.RequestResponseBodyMethodProcessor - Writing [com.attendance.common.Result@2829a4d4]
+2026-06-02 10:05:41 [http-nio-3000-exec-6] INFO  c.a.service.MarkdownConfigService - getFeishuConfig request=default, effectiveFeishu=default
+2026-06-02 10:05:41 [http-nio-3000-exec-4] INFO  c.a.service.MarkdownConfigService - getAiPrompt(DB) request=default, effective=default
+2026-06-02 10:05:41 [http-nio-3000-exec-6] INFO  c.a.service.MarkdownConfigService - extractSection 被调用，sectionName=全局默认配置, codeStart=```yaml, codeEnd=```
+2026-06-02 10:05:41 [http-nio-3000-exec-6] INFO  c.a.service.MarkdownConfigService - 原始 content 长度: 10975, 前300字符: # 飞书多维表配置
+
+## 全局默认配置
+
+```yaml
+bitable_app_token: 'MssZb4YXQaEeR5swLencoIcRnLc'
+bitable_table_id: 'tbl5WHAQbm0f6JyE'
+field_mapping:
+  - aiField: 'NO'
+    feishuField: 'NO'
+    type: 'string'
+    required: true
+    description: '工号'
+  - aiField: 'Pays'
+    feishuField: 'Pays'
+    type: 'string'
+    re
+2026-06-02 10:05:41 [http-nio-3000-exec-6] INFO  c.a.service.MarkdownConfigService - 使用正则表达式: (?:##+\s*)\Q全局默认配置\E(.*?)(?=##|$)
+2026-06-02 10:05:41 [http-nio-3000-exec-10] DEBUG o.s.web.servlet.DispatcherServlet - Completed 200 OK
+2026-06-02 10:05:41 [http-nio-3000-exec-6] INFO  c.a.service.MarkdownConfigService - 找到了匹配的 section
+2026-06-02 10:05:41 [http-nio-3000-exec-6] INFO  c.a.service.MarkdownConfigService - 提取的 sectionContent 长度: 1845, 前300字符: 
+
+```yaml
+bitable_app_token: 'MssZb4YXQaEeR5swLencoIcRnLc'
+bitable_table_id: 'tbl5WHAQbm0f6JyE'
+field_mapping:
+  - aiField: 'NO'
+    feishuField: 'NO'
+    type: 'string'
+    required: true
+    description: '工号'
+  - aiField: 'Pays'
+    feishuField: 'Pays'
+    type: 'string'
+    required: false
+    de
+2026-06-02 10:05:41 [http-nio-3000-exec-6] INFO  c.a.service.MarkdownConfigService - 查找 codeStart '```yaml' 位置: 2
+2026-06-02 10:05:41 [http-nio-3000-exec-6] INFO  c.a.service.MarkdownConfigService - 查找 codeEnd '```' 位置: 1840
+2026-06-02 10:05:41 [http-nio-3000-exec-6] INFO  c.a.service.MarkdownConfigService - 提取结果长度: 1829, 前300字符: bitable_app_token: 'MssZb4YXQaEeR5swLencoIcRnLc'
+bitable_table_id: 'tbl5WHAQbm0f6JyE'
+field_mapping:
+  - aiField: 'NO'
+    feishuField: 'NO'
+    type: 'string'
+    required: true
+    description: '工号'
+  - aiField: 'Pays'
+    feishuField: 'Pays'
+    type: 'string'
+    required: false
+    description:
+2026-06-02 10:05:41 [http-nio-3000-exec-6] INFO  c.a.service.MarkdownConfigService - 开始提取字段映射，yaml 内容长度: 1829
+2026-06-02 10:05:41 [http-nio-3000-exec-6] INFO  c.a.service.MarkdownConfigService - yaml 内容前500字符: bitable_app_token: 'MssZb4YXQaEeR5swLencoIcRnLc'
+bitable_table_id: 'tbl5WHAQbm0f6JyE'
+field_mapping:
+  - aiField: 'NO'
+    feishuField: 'NO'
+    type: 'string'
+    required: true
+    description: '工号'
+  - aiField: 'Pays'
+    feishuField: 'Pays'
+    type: 'string'
+    required: false
+    description: '国家'
+  - aiField: 'Entrepot'
+    feishuField: 'Entrepôt'
+    type: 'string'
+    required: false
+    description: '仓库'
+  - aiField: 'NOM_PRENOM'
+    feishuField: 'NOM PRENOM'
+    type: 'string'
+    re
+2026-06-02 10:05:41 [http-nio-3000-exec-4] INFO  c.a.service.MarkdownConfigService - 最终提示词长度: 1187
+2026-06-02 10:05:41 [http-nio-3000-exec-6] INFO  c.a.service.MarkdownConfigService - 提取到 15 个字段映射
+2026-06-02 10:05:41 [http-nio-3000-exec-6] INFO  c.a.service.MarkdownConfigService - 字段映射 0: {aiField=NO, feishuField=NO, description=工号, type=string, required=true}
+2026-06-02 10:05:41 [http-nio-3000-exec-6] INFO  c.a.service.MarkdownConfigService - 字段映射 1: {aiField=Pays, feishuField=Pays, description=国家, type=string, required=false}
+2026-06-02 10:05:41 [http-nio-3000-exec-6] INFO  c.a.service.MarkdownConfigService - 字段映射 2: {aiField=Entrepot, feishuField=Entrepôt, description=仓库, type=string, required=false}
+2026-06-02 10:05:41 [http-nio-3000-exec-6] INFO  c.a.service.MarkdownConfigService - 字段映射 3: {aiField=NOM_PRENOM, feishuField=NOM PRENOM, description=姓名, type=string, required=false}
+2026-06-02 10:05:41 [http-nio-3000-exec-6] INFO  c.a.service.MarkdownConfigService - 字段映射 4: {aiField=AGENCE_INTERIMAIRE, feishuField=AGENCE D'INTERIMAIR, description=中介机构, type=string, required=false}
+2026-06-02 10:05:41 [http-nio-3000-exec-6] INFO  c.a.service.MarkdownConfigService - 字段映射 5: {aiField=HORAIRES_DU_TRAVAIL, feishuField=HORAIRES DU TRAVAI, description=工作时间, type=string, required=false}
+2026-06-02 10:05:41 [http-nio-3000-exec-6] INFO  c.a.service.MarkdownConfigService - 字段映射 6: {aiField=Date, feishuField=Date, description=日期, type=date, required=true}
+2026-06-02 10:05:41 [http-nio-3000-exec-6] INFO  c.a.service.MarkdownConfigService - 字段映射 7: {aiField=ARRIVEE_DATETIME, feishuField=ARRIVE, description=到达时间, type=datetime, required=true}
+2026-06-02 10:05:41 [http-nio-3000-exec-6] INFO  c.a.service.MarkdownConfigService - 字段映射 8: {aiField=DEPAR_DATETIME, feishuField=DEPAR, description=离开时间, type=datetime, required=true}
+2026-06-02 10:05:41 [http-nio-3000-exec-6] INFO  c.a.service.MarkdownConfigService - 字段映射 9: {aiField=PAUSE, feishuField=PAUS, description=休息(分钟), type=number, required=true}
+2026-06-02 10:05:41 [http-nio-3000-exec-6] INFO  c.a.service.MarkdownConfigService - 字段映射 10: {aiField=SIGNATURE, feishuField=SIGNATURE, description=员工签名, type=string, required=false}
+2026-06-02 10:05:41 [http-nio-3000-exec-6] INFO  c.a.service.MarkdownConfigService - 字段映射 11: {aiField=Observations, feishuField=Observations, description=备注, type=string, required=false}
+2026-06-02 10:05:41 [http-nio-3000-exec-6] INFO  c.a.service.MarkdownConfigService - 字段映射 12: {aiField=SmartMark, feishuField=Mark, description=标记, type=string, required=false}
+2026-06-02 10:05:41 [http-nio-3000-exec-6] INFO  c.a.service.MarkdownConfigService - 字段映射 13: {aiField=TASK_ID, feishuField=任务id, description=任务id, type=string, required=false}
+2026-06-02 10:05:41 [http-nio-3000-exec-6] INFO  c.a.service.MarkdownConfigService - 字段映射 14: {aiField=UPLOADED_BY, feishuField=上传人员, description=上传人员, type=user, required=false}
+2026-06-02 10:05:41 [http-nio-3000-exec-6] DEBUG o.s.w.s.m.m.a.RequestResponseBodyMethodProcessor - Using 'application/json', given [application/json, text/plain, */*] and supported [application/json, application/*+json, application/json, application/*+json]
+2026-06-02 10:05:41 [http-nio-3000-exec-6] DEBUG o.s.w.s.m.m.a.RequestResponseBodyMethodProcessor - Writing [com.attendance.common.Result@4ef3fa6c]
+2026-06-02 10:05:41 [http-nio-3000-exec-4] DEBUG o.s.w.s.m.m.a.RequestResponseBodyMethodProcessor - Using 'application/json', given [application/json, text/plain, */*] and supported [application/json, application/*+json, application/json, application/*+json]
+2026-06-02 10:05:41 [http-nio-3000-exec-6] DEBUG o.s.web.servlet.DispatcherServlet - Completed 200 OK
+2026-06-02 10:05:41 [http-nio-3000-exec-4] DEBUG o.s.w.s.m.m.a.RequestResponseBodyMethodProcessor - Writing [com.attendance.common.Result@302491ab]
+2026-06-02 10:05:41 [http-nio-3000-exec-4] DEBUG o.s.web.servlet.DispatcherServlet - Completed 200 OK
+2026-06-02 10:05:41 [http-nio-3000-exec-1] DEBUG o.s.w.s.m.m.a.RequestResponseBodyMethodProcessor - Using 'application/json', given [application/json, text/plain, */*] and supported [application/json, application/*+json, application/json, application/*+json]
+2026-06-02 10:05:41 [http-nio-3000-exec-1] DEBUG o.s.w.s.m.m.a.RequestResponseBodyMethodProcessor - Writing [com.attendance.common.Result@25fb1144]
+2026-06-02 10:05:41 [http-nio-3000-exec-1] DEBUG o.s.web.servlet.DispatcherServlet - Completed 200 OK
+2026-06-02 10:05:41 [http-nio-3000-exec-9] DEBUG o.s.w.s.m.m.a.RequestMappingHandlerMapping - Mapped to com.attendance.controller.ConfigController#getCountryBundle(String)
+2026-06-02 10:05:41 [http-nio-3000-exec-9] DEBUG o.s.web.servlet.DispatcherServlet - GET "/api/config/country-bundle?country=default", parameters={masked}
+2026-06-02 10:05:41 [http-nio-3000-exec-9] DEBUG o.s.w.s.m.m.a.RequestMappingHandlerMapping - Mapped to com.attendance.controller.ConfigController#getCountryBundle(String)
+2026-06-02 10:05:41 [http-nio-3000-exec-9] INFO  c.a.service.MarkdownConfigService - getAiPrompt(DB) request=default, effective=default
+2026-06-02 10:05:41 [http-nio-3000-exec-9] INFO  c.a.service.MarkdownConfigService - 最终提示词长度: 1187
+2026-06-02 10:05:41 [http-nio-3000-exec-9] INFO  c.a.service.MarkdownConfigService - getFeishuConfig request=default, effectiveFeishu=default
+2026-06-02 10:05:41 [http-nio-3000-exec-9] INFO  c.a.service.MarkdownConfigService - extractSection 被调用，sectionName=全局默认配置, codeStart=```yaml, codeEnd=```
+2026-06-02 10:05:41 [http-nio-3000-exec-9] INFO  c.a.service.MarkdownConfigService - 原始 content 长度: 10975, 前300字符: # 飞书多维表配置
+
+## 全局默认配置
+
+```yaml
+bitable_app_token: 'MssZb4YXQaEeR5swLencoIcRnLc'
+bitable_table_id: 'tbl5WHAQbm0f6JyE'
+field_mapping:
+  - aiField: 'NO'
+    feishuField: 'NO'
+    type: 'string'
+    required: true
+    description: '工号'
+  - aiField: 'Pays'
+    feishuField: 'Pays'
+    type: 'string'
+    re
+2026-06-02 10:05:41 [http-nio-3000-exec-9] INFO  c.a.service.MarkdownConfigService - 使用正则表达式: (?:##+\s*)\Q全局默认配置\E(.*?)(?=##|$)
+2026-06-02 10:05:41 [http-nio-3000-exec-9] INFO  c.a.service.MarkdownConfigService - 找到了匹配的 section
+2026-06-02 10:05:41 [http-nio-3000-exec-9] INFO  c.a.service.MarkdownConfigService - 提取的 sectionContent 长度: 1845, 前300字符: 
+
+```yaml
+bitable_app_token: 'MssZb4YXQaEeR5swLencoIcRnLc'
+bitable_table_id: 'tbl5WHAQbm0f6JyE'
+field_mapping:
+  - aiField: 'NO'
+    feishuField: 'NO'
+    type: 'string'
+    required: true
+    description: '工号'
+  - aiField: 'Pays'
+    feishuField: 'Pays'
+    type: 'string'
+    required: false
+    de
+2026-06-02 10:05:41 [http-nio-3000-exec-9] INFO  c.a.service.MarkdownConfigService - 查找 codeStart '```yaml' 位置: 2
+2026-06-02 10:05:41 [http-nio-3000-exec-9] INFO  c.a.service.MarkdownConfigService - 查找 codeEnd '```' 位置: 1840
+2026-06-02 10:05:41 [http-nio-3000-exec-9] INFO  c.a.service.MarkdownConfigService - 提取结果长度: 1829, 前300字符: bitable_app_token: 'MssZb4YXQaEeR5swLencoIcRnLc'
+bitable_table_id: 'tbl5WHAQbm0f6JyE'
+field_mapping:
+  - aiField: 'NO'
+    feishuField: 'NO'
+    type: 'string'
+    required: true
+    description: '工号'
+  - aiField: 'Pays'
+    feishuField: 'Pays'
+    type: 'string'
+    required: false
+    description:
+2026-06-02 10:05:41 [http-nio-3000-exec-9] INFO  c.a.service.MarkdownConfigService - 开始提取字段映射，yaml 内容长度: 1829
+2026-06-02 10:05:41 [http-nio-3000-exec-9] INFO  c.a.service.MarkdownConfigService - yaml 内容前500字符: bitable_app_token: 'MssZb4YXQaEeR5swLencoIcRnLc'
+bitable_table_id: 'tbl5WHAQbm0f6JyE'
+field_mapping:
+  - aiField: 'NO'
+    feishuField: 'NO'
+    type: 'string'
+    required: true
+    description: '工号'
+  - aiField: 'Pays'
+    feishuField: 'Pays'
+    type: 'string'
+    required: false
+    description: '国家'
+  - aiField: 'Entrepot'
+    feishuField: 'Entrepôt'
+    type: 'string'
+    required: false
+    description: '仓库'
+  - aiField: 'NOM_PRENOM'
+    feishuField: 'NOM PRENOM'
+    type: 'string'
+    re
+2026-06-02 10:05:41 [http-nio-3000-exec-9] INFO  c.a.service.MarkdownConfigService - 提取到 15 个字段映射
+2026-06-02 10:05:41 [http-nio-3000-exec-9] INFO  c.a.service.MarkdownConfigService - 字段映射 0: {aiField=NO, feishuField=NO, description=工号, type=string, required=true}
+2026-06-02 10:05:41 [http-nio-3000-exec-9] INFO  c.a.service.MarkdownConfigService - 字段映射 1: {aiField=Pays, feishuField=Pays, description=国家, type=string, required=false}
+2026-06-02 10:05:41 [http-nio-3000-exec-9] INFO  c.a.service.MarkdownConfigService - 字段映射 2: {aiField=Entrepot, feishuField=Entrepôt, description=仓库, type=string, required=false}
+2026-06-02 10:05:41 [http-nio-3000-exec-9] INFO  c.a.service.MarkdownConfigService - 字段映射 3: {aiField=NOM_PRENOM, feishuField=NOM PRENOM, description=姓名, type=string, required=false}
+2026-06-02 10:05:41 [http-nio-3000-exec-9] INFO  c.a.service.MarkdownConfigService - 字段映射 4: {aiField=AGENCE_INTERIMAIRE, feishuField=AGENCE D'INTERIMAIR, description=中介机构, type=string, required=false}
+2026-06-02 10:05:41 [http-nio-3000-exec-9] INFO  c.a.service.MarkdownConfigService - 字段映射 5: {aiField=HORAIRES_DU_TRAVAIL, feishuField=HORAIRES DU TRAVAI, description=工作时间, type=string, required=false}
+2026-06-02 10:05:41 [http-nio-3000-exec-9] INFO  c.a.service.MarkdownConfigService - 字段映射 6: {aiField=Date, feishuField=Date, description=日期, type=date, required=true}
+2026-06-02 10:05:41 [http-nio-3000-exec-9] INFO  c.a.service.MarkdownConfigService - 字段映射 7: {aiField=ARRIVEE_DATETIME, feishuField=ARRIVE, description=到达时间, type=datetime, required=true}
+2026-06-02 10:05:41 [http-nio-3000-exec-9] INFO  c.a.service.MarkdownConfigService - 字段映射 8: {aiField=DEPAR_DATETIME, feishuField=DEPAR, description=离开时间, type=datetime, required=true}
+2026-06-02 10:05:41 [http-nio-3000-exec-9] INFO  c.a.service.MarkdownConfigService - 字段映射 9: {aiField=PAUSE, feishuField=PAUS, description=休息(分钟), type=number, required=true}
+2026-06-02 10:05:41 [http-nio-3000-exec-9] INFO  c.a.service.MarkdownConfigService - 字段映射 10: {aiField=SIGNATURE, feishuField=SIGNATURE, description=员工签名, type=string, required=false}
+2026-06-02 10:05:41 [http-nio-3000-exec-9] INFO  c.a.service.MarkdownConfigService - 字段映射 11: {aiField=Observations, feishuField=Observations, description=备注, type=string, required=false}
+2026-06-02 10:05:41 [http-nio-3000-exec-9] INFO  c.a.service.MarkdownConfigService - 字段映射 12: {aiField=SmartMark, feishuField=Mark, description=标记, type=string, required=false}
+2026-06-02 10:05:41 [http-nio-3000-exec-9] INFO  c.a.service.MarkdownConfigService - 字段映射 13: {aiField=TASK_ID, feishuField=任务id, description=任务id, type=string, required=false}
+2026-06-02 10:05:41 [http-nio-3000-exec-9] INFO  c.a.service.MarkdownConfigService - 字段映射 14: {aiField=UPLOADED_BY, feishuField=上传人员, description=上传人员, type=user, required=false}
+2026-06-02 10:05:41 [http-nio-3000-exec-9] DEBUG o.s.w.s.m.m.a.RequestResponseBodyMethodProcessor - Using 'application/json', given [application/json, text/plain, */*] and supported [application/json, application/*+json, application/json, application/*+json]
+2026-06-02 10:05:41 [http-nio-3000-exec-9] DEBUG o.s.w.s.m.m.a.RequestResponseBodyMethodProcessor - Writing [com.attendance.common.Result@7aa8baa5]
+2026-06-02 10:05:41 [http-nio-3000-exec-9] DEBUG o.s.web.servlet.DispatcherServlet - Completed 200 OK
+2026-06-02 10:05:41 [http-nio-3000-exec-3] DEBUG o.s.w.s.m.m.a.RequestMappingHandlerMapping - Mapped to com.attendance.controller.ConfigController#getCountryBundle(String)
+2026-06-02 10:05:41 [http-nio-3000-exec-3] DEBUG o.s.web.servlet.DispatcherServlet - GET "/api/config/country-bundle?country=default", parameters={masked}
+2026-06-02 10:05:41 [http-nio-3000-exec-3] DEBUG o.s.w.s.m.m.a.RequestMappingHandlerMapping - Mapped to com.attendance.controller.ConfigController#getCountryBundle(String)
+2026-06-02 10:05:41 [http-nio-3000-exec-3] INFO  c.a.service.MarkdownConfigService - getAiPrompt(DB) request=default, effective=default
+2026-06-02 10:05:41 [http-nio-3000-exec-3] INFO  c.a.service.MarkdownConfigService - 最终提示词长度: 1187
+2026-06-02 10:05:41 [http-nio-3000-exec-3] INFO  c.a.service.MarkdownConfigService - getFeishuConfig request=default, effectiveFeishu=default
+2026-06-02 10:05:41 [http-nio-3000-exec-3] INFO  c.a.service.MarkdownConfigService - extractSection 被调用，sectionName=全局默认配置, codeStart=```yaml, codeEnd=```
+2026-06-02 10:05:41 [http-nio-3000-exec-3] INFO  c.a.service.MarkdownConfigService - 原始 content 长度: 10975, 前300字符: # 飞书多维表配置
+
+## 全局默认配置
+
+```yaml
+bitable_app_token: 'MssZb4YXQaEeR5swLencoIcRnLc'
+bitable_table_id: 'tbl5WHAQbm0f6JyE'
+field_mapping:
+  - aiField: 'NO'
+    feishuField: 'NO'
+    type: 'string'
+    required: true
+    description: '工号'
+  - aiField: 'Pays'
+    feishuField: 'Pays'
+    type: 'string'
+    re
+2026-06-02 10:05:41 [http-nio-3000-exec-3] INFO  c.a.service.MarkdownConfigService - 使用正则表达式: (?:##+\s*)\Q全局默认配置\E(.*?)(?=##|$)
+2026-06-02 10:05:41 [http-nio-3000-exec-3] INFO  c.a.service.MarkdownConfigService - 找到了匹配的 section
+2026-06-02 10:05:41 [http-nio-3000-exec-3] INFO  c.a.service.MarkdownConfigService - 提取的 sectionContent 长度: 1845, 前300字符: 
+
+```yaml
+bitable_app_token: 'MssZb4YXQaEeR5swLencoIcRnLc'
+bitable_table_id: 'tbl5WHAQbm0f6JyE'
+field_mapping:
+  - aiField: 'NO'
+    feishuField: 'NO'
+    type: 'string'
+    required: true
+    description: '工号'
+  - aiField: 'Pays'
+    feishuField: 'Pays'
+    type: 'string'
+    required: false
+    de
+2026-06-02 10:05:41 [http-nio-3000-exec-3] INFO  c.a.service.MarkdownConfigService - 查找 codeStart '```yaml' 位置: 2
+2026-06-02 10:05:41 [http-nio-3000-exec-3] INFO  c.a.service.MarkdownConfigService - 查找 codeEnd '```' 位置: 1840
+2026-06-02 10:05:41 [http-nio-3000-exec-3] INFO  c.a.service.MarkdownConfigService - 提取结果长度: 1829, 前300字符: bitable_app_token: 'MssZb4YXQaEeR5swLencoIcRnLc'
+bitable_table_id: 'tbl5WHAQbm0f6JyE'
+field_mapping:
+  - aiField: 'NO'
+    feishuField: 'NO'
+    type: 'string'
+    required: true
+    description: '工号'
+  - aiField: 'Pays'
+    feishuField: 'Pays'
+    type: 'string'
+    required: false
+    description:
+2026-06-02 10:05:41 [http-nio-3000-exec-3] INFO  c.a.service.MarkdownConfigService - 开始提取字段映射，yaml 内容长度: 1829
+2026-06-02 10:05:41 [http-nio-3000-exec-3] INFO  c.a.service.MarkdownConfigService - yaml 内容前500字符: bitable_app_token: 'MssZb4YXQaEeR5swLencoIcRnLc'
+bitable_table_id: 'tbl5WHAQbm0f6JyE'
+field_mapping:
+  - aiField: 'NO'
+    feishuField: 'NO'
+    type: 'string'
+    required: true
+    description: '工号'
+  - aiField: 'Pays'
+    feishuField: 'Pays'
+    type: 'string'
+    required: false
+    description: '国家'
+  - aiField: 'Entrepot'
+    feishuField: 'Entrepôt'
+    type: 'string'
+    required: false
+    description: '仓库'
+  - aiField: 'NOM_PRENOM'
+    feishuField: 'NOM PRENOM'
+    type: 'string'
+    re
+2026-06-02 10:05:41 [http-nio-3000-exec-3] INFO  c.a.service.MarkdownConfigService - 提取到 15 个字段映射
+2026-06-02 10:05:41 [http-nio-3000-exec-3] INFO  c.a.service.MarkdownConfigService - 字段映射 0: {aiField=NO, feishuField=NO, description=工号, type=string, required=true}
+2026-06-02 10:05:41 [http-nio-3000-exec-3] INFO  c.a.service.MarkdownConfigService - 字段映射 1: {aiField=Pays, feishuField=Pays, description=国家, type=string, required=false}
+2026-06-02 10:05:41 [http-nio-3000-exec-3] INFO  c.a.service.MarkdownConfigService - 字段映射 2: {aiField=Entrepot, feishuField=Entrepôt, description=仓库, type=string, required=false}
+2026-06-02 10:05:41 [http-nio-3000-exec-3] INFO  c.a.service.MarkdownConfigService - 字段映射 3: {aiField=NOM_PRENOM, feishuField=NOM PRENOM, description=姓名, type=string, required=false}
+2026-06-02 10:05:41 [http-nio-3000-exec-3] INFO  c.a.service.MarkdownConfigService - 字段映射 4: {aiField=AGENCE_INTERIMAIRE, feishuField=AGENCE D'INTERIMAIR, description=中介机构, type=string, required=false}
+2026-06-02 10:05:41 [http-nio-3000-exec-3] INFO  c.a.service.MarkdownConfigService - 字段映射 5: {aiField=HORAIRES_DU_TRAVAIL, feishuField=HORAIRES DU TRAVAI, description=工作时间, type=string, required=false}
+2026-06-02 10:05:41 [http-nio-3000-exec-3] INFO  c.a.service.MarkdownConfigService - 字段映射 6: {aiField=Date, feishuField=Date, description=日期, type=date, required=true}
+2026-06-02 10:05:41 [http-nio-3000-exec-3] INFO  c.a.service.MarkdownConfigService - 字段映射 7: {aiField=ARRIVEE_DATETIME, feishuField=ARRIVE, description=到达时间, type=datetime, required=true}
+2026-06-02 10:05:41 [http-nio-3000-exec-3] INFO  c.a.service.MarkdownConfigService - 字段映射 8: {aiField=DEPAR_DATETIME, feishuField=DEPAR, description=离开时间, type=datetime, required=true}
+2026-06-02 10:05:41 [http-nio-3000-exec-3] INFO  c.a.service.MarkdownConfigService - 字段映射 9: {aiField=PAUSE, feishuField=PAUS, description=休息(分钟), type=number, required=true}
+2026-06-02 10:05:41 [http-nio-3000-exec-3] INFO  c.a.service.MarkdownConfigService - 字段映射 10: {aiField=SIGNATURE, feishuField=SIGNATURE, description=员工签名, type=string, required=false}
+2026-06-02 10:05:41 [http-nio-3000-exec-3] INFO  c.a.service.MarkdownConfigService - 字段映射 11: {aiField=Observations, feishuField=Observations, description=备注, type=string, required=false}
+2026-06-02 10:05:41 [http-nio-3000-exec-3] INFO  c.a.service.MarkdownConfigService - 字段映射 12: {aiField=SmartMark, feishuField=Mark, description=标记, type=string, required=false}
+2026-06-02 10:05:41 [http-nio-3000-exec-3] INFO  c.a.service.MarkdownConfigService - 字段映射 13: {aiField=TASK_ID, feishuField=任务id, description=任务id, type=string, required=false}
+2026-06-02 10:05:41 [http-nio-3000-exec-3] INFO  c.a.service.MarkdownConfigService - 字段映射 14: {aiField=UPLOADED_BY, feishuField=上传人员, description=上传人员, type=user, required=false}
+2026-06-02 10:05:41 [http-nio-3000-exec-3] DEBUG o.s.w.s.m.m.a.RequestResponseBodyMethodProcessor - Using 'application/json', given [application/json, text/plain, */*] and supported [application/json, application/*+json, application/json, application/*+json]
+2026-06-02 10:05:41 [http-nio-3000-exec-3] DEBUG o.s.w.s.m.m.a.RequestResponseBodyMethodProcessor - Writing [com.attendance.common.Result@4073b11b]
+2026-06-02 10:05:41 [http-nio-3000-exec-3] DEBUG o.s.web.servlet.DispatcherServlet - Completed 200 OK
+2026-06-02 10:05:41 [http-nio-3000-exec-8] DEBUG o.s.w.s.m.m.a.RequestMappingHandlerMapping - Mapped to com.attendance.controller.ConfigController#getCountryBundle(String)
+2026-06-02 10:05:41 [http-nio-3000-exec-8] DEBUG o.s.web.servlet.DispatcherServlet - GET "/api/config/country-bundle?country=default", parameters={masked}
+2026-06-02 10:05:41 [http-nio-3000-exec-8] DEBUG o.s.w.s.m.m.a.RequestMappingHandlerMapping - Mapped to com.attendance.controller.ConfigController#getCountryBundle(String)
+2026-06-02 10:05:41 [http-nio-3000-exec-8] INFO  c.a.service.MarkdownConfigService - getAiPrompt(DB) request=default, effective=default
+2026-06-02 10:05:41 [http-nio-3000-exec-8] INFO  c.a.service.MarkdownConfigService - 最终提示词长度: 1187
+2026-06-02 10:05:41 [http-nio-3000-exec-8] INFO  c.a.service.MarkdownConfigService - getFeishuConfig request=default, effectiveFeishu=default
+2026-06-02 10:05:41 [http-nio-3000-exec-8] INFO  c.a.service.MarkdownConfigService - extractSection 被调用，sectionName=全局默认配置, codeStart=```yaml, codeEnd=```
+2026-06-02 10:05:41 [http-nio-3000-exec-8] INFO  c.a.service.MarkdownConfigService - 原始 content 长度: 10975, 前300字符: # 飞书多维表配置
+
+## 全局默认配置
+
+```yaml
+bitable_app_token: 'MssZb4YXQaEeR5swLencoIcRnLc'
+bitable_table_id: 'tbl5WHAQbm0f6JyE'
+field_mapping:
+  - aiField: 'NO'
+    feishuField: 'NO'
+    type: 'string'
+    required: true
+    description: '工号'
+  - aiField: 'Pays'
+    feishuField: 'Pays'
+    type: 'string'
+    re
+2026-06-02 10:05:41 [http-nio-3000-exec-8] INFO  c.a.service.MarkdownConfigService - 使用正则表达式: (?:##+\s*)\Q全局默认配置\E(.*?)(?=##|$)
+2026-06-02 10:05:41 [http-nio-3000-exec-8] INFO  c.a.service.MarkdownConfigService - 找到了匹配的 section
+2026-06-02 10:05:41 [http-nio-3000-exec-8] INFO  c.a.service.MarkdownConfigService - 提取的 sectionContent 长度: 1845, 前300字符: 
+
+```yaml
+bitable_app_token: 'MssZb4YXQaEeR5swLencoIcRnLc'
+bitable_table_id: 'tbl5WHAQbm0f6JyE'
+field_mapping:
+  - aiField: 'NO'
+    feishuField: 'NO'
+    type: 'string'
+    required: true
+    description: '工号'
+  - aiField: 'Pays'
+    feishuField: 'Pays'
+    type: 'string'
+    required: false
+    de
+2026-06-02 10:05:41 [http-nio-3000-exec-8] INFO  c.a.service.MarkdownConfigService - 查找 codeStart '```yaml' 位置: 2
+2026-06-02 10:05:41 [http-nio-3000-exec-8] INFO  c.a.service.MarkdownConfigService - 查找 codeEnd '```' 位置: 1840
+2026-06-02 10:05:41 [http-nio-3000-exec-8] INFO  c.a.service.MarkdownConfigService - 提取结果长度: 1829, 前300字符: bitable_app_token: 'MssZb4YXQaEeR5swLencoIcRnLc'
+bitable_table_id: 'tbl5WHAQbm0f6JyE'
+field_mapping:
+  - aiField: 'NO'
+    feishuField: 'NO'
+    type: 'string'
+    required: true
+    description: '工号'
+  - aiField: 'Pays'
+    feishuField: 'Pays'
+    type: 'string'
+    required: false
+    description:
+2026-06-02 10:05:41 [http-nio-3000-exec-8] INFO  c.a.service.MarkdownConfigService - 开始提取字段映射，yaml 内容长度: 1829
+2026-06-02 10:05:41 [http-nio-3000-exec-8] INFO  c.a.service.MarkdownConfigService - yaml 内容前500字符: bitable_app_token: 'MssZb4YXQaEeR5swLencoIcRnLc'
+bitable_table_id: 'tbl5WHAQbm0f6JyE'
+field_mapping:
+  - aiField: 'NO'
+    feishuField: 'NO'
+    type: 'string'
+    required: true
+    description: '工号'
+  - aiField: 'Pays'
+    feishuField: 'Pays'
+    type: 'string'
+    required: false
+    description: '国家'
+  - aiField: 'Entrepot'
+    feishuField: 'Entrepôt'
+    type: 'string'
+    required: false
+    description: '仓库'
+  - aiField: 'NOM_PRENOM'
+    feishuField: 'NOM PRENOM'
+    type: 'string'
+    re
+2026-06-02 10:05:41 [http-nio-3000-exec-8] INFO  c.a.service.MarkdownConfigService - 提取到 15 个字段映射
+2026-06-02 10:05:41 [http-nio-3000-exec-8] INFO  c.a.service.MarkdownConfigService - 字段映射 0: {aiField=NO, feishuField=NO, description=工号, type=string, required=true}
+2026-06-02 10:05:41 [http-nio-3000-exec-8] INFO  c.a.service.MarkdownConfigService - 字段映射 1: {aiField=Pays, feishuField=Pays, description=国家, type=string, required=false}
+2026-06-02 10:05:41 [http-nio-3000-exec-8] INFO  c.a.service.MarkdownConfigService - 字段映射 2: {aiField=Entrepot, feishuField=Entrepôt, description=仓库, type=string, required=false}
+2026-06-02 10:05:41 [http-nio-3000-exec-8] INFO  c.a.service.MarkdownConfigService - 字段映射 3: {aiField=NOM_PRENOM, feishuField=NOM PRENOM, description=姓名, type=string, required=false}
+2026-06-02 10:05:41 [http-nio-3000-exec-8] INFO  c.a.service.MarkdownConfigService - 字段映射 4: {aiField=AGENCE_INTERIMAIRE, feishuField=AGENCE D'INTERIMAIR, description=中介机构, type=string, required=false}
+2026-06-02 10:05:41 [http-nio-3000-exec-8] INFO  c.a.service.MarkdownConfigService - 字段映射 5: {aiField=HORAIRES_DU_TRAVAIL, feishuField=HORAIRES DU TRAVAI, description=工作时间, type=string, required=false}
+2026-06-02 10:05:41 [http-nio-3000-exec-8] INFO  c.a.service.MarkdownConfigService - 字段映射 6: {aiField=Date, feishuField=Date, description=日期, type=date, required=true}
+2026-06-02 10:05:41 [http-nio-3000-exec-8] INFO  c.a.service.MarkdownConfigService - 字段映射 7: {aiField=ARRIVEE_DATETIME, feishuField=ARRIVE, description=到达时间, type=datetime, required=true}
+2026-06-02 10:05:41 [http-nio-3000-exec-8] INFO  c.a.service.MarkdownConfigService - 字段映射 8: {aiField=DEPAR_DATETIME, feishuField=DEPAR, description=离开时间, type=datetime, required=true}
+2026-06-02 10:05:41 [http-nio-3000-exec-8] INFO  c.a.service.MarkdownConfigService - 字段映射 9: {aiField=PAUSE, feishuField=PAUS, description=休息(分钟), type=number, required=true}
+2026-06-02 10:05:41 [http-nio-3000-exec-8] INFO  c.a.service.MarkdownConfigService - 字段映射 10: {aiField=SIGNATURE, feishuField=SIGNATURE, description=员工签名, type=string, required=false}
+2026-06-02 10:05:41 [http-nio-3000-exec-8] INFO  c.a.service.MarkdownConfigService - 字段映射 11: {aiField=Observations, feishuField=Observations, description=备注, type=string, required=false}
+2026-06-02 10:05:41 [http-nio-3000-exec-8] INFO  c.a.service.MarkdownConfigService - 字段映射 12: {aiField=SmartMark, feishuField=Mark, description=标记, type=string, required=false}
+2026-06-02 10:05:41 [http-nio-3000-exec-8] INFO  c.a.service.MarkdownConfigService - 字段映射 13: {aiField=TASK_ID, feishuField=任务id, description=任务id, type=string, required=false}
+2026-06-02 10:05:41 [http-nio-3000-exec-8] INFO  c.a.service.MarkdownConfigService - 字段映射 14: {aiField=UPLOADED_BY, feishuField=上传人员, description=上传人员, type=user, required=false}
+2026-06-02 10:05:41 [http-nio-3000-exec-8] DEBUG o.s.w.s.m.m.a.RequestResponseBodyMethodProcessor - Using 'application/json', given [application/json, text/plain, */*] and supported [application/json, application/*+json, application/json, application/*+json]
+2026-06-02 10:05:41 [http-nio-3000-exec-8] DEBUG o.s.w.s.m.m.a.RequestResponseBodyMethodProcessor - Writing [com.attendance.common.Result@218bbf3]
+2026-06-02 10:05:41 [http-nio-3000-exec-8] DEBUG o.s.web.servlet.DispatcherServlet - Completed 200 OK
+2026-06-02 10:05:42 [http-nio-3000-exec-2] DEBUG o.s.w.s.m.m.a.RequestMappingHandlerMapping - Mapped to com.attendance.controller.TaskController#getEmployeeRecords(TaskQuery)
+2026-06-02 10:05:42 [http-nio-3000-exec-2] DEBUG o.s.web.servlet.DispatcherServlet - GET "/api/tasks/records?current=1&size=20&status=&filters=%5B%5D", parameters={masked}
+2026-06-02 10:05:42 [http-nio-3000-exec-2] DEBUG o.s.w.s.m.m.a.RequestMappingHandlerMapping - Mapped to com.attendance.controller.TaskController#getEmployeeRecords(TaskQuery)
+2026-06-02 10:05:42 [http-nio-3000-exec-2] DEBUG o.s.w.s.m.m.a.RequestResponseBodyMethodProcessor - Using 'application/json', given [application/json, text/plain, */*] and supported [application/json, application/*+json, application/json, application/*+json]
+2026-06-02 10:05:42 [http-nio-3000-exec-2] DEBUG o.s.w.s.m.m.a.RequestResponseBodyMethodProcessor - Writing [com.attendance.common.Result@12cf2e6e]
+2026-06-02 10:05:42 [http-nio-3000-exec-2] DEBUG o.s.web.servlet.DispatcherServlet - Completed 200 OK
+2026-06-02 10:05:53 [http-nio-3000-exec-7] DEBUG o.s.w.s.m.m.a.RequestMappingHandlerMapping - Mapped to com.attendance.controller.ExportController#summary()
+2026-06-02 10:05:53 [http-nio-3000-exec-7] DEBUG o.s.web.servlet.DispatcherServlet - GET "/api/exports/summary", parameters={}
+2026-06-02 10:05:53 [http-nio-3000-exec-7] DEBUG o.s.w.s.m.m.a.RequestMappingHandlerMapping - Mapped to com.attendance.controller.ExportController#summary()
+2026-06-02 10:05:53 [http-nio-3000-exec-7] DEBUG o.s.w.s.m.m.a.RequestResponseBodyMethodProcessor - Using 'application/json', given [application/json, text/plain, */*] and supported [application/json, application/*+json, application/json, application/*+json]
+2026-06-02 10:05:53 [http-nio-3000-exec-7] DEBUG o.s.w.s.m.m.a.RequestResponseBodyMethodProcessor - Writing [com.attendance.common.Result@6423cfce]
+2026-06-02 10:05:53 [http-nio-3000-exec-7] DEBUG o.s.web.servlet.DispatcherServlet - Completed 200 OK
+2026-06-02 10:06:08 [http-nio-3000-exec-10] DEBUG o.s.w.s.m.m.a.RequestMappingHandlerMapping - Mapped to com.attendance.controller.ExportController#summary()
+2026-06-02 10:06:08 [http-nio-3000-exec-10] DEBUG o.s.web.servlet.DispatcherServlet - GET "/api/exports/summary", parameters={}
+2026-06-02 10:06:08 [http-nio-3000-exec-10] DEBUG o.s.w.s.m.m.a.RequestMappingHandlerMapping - Mapped to com.attendance.controller.ExportController#summary()
+2026-06-02 10:06:08 [http-nio-3000-exec-10] DEBUG o.s.w.s.m.m.a.RequestResponseBodyMethodProcessor - Using 'application/json', given [application/json, text/plain, */*] and supported [application/json, application/*+json, application/json, application/*+json]
+2026-06-02 10:06:08 [http-nio-3000-exec-10] DEBUG o.s.w.s.m.m.a.RequestResponseBodyMethodProcessor - Writing [com.attendance.common.Result@6afa6bb3]
+2026-06-02 10:06:08 [http-nio-3000-exec-10] DEBUG o.s.web.servlet.DispatcherServlet - Completed 200 OK
+2026-06-02 10:06:23 [http-nio-3000-exec-6] DEBUG o.s.w.s.m.m.a.RequestMappingHandlerMapping - Mapped to com.attendance.controller.ExportController#summary()
+2026-06-02 10:06:23 [http-nio-3000-exec-6] DEBUG o.s.web.servlet.DispatcherServlet - GET "/api/exports/summary", parameters={}
+2026-06-02 10:06:23 [http-nio-3000-exec-6] DEBUG o.s.w.s.m.m.a.RequestMappingHandlerMapping - Mapped to com.attendance.controller.ExportController#summary()
+2026-06-02 10:06:23 [http-nio-3000-exec-6] DEBUG o.s.w.s.m.m.a.RequestResponseBodyMethodProcessor - Using 'application/json', given [application/json, text/plain, */*] and supported [application/json, application/*+json, application/json, application/*+json]
+2026-06-02 10:06:23 [http-nio-3000-exec-6] DEBUG o.s.w.s.m.m.a.RequestResponseBodyMethodProcessor - Writing [com.attendance.common.Result@37079a25]
+2026-06-02 10:06:23 [http-nio-3000-exec-6] DEBUG o.s.web.servlet.DispatcherServlet - Completed 200 OK
+2026-06-02 10:06:38 [http-nio-3000-exec-4] DEBUG o.s.w.s.m.m.a.RequestMappingHandlerMapping - Mapped to com.attendance.controller.ExportController#summary()
+2026-06-02 10:06:38 [http-nio-3000-exec-4] DEBUG o.s.web.servlet.DispatcherServlet - GET "/api/exports/summary", parameters={}
+2026-06-02 10:06:38 [http-nio-3000-exec-4] DEBUG o.s.w.s.m.m.a.RequestMappingHandlerMapping - Mapped to com.attendance.controller.ExportController#summary()
+2026-06-02 10:06:38 [http-nio-3000-exec-4] DEBUG o.s.w.s.m.m.a.RequestResponseBodyMethodProcessor - Using 'application/json', given [application/json, text/plain, */*] and supported [application/json, application/*+json, application/json, application/*+json]
+2026-06-02 10:06:38 [http-nio-3000-exec-4] DEBUG o.s.w.s.m.m.a.RequestResponseBodyMethodProcessor - Writing [com.attendance.common.Result@1c40af10]
+2026-06-02 10:06:38 [http-nio-3000-exec-4] DEBUG o.s.web.servlet.DispatcherServlet - Completed 200 OK
+2026-06-02 10:06:53 [http-nio-3000-exec-1] DEBUG o.s.w.s.m.m.a.RequestMappingHandlerMapping - Mapped to com.attendance.controller.ExportController#summary()
+2026-06-02 10:06:53 [http-nio-3000-exec-1] DEBUG o.s.web.servlet.DispatcherServlet - GET "/api/exports/summary", parameters={}
+2026-06-02 10:06:53 [http-nio-3000-exec-1] DEBUG o.s.w.s.m.m.a.RequestMappingHandlerMapping - Mapped to com.attendance.controller.ExportController#summary()
+2026-06-02 10:06:53 [http-nio-3000-exec-1] DEBUG o.s.w.s.m.m.a.RequestResponseBodyMethodProcessor - Using 'application/json', given [application/json, text/plain, */*] and supported [application/json, application/*+json, application/json, application/*+json]
+2026-06-02 10:06:53 [http-nio-3000-exec-1] DEBUG o.s.w.s.m.m.a.RequestResponseBodyMethodProcessor - Writing [com.attendance.common.Result@40ce0653]
+2026-06-02 10:06:53 [http-nio-3000-exec-1] DEBUG o.s.web.servlet.DispatcherServlet - Completed 200 OK
+2026-06-02 10:07:08 [http-nio-3000-exec-9] DEBUG o.s.w.s.m.m.a.RequestMappingHandlerMapping - Mapped to com.attendance.controller.ExportController#summary()
+2026-06-02 10:07:08 [http-nio-3000-exec-9] DEBUG o.s.web.servlet.DispatcherServlet - GET "/api/exports/summary", parameters={}
+2026-06-02 10:07:08 [http-nio-3000-exec-9] DEBUG o.s.w.s.m.m.a.RequestMappingHandlerMapping - Mapped to com.attendance.controller.ExportController#summary()
+2026-06-02 10:07:08 [http-nio-3000-exec-9] DEBUG o.s.w.s.m.m.a.RequestResponseBodyMethodProcessor - Using 'application/json', given [application/json, text/plain, */*] and supported [application/json, application/*+json, application/json, application/*+json]
+2026-06-02 10:07:08 [http-nio-3000-exec-9] DEBUG o.s.w.s.m.m.a.RequestResponseBodyMethodProcessor - Writing [com.attendance.common.Result@7d3e722b]
+2026-06-02 10:07:08 [http-nio-3000-exec-9] DEBUG o.s.web.servlet.DispatcherServlet - Completed 200 OK
+2026-06-02 10:07:27 [http-nio-3000-exec-3] DEBUG o.s.w.s.m.m.a.RequestMappingHandlerMapping - Mapped to com.attendance.controller.ExportController#summary()
+2026-06-02 10:07:27 [http-nio-3000-exec-3] DEBUG o.s.web.servlet.DispatcherServlet - GET "/api/exports/summary", parameters={}
+2026-06-02 10:07:27 [http-nio-3000-exec-3] DEBUG o.s.w.s.m.m.a.RequestMappingHandlerMapping - Mapped to com.attendance.controller.ExportController#summary()
+2026-06-02 10:07:27 [http-nio-3000-exec-3] DEBUG o.s.w.s.m.m.a.RequestResponseBodyMethodProcessor - Using 'application/json', given [application/json, text/plain, */*] and supported [application/json, application/*+json, application/json, application/*+json]
+2026-06-02 10:07:27 [http-nio-3000-exec-3] DEBUG o.s.w.s.m.m.a.RequestResponseBodyMethodProcessor - Writing [com.attendance.common.Result@5fa7b4a0]
+2026-06-02 10:07:27 [http-nio-3000-exec-3] DEBUG o.s.web.servlet.DispatcherServlet - Completed 200 OK
+2026-06-02 10:09:01 [SpringApplicationShutdownHook] INFO  c.alibaba.druid.pool.DruidDataSource - {dataSource-1} closing ...
+2026-06-02 10:09:01 [SpringApplicationShutdownHook] INFO  c.alibaba.druid.pool.DruidDataSource - {dataSource-1} closed
+2026-06-02 10:09:08 [main] INFO  com.attendance.AttendanceApplication - Starting AttendanceApplication using Java 24.0.1 on macdeMacBook-Air-49.local with PID 44317 (/Users/apple/Desktop/智能体/AttendanceAgent/backend/target/classes started by apple in /Users/apple/Desktop/智能体/AttendanceAgent/backend)
+2026-06-02 10:09:08 [main] DEBUG com.attendance.AttendanceApplication - Running with Spring Boot v2.7.18, Spring v5.3.31
+2026-06-02 10:09:08 [main] INFO  com.attendance.AttendanceApplication - The following 1 profile is active: "dev"
+2026-06-02 10:09:08 [main] INFO  o.s.b.w.e.tomcat.TomcatWebServer - Tomcat initialized with port(s): 3000 (http)
+2026-06-02 10:09:08 [main] INFO  o.a.catalina.core.StandardService - Starting service [Tomcat]
+2026-06-02 10:09:08 [main] INFO  o.a.catalina.core.StandardEngine - Starting Servlet engine: [Apache Tomcat/9.0.83]
+2026-06-02 10:09:08 [main] INFO  o.a.c.c.C.[.[localhost].[/api] - Initializing Spring embedded WebApplicationContext
+2026-06-02 10:09:08 [main] INFO  o.s.b.w.s.c.ServletWebServerApplicationContext - Root WebApplicationContext: initialization completed in 598 ms
+2026-06-02 10:09:08 [main] DEBUG c.a.security.JwtAuthenticationFilter - Filter 'jwtAuthenticationFilter' configured for use
+2026-06-02 10:09:08 [main] INFO  c.a.d.s.b.a.DruidDataSourceAutoConfigure - Init DruidDataSource
+2026-06-02 10:09:09 [main] INFO  c.alibaba.druid.pool.DruidDataSource - {dataSource-1} inited
+2026-06-02 10:09:09 [main] INFO  c.a.service.MarkdownConfigService - 开始加载配置文件...
+2026-06-02 10:09:09 [main] INFO  c.a.service.MarkdownConfigService - 当前工作目录: /Users/apple/Desktop/智能体/AttendanceAgent/backend
+2026-06-02 10:09:09 [main] INFO  c.a.config.ConfigPathResolver - base-config 目录: /Users/apple/Desktop/智能体/AttendanceAgent/base-config
+2026-06-02 10:09:09 [main] INFO  c.a.service.MarkdownConfigService - 配置基础路径: /Users/apple/Desktop/智能体/AttendanceAgent/base-config
+2026-06-02 10:09:09 [main] INFO  c.a.service.MarkdownConfigService - 读取文件: feishu.md, 绝对路径: /Users/apple/Desktop/智能体/AttendanceAgent/base-config/feishu.md
+2026-06-02 10:09:09 [main] INFO  c.a.service.MarkdownConfigService - 文件 feishu.md 读取成功，长度: 10975
+2026-06-02 10:09:09 [main] INFO  c.a.service.MarkdownConfigService - 读取文件: countries.md, 绝对路径: /Users/apple/Desktop/智能体/AttendanceAgent/base-config/countries.md
+2026-06-02 10:09:09 [main] INFO  c.a.service.MarkdownConfigService - 文件 countries.md 读取成功，长度: 9959
+2026-06-02 10:09:09 [main] INFO  c.a.service.MarkdownConfigService - prompts.md 长度: 10131
+2026-06-02 10:09:09 [main] INFO  c.a.service.MarkdownConfigService - feishu.md 长度: 10975
+2026-06-02 10:09:09 [main] INFO  c.a.service.MarkdownConfigService - countries.md 长度: 9959
+2026-06-02 10:09:09 [main] INFO  c.a.service.MarkdownConfigService - 配置文件加载成功
+2026-06-02 10:09:09 [main] DEBUG o.s.w.s.m.m.a.RequestMappingHandlerMapping - 64 mappings in 'requestMappingHandlerMapping'
+2026-06-02 10:09:09 [main] DEBUG o.s.w.s.h.SimpleUrlHandlerMapping - Patterns [/webjars/**, /**] in 'resourceHandlerMapping'
+2026-06-02 10:09:09 [main] INFO  o.s.s.web.DefaultSecurityFilterChain - Will secure any request with [org.springframework.security.web.session.DisableEncodeUrlFilter@6f0c45f4, org.springframework.security.web.context.request.async.WebAsyncManagerIntegrationFilter@45571cfc, org.springframework.security.web.context.SecurityContextPersistenceFilter@3ef3f661, org.springframework.security.web.header.HeaderWriterFilter@3bd08435, org.springframework.web.filter.CorsFilter@faec277, org.springframework.security.web.authentication.logout.LogoutFilter@32a8ca06, com.attendance.security.JwtAuthenticationFilter@77114efe, org.springframework.security.web.savedrequest.RequestCacheAwareFilter@5b332439, org.springframework.security.web.servletapi.SecurityContextHolderAwareRequestFilter@59262a90, org.springframework.security.web.authentication.AnonymousAuthenticationFilter@1b475663, org.springframework.security.web.session.SessionManagementFilter@23e2c1ca, org.springframework.security.web.access.ExceptionTranslationFilter@5170bc02, org.springframework.security.web.access.intercept.FilterSecurityInterceptor@12f9f896]
+2026-06-02 10:09:09 [main] DEBUG o.s.w.s.m.m.a.RequestMappingHandlerAdapter - ControllerAdvice beans: 0 @ModelAttribute, 0 @InitBinder, 1 RequestBodyAdvice, 1 ResponseBodyAdvice
+2026-06-02 10:09:09 [main] DEBUG o.s.w.s.m.m.a.ExceptionHandlerExceptionResolver - ControllerAdvice beans: 1 @ExceptionHandler, 1 ResponseBodyAdvice
+2026-06-02 10:09:09 [main] INFO  o.s.b.w.e.tomcat.TomcatWebServer - Tomcat started on port(s): 3000 (http) with context path '/api'
+2026-06-02 10:09:09 [main] INFO  com.attendance.AttendanceApplication - Started AttendanceApplication in 1.601 seconds (JVM running for 1.766)
+2026-06-02 10:09:09 [main] INFO  c.a.c.ExportJobDatabaseBootstrap - export_jobs 表已就绪
+2026-06-02 10:09:09 [main] INFO  c.a.service.RecognitionPromptService - 识别提示词播种完成: countries=8, force=false, seedVersion=2
+2026-06-02 10:09:09 [main] INFO  c.a.config.PromptDatabaseBootstrap - 提示词数据库已存在且非旧版，仅补全缺失国家/版本（不覆盖用户自定义）
+2026-06-02 10:09:09 [main] INFO  c.a.config.MimoStartupLogger - MiMo AI 已配置，将使用 PC/服务端提示词调用真实识别 API: https://api.xiaomimimo.com/v1, model=mimo-v2.5
+2026-06-02 10:09:13 [http-nio-3000-exec-7] INFO  o.a.c.c.C.[.[localhost].[/api] - Initializing Spring DispatcherServlet 'dispatcherServlet'
+2026-06-02 10:09:13 [http-nio-3000-exec-7] INFO  o.s.web.servlet.DispatcherServlet - Initializing Servlet 'dispatcherServlet'
+2026-06-02 10:09:13 [http-nio-3000-exec-7] DEBUG o.s.web.servlet.DispatcherServlet - Detected StandardServletMultipartResolver
+2026-06-02 10:09:13 [http-nio-3000-exec-7] DEBUG o.s.web.servlet.DispatcherServlet - Detected AcceptHeaderLocaleResolver
+2026-06-02 10:09:13 [http-nio-3000-exec-7] DEBUG o.s.web.servlet.DispatcherServlet - Detected FixedThemeResolver
+2026-06-02 10:09:13 [http-nio-3000-exec-7] DEBUG o.s.web.servlet.DispatcherServlet - Detected org.springframework.web.servlet.view.DefaultRequestToViewNameTranslator@655569fd
+2026-06-02 10:09:13 [http-nio-3000-exec-7] DEBUG o.s.web.servlet.DispatcherServlet - Detected org.springframework.web.servlet.support.SessionFlashMapManager@176bf776
+2026-06-02 10:09:13 [http-nio-3000-exec-7] DEBUG o.s.web.servlet.DispatcherServlet - enableLoggingRequestDetails='false': request parameters and headers will be masked to prevent unsafe logging of potentially sensitive data
+2026-06-02 10:09:13 [http-nio-3000-exec-7] INFO  o.s.web.servlet.DispatcherServlet - Completed initialization in 1 ms
+2026-06-02 10:09:13 [http-nio-3000-exec-7] DEBUG o.s.w.s.m.m.a.RequestMappingHandlerMapping - Mapped to com.attendance.controller.ConfigController#getCountryOptions()
+2026-06-02 10:09:13 [http-nio-3000-exec-7] DEBUG o.s.web.servlet.DispatcherServlet - GET "/api/config/country-options", parameters={}
+2026-06-02 10:09:13 [http-nio-3000-exec-7] DEBUG o.s.w.s.m.m.a.RequestMappingHandlerMapping - Mapped to com.attendance.controller.ConfigController#getCountryOptions()
+2026-06-02 10:09:13 [http-nio-3000-exec-7] DEBUG o.s.w.s.m.m.a.RequestResponseBodyMethodProcessor - Using 'application/json', given [*/*] and supported [application/json, application/*+json, application/json, application/*+json]
+2026-06-02 10:09:13 [http-nio-3000-exec-7] DEBUG o.s.w.s.m.m.a.RequestResponseBodyMethodProcessor - Writing [com.attendance.common.Result@451c96ec]
+2026-06-02 10:09:13 [http-nio-3000-exec-7] DEBUG o.s.web.servlet.DispatcherServlet - Completed 200 OK

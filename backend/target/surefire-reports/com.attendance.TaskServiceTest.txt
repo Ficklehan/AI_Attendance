@@ -1,0 +1,8 @@
+-------------------------------------------------------------------------------
+Test set: com.attendance.TaskServiceTest
+-------------------------------------------------------------------------------
+Tests run: 1, Failures: 0, Errors: 1, Skipped: 0, Time elapsed: 0.256 s <<< FAILURE! - in com.attendance.TaskServiceTest
+testConfirmTask  Time elapsed: 0.248 s  <<< ERROR!
+java.lang.NullPointerException: Cannot invoke "com.attendance.security.TaskAccessService.requireOwnedTask(String)" because "this.taskAccessService" is null
+	at com.attendance.TaskServiceTest.testConfirmTask(TaskServiceTest.java:124)
+

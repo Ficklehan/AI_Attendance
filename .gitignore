@@ -1,66 +1,6 @@
-# 日志目录
-logs/
-backend/logs/
-*.log
-
-# 编译产物
-backend/target/
-backend/*.jar
-
-# IDE配置
-.idea/
-.vscode/
-*.iml
-*.iws
-*.ipr
-
-# 操作系统文件
-.DS_Store
-Thumbs.db
-desktop.ini
-
-# 临时文件
-*.tmp
-*.bak
-*.swp
-*~
-
-# Node.js
-frontend/node_modules/
-frontend/dist/
+# 仅排除含真实密钥的本地环境文件（其余依赖/构建产物/日志一并入库）
+backend/.env
 frontend/.env.local
 frontend/.env.*.local
-
-# Maven
-backend/.mvn/wrapper/maven-wrapper.jar
-
-# 日志文件
-*.log
-logs/
-
-# 测试覆盖率
-coverage/
-target/
-
-# 安全文件
 *.pem
 *.key
-.env
-.env.*
-!.env.example
-!**/.env.example
-
-# 移动端 Node.js
-mobile/node_modules/
-mobile/dist/
-
-# 数据库数据
-mysql_data/
-
-# 本地导出与 IDE
-backend/exports/
-.cursor/*
-!.cursor/skills/
-!.cursor/skills/**
-frontend/tmp-screenshots/
-frontend/tmp_capture.mjs

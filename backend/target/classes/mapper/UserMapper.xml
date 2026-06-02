@@ -1,0 +1,105 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" 
+    "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.attendance.mapper.UserMapper">
+
+    <resultMap id="BaseResultMap" type="com.attendance.entity.User">
+        <id column="id" property="id"/>
+        <result column="username" property="username"/>
+        <result column="email" property="email"/>
+        <result column="password_hash" property="passwordHash"/>
+        <result column="feishu_user_id" property="feishuUserId"/>
+        <result column="role" property="role"/>
+        <result column="real_name" property="realName"/>
+        <result column="employee_id" property="employeeId"/>
+        <result column="status" property="status"/>
+        <result column="last_login_at" property="lastLoginAt"/>
+        <result column="created_at" property="createdAt"/>
+        <result column="updated_at" property="updatedAt"/>
+    </resultMap>
+
+    <sql id="Base_Column_List">
+        id, username, email, password_hash, feishu_user_id, role, real_name, employee_id,
+        status, last_login_at, created_at, updated_at
+    </sql>
+
+    <select id="selectUserById" resultMap="BaseResultMap">
+        SELECT <include refid="Base_Column_List"/>
+        FROM users
+        WHERE id = #{id}
+    </select>
+
+    <select id="selectUserByUsername" resultMap="BaseResultMap">
+        SELECT <include refid="Base_Column_List"/>
+        FROM users
+        WHERE username = #{username}
+    </select>
+
+    <select id="selectUserByEmail" resultMap="BaseResultMap">
+        SELECT <include refid="Base_Column_List"/>
+        FROM users
+        WHERE email = #{email}
+    </select>
+
+    <select id="selectUserList" resultMap="BaseResultMap">
+        SELECT <include refid="Base_Column_List"/>
+        FROM users
+        WHERE status != 'deleted'
+        ORDER BY created_at DESC
+        LIMIT #{offset}, #{size}
+    </select>
+
+    <select id="countUser" resultType="long">
+        SELECT COUNT(*) FROM users WHERE status != 'deleted'
+    </select>
+
+    <insert id="insertUser" parameterType="com.attendance.entity.User">
+        INSERT INTO users (id, username, email, password_hash, feishu_user_id, role, real_name,
+                          employee_id, status, created_at, updated_at)
+        VALUES (#{id}, #{username}, #{email}, #{passwordHash}, #{feishuUserId}, #{role}, #{realName},
+                #{employeeId}, #{status}, NOW(), NOW())
+    </insert>
+
+    <update id="updateUser" parameterType="com.attendance.entity.User">
+        UPDATE users
+        SET username = #{username},
+            email = #{email},
+            feishu_user_id = #{feishuUserId},
+            role = #{role},
+            real_name = #{realName},
+            employee_id = #{employeeId},
+            status = #{status},
+            <if test="passwordHash != null">
+            password_hash = #{passwordHash},
+            </if>
+            updated_at = NOW()
+        WHERE id = #{id}
+    </update>
+
+    <update id="updateUserLastLogin">
+        UPDATE users SET last_login_at = NOW() WHERE id = #{id}
+    </update>
+
+    <delete id="deleteUserById">
+        UPDATE users SET status = 'deleted', updated_at = NOW() WHERE id = #{id}
+    </delete>
+
+    <select id="existsByUsername" resultType="int">
+        SELECT COUNT(*) FROM users WHERE username = #{username}
+    </select>
+
+    <select id="existsByEmail" resultType="int">
+        SELECT COUNT(*) FROM users WHERE email = #{email}
+    </select>
+
+    <select id="selectUserByFeishuUserId" resultMap="BaseResultMap">
+        SELECT <include refid="Base_Column_List"/>
+        FROM users
+        WHERE feishu_user_id = #{feishuUserId} AND status != 'deleted'
+    </select>
+
+    <select id="existsByFeishuUserId" resultType="int">
+        SELECT COUNT(*) FROM users WHERE feishu_user_id = #{feishuUserId} AND status != 'deleted'
+    </select>
+
+</mapper>
