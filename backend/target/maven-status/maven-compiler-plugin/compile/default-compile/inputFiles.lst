@@ -84,6 +84,7 @@
 /Users/apple/Desktop/智能体/AttendanceAgent/backend/src/main/java/com/attendance/service/RecognitionTrace.java
 /Users/apple/Desktop/智能体/AttendanceAgent/backend/src/main/java/com/attendance/service/SimulatedRecognitionService.java
 /Users/apple/Desktop/智能体/AttendanceAgent/backend/src/main/java/com/attendance/service/TaskService.java
+/Users/apple/Desktop/智能体/AttendanceAgent/backend/src/main/java/com/attendance/service/UploadMediaSupport.java
 /Users/apple/Desktop/智能体/AttendanceAgent/backend/src/main/java/com/attendance/service/UserService.java
 /Users/apple/Desktop/智能体/AttendanceAgent/backend/src/main/java/com/attendance/util/CountryResolver.java
 /Users/apple/Desktop/智能体/AttendanceAgent/backend/src/main/java/com/attendance/util/ExcelExportHelper.java
@@ -91,6 +92,7 @@
 /Users/apple/Desktop/智能体/AttendanceAgent/backend/src/main/java/com/attendance/util/ImageUploadValidator.java
 /Users/apple/Desktop/智能体/AttendanceAgent/backend/src/main/java/com/attendance/util/JwtUtil.java
 /Users/apple/Desktop/智能体/AttendanceAgent/backend/src/main/java/com/attendance/util/PasswordEncoder.java
+/Users/apple/Desktop/智能体/AttendanceAgent/backend/src/main/java/com/attendance/util/PdfToImageConverter.java
 /Users/apple/Desktop/智能体/AttendanceAgent/backend/src/main/java/com/attendance/util/RecognizedFieldSanitizer.java
 /Users/apple/Desktop/智能体/AttendanceAgent/backend/src/main/java/com/attendance/util/RecordConfirmValidator.java
 /Users/apple/Desktop/智能体/AttendanceAgent/backend/src/main/java/com/attendance/util/RecordCountryDefaults.java

@@ -8,22 +8,41 @@ import java.util.Map;
 import org.slf4j.Logger;
 
 /**
- * PC / 小程序 / 聊天 上传共用：拒绝空文件与非图片，避免模型无图时编造提示词示例数据。
+ * PC / 小程序 / 聊天 上传共用：拒绝空文件与非图片/PDF，避免模型无图时编造提示词示例数据。
  */
 public final class ImageUploadValidator {
 
     private static final int MIN_BYTES = 1024;
+    private static final int MIN_PDF_BYTES = 256;
 
     private ImageUploadValidator() {
     }
 
     public static void validate(byte[] fileBytes, String originalFilename, String contentType, Logger log) {
-        if (fileBytes == null || fileBytes.length < MIN_BYTES) {
+        if (fileBytes == null || fileBytes.length == 0) {
             throw new BusinessException(ErrorCode.FILE_UPLOAD_ERROR, ErrorKeys.UPLOAD_IMAGE_TOO_SMALL,
-                    Map.of("size", fileBytes == null ? 0 : fileBytes.length));
+                    Map.of("size", 0));
         }
-        if (contentType != null && !contentType.isBlank() && !contentType.startsWith("image/")) {
-            throw new BusinessException(ErrorCode.FILE_UPLOAD_ERROR, ErrorKeys.IMAGES_ONLY);
+        boolean pdf = isPdfUpload(fileBytes, originalFilename, contentType);
+        int minBytes = pdf ? MIN_PDF_BYTES : MIN_BYTES;
+        if (fileBytes.length < minBytes) {
+            throw new BusinessException(ErrorCode.FILE_UPLOAD_ERROR, ErrorKeys.UPLOAD_IMAGE_TOO_SMALL,
+                    Map.of("size", fileBytes.length));
+        }
+        if (contentType != null && !contentType.isBlank()) {
+            String ct = contentType.toLowerCase();
+            if (!ct.startsWith("image/") && !ct.contains("pdf")) {
+                throw new BusinessException(ErrorCode.FILE_UPLOAD_ERROR, ErrorKeys.IMAGES_ONLY);
+            }
+        }
+        if (pdf) {
+            if (!PdfToImageConverter.looksLikePdfBytes(fileBytes)) {
+                if (log != null) {
+                    log.warn("文件头不像 PDF: name={}, size={}", originalFilename, fileBytes.length);
+                }
+                throw new BusinessException(ErrorCode.FILE_UPLOAD_ERROR, ErrorKeys.UNRECOGNIZED_IMAGE_FORMAT);
+            }
+            return;
         }
         if (!looksLikeImageBytes(fileBytes)) {
             if (log != null) {
@@ -31,6 +50,16 @@ public final class ImageUploadValidator {
             }
             throw new BusinessException(ErrorCode.FILE_UPLOAD_ERROR, ErrorKeys.UNRECOGNIZED_IMAGE_FORMAT);
         }
+    }
+
+    public static boolean isPdfUpload(byte[] fileBytes, String originalFilename, String contentType) {
+        if (PdfToImageConverter.looksLikePdfBytes(fileBytes)) {
+            return true;
+        }
+        if (contentType != null && contentType.toLowerCase().contains("pdf")) {
+            return true;
+        }
+        return PdfToImageConverter.filenameLooksLikePdf(originalFilename);
     }
 
     public static boolean looksLikeImageBytes(byte[] bytes) {

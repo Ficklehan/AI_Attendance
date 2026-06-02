@@ -188,6 +188,10 @@ public class AIParserService {
     public void parseImageStreamByLineFromBytes(byte[] imageBytes, String originalFilename, String promptCountry,
                                                 String workingCountry, ParseCallback callback, RecognitionTrace trace) {
         try {
+            if (imageBytes != null && imageBytes.length >= 5
+                    && imageBytes[0] == '%' && imageBytes[1] == 'P' && imageBytes[2] == 'D' && imageBytes[3] == 'F') {
+                throw new BusinessException(ErrorCode.FILE_UPLOAD_ERROR, ErrorKeys.PDF_CONVERT_FAILED);
+            }
             workingCountryForPays.set(workingCountry != null && !workingCountry.isBlank()
                     ? workingCountry.trim().toUpperCase()
                     : resolveCountry(promptCountry));

@@ -43,6 +43,9 @@ public final class ErrorKeys {
     public static final String UPLOAD_IMAGE_TOO_SMALL = "errors.uploadImageTooSmall";
     public static final String IMAGES_ONLY = "errors.imagesOnly";
     public static final String UNRECOGNIZED_IMAGE_FORMAT = "errors.unrecognizedImageFormat";
+    public static final String PDF_TOO_MANY_PAGES = "errors.pdfTooManyPages";
+    public static final String PDF_EMPTY = "errors.pdfEmpty";
+    public static final String PDF_CONVERT_FAILED = "errors.pdfConvertFailed";
 
     public static final String MIMO_NOT_CONFIGURED = "errors.mimoNotConfigured";
     public static final String AI_PROMPT_NOT_FOUND = "errors.aiPromptNotFound";

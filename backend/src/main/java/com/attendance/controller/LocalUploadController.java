@@ -11,6 +11,7 @@ import com.attendance.service.RecognitionSupport;
 import com.attendance.service.RecognitionTrace;
 import com.attendance.service.SimulatedRecognitionService;
 import com.attendance.service.TaskService;
+import com.attendance.service.UploadMediaSupport;
 import com.attendance.security.TaskAccessService;
 import com.attendance.util.CountryResolver;
 import com.attendance.util.ExcelExportHelper;
@@ -37,6 +38,7 @@ import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.util.Locale;
 import java.util.ArrayList;
 import java.util.Base64;
 import java.util.List;
@@ -71,6 +73,9 @@ public class LocalUploadController {
     private TaskAccessService taskAccessService;
 
     @Autowired
+    private UploadMediaSupport uploadMediaSupport;
+
+    @Autowired
     @org.springframework.beans.factory.annotation.Qualifier("recognitionExecutor")
     private Executor recognitionExecutor;
 
@@ -90,6 +95,35 @@ public class LocalUploadController {
         String configCountry = configService.resolveEffectiveCountry(workingCountry);
         log.info("识别国家配置: working={}, effective={}", workingCountry, configCountry);
         return new String[] { configCountry, workingCountry };
+    }
+
+    private List<String> saveRecognizablePages(byte[] fileBytes, String originalFilename, String contentType)
+            throws IOException {
+        List<UploadMediaSupport.ImagePage> pages = uploadMediaSupport.toRecognizablePages(
+                fileBytes, originalFilename, contentType);
+        List<String> keys = new ArrayList<>(pages.size());
+        for (UploadMediaSupport.ImagePage page : pages) {
+            String name = page.getLabel();
+            if (!name.toLowerCase(Locale.ROOT).contains(".")) {
+                name = name + ".jpg";
+            }
+            keys.add(aiParserService.saveUploadedFile(page.getBytes(), name));
+        }
+        return keys;
+    }
+
+    private void mergeTaskImageUrls(String taskId, List<String> savedKeys) {
+        if (savedKeys == null || savedKeys.isEmpty()) {
+            return;
+        }
+        com.attendance.entity.Task task = taskService.getTaskForCurrentUser(taskId);
+        List<String> urls = new ArrayList<>(taskService.parseImageUrlList(task));
+        for (String key : savedKeys) {
+            if (key != null && !key.isBlank() && !urls.contains(key)) {
+                urls.add(key.trim());
+            }
+        }
+        taskService.updateTaskImageUrls(taskId, urls);
     }
 
     @PostMapping(value = "/upload-stream", produces = MediaType.TEXT_EVENT_STREAM_VALUE)
@@ -114,42 +148,26 @@ public class LocalUploadController {
         try {
             byte[] fileBytes = image.getBytes();
             ImageUploadValidator.validate(fileBytes, image.getOriginalFilename(), image.getContentType(), log);
-            String savedFilename = aiParserService.saveUploadedFile(fileBytes, image.getOriginalFilename());
+            List<String> savedKeys = saveRecognizablePages(
+                    fileBytes, image.getOriginalFilename(), image.getContentType());
+            String savedFilename = savedKeys.get(0);
             
             String newTaskId;
             if (taskId != null && !taskId.isEmpty()) {
                 newTaskId = taskId;
-                log.info("追加图片到现有任务: taskId={}, newFilename={}", newTaskId, savedFilename);
-                com.attendance.entity.Task existingTask = taskService.getTaskForCurrentUser(newTaskId);
-                List<String> existingUrls = new ArrayList<>();
-                if (existingTask.getImageUrls() != null && !existingTask.getImageUrls().isEmpty()) {
-                    try {
-                        JSONArray urlArray = JSON.parseArray(existingTask.getImageUrls());
-                        for (int i = 0; i < urlArray.size(); i++) {
-                            existingUrls.add(urlArray.getString(i));
-                        }
-                        log.info("已有图片: count={}, urls={}", existingUrls.size(), existingUrls);
-                    } catch (Exception e) {
-                        log.warn("解析已有图片URL失败", e);
-                    }
-                }
-                existingUrls.add(savedFilename);
-                log.info("更新后图片: count={}, urls={}", existingUrls.size(), existingUrls);
-                taskService.updateTaskImageUrls(newTaskId, existingUrls);
+                log.info("追加图片到现有任务: taskId={}, newFiles={}", newTaskId, savedKeys);
+                mergeTaskImageUrls(newTaskId, savedKeys);
             } else {
                 com.attendance.entity.Task newTask = taskService.createTask(savedFilename, workingCountry);
                 newTaskId = newTask.getTaskId();
-                log.info("创建新任务: taskId={}, filename={}", newTaskId, savedFilename);
-                // 创建任务时初始化 imageUrls，包含第一张图片
-                List<String> initialUrls = new ArrayList<>();
-                initialUrls.add(savedFilename);
-                taskService.updateTaskImageUrls(newTaskId, initialUrls);
-                log.info("初始化任务 imageUrls: taskId={}, urls={}", newTaskId, initialUrls);
+                log.info("创建新任务: taskId={}, files={}", newTaskId, savedKeys);
+                taskService.updateTaskImageUrls(newTaskId, savedKeys);
             }
 
             JSONObject startEvent = new JSONObject();
             startEvent.put("taskId", newTaskId);
             startEvent.put("imagePreviewUrl", "/api/local/image/" + savedFilename);
+            startEvent.put("imageCount", savedKeys.size());
             startEvent.put("promptCountry", configCountry);
             startEvent.put("promptSection", configService.describePromptSection(configCountry));
             emitter.send(SseEmitter.event()
@@ -165,6 +183,10 @@ public class LocalUploadController {
             uploadMeta.put("workingCountry", workingCountry);
             trace.step("upload_received", uploadMeta);
             trace.setStepListener(entry -> {
+                String phase = entry.getString("phase");
+                if ("model_request".equals(phase) || "model_response".equals(phase)) {
+                    return;
+                }
                 try {
                     emitter.send(SseEmitter.event()
                             .name("trace")
@@ -232,66 +254,102 @@ public class LocalUploadController {
                 String contentType = image.getContentType();
                 log.info("图片信息 - 文件名: {}, Content-Type: {}, 大小: {} bytes", originalFilename, contentType, fileBytes.length);
                 
-                AIParserService.ParseCallback callback = new AIParserService.ParseCallback() {
-                @Override
-                public void onRecord(JSONObject record) {
-                    records.add(record);
-                    try {
-                        JSONObject recordEvent = new JSONObject();
-                        recordEvent.put("record", record);
-                        
-                        emitter.send(SseEmitter.event()
-                                .name("record")
-                                .data(recordEvent.toJSONString(), MediaType.APPLICATION_JSON));
-                    } catch (IOException e) {
-                        log.error("SSE发送失败", e);
+                List<UploadMediaSupport.ImagePage> pages = uploadMediaSupport.toRecognizablePages(
+                        fileBytes, originalFilename, contentType);
+                log.info("开始 AI 识别: pages={}, filename={}", pages.size(), originalFilename);
+                final Exception[] streamError = {null};
+                final boolean[] streamCompleted = {false};
+                for (int pageIndex = 0; pageIndex < pages.size(); pageIndex++) {
+                    UploadMediaSupport.ImagePage page = pages.get(pageIndex);
+                    final boolean lastPage = pageIndex == pages.size() - 1;
+                    AIParserService.ParseCallback pageCallback = new AIParserService.ParseCallback() {
+                        @Override
+                        public void onRecord(JSONObject record) {
+                            RecordCountryDefaults.applyMissingPays(record, workingCountry);
+                            records.add(record);
+                            try {
+                                JSONObject recordEvent = new JSONObject();
+                                recordEvent.put("record", record);
+                                emitter.send(SseEmitter.event()
+                                        .name("record")
+                                        .data(recordEvent.toJSONString(), MediaType.APPLICATION_JSON));
+                            } catch (IOException e) {
+                                log.error("SSE发送失败", e);
+                            }
+                        }
+
+                        @Override
+                        public void onComplete(int totalCount) {
+                            if (!lastPage) {
+                                return;
+                            }
+                            try {
+                                String promptCountry = aiParserService.getLastPromptCountry();
+                                String engineTag = "mimo:" + (promptCountry != null ? promptCountry : configCountry);
+                                appendRawData(newTaskId, records, engineTag, trace);
+                                sendTraceDump(emitter, trace);
+
+                                JSONObject completeEvent = new JSONObject();
+                                completeEvent.put("taskId", newTaskId);
+                                completeEvent.put("rowCount", records.size());
+                                completeEvent.put("promptCountry", configCountry);
+                                completeEvent.put("pageCount", pages.size());
+
+                                emitter.send(SseEmitter.event()
+                                        .name("complete")
+                                        .data(completeEvent.toJSONString(), MediaType.APPLICATION_JSON));
+                                emitter.complete();
+                                streamCompleted[0] = true;
+                            } catch (Exception e) {
+                                log.error("完成处理失败", e);
+                                emitter.completeWithError(e);
+                                streamCompleted[0] = true;
+                            }
+                        }
+
+                        @Override
+                        public void onError(Exception e) {
+                            streamError[0] = e;
+                            try {
+                                trace.step("recognition_failed", "message", e.getMessage());
+                                taskService.failTask(newTaskId, e.getMessage(), trace);
+                                sendTraceDump(emitter, trace);
+                                JSONObject errorEvent = buildErrorEvent(e);
+                                emitter.send(SseEmitter.event()
+                                        .name("error")
+                                        .data(errorEvent.toJSONString(), MediaType.APPLICATION_JSON));
+                                emitter.complete();
+                                streamCompleted[0] = true;
+                            } catch (IOException ex) {
+                                log.error("错误发送失败", ex);
+                            }
+                        }
+                    };
+
+                    log.info("识别 PDF/图片页 {}/{}: {}", pageIndex + 1, pages.size(), page.getLabel());
+                    aiParserService.parseImageStreamByLineFromBytes(
+                            page.getBytes(), page.getLabel(), configCountry, workingCountry, pageCallback, trace);
+                    if (streamError[0] != null) {
+                        break;
                     }
                 }
-
-                @Override
-                public void onComplete(int totalCount) {
+                if (!streamCompleted[0] && streamError[0] == null) {
+                    log.warn("识别结束但未收到 complete 回调，补发完成事件: taskId={}", newTaskId);
                     try {
-                        String promptCountry = aiParserService.getLastPromptCountry();
-                        String engineTag = "mimo:" + (promptCountry != null ? promptCountry : configCountry);
+                        String engineTag = "mimo:" + configCountry;
                         appendRawData(newTaskId, records, engineTag, trace);
-                        sendTraceDump(emitter, trace);
-
                         JSONObject completeEvent = new JSONObject();
                         completeEvent.put("taskId", newTaskId);
-                        completeEvent.put("rowCount", totalCount);
+                        completeEvent.put("rowCount", records.size());
                         completeEvent.put("promptCountry", configCountry);
-                        
                         emitter.send(SseEmitter.event()
                                 .name("complete")
                                 .data(completeEvent.toJSONString(), MediaType.APPLICATION_JSON));
                         emitter.complete();
-                    } catch (Exception e) {
-                        log.error("完成处理失败", e);
-                        emitter.completeWithError(e);
+                    } catch (Exception ex) {
+                        emitter.completeWithError(ex);
                     }
                 }
-
-                @Override
-                public void onError(Exception e) {
-                    try {
-                        trace.step("recognition_failed", "message", e.getMessage());
-                        taskService.failTask(newTaskId, e.getMessage(), trace);
-                        sendTraceDump(emitter, trace);
-
-                        JSONObject errorEvent = buildErrorEvent(e);
-                        
-                        emitter.send(SseEmitter.event()
-                                .name("error")
-                                .data(errorEvent.toJSONString(), MediaType.APPLICATION_JSON));
-                        emitter.complete();
-                    } catch (IOException ex) {
-                        log.error("错误发送失败", ex);
-                    }
-                }
-            };
-
-                aiParserService.parseImageStreamByLineFromBytes(
-                        fileBytes, originalFilename, configCountry, workingCountry, callback, trace);
             }
 
         } catch (Exception e) {
@@ -331,11 +389,14 @@ public class LocalUploadController {
             String plannedEngine = recognitionRunner.plannedEngine();
             byte[] fileBytes = image.getBytes();
             ImageUploadValidator.validate(fileBytes, image.getOriginalFilename(), image.getContentType(), log);
-            String filename = aiParserService.saveUploadedFile(fileBytes, image.getOriginalFilename());
+            List<String> savedKeys = saveRecognizablePages(
+                    fileBytes, image.getOriginalFilename(), image.getContentType());
+            String filename = savedKeys.get(0);
 
             if (existingTaskId != null && !existingTaskId.isBlank()) {
                 com.attendance.entity.Task existing = taskService.getTaskForCurrentUser(existingTaskId.trim());
-                List<String> urls = taskService.appendTaskImageUrl(existing.getTaskId(), filename);
+                mergeTaskImageUrls(existing.getTaskId(), savedKeys);
+                List<String> urls = taskService.parseImageUrlList(existing);
                 log.info("追加图片到任务: taskId={}, totalImages={}", existing.getTaskId(), urls.size());
 
                 JSONObject result = new JSONObject();
@@ -343,23 +404,22 @@ public class LocalUploadController {
                 result.put("status", existing.getStatus());
                 result.put("appendOnly", true);
                 result.put("imageCount", urls.size());
+                result.put("pageCount", savedKeys.size());
                 result.put("recognitionEngine", existing.getAiRawOutput() != null ? existing.getAiRawOutput() : plannedEngine);
                 result.put("promptCountry", configCountry);
                 return com.attendance.common.Result.success(result);
             }
 
             String taskId = taskService.createTask(filename, workingCountry).getTaskId();
-            List<String> initialUrls = new ArrayList<>();
-            initialUrls.add(filename);
-            taskService.updateTaskImageUrls(taskId, initialUrls);
+            taskService.updateTaskImageUrls(taskId, savedKeys);
 
             if (deferRecognition) {
-                log.info("批量模式：仅创建任务并保存首图，延后识别: taskId={}", taskId);
+                log.info("批量模式：仅创建任务并保存首图，延后识别: taskId={}, pages={}", taskId, savedKeys.size());
                 JSONObject deferred = new JSONObject();
                 deferred.put("taskId", taskId);
                 deferred.put("status", "processing");
                 deferred.put("deferred", true);
-                deferred.put("imageCount", 1);
+                deferred.put("imageCount", savedKeys.size());
                 deferred.put("recognitionEngine", plannedEngine);
                 deferred.put("promptCountry", configCountry);
                 return com.attendance.common.Result.success(deferred);
@@ -372,15 +432,17 @@ public class LocalUploadController {
             uploadMeta.put("fileBytes", fileBytes.length);
             uploadMeta.put("configCountry", configCountry);
             uploadMeta.put("workingCountry", workingCountry);
-            uploadMeta.put("savedFile", filename);
+            uploadMeta.put("savedFiles", savedKeys);
             trace.step("upload_received", uploadMeta);
 
             SecurityContext securityContext = SecurityContextHolder.getContext();
+            List<UploadMediaSupport.ImagePage> recognizePages = uploadMediaSupport.toRecognizablePages(
+                    fileBytes, image.getOriginalFilename(), image.getContentType());
             recognitionExecutor.execute(() -> {
                 SecurityContextHolder.setContext(securityContext);
                 try {
-                    RecognitionRunner.RecognitionOutcome outcome = recognitionRunner.run(
-                            fileBytes, image.getOriginalFilename(), configCountry, workingCountry, trace, taskId);
+                    RecognitionRunner.RecognitionOutcome outcome = recognitionRunner.runMultiplePages(
+                            recognizePages, configCountry, workingCountry, trace, taskId);
                     String rawData = JSON.toJSONString(outcome.getRecords());
                     taskService.updateTaskRawData(taskId, rawData, outcome.getEngine(), trace);
                     log.info("异步识别完成: taskId={}, engine={}, rows={}",
@@ -476,7 +538,20 @@ public class LocalUploadController {
             }
 
             File file = filePath.toFile();
-            response.setContentType("image/jpeg");
+            String lowerKey = fileKey.toLowerCase(Locale.ROOT);
+            String contentType = Files.probeContentType(filePath);
+            if (contentType == null) {
+                if (lowerKey.endsWith(".png")) {
+                    contentType = "image/png";
+                } else if (lowerKey.endsWith(".pdf")) {
+                    contentType = "application/pdf";
+                } else if (lowerKey.endsWith(".webp")) {
+                    contentType = "image/webp";
+                } else {
+                    contentType = "image/jpeg";
+                }
+            }
+            response.setContentType(contentType);
             response.setContentLength((int) file.length());
 
             try (FileInputStream fis = new FileInputStream(file)) {

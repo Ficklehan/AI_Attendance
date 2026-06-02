@@ -49,6 +49,9 @@ feishu:
     table-id: ${BITABLE_TABLE_ID:}
 
 attendance:
+  upload:
+    pdf-max-pages: 30
+    pdf-render-dpi: 200
   prompt:
     # 内置标准模板版本；升级表头/字段后递增，启动时会刷新未自定义的国家提示词
     seed-version: 2

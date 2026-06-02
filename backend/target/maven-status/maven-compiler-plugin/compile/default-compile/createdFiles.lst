@@ -19,6 +19,7 @@ com/attendance/security/JwtAuthenticationFilter.class
 com/attendance/service/FeishuSyncService.class
 com/attendance/config/RecognitionExecutorConfig.class
 com/attendance/security/AdminAuthService.class
+com/attendance/service/UploadMediaSupport.class
 com/attendance/service/RecognitionTrace.class
 com/attendance/mapper/ExportJobMapper.class
 com/attendance/service/MimoStreamParser.class
@@ -27,6 +28,7 @@ com/attendance/config/WebConfig.class
 com/attendance/service/AIParserService$PromptBundle.class
 com/attendance/service/PromptCanonicalParser.class
 com/attendance/service/RecognitionRunner$1.class
+com/attendance/service/UploadMediaSupport$ImagePage.class
 com/attendance/entity/AuditLog.class
 com/attendance/config/DefaultAdminBootstrap.class
 com/attendance/util/IdGenerator.class
@@ -57,6 +59,7 @@ com/attendance/util/JwtUtil.class
 com/attendance/entity/ExportJob.class
 com/attendance/service/AIParserService$ParseCallback.class
 com/attendance/util/ExcelExportHelper$1.class
+com/attendance/util/PdfToImageConverter.class
 com/attendance/controller/AuditController.class
 com/attendance/dto/response/EmployeeRecordDTO.class
 com/attendance/config/SecurityJsonHandlers.class

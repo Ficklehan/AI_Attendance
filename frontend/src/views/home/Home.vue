@@ -68,7 +68,7 @@
             :custom-request="customUpload"
             @preview="handleFilePreview"
             @remove="handleFileRemove"
-            accept="image/*"
+            accept="image/*,.pdf,application/pdf"
             list-type="picture-card"
             class="dropzone__upload"
           >
@@ -81,7 +81,7 @@
                 </svg>
               </div>
               <div class="dropzone__text">{{ $t('home.uploadArea') }}</div>
-              <div class="dropzone__hint">JPG, PNG &mdash; {{ $t('home.uploadHint') }}</div>
+              <div class="dropzone__hint">JPG, PNG, PDF &mdash; {{ $t('home.uploadHint') }}</div>
             </div>
           </a-upload>
         </div>
@@ -527,8 +527,15 @@ const removeFileEntry = (uid) => {
   fileList.value = fileList.value.filter((item) => item.uid !== uid)
 }
 
+const isPdfFile = (file) => {
+  const type = (file.type || '').toLowerCase()
+  const name = (file.name || '').toLowerCase()
+  return type === 'application/pdf' || name.endsWith('.pdf')
+}
+
 const prepareSelectedFile = async (file) => {
-  const previewUrl = URL.createObjectURL(file)
+  const isPdf = isPdfFile(file)
+  const previewUrl = isPdf ? '' : URL.createObjectURL(file)
   const uid = file.uid
   fileList.value.push({
     uid,
@@ -538,9 +545,26 @@ const prepareSelectedFile = async (file) => {
     thumbUrl: previewUrl,
     status: 'uploading',
     raw: null,
+    isPdf,
   })
 
   try {
+    if (isPdf) {
+      const hash = `${file.name}:${file.size}:${file.lastModified}`
+      if (processedHashes.value.has(hash)) {
+        removeFileEntry(uid)
+        message.warning(t('home.duplicateImage'))
+        return
+      }
+      processedHashes.value.add(hash)
+      updateFileEntry(uid, {
+        raw: file,
+        hash,
+        status: 'done',
+      })
+      return
+    }
+
     const hash = await getImageHash(file)
     if (processedHashes.value.has(hash)) {
       removeFileEntry(uid)

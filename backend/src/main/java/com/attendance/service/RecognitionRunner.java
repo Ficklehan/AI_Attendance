@@ -31,8 +31,11 @@ public class RecognitionRunner {
     @Autowired
     private TaskService taskService;
 
+    @Autowired
+    private UploadMediaSupport uploadMediaSupport;
+
     private static final int PROGRESS_FLUSH_EVERY = 5;
-    private static final int RECOGNITION_TIMEOUT_SECONDS = 300;
+    public static final int RECOGNITION_TIMEOUT_SECONDS = 300;
 
     public static class RecognitionOutcome {
         private final List<JSONObject> records;
@@ -82,6 +85,58 @@ public class RecognitionRunner {
 
     public RecognitionOutcome run(byte[] fileBytes, String originalFilename, String promptCountry,
                                 String workingCountry, RecognitionTrace trace, String progressTaskId) throws Exception {
+        if (uploadMediaSupport.isPdf(fileBytes, originalFilename, null)) {
+            List<UploadMediaSupport.ImagePage> pages = uploadMediaSupport.toRecognizablePages(
+                    fileBytes, originalFilename, "application/pdf");
+            return runMultiplePages(pages, promptCountry, workingCountry, trace, progressTaskId);
+        }
+        return runSingleImage(fileBytes, originalFilename, promptCountry, workingCountry, trace, progressTaskId);
+    }
+
+    public RecognitionOutcome runMultiplePages(List<UploadMediaSupport.ImagePage> pages, String promptCountry,
+                                               String workingCountry, RecognitionTrace trace,
+                                               String progressTaskId) throws Exception {
+        if (pages == null || pages.isEmpty()) {
+            throw new IllegalStateException("无识别页面");
+        }
+        if (pages.size() == 1) {
+            UploadMediaSupport.ImagePage only = pages.get(0);
+            return runSingleImage(only.getBytes(), only.getLabel(), promptCountry, workingCountry, trace, progressTaskId);
+        }
+        List<JSONObject> merged = new ArrayList<>();
+        String finalEngine = null;
+        String finalCountry = promptCountry;
+        int total = pages.size();
+        for (int i = 0; i < total; i++) {
+            UploadMediaSupport.ImagePage page = pages.get(i);
+            if (trace != null) {
+                JSONObject meta = new JSONObject();
+                meta.put("index", i + 1);
+                meta.put("total", total);
+                meta.put("filename", page.getLabel());
+                trace.step("pdf_page_start", meta);
+            }
+            RecognitionOutcome outcome = runSingleImage(
+                    page.getBytes(), page.getLabel(), promptCountry, workingCountry, trace, progressTaskId);
+            merged.addAll(outcome.getRecords());
+            finalEngine = outcome.getEngine();
+            if (outcome.getPromptCountry() != null && !outcome.getPromptCountry().isBlank()) {
+                finalCountry = outcome.getPromptCountry();
+            }
+            if (progressTaskId != null && !merged.isEmpty()) {
+                flushProgress(progressTaskId, merged, finalEngine != null ? finalEngine : plannedEngine());
+            }
+        }
+        if (merged.isEmpty() && !recognitionSupport.shouldUseSimulatedRecognition()) {
+            throw new IllegalStateException("PDF 识别结果为空，请检查文件是否清晰");
+        }
+        String engine = finalEngine != null ? finalEngine : plannedEngine();
+        return new RecognitionOutcome(merged, engine, finalCountry);
+    }
+
+    private RecognitionOutcome runSingleImage(byte[] fileBytes, String originalFilename, String promptCountry,
+                                              String workingCountry, RecognitionTrace trace,
+                                              String progressTaskId) throws Exception {
         List<JSONObject> records = new ArrayList<>();
         final Exception[] error = {null};
         final CountDownLatch done = new CountDownLatch(1);
@@ -241,11 +296,21 @@ public class RecognitionRunner {
                 trace.step("batch_image_start", meta);
             }
             byte[] fileBytes = taskService.readUploadedImageBytes(fileKey);
-            RecognitionOutcome outcome = run(fileBytes, fileKey, configCountry, workingCountry, trace, taskId);
-            merged.addAll(outcome.getRecords());
-            finalEngine = outcome.getEngine();
-            if (outcome.getPromptCountry() != null && !outcome.getPromptCountry().isBlank()) {
-                finalCountry = outcome.getPromptCountry();
+            List<UploadMediaSupport.ImagePage> pages;
+            if (uploadMediaSupport.isPdf(fileBytes, fileKey, null)) {
+                pages = uploadMediaSupport.toRecognizablePages(fileBytes, fileKey, "application/pdf");
+            } else {
+                pages = new ArrayList<>(1);
+                pages.add(new UploadMediaSupport.ImagePage(fileBytes, fileKey));
+            }
+            for (UploadMediaSupport.ImagePage page : pages) {
+                RecognitionOutcome outcome = runSingleImage(
+                        page.getBytes(), page.getLabel(), configCountry, workingCountry, trace, taskId);
+                merged.addAll(outcome.getRecords());
+                finalEngine = outcome.getEngine();
+                if (outcome.getPromptCountry() != null && !outcome.getPromptCountry().isBlank()) {
+                    finalCountry = outcome.getPromptCountry();
+                }
             }
             flushProgress(taskId, merged, finalEngine != null ? finalEngine : plannedEngine());
             log.info("多图识别进度: taskId={}, image={}/{}, mergedRows={}",
