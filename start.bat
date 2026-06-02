@@ -65,7 +65,7 @@ echo   服务已启动！
 echo ======================================
 echo.
 echo 后端: http://localhost:3000/api
-echo 前端: http://localhost:5173
+echo 前端: http://localhost:5175
 echo.
 echo 按任意键退出...
 pause > nul

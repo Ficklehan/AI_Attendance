@@ -36,17 +36,20 @@
 
 ### 1. 初始化数据库
 
+**全新安装：**
+
 ```bash
 mysql -u root -p < backend/config/init.sql
 ```
 
-已有库升级（按顺序执行）：
+**已有库升级：** 按顺序执行 `backend/config/migration/001`–`006` 及 `migrate_recognition_prompt.sql`，或：
 
 ```bash
-mysql -u root -p attendance_assistant < backend/config/migration/001_task_sync_and_country.sql
-mysql -u root -p attendance_assistant < backend/config/migration/002_task_image_and_anomaly.sql
-mysql -u root -p attendance_assistant < backend/config/migration/003_task_status_add_cancelled.sql
+chmod +x backend/config/migrate_all.sh
+./backend/config/migrate_all.sh attendance_assistant
 ```
+
+详见 [backend/config/README.md](backend/config/README.md) 与 [docs/architecture-and-config.md](docs/architecture-and-config.md)。
 
 ### 2. 配置环境变量
 
@@ -73,42 +76,26 @@ start.bat
 
 ### 4. 访问系统
 
-- 前端地址: http://localhost:5173
-- 后端API: http://localhost:3000/api
-- 默认账号: admin / admin123
+- 前端地址: http://localhost:5175
+- 后端 API: http://localhost:3000/api
+- 默认账号: admin / admin123（开发环境；生产请改密并关闭 `attendance.bootstrap-default-admin`）
 
 ## 项目结构
 
 ```
-├── backend/                    # 后端项目
-│   ├── src/
-│   │   ├── main/java/
-│   │   │   ├── controller/   # 控制器
-│   │   │   ├── service/     # 服务层
-│   │   │   ├── mapper/      # 数据访问层
-│   │   │   ├── entity/      # 实体类
-│   │   │   └── util/        # 工具类
-│   │   └── resources/
-│   │       ├── mapper/      # MyBatis XML
-│   │       └── application.yml
-│   ├── config/              # 配置文件
-│   └── pom.xml
-│
-├── frontend/                 # 前端项目
-│   ├── src/
-│   │   ├── api/            # API接口
-│   │   ├── components/      # 组件
-│   │   ├── composables/    # 组合式函数
-│   │   ├── router/        # 路由
-│   │   ├── stores/         # 状态管理
-│   │   ├── utils/          # 工具函数
-│   │   └── views/          # 页面
-│   └── package.json
-│
-├── start.sh                 # Linux启动脚本
-├── start.bat                # Windows启动脚本
+├── base-config/              # 运行时业务配置（飞书/提示词源/权限）
+├── backend/
+│   ├── config/               # init.sql、migration/、数据库说明
+│   ├── src/main/java/        # Spring Boot 业务代码
+│   └── src/main/resources/   # application.yml、MyBatis、canonical 提示词
+├── frontend/                 # PC Web（Vite 端口 5175）
+├── feishu-miniprogram/       # 飞书小程序
+├── docs/                     # 架构、数据一致性、SOP 等
+├── start.sh / start.bat      # 启动脚本
 └── README.md
 ```
+
+架构与配置说明：[docs/architecture-and-config.md](docs/architecture-and-config.md)
 
 ## API文档
 
@@ -162,16 +149,23 @@ mvn test
 
 ## 配置说明
 
-### 飞书配置
+| 类型 | 位置 | 文档 |
+|------|------|------|
+| 密钥与数据库 | `backend/.env` 或环境变量 | 下文示例 |
+| 飞书/提示词/权限 | `base-config/` | [base-config/README.md](base-config/README.md) |
+| 识别提示词（运行时） | MySQL `recognition_prompt` | 启动时自动播种 |
+| 架构总览 | — | [docs/architecture-and-config.md](docs/architecture-and-config.md) |
 
-在 `.env` 文件中配置：
+### 飞书配置（环境变量 + feishu.md）
 
 ```env
 FEISHU_APP_ID=你的飞书应用ID
 FEISHU_APP_SECRET=你的飞书应用密钥
 ```
 
-### AI服务配置
+各国 Bitable Token / 字段映射在 `base-config/feishu.md` 按国家维护。
+
+### AI 服务配置
 
 ```env
 MIMO_API_KEY=你的小米 MiMo API 密钥

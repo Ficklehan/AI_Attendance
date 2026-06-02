@@ -1,5 +1,7 @@
 # 任务数据一致性说明
 
+> 系统架构、配置分层与数据库初始化见 [architecture-and-config.md](./architecture-and-config.md)、[backend/config/README.md](../backend/config/README.md)。
+
 ## 状态机（数据库 `tasks.status`）
 
 | 状态值 | 业务含义 | 小程序 / PC 展示 |

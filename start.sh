@@ -84,7 +84,7 @@ start_frontend() {
     FRONTEND_PID=$!
     
     echo "前端服务启动中 (PID: $FRONTEND_PID)..."
-    echo "请访问: http://localhost:5173"
+    echo "请访问: http://localhost:5175"
     
     cd ..
 }
