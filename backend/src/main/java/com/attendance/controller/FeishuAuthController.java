@@ -28,7 +28,6 @@ import javax.servlet.http.HttpServletResponse;
 import javax.validation.Valid;
 import java.io.IOException;
 import java.net.URLEncoder;
-import java.nio.charset.StandardCharsets;
 import java.util.UUID;
 
 @RestController
@@ -57,7 +56,7 @@ public class FeishuAuthController {
     @GetMapping("/login")
     public void login(HttpServletResponse response) throws IOException {
         String state = UUID.randomUUID().toString();
-        String redirectUri = URLEncoder.encode(feishuProperties.getRedirectUri(), StandardCharsets.UTF_8);
+        String redirectUri = URLEncoder.encode(feishuProperties.getRedirectUri(), "UTF-8");
         
         String url = String.format(
             "https://open.feishu.cn/open-apis/authen/v1/index?app_id=%s&redirect_uri=%s&state=%s",

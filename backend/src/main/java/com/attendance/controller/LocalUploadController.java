@@ -3,7 +3,6 @@ package com.attendance.controller;
 import com.attendance.common.BusinessException;
 import com.attendance.common.ErrorCode;
 import com.attendance.common.ErrorKeys;
-import com.attendance.common.ErrorCode;
 import com.attendance.service.AIParserService;
 import com.attendance.service.ConfigService;
 import com.attendance.service.RecognitionRunner;

@@ -23,7 +23,6 @@ import org.springframework.stereotype.Service;
 
 import javax.servlet.http.HttpServletResponse;
 import java.net.URLEncoder;
-import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
@@ -143,7 +142,7 @@ public class ExportJobService {
         }
         try {
             String fileName = job.getFileName() != null ? job.getFileName() : path.getFileName().toString();
-            String encoded = URLEncoder.encode(fileName, StandardCharsets.UTF_8).replace("+", "%20");
+            String encoded = URLEncoder.encode(fileName, "UTF-8").replace("+", "%20");
             response.setContentType(ExcelExportHelper.CONTENT_TYPE);
             response.setHeader("Content-Disposition", "attachment; filename*=UTF-8''" + encoded);
             Files.copy(path, response.getOutputStream());
