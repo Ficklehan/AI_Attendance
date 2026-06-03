@@ -166,6 +166,7 @@
                     <thead>
                       <tr>
                         <th>{{ $t('taskEdit.sourceTask') }}</th>
+                        <th>{{ $t('taskEdit.pageNumber') }}</th>
                         <th>{{ $t('taskEdit.workerNumber') }}</th>
                         <th>{{ $t('taskEdit.name') }}</th>
                         <th>{{ $t('taskEdit.countryField') }}</th>
@@ -186,6 +187,7 @@
                         :key="item.rowKey"
                       >
                         <td>{{ item.sourceTaskId || taskId }}</td>
+                        <td>{{ item.pageNum || item.PAGE_NUM || '-' }}</td>
                         <td>{{ item.NO || '-' }}</td>
                         <td>{{ item.displayName || '-' }}</td>
                         <td>{{ item.Pays || '-' }}</td>
@@ -216,6 +218,15 @@
                   />
                 </div>
                 <span v-else class="cell-muted">-</span>
+              </template>
+              <template v-if="column.key === 'PAGE_NUM'">
+                <a-input
+                  v-if="isRecordEditable(record)"
+                  v-model:value="record.PAGE_NUM"
+                  size="small"
+                  :bordered="false"
+                />
+                <span v-else class="cell-text">{{ record.PAGE_NUM || record.pageNum || '-' }}</span>
               </template>
               <template v-if="column.key === 'NO'">
                 <a-input v-if="isRecordEditable(record)" v-model:value="record.NO" size="small" :bordered="false" />
@@ -1254,7 +1265,8 @@ const normalizePauseMinutes = (value) => {
 
 const normalizeRecordPause = (record) => applyMissingPays({
   ...record,
-  PAUSE: normalizePauseMinutes(record?.PAUSE)
+  PAUSE: normalizePauseMinutes(record?.PAUSE),
+  PAGE_NUM: record?.PAGE_NUM ?? record?.pageNum ?? '',
 }, task.value?.promptCountry || getCachedWorkingCountry())
 
 const formatPauseDisplay = (value) => {

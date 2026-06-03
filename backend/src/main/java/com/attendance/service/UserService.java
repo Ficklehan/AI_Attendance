@@ -209,17 +209,17 @@ public class UserService {
                 && userId.equals(currentAdminId)) {
             throw new BusinessException(ErrorCode.PERMISSION_DENIED, ErrorKeys.ACCESS_DENIED);
         }
-        if (request.getEmail() != null && !request.getEmail().isBlank()) {
+        if (request.getEmail() != null && !request.getEmail().trim().isEmpty()) {
             User byEmail = userMapper.selectUserByEmail(request.getEmail().trim());
             if (byEmail != null && !byEmail.getId().equals(userId)) {
                 throw new BusinessException(ErrorCode.USER_ALREADY_EXISTS, ErrorKeys.EMAIL_ALREADY_EXISTS);
             }
             user.setEmail(request.getEmail().trim());
         }
-        if (request.getPassword() != null && !request.getPassword().isBlank()) {
+        if (request.getPassword() != null && !request.getPassword().trim().isEmpty()) {
             user.setPasswordHash(passwordEncoder.encode(request.getPassword()));
         }
-        if (request.getRole() != null && !request.getRole().isBlank()) {
+        if (request.getRole() != null && !request.getRole().trim().isEmpty()) {
             user.setRole(normalizeRole(request.getRole()));
         }
         if (request.getRealName() != null) {
@@ -228,7 +228,7 @@ public class UserService {
         if (request.getEmployeeId() != null) {
             user.setEmployeeId(request.getEmployeeId());
         }
-        if (request.getStatus() != null && !request.getStatus().isBlank()) {
+        if (request.getStatus() != null && !request.getStatus().trim().isEmpty()) {
             user.setStatus(request.getStatus().trim());
         }
         if (request.getFeishuUserId() != null) {
@@ -249,13 +249,13 @@ public class UserService {
     }
 
     private String normalizeRole(String role) {
-        if (role == null || role.isBlank()) {
+        if (role == null || role.trim().isEmpty()) {
             return "user";
         }
         String normalized = role.trim().toLowerCase();
         if (!"admin".equals(normalized) && !"user".equals(normalized)) {
             throw new BusinessException(400, ErrorKeys.VALIDATION_FAILED,
-                    java.util.Map.of("detail", "role must be admin or user"));
+                    java.util.Collections.singletonMap("detail", "role must be admin or user"));
         }
         return normalized;
     }

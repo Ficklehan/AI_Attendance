@@ -108,7 +108,7 @@ public class ChatController {
 
     private String formatRecognitionForChat(List<JSONObject> records, String engine, String question) {
         StringBuilder sb = new StringBuilder();
-        if (question != null && !question.isBlank()) {
+        if (question != null && !question.trim().isEmpty()) {
             sb.append("您的问题：").append(question.trim()).append("\n\n");
         }
         sb.append("识别完成（引擎：").append(engine).append("），共 ").append(records.size()).append(" 条记录。\n\n");

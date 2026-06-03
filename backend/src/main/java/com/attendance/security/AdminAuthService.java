@@ -29,7 +29,7 @@ public class AdminAuthService {
     }
 
     public boolean isAdmin(String userId) {
-        if (userId == null || userId.isBlank()) {
+        if (userId == null || userId.trim().isEmpty()) {
             return false;
         }
         User user = userMapper.selectUserById(userId);

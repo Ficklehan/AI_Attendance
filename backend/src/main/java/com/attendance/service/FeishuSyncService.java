@@ -56,16 +56,16 @@ public class FeishuSyncService {
             recordMap.put("TASK_ID", taskId);
 
             String feishuRecordId = record.getString("_feishuRecordId");
-            if (feishuRecordId == null || feishuRecordId.isBlank()) {
+            if (feishuRecordId == null || feishuRecordId.trim().isEmpty()) {
                 String no = record.getString("NO");
                 feishuRecordId = bitableService.findRecordIdByTaskAndNo(taskId, no, configCountry);
-                if (feishuRecordId != null && !feishuRecordId.isBlank()) {
+                if (feishuRecordId != null && !feishuRecordId.trim().isEmpty()) {
                     record.put("_feishuRecordId", feishuRecordId);
                     persistRecordFeishuId(taskId, rowKey, feishuRecordId);
                 }
             }
 
-            if (feishuRecordId == null || feishuRecordId.isBlank()) {
+            if (feishuRecordId == null || feishuRecordId.trim().isEmpty()) {
                 throw new RuntimeException("未找到飞书多维表对应记录，无法更新（任务id=" + taskId + "）");
             }
 
@@ -85,10 +85,10 @@ public class FeishuSyncService {
             return null;
         }
         String payload = task.getConfirmedData();
-        if (payload == null || payload.isBlank()) {
+        if (payload == null || payload.trim().isEmpty()) {
             payload = task.getRawData();
         }
-        if (payload == null || payload.isBlank()) {
+        if (payload == null || payload.trim().isEmpty()) {
             return null;
         }
         JSONArray arr = JSON.parseArray(payload);
@@ -110,7 +110,7 @@ public class FeishuSyncService {
             return;
         }
         String payload = task.getConfirmedData();
-        if (payload == null || payload.isBlank()) {
+        if (payload == null || payload.trim().isEmpty()) {
             return;
         }
         JSONArray arr = JSON.parseArray(payload);
@@ -140,10 +140,10 @@ public class FeishuSyncService {
             return;
         }
         String payload = task.getConfirmedData();
-        if (payload == null || payload.isBlank()) {
+        if (payload == null || payload.trim().isEmpty()) {
             payload = task.getRawData();
         }
-        if (payload == null || payload.isBlank()) {
+        if (payload == null || payload.trim().isEmpty()) {
             return;
         }
         JSONArray arr = JSON.parseArray(payload);
@@ -161,7 +161,7 @@ public class FeishuSyncService {
             }
             if (idIndex < recordIds.size()) {
                 String id = recordIds.get(idIndex++);
-                if (id != null && !id.isBlank()) {
+                if (id != null && !id.trim().isEmpty()) {
                     row.put("_feishuRecordId", id);
                 }
             }

@@ -807,33 +807,48 @@ const wizardSteps = [
 
 const isLegacyPromptText = (text) => {
   if (!text) return true
-  if (text.includes('Pays,Entrepot') || text.includes('Pays, Entrepot')) return false
-  return text.includes('检查器')
+  if (text.includes('检查器')
     || text.includes('CHECKER')
     || text.includes('[NO,姓名,中介')
-    || text.includes('第10个字段')
+    || text.includes('第10个字段')) {
+    return true
+  }
+  if (text.includes('Pays,Entrepot') || text.includes('Pays, Entrepot')) {
+    if (!text.includes('PAGE_NUM')) return true
+    if (text.includes('【数据与格式】')) return false
+    if (text.includes('规则：') && text.includes('1. 只返回真实数据')) return true
+    return false
+  }
+  return true
 }
 
 const defaultPrompts = {
-  default: `识别考勤表格，表头可能为中文、法语、荷兰语或意大利语，但字段顺序一致。逐行返回单个JSON数组：[NO,Pays,Entrepot,Date,NOM_PRENOM,AGENCE_INTERIMAIRE,HORAIRES_DU_TRAVAIL,ARRIVEE,DEPAR,PAUSE,SIGNATURE,Observations,标记,已删除]。
+  default: `识别考勤表格（表头可为中/法/荷/意等，列顺序固定）。每行仅输出一个 JSON 数组，15 项：
+[NO,Pays,Entrepot,Date,NOM_PRENOM,AGENCE_INTERIMAIRE,HORAIRES_DU_TRAVAIL,ARRIVEE,DEPAR,PAUSE,SIGNATURE,Observations,标记,已删除,PAGE_NUM]
 
-规则：
-1. 只返回真实数据，禁止编造
-2. 标记列：手写/模糊/正常；夜班（20:00后到或06:00前走，跨午夜）；未出勤（到达离开都空或???）
-3. 必须观察工号（NO）和姓名两列的视觉笔迹：只要任一单元格是手写，第13个字段标记必须包含"手写"，不得输出"正常"
-4. 标记用;分隔，如"手写;夜班"，只有工号和姓名都非手写且非模糊/未出勤时才允许输出"正常"
-5. 删除线=true否则=false
-6. 时间统一转HH:MM（24h）：6h→06:00,6h30→06:30,6.30→06:30,630→06:30,6→06:00,18h30→18:30
-7. 日期统一转YYYY-MM-DD：17/05/2026→2026-05-17,17-05-2026→2026-05-17,17-05-26→2026-05-17
-8. 表头对应关系：国家/Pays/Country/Paese→Pays；仓库/Entrepôt/Warehouse/Magazzino→Entrepot；员工签名/SIGNATURE/Signature/Firma→SIGNATURE；备注/Observations/Remarks/Osservazioni→Observations
-9. 休息字段只输出分钟数值，不带单位：30min、30mn、0h30、00:30都输出30
-10. 每行单独数组，不要包大数组
+【数据与格式】
+· 只输出图中真实行；看不清用 ??? 或 ""；禁止编造、补全、连号演示(1,2,3…)、把表头当数据(NO/姓名/供应商/签名/备注等)
+· 每行仅一个 JSON 数组，不要包大数组
+· 时间→HH:MM(24h)：6h→06:00；6h30/6.30/630→06:30；18h30→18:30
+· 日期→YYYY-MM-DD：17/05/2026、17-05-2026、17-05-26 等均规范为 2026-05-17
+· 表头语义→字段：国家/Pays/Country/Paese→Pays；仓库/Entrepôt/Warehouse/Magazzino→Entrepot；签名/SIGNATURE/Firma→SIGNATURE；备注/Observations/Remarks/Osservazioni→Observations
+· PAUSE 只输出分钟整数(去 min/mn/h 等单位)
+· Entrepot 仅读图，无列或看不清则 ""，禁止按国家猜 AMS/PAR 等
 
-示例：
-["1","Netherlands","AMS","2026-05-17","张三","中介A","MATIN","08:00","18:00","60","员工签名","备注","正常",false]
-["2","France","PAR","2026-05-17","李四","中介B","NUIT","22:00","06:00","60","SIGNATURE","Observations","正常;夜班",false]
-["3","Netherlands","AMS","2026-05-17","王五","中介C","MATIN","08:30","17:30","60","","","手写",false]
-["4","","","2026-05-17","???","中介D","SOIR","???","???","30","","","模糊;未出勤",false]`,
+【标记·第13项】取值：手写|模糊|正常|夜班|未出勤，多值用分号(;)连接。
+· 夜班：到达≥20:00 或 离开≤06:00/跨午夜
+· 未出勤：到、离皆空或 ???
+· 仅当 NO 与姓名均非手写且非模糊/未出勤时可「正常」；NO 或姓名任一手写必含「手写」(其他列手写不计)
+
+【其他字段】
+· 已删除：行有删除线=true，否则 false
+· PAGE_NUM(第15项)：读本页页眉/页脚/底边 Excel 页码；同页各行相同；无则 ""
+
+示例（勿照抄，仅格式参考）：
+["1","Netherlands","AMS","2026-05-17","张三","中介A","MATIN","08:00","18:00","60","员工签名","备注","正常",false,""]
+["2","France","PAR","2026-05-17","李四","中介B","NUIT","22:00","06:00","60","SIGNATURE","Observations","正常;夜班",false,""]
+["3","Netherlands","AMS","2026-05-17","王五","中介C","MATIN","08:30","17:30","60","","","手写",false,""]
+["4","","","2026-05-17","???","中介D","SOIR","???","???","30","","","模糊;未出勤",false,""]`,
   CN: `识别中国考勤表格，表头可能为中文、法语、荷兰语或意大利语，但字段顺序一致。逐行返回单个JSON数组：[NO,Pays,Entrepot,Date,NOM_PRENOM,AGENCE_INTERIMAIRE,HORAIRES_DU_TRAVAIL,ARRIVEE,DEPAR,PAUSE,SIGNATURE,Observations,标记,已删除]。
 
 规则：
@@ -874,7 +889,7 @@ const defaultPrompts = {
 ["4","","","2026-05-17","???","中介D","SOIR","???","???","30","","","模糊;未出勤",false]`
 }
 
-const defaultContinuePrompt = '请接续上文继续输出，不要重复已有内容，保持相同格式。'
+const defaultContinuePrompt = '接续上文继续输出，格式与字段不变，不重复已输出行。'
 
 const defaultFieldMapping = [
   { aiField: 'NO', feishuField: 'NO', type: 'string', required: true, description: '工号' },

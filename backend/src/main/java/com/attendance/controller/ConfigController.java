@@ -66,8 +66,8 @@ public class ConfigController {
         body.put("promptFromGlobalFallback", bundle.isPromptFromGlobalFallback());
         body.put("feishuFromGlobalFallback", bundle.isFeishuFromGlobalFallback());
         body.put("promptSection", bundle.getPromptSection());
-        body.put("feishuAppTokenConfigured", bundle.getAppToken() != null && !bundle.getAppToken().isBlank());
-        body.put("feishuTableIdConfigured", bundle.getTableId() != null && !bundle.getTableId().isBlank());
+        body.put("feishuAppTokenConfigured", bundle.getAppToken() != null && !bundle.getAppToken().trim().isEmpty());
+        body.put("feishuTableIdConfigured", bundle.getTableId() != null && !bundle.getTableId().trim().isEmpty());
         body.put("fieldMappingCount", bundle.getFieldMapping() != null ? bundle.getFieldMapping().size() : 0);
         body.put("configPromptLength", fromConfig != null ? fromConfig.length() : 0);
         body.put("apiPromptLength", forApi != null ? forApi.length() : 0);
@@ -147,8 +147,10 @@ public class ConfigController {
         requireAdmin();
         String content = recognitionPromptService.getAiPrompt("default");
         Map<String, Object> body = new HashMap<>();
-        body.put("legacy", markdownConfigService.isCurrentPromptsLegacy());
+        body.put("legacy", markdownConfigService.isCurrentPromptsLegacy()
+                || recognitionPromptService.isMissingPageNumPromptInDatabase());
         body.put("hasNewFields", content != null && content.contains("Pays,Entrepot"));
+        body.put("hasPageNum", content != null && content.contains("PAGE_NUM"));
         body.put("storage", "database");
         body.put("rowCount", recognitionPromptService.countRows());
         return Result.success(body);

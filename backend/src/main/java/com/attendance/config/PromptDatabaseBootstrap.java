@@ -44,12 +44,14 @@ public class PromptDatabaseBootstrap implements ApplicationRunner {
             long rows = recognitionPromptService.countRows();
             boolean force = promptProperties.isForceSeedOnStartup();
             boolean legacy = recognitionPromptService.isLegacyPromptInDatabase();
+            boolean missingPageNum = recognitionPromptService.isMissingPageNumPromptInDatabase();
+            boolean outdatedSeed = recognitionPromptService.isOutdatedSeedInDatabase();
 
             if (rows == 0 && promptProperties.isImportMarkdownWhenEmpty()) {
                 try {
                     markdownConfigService.refreshPromptsFromDisk(false);
                     String md = markdownConfigService.getPromptContent();
-                    if (md != null && !md.isBlank() && !MarkdownConfigService.isLegacyPromptsFile(md)) {
+                    if (md != null && !md.trim().isEmpty() && !MarkdownConfigService.isLegacyPromptsFile(md)) {
                         int imported = recognitionPromptService.seedFromMarkdownContent(md, true);
                         log.info("数据库无提示词，已从 base-config/prompts.md 导入 {} 个国家", imported);
                         rows = recognitionPromptService.countRows();
@@ -59,11 +61,11 @@ public class PromptDatabaseBootstrap implements ApplicationRunner {
                 }
             }
 
-            if (rows == 0 || force || legacy) {
-                boolean useForce = force || legacy || rows == 0;
+            if (rows == 0 || force || legacy || missingPageNum || outdatedSeed) {
+                boolean useForce = force || legacy || missingPageNum || outdatedSeed || rows == 0;
                 int seeded = recognitionPromptService.seedFromCanonical(useForce);
-                log.info("提示词数据库播种: rows={}, legacy={}, force={}, seeded={}",
-                        rows, legacy, useForce, seeded);
+                log.info("提示词数据库播种: rows={}, legacy={}, missingPageNum={}, outdatedSeed={}, force={}, seeded={}",
+                        rows, legacy, missingPageNum, outdatedSeed, useForce, seeded);
             } else {
                 recognitionPromptService.seedFromCanonical(false);
                 log.info("提示词数据库已存在且非旧版，仅补全缺失国家/版本（不覆盖用户自定义）");

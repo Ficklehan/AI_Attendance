@@ -186,9 +186,31 @@ export function translateErrorMessage(error) {
   return translateApiError({ message: error.message, code: error.code })
 }
 
+function isBackendUnreachable(error) {
+  if (!error) return false
+  if (!error.response) {
+    const msg = String(error.message || '').toLowerCase()
+    return (
+      error.code === 'ECONNREFUSED' ||
+      msg.includes('network error') ||
+      msg.includes('econnrefused') ||
+      msg.includes('socket hang up')
+    )
+  }
+  const status = error.response.status
+  if (status !== 500 && status !== 502 && status !== 503) return false
+  const data = error.response.data
+  if (data && typeof data === 'object' && data.code != null) return false
+  return true
+}
+
 export function showErrorMessage(error) {
   if (!error) {
     showApiError(null)
+    return
+  }
+  if (isBackendUnreachable(error)) {
+    showApiError({ messageKey: 'errors.backendUnavailable' })
     return
   }
   if (error.response?.data) {

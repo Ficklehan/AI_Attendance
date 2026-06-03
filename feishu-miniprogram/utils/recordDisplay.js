@@ -317,6 +317,8 @@ function buildRecordFieldRows(record, ctx) {
   }
 
   const primaryRow = [
+    cell('PAGE_NUM', 'result.fieldPageNumber', ctx.PAGE_NUM, ctx.pageNumText, false),
+    cell('NO', 'result.fieldWorkerNo', ctx.NO, ctx.displayNo, false),
     cell('Date', 'result.fieldDate', ctx.Date, ctx.dateText, true),
     cell('ARRIVEE', 'result.fieldArrival', ctx.ARRIVEE, ctx.ARRIVEE, true),
     cell('DEPAR', 'result.fieldDeparture', ctx.DEPAR, ctx.DEPAR, true),
@@ -349,6 +351,7 @@ function enrichRecord(record, index) {
   const AGENCE_INTERIMAIRE = pickField(record, 'AGENCE_INTERIMAIRE')
   const SIGNATURE = pickField(record, 'SIGNATURE', 'CHECKER')
   const Observations = pickField(record, 'Observations')
+  const PAGE_NUM = pickField(record, 'PAGE_NUM', 'PageNum', 'pageNum', '页码')
   const SmartMark = record.SmartMark || ''
   const effectiveSmartMark = getEffectiveSmartMark({ ...record, SmartMark })
   const workHours = computeWorkHours(record)
@@ -379,6 +382,7 @@ function enrichRecord(record, index) {
     AGENCE_INTERIMAIRE,
     SIGNATURE,
     Observations,
+    PAGE_NUM,
     SmartMark: effectiveSmartMark,
     workHours,
     smartMarkDisplay,
@@ -406,7 +410,11 @@ function enrichRecord(record, index) {
     workHoursText,
     timeLine: `${dateText}  ${timeRangeText}`,
     metricsLine: `${t('result.fieldBreak')}:${pauseText}  ${t('result.fieldWorkHours')}:${workHoursText}`,
+    pageNumText: PAGE_NUM || '-',
     fieldRows: buildRecordFieldRows(record, {
+      PAGE_NUM,
+      NO,
+      displayNo,
       Date,
       ARRIVEE,
       DEPAR,
@@ -418,6 +426,7 @@ function enrichRecord(record, index) {
       SIGNATURE,
       Observations,
       dateText,
+      pageNumText: PAGE_NUM || '-',
       pauseText,
       workHours,
       workHoursText

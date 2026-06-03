@@ -5,6 +5,7 @@ import com.attendance.common.ErrorCode;
 import com.attendance.common.ErrorKeys;
 import com.attendance.config.MimoProperties;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 
 @Component
@@ -15,17 +16,16 @@ public class RecognitionSupport {
     @Autowired
     private MimoProperties mimoProperties;
 
+    @Value("${attendance.allow-simulated-recognition:false}")
+    private boolean allowSimulatedRecognition;
+
     public boolean isMimoConfigured() {
         String apiKey = mimoProperties.getApiKey();
         return apiKey != null && !apiKey.trim().isEmpty();
     }
 
     public boolean allowSimulatedFallback() {
-        String flag = System.getProperty("ALLOW_SIMULATED_RECOGNITION");
-        if (flag == null || flag.isBlank()) {
-            flag = System.getenv("ALLOW_SIMULATED_RECOGNITION");
-        }
-        return "true".equalsIgnoreCase(flag != null ? flag.trim() : "");
+        return allowSimulatedRecognition;
     }
 
     public void requireRealAi() {

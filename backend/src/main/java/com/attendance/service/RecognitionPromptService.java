@@ -30,7 +30,7 @@ public class RecognitionPromptService {
         String code = normalizeCountry(country);
         String effective = resolveEffectivePromptCountry(code);
         RecognitionPrompt row = recognitionPromptMapper.selectByCountry(effective);
-        if (row == null || row.getAiPrompt() == null || row.getAiPrompt().isBlank()) {
+        if (row == null || row.getAiPrompt() == null || row.getAiPrompt().trim().isEmpty()) {
             row = recognitionPromptMapper.selectByCountry("default");
         }
         return row != null ? row.getAiPrompt() : null;
@@ -40,22 +40,22 @@ public class RecognitionPromptService {
         String code = normalizeCountry(country);
         String effective = resolveEffectivePromptCountry(code);
         RecognitionPrompt row = recognitionPromptMapper.selectByCountry(effective);
-        if (row == null || row.getContinuePrompt() == null || row.getContinuePrompt().isBlank()) {
+        if (row == null || row.getContinuePrompt() == null || row.getContinuePrompt().trim().isEmpty()) {
             row = recognitionPromptMapper.selectByCountry("default");
         }
         return row != null ? row.getContinuePrompt() : null;
     }
 
     public boolean hasCountryPrompt(String country) {
-        if (country == null || country.isBlank() || "default".equalsIgnoreCase(country.trim())) {
+        if (country == null || country.trim().isEmpty() || "default".equalsIgnoreCase(country.trim())) {
             return true;
         }
         RecognitionPrompt row = recognitionPromptMapper.selectByCountry(country.trim().toUpperCase());
-        return row != null && row.getAiPrompt() != null && !row.getAiPrompt().isBlank();
+        return row != null && row.getAiPrompt() != null && !row.getAiPrompt().trim().isEmpty();
     }
 
     public String resolveEffectivePromptCountry(String country) {
-        if (country == null || country.isBlank() || "default".equalsIgnoreCase(country.trim())) {
+        if (country == null || country.trim().isEmpty() || "default".equalsIgnoreCase(country.trim())) {
             return "default";
         }
         String normalized = country.trim().toUpperCase();
@@ -89,7 +89,28 @@ public class RecognitionPromptService {
         if (def == null || def.getAiPrompt() == null) {
             return true;
         }
-        return MarkdownConfigService.isLegacyPromptsFile(def.getAiPrompt());
+        String prompt = def.getAiPrompt();
+        if (MarkdownConfigService.isLegacyPromptsFile(prompt)) {
+            return true;
+        }
+        return prompt.contains("规则：") && prompt.contains("1. 只返回真实数据");
+    }
+
+    public boolean isOutdatedSeedInDatabase() {
+        RecognitionPrompt def = recognitionPromptMapper.selectByCountry("default");
+        if (def == null) {
+            return true;
+        }
+        return def.getSeedVersion() < promptProperties.getSeedVersion();
+    }
+
+    public boolean isMissingPageNumPromptInDatabase() {
+        RecognitionPrompt def = recognitionPromptMapper.selectByCountry("default");
+        if (def == null || def.getAiPrompt() == null) {
+            return true;
+        }
+        String prompt = def.getAiPrompt();
+        return !prompt.contains("PAGE_NUM");
     }
 
     public long countRows() {
@@ -103,7 +124,7 @@ public class RecognitionPromptService {
      */
     public int seedFromCanonical(boolean force) {
         String markdown = readCanonicalResource();
-        if (markdown == null || markdown.isBlank()) {
+        if (markdown == null || markdown.trim().isEmpty()) {
             log.error("内置 canonical/prompts.md 为空，无法播种");
             return 0;
         }
@@ -162,7 +183,7 @@ public class RecognitionPromptService {
     }
 
     private static String normalizeCountry(String country) {
-        if (country == null || country.isBlank()) {
+        if (country == null || country.trim().isEmpty()) {
             return "default";
         }
         return "default".equalsIgnoreCase(country.trim()) ? "default" : country.trim().toUpperCase();

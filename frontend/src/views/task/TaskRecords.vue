@@ -150,6 +150,7 @@ const advancedFilters = ref({
   PAUSE: '',
   SIGNATURE: '',
   Observations: '',
+  PAGE_NUM: '',
 })
 const previewVisible = ref(false)
 const previewImagesList = ref([])
@@ -161,6 +162,7 @@ const searchableFieldDefs = [
   { field: 'userName', label: t('tasks.operator') },
   { field: 'status', label: t('tasks.status') },
   { field: 'createdAt', label: t('tasks.createTime') },
+  { field: 'PAGE_NUM', label: t('taskEdit.pageNumber') },
   { field: 'NO', label: t('taskEdit.workerNumber') },
   { field: 'NOM_PRENOM', label: t('taskEdit.name') },
   { field: 'Pays', label: t('taskEdit.countryField') },
@@ -180,6 +182,7 @@ const baseColumns = computed(() => [
   { title: t('tasks.operator'), dataIndex: 'userName', key: 'userName', searchField: 'userName' },
   { title: t('tasks.status'), dataIndex: 'taskStatus', key: 'taskStatus', searchField: 'status' },
   { title: t('tasks.createTime'), dataIndex: 'createdAt', key: 'createdAt', searchField: 'createdAt' },
+  { title: t('taskEdit.pageNumber'), dataIndex: 'pageNum', key: 'pageNum', searchField: 'PAGE_NUM' },
   { title: t('taskEdit.workerNumber'), dataIndex: 'no', key: 'no', searchField: 'NO' },
   { title: t('taskEdit.name'), dataIndex: 'name', key: 'name', ellipsis: false, searchField: 'NOM_PRENOM' },
   { title: t('taskEdit.countryField'), dataIndex: 'country', key: 'country', searchField: 'Pays' },

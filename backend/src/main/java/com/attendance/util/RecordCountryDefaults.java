@@ -36,7 +36,7 @@ public final class RecordCountryDefaults {
             return;
         }
         String defaultPays = defaultPaysValue(workingCountryCode);
-        if (defaultPays != null && !defaultPays.isBlank()) {
+        if (defaultPays != null && !defaultPays.trim().isEmpty()) {
             record.put("Pays", defaultPays);
         }
     }

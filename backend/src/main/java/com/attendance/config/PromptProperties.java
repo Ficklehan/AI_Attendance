@@ -10,7 +10,7 @@ public class PromptProperties {
     /**
      * 内置标准模板版本；升高后启动时会刷新未自定义的国家提示词。
      */
-    private int seedVersion = 2;
+    private int seedVersion = 4;
 
     /**
      * 应用启动时是否从内置模板写入数据库。

@@ -4,6 +4,7 @@ import com.attendance.common.BusinessException;
 import com.attendance.common.ErrorCode;
 import com.attendance.common.ErrorKeys;
 
+import java.util.Collections;
 import java.util.Map;
 import org.slf4j.Logger;
 
@@ -21,15 +22,15 @@ public final class ImageUploadValidator {
     public static void validate(byte[] fileBytes, String originalFilename, String contentType, Logger log) {
         if (fileBytes == null || fileBytes.length == 0) {
             throw new BusinessException(ErrorCode.FILE_UPLOAD_ERROR, ErrorKeys.UPLOAD_IMAGE_TOO_SMALL,
-                    Map.of("size", 0));
+                    Collections.singletonMap("size", 0));
         }
         boolean pdf = isPdfUpload(fileBytes, originalFilename, contentType);
         int minBytes = pdf ? MIN_PDF_BYTES : MIN_BYTES;
         if (fileBytes.length < minBytes) {
             throw new BusinessException(ErrorCode.FILE_UPLOAD_ERROR, ErrorKeys.UPLOAD_IMAGE_TOO_SMALL,
-                    Map.of("size", fileBytes.length));
+                    Collections.singletonMap("size", fileBytes.length));
         }
-        if (contentType != null && !contentType.isBlank()) {
+        if (contentType != null && !contentType.trim().isEmpty()) {
             String ct = contentType.toLowerCase();
             if (!ct.startsWith("image/") && !ct.contains("pdf")) {
                 throw new BusinessException(ErrorCode.FILE_UPLOAD_ERROR, ErrorKeys.IMAGES_ONLY);

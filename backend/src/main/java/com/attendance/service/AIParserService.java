@@ -8,6 +8,7 @@ import com.attendance.common.ErrorKeys;
 import com.attendance.common.ErrorCode;
 import com.attendance.config.MimoProperties;
 import com.attendance.service.MarkdownConfigService;
+import com.attendance.util.PageNumberNormalizer;
 import com.attendance.util.RecordCountryDefaults;
 import com.attendance.util.RecognizedFieldSanitizer;
 import okhttp3.*;
@@ -33,17 +34,6 @@ public class AIParserService {
     private static final Logger log = LoggerFactory.getLogger(AIParserService.class);
     private static final String UPLOAD_DIR = "./uploads";
     private static final Pattern UPLOAD_SERIAL_PATTERN = Pattern.compile("^(\\d{8})_(\\d{4})\\.[^.]+$");
-    private static final String HANDWRITING_MARK_RULE = "\n\n【强制输出结构与标记规则】\n"
-            + "- 必须按新表头顺序逐行返回单个 JSON 数组：[NO,Pays,Entrepot,Date,NOM_PRENOM,AGENCE_INTERIMAIRE,HORAIRES_DU_TRAVAIL,ARRIVEE,DEPAR,PAUSE,SIGNATURE,Observations,标记,已删除]。\n"
-            + "- 表头语言可能是中文、法语、荷兰语或意大利语，但字段顺序一致；上述列名仅用于理解含义，禁止作为单元格数据输出。\n"
-            + "- 国家/Pays/Country/Paese 输出到 Pays；仓库/Entrepôt/Warehouse/Magazzino 输出到 Entrepot；员工签名/SIGNATURE/Signature/Firma 输出到 SIGNATURE；备注/Observations/Remarks/Osservazioni 输出到 Observations。\n"
-            + "- Entrepot 只能从图片读取，未识别到或看不清时必须留空，禁止猜测或套用示例仓库代码。\n"
-            + "- 必须逐行观察工号(NO)和姓名(NOM_PRENOM)两个单元格的视觉笔迹。\n"
-            + "- 只要工号或姓名任一单元格是手写笔迹，第13个字段标记必须包含\"手写\"，不得输出\"正常\"或\"正常;夜班\"。\n"
-            + "- 手写与夜班同时存在时输出\"手写;夜班\"；手写与模糊同时存在时输出\"手写;模糊\"。\n"
-            + "- 只有工号和姓名两列都不是手写、也不是模糊/未出勤时，标记才允许为\"正常\"。\n"
-            + "- 休息字段(PAUSE)必须只输出分钟数值，不带单位；30min、30mn、0h30、00:30、30 minutes 都输出 30。";
-
     @Autowired
     private MimoProperties mimoProperties;
 
@@ -144,7 +134,7 @@ public class AIParserService {
     }
 
     private String resolveUploadExtension(String originalFilename) {
-        if (originalFilename == null || originalFilename.isBlank()) {
+        if (originalFilename == null || originalFilename.trim().isEmpty()) {
             return ".jpg";
         }
         int dot = originalFilename.lastIndexOf('.');
@@ -192,7 +182,7 @@ public class AIParserService {
                     && imageBytes[0] == '%' && imageBytes[1] == 'P' && imageBytes[2] == 'D' && imageBytes[3] == 'F') {
                 throw new BusinessException(ErrorCode.FILE_UPLOAD_ERROR, ErrorKeys.PDF_CONVERT_FAILED);
             }
-            workingCountryForPays.set(workingCountry != null && !workingCountry.isBlank()
+            workingCountryForPays.set(workingCountry != null && !workingCountry.trim().isEmpty()
                     ? workingCountry.trim().toUpperCase()
                     : resolveCountry(promptCountry));
             String base64Image = Base64.getEncoder().encodeToString(imageBytes);
@@ -234,11 +224,11 @@ public class AIParserService {
     }
 
     private String resolveCountry(String country) {
-        if (country != null && !country.isBlank()) {
+        if (country != null && !country.trim().isEmpty()) {
             return country.trim().toUpperCase();
         }
         String current = markdownConfigService.getCurrentCountry();
-        return (current != null && !current.isBlank()) ? current.toUpperCase() : "default";
+        return (current != null && !current.trim().isEmpty()) ? current.toUpperCase() : "default";
     }
 
     private static final class PromptBundle {
@@ -269,26 +259,25 @@ public class AIParserService {
         String aiPrompt = markdownConfigService.getAiPrompt(configCountry);
         String continuePrompt = markdownConfigService.getContinuePrompt(configCountry);
 
-        if (aiPrompt == null || aiPrompt.isBlank()) {
+        if (aiPrompt == null || aiPrompt.trim().isEmpty()) {
             log.warn("国家 {} 提示词为空，回退 default", configCountry);
             configCountry = "default";
             aiPrompt = markdownConfigService.getAiPrompt("default");
             continuePrompt = markdownConfigService.getContinuePrompt("default");
         }
-        if (continuePrompt == null || continuePrompt.isBlank()) {
+        if (continuePrompt == null || continuePrompt.trim().isEmpty()) {
             continuePrompt = markdownConfigService.getContinuePrompt("default");
         }
 
-        if (aiPrompt == null || aiPrompt.isBlank()) {
+        if (aiPrompt == null || aiPrompt.trim().isEmpty()) {
             throw new BusinessException(ErrorCode.AI_PARSE_ERROR, ErrorKeys.AI_PROMPT_NOT_FOUND);
         }
-        if (continuePrompt == null || continuePrompt.isBlank()) {
+        if (continuePrompt == null || continuePrompt.trim().isEmpty()) {
             throw new BusinessException(ErrorCode.AI_PARSE_ERROR, ErrorKeys.AI_CONTINUE_PROMPT_NOT_FOUND);
         }
 
-        String apiPrompt = recognitionPromptGuard.preparePromptForApi(aiPrompt, recognitionQualityGuard)
-                + HANDWRITING_MARK_RULE;
-        continuePrompt = continuePrompt.trim() + HANDWRITING_MARK_RULE;
+        String apiPrompt = recognitionPromptGuard.preparePromptForApi(aiPrompt, recognitionQualityGuard);
+        continuePrompt = recognitionPromptGuard.preparePromptForApi(continuePrompt.trim(), null);
         String section = markdownConfigService.describePromptSection(configCountry);
         log.info("AI识别提示词: requestCountry={}, effectiveCountry={}, section={}, configLen={}, apiLen={}",
                 requestedCountry, configCountry, section, aiPrompt.length(), apiPrompt.length());
@@ -508,9 +497,9 @@ public class AIParserService {
             return new BusinessException(ErrorCode.AI_PARSE_ERROR, ErrorKeys.AI_HEADER_ECHO);
         }
         if (raw != null && raw.contains("[") && !raw.contains("\"")) {
-            return new BusinessException(ErrorCode.AI_PARSE_ERROR, ErrorKeys.AI_INVALID_JSON, Map.of("preview", preview));
+            return new BusinessException(ErrorCode.AI_PARSE_ERROR, ErrorKeys.AI_INVALID_JSON, Collections.singletonMap("preview", preview));
         }
-        return new BusinessException(ErrorCode.AI_PARSE_ERROR, ErrorKeys.AI_NO_PARSEABLE_RECORDS, Map.of("preview", preview));
+        return new BusinessException(ErrorCode.AI_PARSE_ERROR, ErrorKeys.AI_NO_PARSEABLE_RECORDS, Collections.singletonMap("preview", preview));
     }
 
     private static String truncateForLog(String text, int maxLen) {
@@ -546,7 +535,7 @@ public class AIParserService {
 
             JSONObject requestBody = new JSONObject();
             String model = mimoProperties.getModel();
-            if (model == null || model.isBlank()) {
+            if (model == null || model.trim().isEmpty()) {
                 model = "mimo-v2.5";
             }
             requestBody.put("model", model);
@@ -648,7 +637,7 @@ public class AIParserService {
 
     private void flushExtractAllRecords(String raw, List<JSONObject> extractedRecords,
                                         Set<String> seenRecords, ParseCallback callback) {
-        if (raw == null || raw.isBlank()) {
+        if (raw == null || raw.trim().isEmpty()) {
             return;
         }
         String cleaned = stripMarkdownFences(raw);
@@ -898,6 +887,8 @@ public class AIParserService {
             normalized.put("Observations", record.get(11));
             normalized.put("Mark", record.get(12));
             normalized.put("isDeleted", record.get(13));
+            normalized.put("PAGE_NUM", record.size() > 14
+                    ? PageNumberNormalizer.sanitize(String.valueOf(record.get(14))) : "");
         } else {
             normalized.put("NO", record.size() > 0 ? record.get(0) : "");
             normalized.put("Pays", "");
@@ -913,7 +904,12 @@ public class AIParserService {
             normalized.put("Observations", "");
             normalized.put("Mark", record.size() > 9 ? record.get(9) : "");
             normalized.put("isDeleted", record.size() > 10 ? record.get(10) : false);
+            normalized.put("PAGE_NUM", "");
         }
+        if (!normalized.containsKey("PAGE_NUM")) {
+            normalized.put("PAGE_NUM", "");
+        }
+        normalized.put("PAGE_NUM", PageNumberNormalizer.sanitize(normalized.getString("PAGE_NUM")));
         normalized.put("Entrepot", RecognizedFieldSanitizer.sanitizeOptionalText(normalized.getString("Entrepot")));
         normalized.put("CHECKER", normalized.getString("SIGNATURE"));
 

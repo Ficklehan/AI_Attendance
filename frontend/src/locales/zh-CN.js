@@ -326,6 +326,7 @@ export default {
     handwrittenContent: '手写内容',
     absentReason: '未出勤',
     workerNumber: 'NO',
+    pageNumber: '页码',
     countryField: '国家',
     warehouse: '仓库',
     name: '姓名',
@@ -477,7 +478,7 @@ export default {
       templateLoad: '加载模板',
       templateLoadSuccess: '模板加载成功',
       legacyPromptTitle: '检测到旧版识别提示词',
-      legacyPromptDesc: '当前提示词仍使用旧表头（如「检查器/CHECKER」、11 字段）。请点击「应用最新模板」或「从文件重新加载」，将自动升级为含 Pays、Entrepot、SIGNATURE、Observations 的 13 字段结构。',
+      legacyPromptDesc: '当前提示词版本过旧（缺少页码 PAGE_NUM 字段或旧表头）。请点击「应用最新模板」，将升级为含 Pays、Entrepot、SIGNATURE、Observations、PAGE_NUM（页码识别）的 15 字段结构。',
       applyLatestPrompts: '应用最新模板',
       applyLatestPromptsDone: '已同步最新提示词，请确认后保存',
       restoreDefault: '恢复默认',
@@ -670,7 +671,8 @@ export default {
     dbMigrationRequired: '数据库字段缺失，请执行 backend/config/migration 下的迁移脚本',
     systemError: '系统异常，请稍后重试',
     requestFailed: '请求失败',
-    networkError: '网络错误，请检查网络连接'
+    networkError: '网络错误，请检查网络连接',
+    backendUnavailable: '后端服务未启动或正在重启，请在 backend 目录执行 mvn spring-boot:run 后刷新页面'
   },
   messages: { 
     systemError: '系统异常，请稍后重试', 

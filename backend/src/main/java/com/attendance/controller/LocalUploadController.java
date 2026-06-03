@@ -119,7 +119,7 @@ public class LocalUploadController {
         com.attendance.entity.Task task = taskService.getTaskForCurrentUser(taskId);
         List<String> urls = new ArrayList<>(taskService.parseImageUrlList(task));
         for (String key : savedKeys) {
-            if (key != null && !key.isBlank() && !urls.contains(key)) {
+            if (key != null && !key.trim().isEmpty() && !urls.contains(key)) {
                 urls.add(key.trim());
             }
         }
@@ -382,7 +382,7 @@ public class LocalUploadController {
         String[] countryPair = resolveCountryPair(countryHeader, countryParam);
         String configCountry = countryPair[0];
         String workingCountry = countryPair[1];
-        String client = (clientHeader != null && !clientHeader.isBlank()) ? clientHeader.trim() : "unknown";
+        String client = (clientHeader != null && !clientHeader.trim().isEmpty()) ? clientHeader.trim() : "unknown";
         log.info("收到异步上传请求: image={}, taskId={}, configCountry={}, workingCountry={}, client={}",
                 image.getOriginalFilename(), existingTaskId, configCountry, workingCountry, client);
         try {
@@ -393,7 +393,7 @@ public class LocalUploadController {
                     fileBytes, image.getOriginalFilename(), image.getContentType());
             String filename = savedKeys.get(0);
 
-            if (existingTaskId != null && !existingTaskId.isBlank()) {
+            if (existingTaskId != null && !existingTaskId.trim().isEmpty()) {
                 com.attendance.entity.Task existing = taskService.getTaskForCurrentUser(existingTaskId.trim());
                 mergeTaskImageUrls(existing.getTaskId(), savedKeys);
                 List<String> urls = taskService.parseImageUrlList(existing);
@@ -483,7 +483,7 @@ public class LocalUploadController {
                                                                   @RequestParam(value = "country", required = false) String countryParam,
                                                                   @RequestHeader(value = "X-Client", required = false) String clientHeader) {
         String configCountry = resolveConfigCountry(countryHeader, countryParam);
-        String client = (clientHeader != null && !clientHeader.isBlank()) ? clientHeader.trim() : "unknown";
+        String client = (clientHeader != null && !clientHeader.trim().isEmpty()) ? clientHeader.trim() : "unknown";
         com.attendance.entity.Task task = taskService.getTaskForCurrentUser(taskId);
         if ("confirmed".equals(task.getStatus())) {
             return com.attendance.common.Result.error("任务已确认，无法重新识别");

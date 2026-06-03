@@ -158,6 +158,20 @@
     </dependencies>
 
     <build>
+        <resources>
+            <resource>
+                <directory>src/main/resources</directory>
+            </resource>
+            <resource>
+                <directory>../base-config</directory>
+                <targetPath>base-config</targetPath>
+                <includes>
+                    <include>prompts.md</include>
+                    <include>feishu.md</include>
+                    <include>countries.md</include>
+                </includes>
+            </resource>
+        </resources>
         <plugins>
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>

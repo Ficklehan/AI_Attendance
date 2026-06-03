@@ -17,13 +17,13 @@ public final class PromptCanonicalParser {
 
     public static Map<String, ParsedPrompt> parse(String markdown) {
         Map<String, ParsedPrompt> result = new LinkedHashMap<>();
-        if (markdown == null || markdown.isBlank()) {
+        if (markdown == null || markdown.trim().isEmpty()) {
             return result;
         }
 
         String defaultAi = extractSection(markdown, "主要识别提示词", "```markdown", "```");
         String defaultContinue = extractSection(markdown, "继续输出提示词", "```markdown", "```");
-        if (defaultAi != null && !defaultAi.isBlank()) {
+        if (defaultAi != null && !defaultAi.trim().isEmpty()) {
             result.put("default", new ParsedPrompt(defaultAi.trim(),
                     fallbackContinue(defaultContinue)));
         }
@@ -50,7 +50,7 @@ public final class PromptCanonicalParser {
 
         for (Map.Entry<String, ParsedPrompt> entry : result.entrySet()) {
             ParsedPrompt p = entry.getValue();
-            if (p.continuePrompt == null || p.continuePrompt.isBlank()) {
+            if (p.continuePrompt == null || p.continuePrompt.trim().isEmpty()) {
                 p.continuePrompt = DEFAULT_CONTINUE;
             }
         }
@@ -58,7 +58,7 @@ public final class PromptCanonicalParser {
     }
 
     private static String fallbackContinue(String value) {
-        if (value == null || value.isBlank()) {
+        if (value == null || value.trim().isEmpty()) {
             return DEFAULT_CONTINUE;
         }
         return value.trim();
@@ -94,7 +94,7 @@ public final class PromptCanonicalParser {
         }
 
         public boolean isValid() {
-            return aiPrompt != null && !aiPrompt.isBlank();
+            return aiPrompt != null && !aiPrompt.trim().isEmpty();
         }
     }
 }

@@ -18,6 +18,7 @@ import org.springframework.web.servlet.NoHandlerFoundException;
 import javax.validation.ConstraintViolation;
 import javax.validation.ConstraintViolationException;
 import java.sql.SQLException;
+import java.util.Collections;
 import java.util.Map;
 import java.util.stream.Collectors;
 
@@ -41,7 +42,7 @@ public class GlobalExceptionHandler {
                 .map(error -> error.getField() + ": " + error.getDefaultMessage())
                 .collect(Collectors.joining(", "));
         log.error("参数校验异常: {}", detail);
-        return Result.error(400, ErrorKeys.VALIDATION_FAILED, Map.of("detail", detail));
+        return Result.error(400, ErrorKeys.VALIDATION_FAILED, Collections.singletonMap("detail", detail));
     }
 
     @ExceptionHandler(BindException.class)
@@ -50,7 +51,7 @@ public class GlobalExceptionHandler {
                 .map(error -> error.getField() + ": " + error.getDefaultMessage())
                 .collect(Collectors.joining(", "));
         log.error("参数绑定异常: {}", detail);
-        return Result.error(400, ErrorKeys.VALIDATION_FAILED, Map.of("detail", detail));
+        return Result.error(400, ErrorKeys.VALIDATION_FAILED, Collections.singletonMap("detail", detail));
     }
 
     @ExceptionHandler(ConstraintViolationException.class)
@@ -59,13 +60,13 @@ public class GlobalExceptionHandler {
                 .map(ConstraintViolation::getMessage)
                 .collect(Collectors.joining(", "));
         log.error("约束违规异常: {}", detail);
-        return Result.error(400, ErrorKeys.VALIDATION_FAILED, Map.of("detail", detail));
+        return Result.error(400, ErrorKeys.VALIDATION_FAILED, Collections.singletonMap("detail", detail));
     }
 
     @ExceptionHandler(MissingServletRequestParameterException.class)
     public Result<Void> handleMissingServletRequestParameterException(MissingServletRequestParameterException e) {
         log.error("缺少请求参数: {}", e.getMessage());
-        return Result.error(400, ErrorKeys.MISSING_PARAMETER, Map.of("name", e.getParameterName()));
+        return Result.error(400, ErrorKeys.MISSING_PARAMETER, Collections.singletonMap("name", e.getParameterName()));
     }
 
     @ExceptionHandler(MaxUploadSizeExceededException.class)

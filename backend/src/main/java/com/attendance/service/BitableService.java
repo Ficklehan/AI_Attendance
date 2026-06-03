@@ -82,7 +82,7 @@ public class BitableService {
      * 按 record_id 更新单条多维表格记录（校准后同步）。
      */
     public void updateRecordById(String recordId, Map<String, Object> record, String countryCode) throws IOException {
-        if (recordId == null || recordId.isBlank()) {
+        if (recordId == null || recordId.trim().isEmpty()) {
             throw new IllegalArgumentException("feishu record_id is required");
         }
         String token = getAccessToken();
@@ -109,7 +109,7 @@ public class BitableService {
      * 按任务 ID + 工号查找已同步的飞书记录（历史数据无 _feishuRecordId 时的兜底）。
      */
     public String findRecordIdByTaskAndNo(String taskId, String workerNo, String countryCode) throws IOException {
-        if (taskId == null || taskId.isBlank() || workerNo == null || workerNo.isBlank()) {
+        if (taskId == null || taskId.trim().isEmpty() || workerNo == null || workerNo.trim().isEmpty()) {
             return null;
         }
         Map<String, FieldMapping> mappings = getFieldMappings(countryCode);
@@ -273,7 +273,7 @@ public class BitableService {
                 continue;
             }
             String id = row.getString("record_id");
-            if (id == null || id.isBlank()) {
+            if (id == null || id.trim().isEmpty()) {
                 id = row.getString("id");
             }
             ids.add(id);

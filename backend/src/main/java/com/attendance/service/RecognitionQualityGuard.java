@@ -3,6 +3,7 @@ package com.attendance.service;
 import com.alibaba.fastjson.JSONObject;
 import org.springframework.stereotype.Component;
 
+import java.util.Arrays;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
@@ -19,17 +20,17 @@ public class RecognitionQualityGuard {
     private static final Pattern EXAMPLE_JSON_LINE = Pattern.compile(
             "^\\s*\\[\"[^\"]+\"(?:,\"[^\"]*\")+\\]\\s*$");
 
-    private static final Set<String> TEMPLATE_SURNAMES = Set.of(
+    private static final Set<String> TEMPLATE_SURNAMES = new HashSet<>(Arrays.asList(
             "DUPONT", "MARTIN", "BERNARD", "PETIT", "ROBERT",
             "DURAND", "MOREAU", "SIMON", "LAURENT", "LEFEBVRE",
             "GARCIA", "MULLER", "SCHMIDT", "SCHNEIDER"
-    );
+    ));
 
     /**
      * 发给 API 前去掉「示例」下的 JSON 行，仅保留规则；避免模型照抄或仿写示例结构。
      */
     public String preparePromptWithoutExamples(String promptFromConfig) {
-        if (promptFromConfig == null || promptFromConfig.isBlank()) {
+        if (promptFromConfig == null || promptFromConfig.trim().isEmpty()) {
             return promptFromConfig;
         }
         StringBuilder out = new StringBuilder();
@@ -147,7 +148,7 @@ public class RecognitionQualityGuard {
     }
 
     private static boolean isUnknown(String value) {
-        if (value == null || value.isBlank()) {
+        if (value == null || value.trim().isEmpty()) {
             return true;
         }
         String t = value.trim();
@@ -220,7 +221,7 @@ public class RecognitionQualityGuard {
         if (n < 6) {
             return false;
         }
-        Set<String> allowed = Set.of("MATIN", "SOIR", "NUIT", "MATIN ", "SOIR ", "NUIT ");
+        Set<String> allowed = new HashSet<>(Arrays.asList("MATIN", "SOIR", "NUIT", "MATIN ", "SOIR ", "NUIT "));
         int known = 0;
         for (JSONObject r : records) {
             String shift = safe(r.getString("HORAIRES_DU_TRAVAIL")).toUpperCase();

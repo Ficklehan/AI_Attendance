@@ -46,7 +46,7 @@ public final class CountryResolver {
 
     private static String serverCurrentCountry(ConfigService configService) {
         String current = configService.getCurrentCountry();
-        if (current != null && !current.isBlank()) {
+        if (current != null && !current.trim().isEmpty()) {
             return normalize(current);
         }
         return "default";
@@ -57,7 +57,7 @@ public final class CountryResolver {
             return null;
         }
         for (String value : values) {
-            if (value != null && !value.isBlank()) {
+            if (value != null && !value.trim().isEmpty()) {
                 return value;
             }
         }

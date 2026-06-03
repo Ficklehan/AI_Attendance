@@ -110,7 +110,7 @@ public class ExportJobService {
     }
 
     private String normalizeScope(String scope) {
-        if (scope == null || scope.isBlank() || "active".equalsIgnoreCase(scope)) {
+        if (scope == null || scope.trim().isEmpty() || "active".equalsIgnoreCase(scope)) {
             return "active";
         }
         if ("all".equalsIgnoreCase(scope) || "history".equalsIgnoreCase(scope)) {
@@ -134,7 +134,7 @@ public class ExportJobService {
         if (job == null) {
             throw new BusinessException(ErrorCode.TASK_NOT_FOUND, ErrorKeys.EXPORT_JOB_NOT_FOUND);
         }
-        if (!"completed".equals(job.getStatus()) || job.getFilePath() == null || job.getFilePath().isBlank()) {
+        if (!"completed".equals(job.getStatus()) || job.getFilePath() == null || job.getFilePath().trim().isEmpty()) {
             throw new BusinessException(ErrorCode.TASK_STATUS_ERROR, ErrorKeys.EXPORT_JOB_NOT_READY);
         }
         Path path = Paths.get(job.getFilePath());
@@ -195,7 +195,7 @@ public class ExportJobService {
     }
 
     private TaskQuery parseQuery(String json) {
-        if (json == null || json.isBlank()) {
+        if (json == null || json.trim().isEmpty()) {
             return new TaskQuery();
         }
         try {

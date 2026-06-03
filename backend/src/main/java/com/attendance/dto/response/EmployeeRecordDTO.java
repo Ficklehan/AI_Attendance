@@ -19,6 +19,7 @@ public class EmployeeRecordDTO {
     private String pauseMinutes;
     private String signature;
     private String observations;
+    private String pageNum;
     private String createdAt;
 
     public String getTaskId() {
@@ -163,6 +164,14 @@ public class EmployeeRecordDTO {
 
     public void setObservations(String observations) {
         this.observations = observations;
+    }
+
+    public String getPageNum() {
+        return pageNum;
+    }
+
+    public void setPageNum(String pageNum) {
+        this.pageNum = pageNum;
     }
 
     public String getCreatedAt() {

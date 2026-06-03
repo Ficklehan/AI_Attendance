@@ -62,7 +62,7 @@ public class UploadMediaSupport {
             }
             return pages;
         }
-        String label = originalFilename != null && !originalFilename.isBlank()
+        String label = originalFilename != null && !originalFilename.trim().isEmpty()
                 ? originalFilename
                 : "upload.jpg";
         List<ImagePage> single = new ArrayList<>(1);

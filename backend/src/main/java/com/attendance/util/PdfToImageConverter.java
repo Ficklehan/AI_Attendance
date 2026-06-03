@@ -15,6 +15,7 @@ import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
@@ -56,8 +57,10 @@ public final class PdfToImageConverter {
                 throw new BusinessException(ErrorCode.FILE_UPLOAD_ERROR, ErrorKeys.PDF_EMPTY);
             }
             if (pageCount > maxPages) {
-                throw new BusinessException(ErrorCode.FILE_UPLOAD_ERROR, ErrorKeys.PDF_TOO_MANY_PAGES,
-                        Map.of("pages", pageCount, "maxPages", maxPages));
+                Map<String, Object> errDetail = new HashMap<>();
+                errDetail.put("pages", pageCount);
+                errDetail.put("maxPages", maxPages);
+                throw new BusinessException(ErrorCode.FILE_UPLOAD_ERROR, ErrorKeys.PDF_TOO_MANY_PAGES, errDetail);
             }
             PDFRenderer renderer = new PDFRenderer(document);
             for (int i = 0; i < pageCount; i++) {
@@ -91,7 +94,7 @@ public final class PdfToImageConverter {
     }
 
     public static String stripExtension(String filename) {
-        if (filename == null || filename.isBlank()) {
+        if (filename == null || filename.trim().isEmpty()) {
             return "upload";
         }
         int dot = filename.lastIndexOf('.');

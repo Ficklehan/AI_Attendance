@@ -55,7 +55,7 @@ public final class CountryCatalog {
     }
 
     public static boolean isSupported(String code) {
-        if (code == null || code.isBlank()) {
+        if (code == null || code.trim().isEmpty()) {
             return false;
         }
         String normalized = code.trim().toUpperCase();
@@ -64,12 +64,12 @@ public final class CountryCatalog {
 
     /** 考勤表 Pays 字段缺省值（与识别结果、飞书字段常用英文国名对齐）。 */
     public static String defaultPaysLabel(String countryCode) {
-        if (countryCode == null || countryCode.isBlank() || "default".equalsIgnoreCase(countryCode.trim())) {
+        if (countryCode == null || countryCode.trim().isEmpty() || "default".equalsIgnoreCase(countryCode.trim())) {
             return null;
         }
         String normalized = countryCode.trim().toUpperCase();
         String mapped = PAYS_LABELS.get(normalized);
-        if (mapped != null && !mapped.isBlank()) {
+        if (mapped != null && !mapped.trim().isEmpty()) {
             return mapped;
         }
         return OPTIONS.stream()

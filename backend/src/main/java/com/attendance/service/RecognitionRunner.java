@@ -120,7 +120,7 @@ public class RecognitionRunner {
                     page.getBytes(), page.getLabel(), promptCountry, workingCountry, trace, progressTaskId);
             merged.addAll(outcome.getRecords());
             finalEngine = outcome.getEngine();
-            if (outcome.getPromptCountry() != null && !outcome.getPromptCountry().isBlank()) {
+            if (outcome.getPromptCountry() != null && !outcome.getPromptCountry().trim().isEmpty()) {
                 finalCountry = outcome.getPromptCountry();
             }
             if (progressTaskId != null && !merged.isEmpty()) {
@@ -281,7 +281,7 @@ public class RecognitionRunner {
         List<JSONObject> merged = new ArrayList<>();
         String finalEngine = null;
         String finalCountry = configCountry;
-        String workingCountry = task.getPromptCountry() != null && !task.getPromptCountry().isBlank()
+        String workingCountry = task.getPromptCountry() != null && !task.getPromptCountry().trim().isEmpty()
                 ? task.getPromptCountry()
                 : configCountry;
         int total = imageKeys.size();
@@ -308,7 +308,7 @@ public class RecognitionRunner {
                         page.getBytes(), page.getLabel(), configCountry, workingCountry, trace, taskId);
                 merged.addAll(outcome.getRecords());
                 finalEngine = outcome.getEngine();
-                if (outcome.getPromptCountry() != null && !outcome.getPromptCountry().isBlank()) {
+                if (outcome.getPromptCountry() != null && !outcome.getPromptCountry().trim().isEmpty()) {
                     finalCountry = outcome.getPromptCountry();
                 }
             }

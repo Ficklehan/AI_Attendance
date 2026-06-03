@@ -468,7 +468,11 @@ const normalizePauseMinutes = (value) => {
 }
 
 const normalizeRecordPause = (record) => applyMissingPays(
-  { ...record, PAUSE: normalizePauseMinutes(record?.PAUSE) },
+  {
+    ...record,
+    PAUSE: normalizePauseMinutes(record?.PAUSE),
+    PAGE_NUM: record?.PAGE_NUM ?? record?.pageNum ?? '',
+  },
   getCachedWorkingCountry()
 )
 

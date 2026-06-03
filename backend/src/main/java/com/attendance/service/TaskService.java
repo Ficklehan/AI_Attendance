@@ -31,6 +31,7 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -86,7 +87,7 @@ public class TaskService {
         if (query != null && Boolean.TRUE.equals(query.getAllUsersScope())) {
             return null;
         }
-        if (query != null && query.getListScopeUserId() != null && !query.getListScopeUserId().isBlank()) {
+        if (query != null && query.getListScopeUserId() != null && !query.getListScopeUserId().trim().isEmpty()) {
             return query.getListScopeUserId();
         }
         return jobOwnerUserId;
@@ -174,7 +175,7 @@ public class TaskService {
         task.setFileKey(fileKey);
         task.setStatus("processing");
         task.setSyncStatus("none");
-        if (promptCountry != null && !promptCountry.isBlank()) {
+        if (promptCountry != null && !promptCountry.trim().isEmpty()) {
             task.setPromptCountry(promptCountry.trim());
         }
 
@@ -350,7 +351,7 @@ public class TaskService {
         if ("synced".equals(syncStatus)) {
             throw new BusinessException(ErrorCode.TASK_STATUS_ERROR, ErrorKeys.FEISHU_ALREADY_SYNCED);
         }
-        if (task.getConfirmedData() == null || task.getConfirmedData().isBlank()) {
+        if (task.getConfirmedData() == null || task.getConfirmedData().trim().isEmpty()) {
             throw new BusinessException(ErrorCode.TASK_STATUS_ERROR, ErrorKeys.NO_CONFIRMED_DATA_TO_SYNC);
         }
 
@@ -370,14 +371,14 @@ public class TaskService {
     }
 
     private String resolveConfirmCountry(String countryCode, Task task) {
-        if (countryCode != null && !countryCode.isBlank()) {
+        if (countryCode != null && !countryCode.trim().isEmpty()) {
             return countryCode.trim().toUpperCase();
         }
-        if (task.getPromptCountry() != null && !task.getPromptCountry().isBlank()) {
+        if (task.getPromptCountry() != null && !task.getPromptCountry().trim().isEmpty()) {
             return task.getPromptCountry().trim().toUpperCase();
         }
         String current = configService.getCurrentCountry();
-        if (current != null && !current.isBlank()) {
+        if (current != null && !current.trim().isEmpty()) {
             return current.trim().toUpperCase();
         }
         return "DEFAULT";
@@ -393,12 +394,12 @@ public class TaskService {
         if (task == null) {
             return urls;
         }
-        if (task.getImageUrls() != null && !task.getImageUrls().isBlank()) {
+        if (task.getImageUrls() != null && !task.getImageUrls().trim().isEmpty()) {
             try {
                 JSONArray array = JSON.parseArray(task.getImageUrls());
                 for (int i = 0; i < array.size(); i++) {
                     String entry = array.getString(i);
-                    if (entry != null && !entry.isBlank() && !urls.contains(entry)) {
+                    if (entry != null && !entry.trim().isEmpty() && !urls.contains(entry)) {
                         urls.add(entry.trim());
                     }
                 }
@@ -406,7 +407,7 @@ public class TaskService {
                 log.warn("解析 imageUrls 失败: taskId={}", task.getTaskId(), e);
             }
         }
-        if (task.getFileKey() != null && !task.getFileKey().isBlank() && !urls.contains(task.getFileKey())) {
+        if (task.getFileKey() != null && !task.getFileKey().trim().isEmpty() && !urls.contains(task.getFileKey())) {
             urls.add(0, task.getFileKey().trim());
         }
         return urls;
@@ -416,7 +417,7 @@ public class TaskService {
     public List<String> appendTaskImageUrl(String taskId, String fileKey) {
         Task task = getTaskForCurrentUser(taskId);
         List<String> urls = parseImageUrlList(task);
-        if (fileKey != null && !fileKey.isBlank() && !urls.contains(fileKey)) {
+        if (fileKey != null && !fileKey.trim().isEmpty() && !urls.contains(fileKey)) {
             urls.add(fileKey.trim());
         }
         updateTaskImageUrls(taskId, urls);
@@ -424,7 +425,7 @@ public class TaskService {
     }
 
     public byte[] readUploadedImageBytes(String fileKey) throws IOException {
-        if (fileKey == null || fileKey.isBlank()) {
+        if (fileKey == null || fileKey.trim().isEmpty()) {
             throw new BusinessException(ErrorCode.FILE_UPLOAD_ERROR, ErrorKeys.IMAGE_INVALID);
         }
         taskAccessService.requireFileAccess(fileKey.trim());
@@ -435,7 +436,7 @@ public class TaskService {
         }
         if (!Files.exists(file)) {
             throw new BusinessException(ErrorCode.FILE_UPLOAD_ERROR, ErrorKeys.FILE_NOT_FOUND,
-                    Map.of("fileKey", fileKey));
+                    Collections.singletonMap("fileKey", fileKey));
         }
         return Files.readAllBytes(file);
     }
@@ -469,7 +470,7 @@ public class TaskService {
         }
         Path base = Paths.get("./uploads").toAbsolutePath().normalize();
         for (String fileKey : parseImageUrlList(task)) {
-            if (fileKey == null || fileKey.isBlank()) {
+            if (fileKey == null || fileKey.trim().isEmpty()) {
                 continue;
             }
             try {
@@ -501,7 +502,7 @@ public class TaskService {
         if (trimmedReason.isEmpty()) {
             throw new BusinessException(400, ErrorKeys.CALIBRATE_REASON_REQUIRED);
         }
-        if (rowKey == null || rowKey.isBlank()) {
+        if (rowKey == null || rowKey.trim().isEmpty()) {
             throw new BusinessException(400, ErrorKeys.VALIDATION_FAILED);
         }
 
@@ -537,7 +538,7 @@ public class TaskService {
         entry.put("at", java.time.LocalDateTime.now().toString());
         entry.put("by", currentUserId);
         String byName = operator != null
-                ? (operator.getRealName() != null && !operator.getRealName().isBlank()
+                ? (operator.getRealName() != null && !operator.getRealName().trim().isEmpty()
                 ? operator.getRealName() : operator.getUsername())
                 : currentUserId;
         entry.put("byName", byName);
@@ -714,6 +715,7 @@ public class TaskService {
         dto.setPauseMinutes(pick(row, "PAUSE", "PAUS", "Break"));
         dto.setSignature(pick(row, "SIGNATURE", "CHECKER", "Signature"));
         dto.setObservations(pick(row, "Observations", "OBSERVATIONS", "Remarks"));
+        dto.setPageNum(pick(row, "PAGE_NUM", "PageNum", "pageNum", "页码"));
         dto.setCreatedAt(task.getCreatedAt() == null ? "" : task.getCreatedAt().toString());
         return dto;
     }
@@ -754,7 +756,8 @@ public class TaskService {
                 nullToEmpty(dto.getDeparture()),
                 nullToEmpty(dto.getPauseMinutes()),
                 nullToEmpty(dto.getSignature()),
-                nullToEmpty(dto.getObservations())
+                nullToEmpty(dto.getObservations()),
+                nullToEmpty(dto.getPageNum())
         );
     }
 
@@ -794,6 +797,8 @@ public class TaskService {
                 return nullToEmpty(dto.getSignature());
             case "Observations":
                 return nullToEmpty(dto.getObservations());
+            case "PAGE_NUM":
+                return nullToEmpty(dto.getPageNum());
             default:
                 return "";
         }
@@ -884,7 +889,7 @@ public class TaskService {
 
     public long exportEmployeeRecordsToExcel(String userId, String status, String keyword, String searchField,
                                              String filters, ExcelSheetWriter writer) throws IOException {
-        writer.writeHeader("任务ID", "操作人", "任务状态", "创建时间", "工号", "姓名", "国家", "仓库", "日期",
+        writer.writeHeader("任务ID", "操作人", "任务状态", "创建时间", "页码", "工号", "姓名", "国家", "仓库", "日期",
                 "中介机构", "班次", "到达", "离开", "休息(分钟)", "签名", "备注", "文件名");
         List<Task> tasks = taskMapper.selectTasksForRecordView(userId, status);
         List<Map<String, String>> conditionList = parseFilters(searchField, keyword, filters);
@@ -922,6 +927,7 @@ public class TaskService {
                         ExcelExportHelper.cell(dto.getUserName()),
                         ExcelExportHelper.cell(dto.getTaskStatus()),
                         ExcelExportHelper.cell(dto.getCreatedAt()),
+                        ExcelExportHelper.cell(dto.getPageNum()),
                         ExcelExportHelper.cell(dto.getNo()),
                         ExcelExportHelper.cell(dto.getName()),
                         ExcelExportHelper.cell(dto.getCountry()),

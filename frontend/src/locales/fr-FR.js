@@ -219,6 +219,7 @@ export default {
     handwrittenContent: 'Contenu manuscrit',
     absentReason: 'Absent', countryField: 'Pays', warehouse: 'Entrepôt', signature: 'Signature', observations: 'Remarques', anomalyReasons: 'Raisons d\'anomalie',
     workerNumber: 'NO',
+    pageNumber: 'Page',
     name: 'Nom',
     agency: 'Agence',
     shift: 'Equipe',

@@ -28,6 +28,7 @@ export function buildRecognitionTableColumns(t, options = {}) {
   const col = (def) => withSearch({ ellipsis: false, ...def })
 
   const cols = [
+    col({ title: t('taskEdit.pageNumber'), dataIndex: 'PAGE_NUM', key: 'PAGE_NUM', customCell: cellStyle }),
     col({ title: titleFor('NO', 'taskEdit.workerNumber'), dataIndex: 'NO', key: 'NO', customCell: cellStyle }),
     col({ title: t('taskEdit.countryField'), dataIndex: 'Pays', key: 'Pays', customCell: cellStyle }),
     col({ title: t('taskEdit.warehouse'), dataIndex: 'Entrepot', key: 'Entrepot', customCell: cellStyle }),

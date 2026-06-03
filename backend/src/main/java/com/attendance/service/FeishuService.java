@@ -11,6 +11,8 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
 import java.io.IOException;
+import java.util.Collections;
+import java.util.HashMap;
 import java.util.Map;
 
 @Service
@@ -174,7 +176,7 @@ public class FeishuService {
         JSONObject body = new JSONObject();
         body.put("receive_id", userId);
         body.put("msg_type", "text");
-        body.put("content", JSONObject.toJSONString(Map.of("text", text)));
+        body.put("content", JSONObject.toJSONString(Collections.singletonMap("text", text)));
 
         Request request = new Request.Builder()
                 .url("https://open.feishu.cn/open-apis/im/v1/messages?receive_id_type=user_id")
@@ -213,22 +215,28 @@ public class FeishuService {
     public void sendSuccessNotification(String userId, int recordCount) throws IOException {
         JSONObject card = new JSONObject();
         card.put("type", "template_card");
-        
+
         JSONObject cardContent = new JSONObject();
         cardContent.put("card_type", "notification");
         cardContent.put("title", "考勤识别完成");
-        
+
         JSONArray elements = new JSONArray();
         JSONObject element = new JSONObject();
         element.put("tag", "div");
-        element.put("text", JSONObject.toJSONString(Map.of("content", "成功识别 " + recordCount + " 条考勤记录", "tag", "lark_md")));
+        Map<String, String> textBody = new HashMap<>();
+        textBody.put("content", "成功识别 " + recordCount + " 条考勤记录");
+        textBody.put("tag", "lark_md");
+        element.put("text", JSONObject.toJSONString(textBody));
         elements.add(element);
-        
+
         cardContent.put("elements", elements);
-        cardContent.put("footer", JSONObject.toJSONString(Map.of(
-            "text", JSONObject.toJSONString(Map.of("content", "点击查看详情", "tag", "lark_md"))
-        )));
-        
+        Map<String, String> footerInner = new HashMap<>();
+        footerInner.put("content", "点击查看详情");
+        footerInner.put("tag", "lark_md");
+        Map<String, String> footerOuter = new HashMap<>();
+        footerOuter.put("text", JSONObject.toJSONString(footerInner));
+        cardContent.put("footer", JSONObject.toJSONString(footerOuter));
+
         card.put("card", cardContent);
         
         sendCardMessage(userId, card);

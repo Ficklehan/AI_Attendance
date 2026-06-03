@@ -326,6 +326,7 @@ export default {
     handwrittenContent: 'Handwritten content',
     absentReason: 'Absent',
     workerNumber: 'NO',
+    pageNumber: 'Page',
     countryField: 'Country',
     warehouse: 'Warehouse',
     name: 'Name',
@@ -670,7 +671,8 @@ export default {
     dbMigrationRequired: 'Database schema is outdated. Run migration scripts under backend/config/migration',
     systemError: 'System error, please try again later',
     requestFailed: 'Request failed',
-    networkError: 'Network error, please check your connection'
+    networkError: 'Network error, please check your connection',
+    backendUnavailable: 'Backend is not running or is restarting. Run mvn spring-boot:run in the backend folder, then refresh.'
   },
   messages: {
     systemError: 'System error, please try again later',

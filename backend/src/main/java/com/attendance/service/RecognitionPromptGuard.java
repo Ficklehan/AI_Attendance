@@ -16,45 +16,43 @@ import java.util.Set;
 @Component
 public class RecognitionPromptGuard {
 
+    /** 识别与续写共用，替代原【硬性要求】+ HANDWRITING_MARK_RULE 重复段落 */
+    public static final String API_OUTPUT_CONSTRAINT = "\n\n【输出约束·API】\n"
+            + "· 每行合法 JSON 数组、双引号字符串；禁止表头占位、禁止示例姓名/中介/仓库/时间\n"
+            + "· 先填 NO、姓名，再填到离；看不清用 ???\n"
+            + "· 上述 15 字段顺序与【标记】【PAGE_NUM】规则以提示词正文为准";
+
     private static final Set<String> EXAMPLE_KEYS = new HashSet<>(Arrays.asList(
             "1|张三", "2|李四", "3|王五",
             "1|John Smith", "2|Jane Doe", "3|Bob Wilson"
     ));
 
-    private static final Set<String> HEADER_NAME_VALUES = Set.of(
+    private static final Set<String> HEADER_NAME_VALUES = new HashSet<>(Arrays.asList(
             "姓名", "nom_prenom", "nom et prénom", "name", "nom", "nominativo", "nombre"
-    );
-    private static final Set<String> HEADER_AGENCY_VALUES = Set.of(
+    ));
+    private static final Set<String> HEADER_AGENCY_VALUES = new HashSet<>(Arrays.asList(
             "供应商名称", "供应商", "agence_interimaire", "agence", "agency", "supplier", "intermediary"
-    );
-    private static final Set<String> HEADER_SIGNATURE_VALUES = Set.of(
+    ));
+    private static final Set<String> HEADER_SIGNATURE_VALUES = new HashSet<>(Arrays.asList(
             "员工签名", "signature", "firma", "signatura"
-    );
-    private static final Set<String> HEADER_OBSERVATION_VALUES = Set.of(
+    ));
+    private static final Set<String> HEADER_OBSERVATION_VALUES = new HashSet<>(Arrays.asList(
             "备注", "observations", "remarks", "osservazioni", "observaciones"
-    );
+    ));
 
     public String preparePromptForApi(String promptFromConfig) {
         return preparePromptForApi(promptFromConfig, null);
     }
 
     public String preparePromptForApi(String promptFromConfig, RecognitionQualityGuard qualityGuard) {
-        if (promptFromConfig == null || promptFromConfig.isBlank()) {
+        if (promptFromConfig == null || promptFromConfig.trim().isEmpty()) {
             return promptFromConfig;
         }
         String base = promptFromConfig.trim();
         if (qualityGuard != null) {
             base = qualityGuard.preparePromptWithoutExamples(base);
         }
-        return base
-                + "\n\n【硬性要求】"
-                + "1. 只能输出图片中真实存在的行，禁止编造、补全、臆测姓名/工号/时间；"
-                + "2. 若某格看不清，用 ??? 或留空，不要填常见法国人名/统一中介名；"
-                + "3. 不要输出连续工号 1,2,3… 的演示数据；"
-                + "4. 每行一个合法 JSON 数组，所有字符串字段必须用英文双引号包裹；"
-                + "5. 禁止把表头文字（如姓名、供应商名称、员工签名、备注、NO、Pays 等）当作单元格数据输出；"
-                + "6. 必须先看清并填写工号、姓名，再填到达/离开；姓名工号无法辨认时用 ???，禁止用递推时间凑满整表；"
-                + "7. 仓库/Entrepot 只能从图片中读取，看不清或表格无该列时必须留空，禁止猜测、套用示例值（如 AMS、PAR、Milano）或按国家推断；";
+        return base + API_OUTPUT_CONSTRAINT;
     }
 
     public boolean isPromptExampleRecord(JSONObject record) {
@@ -128,7 +126,7 @@ public class RecognitionPromptGuard {
 
     /** 模型原始回复疑似输出了表头占位符或非法 JSON 行 */
     public boolean looksLikeHeaderEcho(String raw) {
-        if (raw == null || raw.isBlank()) {
+        if (raw == null || raw.trim().isEmpty()) {
             return false;
         }
         String text = raw.replace('\n', ' ');

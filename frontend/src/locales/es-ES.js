@@ -246,6 +246,7 @@ export default {
     handwrittenContent: 'Handwritten content',
     absentReason: 'Ausente',
     workerNumber: 'NO',
+    pageNumber: 'Página',
     countryField: 'País',
     warehouse: 'Almacén',
     name: 'Nombre',

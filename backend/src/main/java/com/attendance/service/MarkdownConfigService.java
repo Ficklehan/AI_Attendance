@@ -74,12 +74,12 @@ public class MarkdownConfigService {
         if (mtime == promptsFileLastModified && promptsContent != null && !promptsContent.isEmpty()) {
             return false;
         }
-        String loaded = Files.exists(path) ? Files.readString(path) : "";
+        String loaded = Files.exists(path) ? new String(Files.readAllBytes(path), StandardCharsets.UTF_8) : "";
         if (allowMigrate && isLegacyPromptsFile(loaded)) {
             String canonical = readCanonicalPromptsResource();
-            if (canonical != null && !canonical.isBlank()) {
+            if (canonical != null && !canonical.trim().isEmpty()) {
                 log.warn("检测到旧版 prompts.md（缺少 Pays/SIGNATURE 等新字段），正在自动迁移");
-                Files.writeString(path, canonical);
+                Files.write(path, canonical.getBytes(StandardCharsets.UTF_8));
                 loaded = canonical;
                 mtime = Files.getLastModifiedTime(path).toMillis();
             }
@@ -115,10 +115,22 @@ public class MarkdownConfigService {
     }
 
     public static boolean isLegacyPromptsFile(String content) {
-        if (content == null || content.isBlank()) {
+        if (content == null || content.trim().isEmpty()) {
             return true;
         }
         if (content.contains("Pays,Entrepot") || content.contains("Pays, Entrepot")) {
+            if (!content.contains("PAGE_NUM")) {
+                return true;
+            }
+            if (content.contains("【数据与格式】")) {
+                return false;
+            }
+            if (content.contains("规则：") && content.contains("1. 只返回真实数据")) {
+                return true;
+            }
+            if (!content.contains("页码") && !content.contains("Page ")) {
+                return true;
+            }
             return false;
         }
         return content.contains("检查器")
@@ -157,7 +169,7 @@ public class MarkdownConfigService {
             log.warn("配置文件不存在: {}", path);
             return "";
         }
-        String content = Files.readString(path);
+        String content = new String(Files.readAllBytes(path), StandardCharsets.UTF_8);
         log.info("文件 {} 读取成功，长度: {}", filename, content.length());
         return content;
     }
@@ -181,7 +193,7 @@ public class MarkdownConfigService {
      * 飞书多维表：所选国家无独立 feishu.md 章节时回退「全局默认配置」。
      */
     public String resolveEffectiveFeishuCountry(String country) {
-        if (country == null || country.isBlank() || "default".equalsIgnoreCase(country.trim())) {
+        if (country == null || country.trim().isEmpty() || "default".equalsIgnoreCase(country.trim())) {
             return "default";
         }
         String normalized = country.trim().toUpperCase();
@@ -223,7 +235,7 @@ public class MarkdownConfigService {
     }
 
     private static String normalizeCountryCode(String country) {
-        if (country == null || country.isBlank()) {
+        if (country == null || country.trim().isEmpty()) {
             return "default";
         }
         return "default".equalsIgnoreCase(country.trim()) ? "default" : country.trim().toUpperCase();
@@ -344,7 +356,7 @@ public class MarkdownConfigService {
     }
     
     public void setCountry(String country) {
-        if (country == null || country.isBlank()) {
+        if (country == null || country.trim().isEmpty()) {
             this.currentCountry = "default";
             return;
         }
@@ -360,7 +372,7 @@ public class MarkdownConfigService {
     }
     
     public boolean hasCountryConfig(String country) {
-        if (country == null || country.isBlank() || "default".equalsIgnoreCase(country.trim())) {
+        if (country == null || country.trim().isEmpty() || "default".equalsIgnoreCase(country.trim())) {
             return true;
         }
         return hasCountryFeishuConfig(country.trim().toUpperCase());
@@ -547,7 +559,7 @@ public class MarkdownConfigService {
         content = updateSection(content, sectionName, newSection, country);
         
         Path path = configPathResolver.resolveFile("feishu.md");
-        Files.writeString(path, content);
+        Files.write(path, content.getBytes(StandardCharsets.UTF_8));
         this.feishuContent = content;
         
         log.info("飞书配置已更新: country={}", country);

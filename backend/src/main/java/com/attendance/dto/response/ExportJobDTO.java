@@ -28,7 +28,7 @@ public class ExportJobDTO {
         dto.setExpiresAt(job.getExpiresAt());
         dto.setDownloadable("completed".equals(job.getStatus())
                 && job.getFilePath() != null
-                && !job.getFilePath().isBlank());
+                && !job.getFilePath().trim().isEmpty());
         return dto;
     }
 

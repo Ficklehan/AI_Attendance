@@ -163,7 +163,8 @@ FEISHU_APP_ID=你的飞书应用ID
 FEISHU_APP_SECRET=你的飞书应用密钥
 ```
 
-各国 Bitable Token / 字段映射在 `base-config/feishu.md` 按国家维护。
+各国 Bitable Token / 字段映射在 `base-config/feishu.md` 按国家维护。  
+后端会在构建时将 `base-config/*.md` 打包到 `resources`，运行时若未找到外部 `base-config/` 会自动从内置资源初始化，无需手动挂载。
 
 ### AI 服务配置
 

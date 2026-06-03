@@ -3,6 +3,7 @@ package com.attendance.util;
 import com.attendance.common.BusinessException;
 import org.junit.jupiter.api.Test;
 
+import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -16,14 +17,14 @@ class RecordConfirmValidatorTest {
     void rejectsRecordMissingName() {
         Map<String, Object> record = validRecord();
         record.remove("NOM_PRENOM");
-        assertThrows(BusinessException.class, () -> RecordConfirmValidator.validateConfirmRecords(List.of(record)));
+        assertThrows(BusinessException.class, () -> RecordConfirmValidator.validateConfirmRecords(Arrays.asList(record)));
     }
 
     @Test
     void rejectsRecordMissingDate() {
         Map<String, Object> record = validRecord();
         record.remove("Date");
-        assertThrows(BusinessException.class, () -> RecordConfirmValidator.validateConfirmRecords(List.of(record)));
+        assertThrows(BusinessException.class, () -> RecordConfirmValidator.validateConfirmRecords(Arrays.asList(record)));
     }
 
     @Test
@@ -33,7 +34,7 @@ class RecordConfirmValidatorTest {
         record.remove("ARRIVEE");
         record.remove("DEPAR");
         record.remove("PAUSE");
-        assertDoesNotThrow(() -> RecordConfirmValidator.validateConfirmRecords(List.of(record)));
+        assertDoesNotThrow(() -> RecordConfirmValidator.validateConfirmRecords(Arrays.asList(record)));
     }
 
     @Test
@@ -46,7 +47,7 @@ class RecordConfirmValidatorTest {
         absent.remove("NOM_PRENOM");
         absent.put("SmartMark", "未出勤");
 
-        assertDoesNotThrow(() -> RecordConfirmValidator.validateConfirmRecords(List.of(deleted, absent)));
+        assertDoesNotThrow(() -> RecordConfirmValidator.validateConfirmRecords(Arrays.asList(deleted, absent)));
     }
 
     private static Map<String, Object> validRecord() {
