@@ -1,5 +1,6 @@
 import request from './index'
 import { getToken } from '@/utils/auth'
+import { API_BASE_PATH } from '@/constants/apiBase'
 
 export function createTaskListExport(query) {
   return request.post('/exports/task-list', query || {})
@@ -32,7 +33,7 @@ export function getExportJob(jobId) {
 
 export async function downloadExportJob(jobId, fileName) {
   const token = getToken()
-  const response = await fetch(`/api/exports/${jobId}/download`, {
+  const response = await fetch(`${API_BASE_PATH}/exports/${jobId}/download`, {
     headers: token ? { Authorization: `Bearer ${token}` } : {},
   })
   if (!response.ok) {

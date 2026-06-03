@@ -443,6 +443,7 @@ import {
   formatHistoryChanges,
 } from '@/utils/calibrationHistory'
 import { FIELD_LABEL_KEYS } from '@/constants/calibratableFields'
+import { API_BASE_PATH } from '@/constants/apiBase'
 import {
   hasRequiredMissing,
   getMissingRequiredFieldKeys,
@@ -804,7 +805,7 @@ const handleExportExcel = async () => {
   if (!taskId.value) return
   try {
     const token = localStorage.getItem('attendance_token')
-    const response = await fetch(`/api/local/export/${taskId.value}/xlsx`, {
+    const response = await fetch(`${API_BASE_PATH}/local/export/${taskId.value}/xlsx`, {
       headers: token ? { Authorization: `Bearer ${token}` } : {}
     })
     if (!response.ok) {

@@ -111,7 +111,7 @@ LANG_SECTIONS = {
             ("3. 任务状态说明", [
                 "processing（识别中）→ processed（待核对）→ confirmed（已完成，同步飞书）",
                 "failed（识别失败，可重新上传）；cancelled（已作废）",
-                "统计数字统一来自 GET /api/tasks/summary，勿用列表分页条数代替全库统计。",
+                "统计数字统一来自 GET /attendance/api/tasks/summary，勿用列表分页条数代替全库统计。",
             ]),
             ("4. PC 端：上传与识别", [
                 ("打开浏览器访问系统（默认 http://localhost:5175），使用账号登录。", "01-home-upload.png", "图 4-1：首页上传区"),
@@ -176,7 +176,7 @@ LANG_SECTIONS = {
             ("3. Task Status Lifecycle", [
                 "processing → processed (pending review) → confirmed (synced to Feishu)",
                 "failed (retry upload); cancelled",
-                "Counts must come from GET /api/tasks/summary — never use paginated list length as totals.",
+                "Counts must come from GET /attendance/api/tasks/summary — never use paginated list length as totals.",
             ]),
             ("4. PC: Upload & Recognition", [
                 ("Open the web app and sign in (default http://localhost:5175).", "01-home-upload.png", "Fig 4-1: Home upload"),
@@ -241,7 +241,7 @@ LANG_SECTIONS = {
             ("3. Cycle de statut", [
                 "processing → processed (à vérifier) → confirmed (synchronisé Feishu)",
                 "failed ; cancelled",
-                "Comptages via GET /api/tasks/summary uniquement.",
+                "Comptages via GET /attendance/api/tasks/summary uniquement.",
             ]),
             ("4. PC : Téléversement", [
                 ("Ouvrir l'application Web et se connecter.", "01-home-upload.png", "Fig 4-1 : Accueil"),
@@ -299,7 +299,7 @@ LANG_SECTIONS = {
             ("3. Aufgabenstatus", [
                 "processing → processed (zu prüfen) → confirmed (mit Feishu synchronisiert)",
                 "failed; cancelled",
-                "Zählungen nur über GET /api/tasks/summary.",
+                "Zählungen nur über GET /attendance/api/tasks/summary.",
             ]),
             ("4. PC: Upload", [
                 ("Web-App öffnen und anmelden.", "01-home-upload.png", "Abb. 4-1"),

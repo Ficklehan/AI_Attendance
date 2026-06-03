@@ -1,4 +1,5 @@
 import { getToken } from './auth'
+import { API_BASE_PATH } from '@/constants/apiBase'
 
 /** Append JWT for authenticated image endpoints (img tags cannot send Authorization headers). */
 export function withAuthToken(url) {
@@ -39,10 +40,10 @@ export function resolveTaskImageUrls(imageUrls, fileKey) {
     raw.unshift(key)
   }
   return raw.map((url) => {
-    if (url.startsWith('http') || url.startsWith('/api')) {
+    if (url.startsWith('http') || url.startsWith(API_BASE_PATH)) {
       return withAuthToken(url)
     }
-    return withAuthToken(`/api/local/image/${url}`)
+    return withAuthToken(`${API_BASE_PATH}/local/image/${url}`)
   })
 }
 

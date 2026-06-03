@@ -62,7 +62,7 @@ start_backend() {
     BACKEND_PID=$!
     
     echo "后端服务启动中 (PID: $BACKEND_PID)..."
-    echo "请访问: http://localhost:3000/api"
+    echo "请访问: http://localhost:8080/attendance/api"
     
     cd ..
 }

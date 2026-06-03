@@ -11,7 +11,7 @@ flowchart TB
     MP[飞书小程序]
   end
 
-  subgraph backend [Spring Boot :3000/api]
+  subgraph backend [Spring Boot :8080/attendance/api]
     API[REST Controllers]
     SVC[Task / Recognition / Feishu / Export Services]
     SEC[JWT + TaskAccess + Permission]
@@ -47,7 +47,7 @@ flowchart TB
 |------|------|------|
 | PC 前端 | Vue 3 + Vite + Element Plus | 任务编辑、配置、导出、权限管理；开发端口 **5175** |
 | 飞书小程序 | 原生小程序（TTML） | 拍照上传、待核对、记录修改/校准 |
-| 后端 | Spring Boot 2.7 + MyBatis | 上下文路径 `/api`，默认端口 **3000** |
+| 后端 | Spring Boot 2.7 + MyBatis | 上下文路径 `/attendance/api`，默认端口 **8080** |
 | 数据库 | MySQL 8.0 | 任务、用户、提示词、导出、审计 |
 | AI | MiMo Vision（流式） | 识图模型默认 `mimo-v2.5` |
 
@@ -74,7 +74,7 @@ flowchart TB
 | `DB_HOST` / `DB_PORT` / `DB_NAME` / `DB_USER` / `DB_PASSWORD` | MySQL 连接 |
 | `JWT_SECRET` | JWT 签名（生产必须修改） |
 | `FEISHU_APP_ID` / `FEISHU_APP_SECRET` | 飞书应用 |
-| `FEISHU_REDIRECT_URI` | OAuth 回调，默认 `http://localhost:3000/api/feishu-auth/callback` |
+| `FEISHU_REDIRECT_URI` | OAuth 回调，默认 `http://localhost:8080/attendance/api/feishu-auth/callback` |
 | `MIMO_API_KEY` / `MIMO_MODEL` | 识图 API |
 | `BITABLE_APP_TOKEN` / `BITABLE_TABLE_ID` | 可选全局默认（多国以 `feishu.md` 为准） |
 
@@ -141,7 +141,7 @@ flowchart TB
 | `start.sh` | Linux/macOS：`all` / `backend` / `frontend` / `init` |
 | `start.bat` | Windows 同等能力（若存在） |
 
-前端开发端口以 `frontend/vite.config.js` 为准（**5175**，`strictPort: true`）。
+前端开发端口以 `frontend/vite.config.js` 为准（**5175**，`strictPort: true`）。开发时代理将 `/attendance/api` 转发到 `http://localhost:8080`。
 
 ## 4. 核心业务流程
 
@@ -159,7 +159,7 @@ stateDiagram-v2
 - **待核对**（`processed`）：PC/小程序可编辑记录字段；小程序「修改」写回内存后一并 `confirm`。
 - **已确认**（`confirmed`）：只读；有 `recordCalibrate` 权限者可「校准」，写回 `confirmed_data` 并异步同步飞书（`_feishuRecordId` / 按任务号+工号查找）。
 
-任务汇总统计以 **`GET /api/tasks/summary`** 为单一事实来源，见 [data-consistency.md](./data-consistency.md)。
+任务汇总统计以 **`GET /attendance/api/tasks/summary`** 为单一事实来源，见 [data-consistency.md](./data-consistency.md)。
 
 ## 5. 安全与权限
 

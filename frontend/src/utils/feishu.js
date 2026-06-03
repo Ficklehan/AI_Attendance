@@ -1,3 +1,5 @@
+import { API_BASE_PATH } from '@/constants/apiBase'
+
 export function parseFeishuBitableUrl(url) {
   if (!url) {
     return { appToken: null, tableId: null, error: 'URL不能为空' }
@@ -81,7 +83,7 @@ export async function validateFeishuBitableConnection(appToken, tableId) {
       return { valid: false, error: '未登录，请先登录' }
     }
 
-    const response = await fetch(`/api/bitable/validate?appToken=${appToken}&tableId=${tableId}`, {
+    const response = await fetch(`${API_BASE_PATH}/bitable/validate?appToken=${appToken}&tableId=${tableId}`, {
       method: 'GET',
       headers: {
         'Authorization': `Bearer ${token}`,

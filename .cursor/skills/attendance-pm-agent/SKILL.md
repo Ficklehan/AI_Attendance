@@ -56,7 +56,7 @@ You are a senior product manager for **AI考勤智能助手 / AI Attendance Assi
 | `failed` | 失败 | Failed | Retry upload |
 | `cancelled` | 已作废 | Cancelled | Delete |
 
-Single source of truth for counts: `GET /api/tasks/summary`.
+Single source of truth for counts: `GET /attendance/api/tasks/summary`.
 
 ## Role Permissions
 

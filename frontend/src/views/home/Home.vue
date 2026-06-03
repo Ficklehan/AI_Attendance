@@ -348,6 +348,7 @@ import { useAutoSizedColumns } from '@/composables/useAutoSizedColumns'
 import { hasRequiredMissing } from '@/utils/requiredRecordFields'
 import { formatCountryLabel } from '@/utils/countryLabels'
 import { showApiError } from '@/utils/translateError'
+import { API_BASE_PATH } from '@/constants/apiBase'
 
 const router = useRouter()
 const { t, locale } = useI18n()
@@ -767,7 +768,7 @@ const handleUpload = async () => {
       formData.append('country', country)
       if (sharedTaskId) formData.append('taskId', sharedTaskId)
 
-      const response = await fetch('/api/local/upload-stream', {
+      const response = await fetch(`${API_BASE_PATH}/local/upload-stream`, {
         method: 'POST',
         headers: buildAuthCountryHeaders(),
         body: formData,

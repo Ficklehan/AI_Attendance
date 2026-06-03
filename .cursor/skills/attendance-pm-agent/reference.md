@@ -4,15 +4,15 @@
 
 | Endpoint | Method | Purpose |
 |----------|--------|---------|
-| `/api/auth/login` | POST | PC password login |
-| `/api/auth/feishu/miniprogram` | POST | Mini-program Feishu login |
-| `/api/tasks` | GET | Paginated task list |
-| `/api/tasks/summary` | GET | Status counts (SSOT) |
-| `/api/tasks/{id}` | GET | Task detail |
-| `/api/tasks/{id}/confirm` | POST | Confirm & sync Feishu |
-| `/api/tasks/{id}/retry-sync` | POST | Retry Bitable sync |
-| `/api/local/upload-stream` | POST | SSE image upload + recognition |
-| `/api/export/jobs` | POST/GET | Async Excel export |
+| `/attendance/api/auth/login` | POST | PC password login |
+| `/attendance/api/auth/feishu/miniprogram` | POST | Mini-program Feishu login |
+| `/attendance/api/tasks` | GET | Paginated task list |
+| `/attendance/api/tasks/summary` | GET | Status counts (SSOT) |
+| `/attendance/api/tasks/{id}` | GET | Task detail |
+| `/attendance/api/tasks/{id}/confirm` | POST | Confirm & sync Feishu |
+| `/attendance/api/tasks/{id}/retry-sync` | POST | Retry Bitable sync |
+| `/attendance/api/local/upload-stream` | POST | SSE image upload + recognition |
+| `/attendance/api/export/jobs` | POST/GET | Async Excel export |
 
 ## Environment Variables
 

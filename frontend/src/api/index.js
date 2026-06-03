@@ -4,9 +4,10 @@ import router from '@/router'
 import { getToken } from '@/utils/auth'
 import { getCachedWorkingCountry } from '@/utils/countryHeader'
 import { showApiError, showErrorMessage } from '@/utils/translateError'
+import { API_BASE_PATH } from '@/constants/apiBase'
 
 const request = axios.create({
-  baseURL: '/api',
+  baseURL: API_BASE_PATH,
   timeout: 120000,
 })
 

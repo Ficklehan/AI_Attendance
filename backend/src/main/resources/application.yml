@@ -1,7 +1,7 @@
 server:
-  port: 3000
+  port: 8080
   servlet:
-    context-path: /api
+    context-path: /attendance/api
 
 spring:
   profiles:
@@ -43,7 +43,7 @@ feishu:
   app-secret: ${FEISHU_APP_SECRET:}
   encryption-key: ${FEISHU_ENCRYPT_KEY:}
   verification-token: ${FEISHU_VERIFICATION_TOKEN:}
-  redirect-uri: ${FEISHU_REDIRECT_URI:http://localhost:3000/api/feishu-auth/callback}
+  redirect-uri: ${FEISHU_REDIRECT_URI:http://localhost:8080/attendance/api/feishu-auth/callback}
   bitable:
     app-token: ${BITABLE_APP_TOKEN:}
     table-id: ${BITABLE_TABLE_ID:}

@@ -24,6 +24,7 @@ import com.alibaba.fastjson.JSONObject;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.MediaType;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
@@ -78,6 +79,15 @@ public class LocalUploadController {
     @Autowired
     @org.springframework.beans.factory.annotation.Qualifier("recognitionExecutor")
     private Executor recognitionExecutor;
+
+    @Value("${server.servlet.context-path:}")
+    private String servletContextPath;
+
+    private String apiUrl(String path) {
+        String ctx = servletContextPath == null ? "" : servletContextPath.trim();
+        String suffix = path == null || path.isEmpty() ? "" : (path.startsWith("/") ? path : "/" + path);
+        return ctx + suffix;
+    }
 
     private String resolveWorkingCountry(String countryHeader, String countryParam) {
         return CountryResolver.resolveForRecognition(countryHeader, countryParam, configService, log);
@@ -166,7 +176,7 @@ public class LocalUploadController {
 
             JSONObject startEvent = new JSONObject();
             startEvent.put("taskId", newTaskId);
-            startEvent.put("imagePreviewUrl", "/api/local/image/" + savedFilename);
+            startEvent.put("imagePreviewUrl", apiUrl("/local/image/" + savedFilename));
             startEvent.put("imageCount", savedKeys.size());
             startEvent.put("promptCountry", configCountry);
             startEvent.put("promptSection", configService.describePromptSection(configCountry));

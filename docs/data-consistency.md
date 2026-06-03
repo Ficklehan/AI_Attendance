@@ -17,7 +17,7 @@
 所有端的「任务概览」「去核对 (N)」、Tab 标题条数均来自：
 
 ```
-GET /api/tasks/summary
+GET /attendance/api/tasks/summary
 ```
 
 响应字段：
@@ -29,7 +29,7 @@ GET /api/tasks/summary
 - `total` — 以上之和  
 - `allUsersScope` — 当前是否为管理员全员视图  
 
-列表分页仍使用 `GET /api/tasks?status=&current=&size=`；筛选 `status=processed` 时，`page.total` 必须等于 `summary.review`。
+列表分页仍使用 `GET /attendance/api/tasks?status=&current=&size=`；筛选 `status=processed` 时，`page.total` 必须等于 `summary.review`。
 
 ## 数据范围
 
@@ -55,7 +55,7 @@ GET /api/tasks/summary
 
 ## 兼容接口
 
-`GET /api/tasks/stats` 保留给小程序「我的」页，字段已与 `summary` 对齐：
+`GET /attendance/api/tasks/stats` 保留给小程序「我的」页，字段已与 `summary` 对齐：
 
 - `pending` / `review` → `summary.review`  
 - `processing` → `summary.processing`  

@@ -2,6 +2,9 @@ import { defineConfig } from 'vite'
 import vue from '@vitejs/plugin-vue'
 import path from 'path'
 
+const API_BASE_PATH = '/attendance/api'
+const API_DEV_SERVER_ORIGIN = 'http://localhost:8080'
+
 export default defineConfig({
   plugins: [vue()],
   
@@ -17,8 +20,8 @@ export default defineConfig({
     strictPort: true,
     host: '0.0.0.0',
     proxy: {
-      '/api': {
-        target: 'http://localhost:3000',
+      [API_BASE_PATH]: {
+        target: API_DEV_SERVER_ORIGIN,
         changeOrigin: true,
         configure: (proxy) => {
           proxy.on('proxyRes', (proxyRes) => {

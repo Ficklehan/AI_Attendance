@@ -77,7 +77,7 @@ start.bat
 ### 4. 访问系统
 
 - 前端地址: http://localhost:5175
-- 后端 API: http://localhost:3000/api
+- 后端 API: http://localhost:8080/attendance/api
 - 默认账号: admin / admin123（开发环境；生产请改密并关闭 `attendance.bootstrap-default-admin`）
 
 ## 项目结构
@@ -103,24 +103,24 @@ start.bat
 
 | 接口 | 方法 | 说明 |
 |-----|------|------|
-| POST /api/auth/login | 登录 | 用户登录 |
-| POST /api/auth/register | 注册 | 用户注册 |
-| GET /api/auth/profile | 用户信息 | 获取当前用户信息 |
+| POST /attendance/api/auth/login | 登录 | 用户登录 |
+| POST /attendance/api/auth/register | 注册 | 用户注册 |
+| GET /attendance/api/auth/profile | 用户信息 | 获取当前用户信息 |
 
 ### 任务接口
 
 | 接口 | 方法 | 说明 |
 |-----|------|------|
-| GET /api/tasks | 列表 | 获取任务列表 |
-| GET /api/tasks/:id | 详情 | 获取任务详情 |
-| POST /api/tasks/:id/confirm | 确认 | 确认提交任务 |
-| POST /api/tasks/:id/retry-sync | 重试 | 重试飞书多维表格同步 |
+| GET /attendance/api/tasks | 列表 | 获取任务列表 |
+| GET /attendance/api/tasks/:id | 详情 | 获取任务详情 |
+| POST /attendance/api/tasks/:id/confirm | 确认 | 确认提交任务 |
+| POST /attendance/api/tasks/:id/retry-sync | 重试 | 重试飞书多维表格同步 |
 
 ### 上传接口
 
 | 接口 | 方法 | 说明 |
 |-----|------|------|
-| POST /api/local/upload-stream | 上传 | SSE流式上传解析 |
+| POST /attendance/api/local/upload-stream | 上传 | SSE流式上传解析 |
 
 ## 开发指南
 

@@ -92,6 +92,7 @@ import { useI18n } from 'vue-i18n'
 import { useAuthStore } from '@/stores/auth'
 import { message } from 'ant-design-vue'
 import { UserOutlined, LockOutlined, LoginOutlined, ApartmentOutlined } from '@ant-design/icons-vue'
+import { API_BASE_PATH } from '@/constants/apiBase'
 
 const router = useRouter()
 const authStore = useAuthStore()
@@ -149,7 +150,7 @@ const handleLogin = async () => {
 }
 
 const handleFeishuLogin = () => {
-  window.location.href = '/api/feishu-auth/login'
+  window.location.href = `${API_BASE_PATH}/feishu-auth/login`
 }
 </script>
 
