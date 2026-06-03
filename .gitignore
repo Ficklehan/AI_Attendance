@@ -25,6 +25,7 @@ Desktop.ini
 .settings/
 
 # --- Java / Maven ---
+.jdk/
 backend/target/
 **/target/
 *.class

@@ -29,10 +29,20 @@
 
 ### 环境要求
 
-- JDK 1.8+
+- JDK 1.8（仅支持 Java 8，不支持更高版本）
 - Maven 3.6+
 - Node.js 18+
 - MySQL 8.0+
+
+**JDK 8 自动安装（推荐）：** 项目会在首次启动时下载 Zulu JDK 8 到本地 `.jdk/` 目录，无需手动配置 `JAVA_HOME`：
+
+```bash
+bash scripts/setup-jdk8.sh   # 可选：提前安装
+bash scripts/mvn-jdk8.sh compile -DskipTests
+./start.sh
+```
+
+若本机已安装 JDK 8，设置 `JAVA_HOME` 指向 1.8 即可；`start.sh` 会优先使用已有的 JDK 8。
 
 ### 1. 初始化数据库
 

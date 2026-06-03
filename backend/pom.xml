@@ -183,25 +183,24 @@
                     <encoding>UTF-8</encoding>
                 </configuration>
             </plugin>
-            <!-- 即使用 JDK 11+ 编译，也禁止调用 Java 9+ API -->
             <plugin>
-                <groupId>org.codehaus.mojo</groupId>
-                <artifactId>animal-sniffer-maven-plugin</artifactId>
-                <version>1.23</version>
-                <configuration>
-                    <signature>
-                        <groupId>org.codehaus.mojo.signature</groupId>
-                        <artifactId>java18</artifactId>
-                        <version>1.0</version>
-                    </signature>
-                </configuration>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-enforcer-plugin</artifactId>
+                <version>3.4.1</version>
                 <executions>
                     <execution>
-                        <id>check-java8-api</id>
-                        <phase>verify</phase>
+                        <id>enforce-java8</id>
                         <goals>
-                            <goal>check</goal>
+                            <goal>enforce</goal>
                         </goals>
+                        <configuration>
+                            <rules>
+                                <requireJavaVersion>
+                                    <version>[1.8,9)</version>
+                                    <message>本项目仅支持 JDK 8，请使用 Java 1.8 编译和运行。</message>
+                                </requireJavaVersion>
+                            </rules>
+                        </configuration>
                     </execution>
                 </executions>
             </plugin>

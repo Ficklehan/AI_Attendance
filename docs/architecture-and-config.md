@@ -118,7 +118,7 @@ flowchart TB
 
 ### 3.1 首次部署 checklist
 
-1. 安装 JDK 8+、Maven、Node 18+、MySQL 8+。
+1. 安装 JDK 8（仅 Java 8）、Maven、Node 18+、MySQL 8+。
 2. 执行 `backend/config/init.sql`（见 [backend/config/README.md](../backend/config/README.md)）。
 3. 配置 `backend/.env`（可复制团队模板；仓库内若有 `.env.example` 以对齐键名）。
 4. 按需编辑 `base-config/feishu.md`、`permissions.json`。

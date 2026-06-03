@@ -7,14 +7,24 @@ echo "======================================"
 PROJECT_DIR="$(cd "$(dirname "$0")" && pwd)"
 cd "$PROJECT_DIR"
 
+# 优先使用项目内置 JDK 8
+# shellcheck source=/dev/null
+source "$PROJECT_DIR/scripts/env-jdk8.sh"
+
 check_java() {
     if ! command -v java &> /dev/null; then
-        echo "错误: 未检测到Java环境，请先安装JDK 1.8+"
+        echo "错误: 未检测到 Java 环境，请先安装 JDK 1.8"
         exit 1
     fi
-    
-    JAVA_VERSION=$(java -version 2>&1 | head -n 1 | cut -d'"' -f2 | cut -d'.' -f1-2)
-    echo "检测到Java版本: $JAVA_VERSION"
+
+    JAVA_VERSION=$(java -version 2>&1 | awk -F'"' '/version/ {print $2; exit}')
+    JAVA_MAJOR=$(echo "$JAVA_VERSION" | cut -d'.' -f1)
+    JAVA_MINOR=$(echo "$JAVA_VERSION" | cut -d'.' -f2)
+    if [ "$JAVA_MAJOR" != "1" ] || [ "$JAVA_MINOR" != "8" ]; then
+        echo "错误: 本项目仅支持 JDK 1.8，当前版本: $JAVA_VERSION"
+        exit 1
+    fi
+    echo "检测到 Java 版本: $JAVA_VERSION"
 }
 
 check_maven() {
@@ -54,11 +64,11 @@ start_backend() {
     
     if [ ! -d "target" ]; then
         echo "编译项目..."
-        mvn clean compile -DskipTests
+        "$PROJECT_DIR/scripts/mvn-jdk8.sh" clean compile -DskipTests
     fi
     
     echo "启动Spring Boot应用..."
-    mvn spring-boot:run -DskipTests &
+    "$PROJECT_DIR/scripts/mvn-jdk8.sh" spring-boot:run -DskipTests &
     BACKEND_PID=$!
     
     echo "后端服务启动中 (PID: $BACKEND_PID)..."
