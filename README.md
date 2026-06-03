@@ -124,6 +124,8 @@ start.bat
 
 ## 开发指南
 
+克隆仓库后需本地安装依赖：`backend` 执行 `mvn` 构建，`frontend` 执行 `npm install`。`node_modules`、`target`、日志与上传目录已由 `.gitignore` 排除，不会进入版本库。
+
 ### 后端开发
 
 ```bash

@@ -1,6 +1,60 @@
-# 仅排除含真实密钥的本地环境文件（其余依赖/构建产物/日志一并入库）
+# --- 密钥与本地环境（勿提交）---
 backend/.env
+.env
+.env.*
+!.env.example
+frontend/.env
 frontend/.env.local
 frontend/.env.*.local
 *.pem
 *.key
+
+# --- 操作系统 ---
+.DS_Store
+Thumbs.db
+Desktop.ini
+
+# --- IDE ---
+.idea/
+.vscode/
+*.iml
+*.ipr
+*.iws
+.project
+.classpath
+.settings/
+
+# --- Java / Maven ---
+backend/target/
+**/target/
+*.class
+
+# --- 后端运行时产物 ---
+backend/logs/
+backend/logs/**
+*.log
+*.log.*
+
+backend/uploads/
+backend/uploads/**
+
+# --- 前端 ---
+frontend/node_modules/
+frontend/dist/
+.npm/
+.pnpm-store/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+
+# --- 飞书小程序 ---
+feishu-miniprogram/node_modules/
+miniprogram_npm/
+
+# --- 临时文件 ---
+*.tmp
+*.temp
+*.swp
+*~
+.cache/
