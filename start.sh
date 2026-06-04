@@ -29,10 +29,14 @@ check_java() {
 
 check_maven() {
     if ! command -v mvn &> /dev/null; then
-        echo "错误: 未检测到Maven，请先安装Maven 3.6+"
+        echo "错误: 未检测到 Maven，请先安装 Maven 3.6+"
         exit 1
     fi
-    echo "检测到Maven"
+    if ! "$PROJECT_DIR/scripts/mvn-jdk8.sh" -v -q -DskipTests >/dev/null 2>&1; then
+        echo "错误: mvn-jdk8 无法运行，请检查 JDK 8（bash scripts/setup-jdk8.sh）"
+        exit 1
+    fi
+    echo "检测到 Maven（JDK 8）"
 }
 
 check_mysql() {
@@ -45,6 +49,9 @@ check_mysql() {
 }
 
 init_database() {
+    if [ "${SKIP_DB_INIT:-}" = "1" ]; then
+        return 0
+    fi
     echo ""
     echo ">>> 初始化数据库..."
     if [ -f "backend/config/init.sql" ]; then
@@ -61,19 +68,16 @@ start_backend() {
     echo ""
     echo ">>> 启动后端服务..."
     cd backend
-    
-    if [ ! -d "target" ]; then
-        echo "编译项目..."
-        "$PROJECT_DIR/scripts/mvn-jdk8.sh" clean compile -DskipTests
-    fi
-    
-    echo "启动Spring Boot应用 (profile: dev)..."
+
+    echo "编译项目（dev）..."
+    "$PROJECT_DIR/scripts/mvn-jdk8.sh" compile -DskipTests -q
+
+    echo "启动 Spring Boot (profile: dev)..."
+    echo "请访问: http://localhost:8080/attendance/api"
     "$PROJECT_DIR/scripts/mvn-jdk8.sh" spring-boot:run -Dspring-boot.run.profiles=dev -DskipTests &
     BACKEND_PID=$!
-    
-    echo "后端服务启动中 (PID: $BACKEND_PID)..."
-    echo "请访问: http://localhost:8080/attendance/api"
-    
+    echo "后端启动中 (shell PID: $BACKEND_PID，Java 进程请用: lsof -i :8080)"
+
     cd ..
 }
 
@@ -106,16 +110,17 @@ show_usage() {
     echo "选项:"
     echo "  all            启动所有服务 (后端 dev + 前端)"
     echo "  backend        仅启动后端 (profile: dev, localhost:8080)"
+    echo "  dev            同 use-local-dev：杀 8080 后前台启动 dev（推荐）"
     echo "  frontend       仅启动前端 (localhost:5175)"
     echo "  init           初始化数据库"
-    echo "  render-deploy   仅渲染配置（一般不必单独执行）"
-    echo "  prod            启动生产/UAT 后端（自动 render + 加载 env）"
-    echo "  restart-prod    改域名后重启生产后端（推荐）"
-    echo "  help            显示帮助信息"
+    echo "  render-deploy  仅渲染配置（一般不必单独执行）"
+    echo "  prod           启动生产/UAT 后端（自动 render + 加载 env）"
+    echo "  restart-prod   改域名后重启生产后端（会加载 deploy env）"
+    echo "  help           显示帮助信息"
     echo ""
     echo "本地开发:"
-    echo "  ./start.sh all"
-    echo "  ./scripts/use-local-dev.sh   # 仅后端 dev（不加载生产域名 env）"
+    echo "  ./start.sh dev"
+    echo "  SKIP_DB_INIT=1 ./start.sh backend   # 跳过数据库初始化询问"
     echo "  小程序 config.js 设 USE_PUBLIC_API=false"
     echo ""
     echo "公网 / 生产（改域名只需两步）:"
@@ -147,20 +152,15 @@ start_backend_prod() {
     check_maven
     echo ""
     echo ">>> 启动生产/UAT 后端（自动 render + 加载 env）..."
-    bash "$PROJECT_DIR/scripts/start-backend-prod.sh" &
-    BACKEND_PID=$!
-    echo "后端服务启动中 (PID: $BACKEND_PID)..."
     echo "改域名后: ./start.sh restart-prod"
+    exec bash "$PROJECT_DIR/scripts/start-backend-prod.sh"
 }
 
 restart_backend_prod() {
     check_java
     check_maven
     echo ""
-    bash "$PROJECT_DIR/scripts/restart-backend-prod.sh" &
-    BACKEND_PID=$!
-    echo "后端已重启 (PID: $BACKEND_PID)..."
-    wait
+    exec bash "$PROJECT_DIR/scripts/restart-backend-prod.sh"
 }
 
 case "${1:-all}" in
@@ -182,6 +182,11 @@ case "${1:-all}" in
         start_backend
         wait
         ;;
+    dev|local)
+        check_java
+        check_maven
+        exec bash "$PROJECT_DIR/scripts/use-local-dev.sh"
+        ;;
     frontend)
         start_frontend
         wait
@@ -196,8 +201,14 @@ case "${1:-all}" in
         start_backend_prod
         wait
         ;;
-    restart-prod|restart)
+    restart-prod)
         restart_backend_prod
+        ;;
+    restart)
+        echo "错误: ./start.sh restart 已移除（曾误指向生产）。"
+        echo "  本地: ./start.sh dev  或  ./scripts/use-local-dev.sh"
+        echo "  生产: ./start.sh restart-prod"
+        exit 1
         ;;
     help|--help|-h)
         show_usage

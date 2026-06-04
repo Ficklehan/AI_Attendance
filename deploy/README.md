@@ -79,16 +79,18 @@ curl -s "https://$(grep PUBLIC_HOST deploy/rendered/production.env | cut -d= -f2
 
 ## 小程序（手机）
 
-后端重启后，`config.prod.js` 会同步更新，但飞书侧需**重新上传**小程序版本。
+**完整逐项流程**见 [docs/运维手册.md §5.8](../docs/运维手册.md#58-飞书小程序生产配置完整流程)。
+
+简要三步：
 
 1. `config.js` → `USE_PUBLIC_API = true`
-2. `./start.sh restart-prod`（或至少 render 一次）
-3. 飞书开发者工具上传
+2. `./start.sh restart-prod`（或 `node scripts/render-deploy-config.mjs --env production`）
+3. 飞书开放平台配合法域名 + 开发者工具上传发布
 
 ## 飞书开放平台
 
 - **重定向 URL**：与 `FEISHU_REDIRECT_URI`（见 `deploy/rendered/production.env`）
-- **request 合法域名**：`PUBLIC_HOST`
+- **request 合法域名**：`PUBLIC_HOST`（仅主机名）
 
 ## CI
 

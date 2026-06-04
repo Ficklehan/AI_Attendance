@@ -48,8 +48,8 @@ echo.
 echo [3/4] 启动后端服务 (profile: dev)...
 
 cd /d %PROJECT_DIR%backend
-echo 正在启动Spring Boot...
-start "Backend" cmd /k "mvn spring-boot:run -Dspring-boot.run.profiles=dev -DskipTests"
+echo 正在编译并启动 Spring Boot（需 JDK 8，见 scripts\setup-jdk8.sh）...
+start "Backend" cmd /k "bash ..\scripts\mvn-jdk8.sh compile -DskipTests -q && bash ..\scripts\mvn-jdk8.sh spring-boot:run -Dspring-boot.run.profiles=dev -DskipTests"
 
 cd /d %PROJECT_DIR%
 
@@ -106,6 +106,9 @@ echo.
 echo   (无参数)        启动后端 dev + 前端
 echo   render-deploy   渲染公网配置 (production + uat)
 echo   help            显示帮助
+echo.
+echo   生产重启请用 Git Bash: ./start.sh restart-prod
+echo   本地仅后端: bash scripts/use-local-dev.sh
 echo.
 echo 公网部署详见 deploy\README.md
 pause
