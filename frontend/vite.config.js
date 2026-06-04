@@ -36,6 +36,8 @@ export default defineConfig({
     },
   },
   
+  base: '/attendance/',
+
   build: {
     outDir: 'dist',
     assetsDir: 'assets',

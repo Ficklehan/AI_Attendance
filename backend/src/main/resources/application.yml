@@ -6,6 +6,9 @@ server:
 spring:
   profiles:
     active: dev
+    group:
+      prod: deploy
+      uat: deploy
   application:
     name: attendance-assistant
   servlet:
