@@ -84,7 +84,7 @@ When asked to produce an SOP or user guide:
    - FAQ
 3. **Languages** — always include at minimum: 简体中文, English. Add FR/DE/ES when user requests full i18n
 4. **Output format** — Word `.docx` via `docs/sop/scripts/generate_sop_docx.py`
-5. **Screenshots** — capture from running dev server (`localhost:5175` web, mini-program assets in `feishu-miniprogram/assets/`)
+5. **Screenshots** — capture from running dev server (`http://localhost:5175/attendance/`, mini-program assets in `feishu-miniprogram/assets/`)
 
 ### SOP Section Template
 

@@ -73,7 +73,7 @@ echo   服务已启动！
 echo ======================================
 echo.
 echo 后端: http://localhost:8080/attendance/api
-echo 前端: http://localhost:5175
+echo 前端: http://localhost:5175/attendance/
 echo 小程序本地: feishu-miniprogram\config.js USE_PUBLIC_API=false
 echo.
 echo 公网部署: start.bat render-deploy  详见 deploy\README.md

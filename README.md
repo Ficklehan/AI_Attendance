@@ -86,8 +86,8 @@ start.bat
 
 ### 4. 访问系统（本地）
 
-- 前端地址: http://localhost:5175
-- 后端 API: http://localhost:8080/attendance/api
+- PC 前端: http://localhost:5175/attendance/（登录页 `/attendance/login`）
+- 后端 API: http://localhost:8080/attendance/api（例：`POST .../attendance/api/auth/login`）
 - 默认账号: admin / admin123（**仅 dev**；生产请改密并关闭 bootstrap）
 - 小程序本地调试: `feishu-miniprogram/config.js` → `USE_PUBLIC_API=false`
 

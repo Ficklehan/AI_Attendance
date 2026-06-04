@@ -8,7 +8,7 @@ cd "$PROJECT_DIR"
 echo ">>> 本地开发模式"
 echo "    小程序: feishu-miniprogram/config.js → USE_PUBLIC_API=false"
 echo "    API:    http://localhost:8080/attendance/api"
-echo "    PC 前端: http://localhost:5175"
+echo "    PC 前端: http://localhost:5175/attendance/"
 echo ""
 
 PIDS=$(lsof -ti :8080 2>/dev/null || true)

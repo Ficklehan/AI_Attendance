@@ -5,7 +5,7 @@
 | Endpoint | Method | Purpose |
 |----------|--------|---------|
 | `/attendance/api/auth/login` | POST | PC password login |
-| `/attendance/api/auth/feishu/miniprogram` | POST | Mini-program Feishu login |
+| `/attendance/api/feishu-auth/miniprogram/login` | POST | Mini-program Feishu login |
 | `/attendance/api/tasks` | GET | Paginated task list |
 | `/attendance/api/tasks/summary` | GET | Status counts (SSOT) |
 | `/attendance/api/tasks/{id}` | GET | Task detail |
@@ -32,7 +32,7 @@ MIMO_MODEL=mimo-v2.5
 
 ## SOP Maintenance
 
-1. Update screenshots: `python docs/sop/scripts/capture_screenshots.py` (requires Playwright + running frontend on :5175)
+1. Update screenshots: `python docs/sop/scripts/capture_screenshots.py` (requires Playwright + frontend at `http://localhost:5175/attendance/`)
 2. Regenerate docx: `python docs/sop/scripts/generate_sop_docx.py`
 3. Output: `docs/sop/output/AttendanceAgent_SOP_Multilingual.docx`
 

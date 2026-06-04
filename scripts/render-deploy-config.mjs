@@ -100,6 +100,11 @@ function joinPath(...segments) {
   return path || '/'
 }
 
+function ensureTrailingSlash(url) {
+  if (!url) return url
+  return url.endsWith('/') ? url : `${url}/`
+}
+
 function resolveFrontendPath(manifest, segment) {
   const raw = String(segment || '').trim()
   if (raw.startsWith('/')) {
@@ -135,7 +140,7 @@ function deriveUrls(manifest) {
     API_CONTEXT_PATH: apiContext.startsWith('/') ? apiContext : `/${apiContext}`,
     FEISHU_REDIRECT_URI: joinUrl(apiBaseUrl, feishuOAuthSuffix),
     FEISHU_FRONTEND_CALLBACK_URL: joinUrl(origin, frontendFeishuCallbackPath),
-    FEISHU_FRONTEND_LOGIN_URL: joinUrl(origin, frontendLoginPath),
+    FEISHU_FRONTEND_LOGIN_URL: ensureTrailingSlash(joinUrl(origin, frontendLoginPath)),
     SPRING_PROFILES_ACTIVE: (manifest.spring && manifest.spring.profile) || 'prod',
     CORS_ALLOWED_ORIGIN: origin
   }

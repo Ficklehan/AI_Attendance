@@ -114,7 +114,7 @@ LANG_SECTIONS = {
                 "统计数字统一来自 GET /attendance/api/tasks/summary，勿用列表分页条数代替全库统计。",
             ]),
             ("4. PC 端：上传与识别", [
-                ("打开浏览器访问系统（默认 http://localhost:5175），使用账号登录。", "01-home-upload.png", "图 4-1：首页上传区"),
+                ("打开浏览器访问系统（默认 http://localhost:5175/attendance/），使用账号登录。", "01-home-upload.png", "图 4-1：首页上传区"),
                 ("在首页确认「当前工作国家」；如需更改，点击「更改配置」进入设置。", None, None),
                 ("点击或拖拽上传考勤图片（JPG/PNG，支持多张，单张≤10MB）。", None, None),
                 ("点击「开始识别」，等待 AI 流式解析完成（通常 30–90 秒）。", None, None),
@@ -179,7 +179,7 @@ LANG_SECTIONS = {
                 "Counts must come from GET /attendance/api/tasks/summary — never use paginated list length as totals.",
             ]),
             ("4. PC: Upload & Recognition", [
-                ("Open the web app and sign in (default http://localhost:5175).", "01-home-upload.png", "Fig 4-1: Home upload"),
+                ("Open the web app and sign in (default http://localhost:5175/attendance/).", "01-home-upload.png", "Fig 4-1: Home upload"),
                 ("Verify working country on Home; change via Settings if needed.", None, None),
                 ("Upload JPG/PNG images (multi-file, max 10MB each).", None, None),
                 ("Click Start Recognition and wait for streaming AI parse (~30–90s).", None, None),

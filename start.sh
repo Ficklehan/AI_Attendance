@@ -98,7 +98,7 @@ start_frontend() {
     FRONTEND_PID=$!
     
     echo "前端服务启动中 (PID: $FRONTEND_PID)..."
-    echo "请访问: http://localhost:5175"
+    echo "请访问: http://localhost:5175/attendance/"
     
     cd ..
 }
@@ -111,7 +111,7 @@ show_usage() {
     echo "  all            启动所有服务 (后端 dev + 前端)"
     echo "  backend        仅启动后端 (profile: dev, localhost:8080)"
     echo "  dev            同 use-local-dev：杀 8080 后前台启动 dev（推荐）"
-    echo "  frontend       仅启动前端 (localhost:5175)"
+    echo "  frontend       仅启动前端 (http://localhost:5175/attendance/)"
     echo "  init           初始化数据库"
     echo "  render-deploy  仅渲染配置（一般不必单独执行）"
     echo "  prod           启动生产/UAT 后端（自动 render + 加载 env）"
