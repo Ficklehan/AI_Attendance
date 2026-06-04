@@ -1,0 +1,5 @@
+# 可选：在后端尚未重启、仍跳转到 /feishu/callback 时的 Nginx 兜底
+# 放入 server { ... } 内，reload nginx 后立即生效
+location = /feishu/callback {
+    return 302 /attendance/feishu/callback$is_args$args;
+}

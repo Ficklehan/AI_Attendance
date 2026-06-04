@@ -55,7 +55,7 @@ public class FeishuProperties {
     }
 
     public String getFrontendCallbackUrl() {
-        return frontendCallbackUrl;
+        return normalizeFrontendCallbackUrl(frontendCallbackUrl);
     }
 
     public void setFrontendCallbackUrl(String frontendCallbackUrl) {
@@ -63,7 +63,38 @@ public class FeishuProperties {
     }
 
     public String getFrontendLoginUrl() {
-        return frontendLoginUrl;
+        return normalizeFrontendLoginUrl(frontendLoginUrl);
+    }
+
+    /**
+     * 兼容旧版 render：{@code https://host/feishu/callback} → {@code .../attendance/feishu/callback}
+     *（与 frontend vite base /attendance/ 一致）
+     */
+    static String normalizeFrontendCallbackUrl(String url) {
+        if (url == null || url.isEmpty()) {
+            return url;
+        }
+        if (url.contains("/attendance/feishu/callback")) {
+            return url;
+        }
+        if (url.contains("/feishu/callback")) {
+            return url.replace("/feishu/callback", "/attendance/feishu/callback");
+        }
+        return url;
+    }
+
+    /** 兼容旧版仅配置站点根域名的登录跳转 */
+    static String normalizeFrontendLoginUrl(String url) {
+        if (url == null || url.isEmpty()) {
+            return url;
+        }
+        if (url.contains("/attendance")) {
+            return url;
+        }
+        if (url.matches("https?://[^/]+/?$")) {
+            return url.replaceAll("/+$", "") + "/attendance/";
+        }
+        return url;
     }
 
     public void setFrontendLoginUrl(String frontendLoginUrl) {
