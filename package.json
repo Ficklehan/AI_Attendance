@@ -1,0 +1,13 @@
+{
+  "name": "attendance-agent",
+  "private": true,
+  "description": "AttendanceAgent monorepo tooling",
+  "scripts": {
+    "render:deploy": "node scripts/render-deploy-config.mjs --env production",
+    "render:deploy:uat": "node scripts/render-deploy-config.mjs --env uat",
+    "render:deploy:all": "node scripts/render-deploy-config.mjs --env production && node scripts/render-deploy-config.mjs --env uat",
+    "render:deploy:check": "node scripts/render-deploy-config.mjs --env production --check",
+    "start:prod": "bash scripts/start-backend-prod.sh",
+    "restart:prod": "bash scripts/restart-backend-prod.sh"
+  }
+}

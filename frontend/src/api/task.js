@@ -30,6 +30,14 @@ export const getTaskDetail = (taskId) => {
   })
 }
 
+/** 识别进行中轮询（不含 raw_data） */
+export const getTaskProgress = (taskId) => {
+  return request({
+    url: `/tasks/${taskId}/progress`,
+    method: 'get',
+  })
+}
+
 export const confirmTask = (taskId, data) => {
   return request({
     url: `/tasks/${taskId}/confirm`,

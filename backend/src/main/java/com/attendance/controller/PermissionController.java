@@ -2,6 +2,7 @@ package com.attendance.controller;
 
 import com.attendance.common.Result;
 import com.attendance.entity.User;
+import com.attendance.security.AdminAuthService;
 import com.attendance.service.PermissionService;
 import com.attendance.service.UserService;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -20,8 +21,12 @@ public class PermissionController {
     @Autowired
     private UserService userService;
 
+    @Autowired
+    private AdminAuthService adminAuthService;
+
     @GetMapping("/roles")
     public Result<Map<String, Map<String, Boolean>>> getRolePermissions() {
+        adminAuthService.requireAdmin();
         return Result.success(permissionService.getRolePermissions());
     }
 

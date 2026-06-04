@@ -1,24 +1,7 @@
-import { getToken } from './auth'
+import request from '@/api/index'
 import { API_BASE_PATH } from '@/constants/apiBase'
 
-/** Append JWT for authenticated image endpoints (img tags cannot send Authorization headers). */
-export function withAuthToken(url) {
-  if (!url || typeof url !== 'string') {
-    return url
-  }
-  if (!url.includes('/local/image/')) {
-    return url
-  }
-  const token = getToken()
-  if (!token || url.includes('token=')) {
-    return url
-  }
-  const sep = url.includes('?') ? '&' : '?'
-  return `${url}${sep}token=${encodeURIComponent(token)}`
-}
-
-/** Build authenticated preview URLs for a task's stored image keys. */
-export function resolveTaskImageUrls(imageUrls, fileKey) {
+function collectImageKeys(imageUrls, fileKey) {
   const raw = []
   if (imageUrls) {
     try {
@@ -39,11 +22,41 @@ export function resolveTaskImageUrls(imageUrls, fileKey) {
   if (key && !raw.includes(key)) {
     raw.unshift(key)
   }
-  return raw.map((url) => {
-    if (url.startsWith('http') || url.startsWith(API_BASE_PATH)) {
-      return withAuthToken(url)
-    }
-    return withAuthToken(`${API_BASE_PATH}/local/image/${url}`)
+  return raw
+}
+
+function appendSignature(baseUrl, signature) {
+  if (!signature || signature.exp == null || !signature.uid || !signature.sig) {
+    return baseUrl
+  }
+  const sep = baseUrl.includes('?') ? '&' : '?'
+  return `${baseUrl}${sep}exp=${signature.exp}&uid=${encodeURIComponent(signature.uid)}&sig=${encodeURIComponent(signature.sig)}`
+}
+
+/** Build short-lived signed preview URLs for task images (img tags cannot send Authorization headers). */
+export async function resolveTaskImageUrls(imageUrls, fileKey) {
+  const keys = collectImageKeys(imageUrls, fileKey)
+  if (!keys.length) {
+    return []
+  }
+
+  let signatures = {}
+  try {
+    const res = await request({
+      url: '/local/image/signatures',
+      method: 'post',
+      data: { keys },
+    })
+    signatures = res.data || {}
+  } catch (error) {
+    console.error('加载图片签名失败:', error)
+  }
+
+  return keys.map((key) => {
+    const normalized = key.startsWith('http') || key.startsWith(API_BASE_PATH)
+      ? key
+      : `${API_BASE_PATH}/local/image/${encodeURIComponent(key)}`
+    return appendSignature(normalized, signatures[key])
   })
 }
 

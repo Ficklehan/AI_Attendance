@@ -101,6 +101,7 @@ import {
   clearFinishedExports,
 } from '@/api/export'
 import { useExportCenter } from '@/composables/useExportCenter'
+import { startAdaptivePoll } from '@/utils/adaptivePoll'
 
 const props = defineProps({
   open: { type: Boolean, default: false },
@@ -125,7 +126,7 @@ const downloadingId = ref('')
 const currentPage = ref(1)
 const pageSize = 20
 const total = ref(0)
-let pollTimer = null
+let stopExportPoll = null
 
 const listScope = computed(() => (viewMode.value === 'history' ? 'all' : 'active'))
 
@@ -242,17 +243,17 @@ const handleDownload = async (job) => {
 
 const startPolling = () => {
   stopPolling()
-  pollTimer = window.setInterval(() => {
-    if (visible.value && hasActive.value) {
-      fetchJobs(false)
-    }
-  }, 3000)
+  stopExportPoll = startAdaptivePoll(
+    () => visible.value && hasActive.value,
+    () => fetchJobs(false),
+    { intervalMs: 3000, maxIntervalMs: 12000 },
+  )
 }
 
 const stopPolling = () => {
-  if (pollTimer) {
-    clearInterval(pollTimer)
-    pollTimer = null
+  if (stopExportPoll) {
+    stopExportPoll()
+    stopExportPoll = null
   }
 }
 

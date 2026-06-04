@@ -624,6 +624,7 @@ export default {
     feishuUserAlreadyExists: '飞书用户已存在',
     passwordWrong: '密码错误',
     oldPasswordWrong: '旧密码错误',
+    recognitionConcurrentLimit: '识别任务过多，请稍后再试',
     taskNotFound: '任务不存在',
     taskStatusCannotConfirm: '任务状态不允许确认',
     feishuRetryConfirmedOnly: '仅已确认任务可重试飞书同步',

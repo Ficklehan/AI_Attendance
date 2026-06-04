@@ -1,4 +1,6 @@
 spring:
+  profiles:
+    include: deploy
   datasource:
     url: jdbc:mysql://${DB_HOST:localhost}:${DB_PORT:3306}/${DB_NAME:attendance_assistant}?useUnicode=true&characterEncoding=utf8&useSSL=true&allowPublicKeyRetrieval=true&serverTimezone=Asia/Shanghai
     username: ${DB_USER:root}

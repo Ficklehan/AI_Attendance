@@ -2,6 +2,7 @@ const App = getApp()
 const { isApiSuccess, getApiData, getApiMessage } = require('../../utils/response')
 const { t } = require('../../utils/i18n')
 const { isCountryConfigured, syncCountryConfig } = require('../../utils/preferences')
+const { refreshApiBase, probeBackend, describeNetworkFailure } = require('../../utils/apiBase')
 
 Page({
   data: {
@@ -32,30 +33,52 @@ Page({
     console.log('点击飞书登录')
     this.setData({ loading: true })
 
-    tt.login({
-      success: (res) => {
-        console.log('tt.login 成功:', res)
-        if (res.code) {
-          this.getLoginToken(res.code)
-        } else {
+    const baseUrl = refreshApiBase()
+    console.log('当前 API 地址:', baseUrl)
+
+    probeBackend(baseUrl).then((probe) => {
+      if (!probe.ok) {
+        console.error('后端不可达:', probe)
+        this.setData({ loading: false })
+        const detail = describeNetworkFailure(baseUrl, probe)
+        tt.showModal({
+          title: t('login.networkFail'),
+          content: detail,
+          showCancel: false
+        })
+        return
+      }
+
+      tt.login({
+        success: (res) => {
+          console.log('tt.login 成功:', res)
+          if (res.code) {
+            this.getLoginToken(res.code, baseUrl)
+          } else {
+            this.setData({ loading: false })
+            tt.showToast({ title: t('login.authCodeFail'), icon: 'none' })
+          }
+        },
+        fail: (err) => {
+          console.error('tt.login 失败:', err)
           this.setData({ loading: false })
           tt.showToast({ title: t('login.authCodeFail'), icon: 'none' })
         }
-      },
-      fail: (err) => {
-        console.error('tt.login 失败:', err)
-        this.setData({ loading: false })
-        tt.showToast({ title: t('login.authCodeFail'), icon: 'none' })
-      }
+      })
     })
   },
 
-  getLoginToken: function (authCode) {
+  getLoginToken: function (authCode, baseUrl) {
+    const apiBase = baseUrl || refreshApiBase()
+    const loginUrl = apiBase + '/feishu-auth/miniprogram/login'
+    console.log('请求登录接口:', loginUrl)
+
     tt.request({
-      url: App.globalData.baseUrl + '/feishu-auth/miniprogram/login',
+      url: loginUrl,
       method: 'POST',
       header: { 'Content-Type': 'application/json' },
       data: { code: authCode },
+      timeout: 15000,
       success: (res) => {
         const body = res.data
         console.log('登录接口返回:', res.statusCode, '业务code:', body && body.code, 'message:', body && body.message)
@@ -75,9 +98,14 @@ Page({
         }
       },
       fail: (err) => {
-        console.error('登录请求失败:', err)
+        console.error('登录请求失败:', err, 'URL:', loginUrl)
         this.setData({ loading: false })
-        tt.showToast({ title: t('login.networkFail'), icon: 'none' })
+        const hint = describeNetworkFailure(apiBase, { ok: false, err })
+        tt.showModal({
+          title: t('login.networkFail'),
+          content: hint,
+          showCancel: false
+        })
       }
     })
   },

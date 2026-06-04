@@ -12,6 +12,7 @@ import com.attendance.util.JwtUtil;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
 
@@ -36,8 +37,14 @@ public class AuthController {
     @Autowired
     private JwtUtil jwtUtil;
 
+    @Value("${attendance.allow-public-registration:true}")
+    private boolean allowPublicRegistration;
+
     @PostMapping("/register")
     public Result<LoginResponse> register(@Valid @RequestBody RegisterRequest request) {
+        if (!allowPublicRegistration) {
+            return Result.error(403, "公开注册已关闭，请联系管理员");
+        }
         LoginResponse response = userService.register(request);
         auditLogService.log("USER_REGISTER", "user", response.getUserInfo().getId(), null);
         return Result.success(response);

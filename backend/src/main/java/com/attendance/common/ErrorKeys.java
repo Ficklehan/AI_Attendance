@@ -18,6 +18,8 @@ public final class ErrorKeys {
     public static final String PASSWORD_WRONG = "errors.passwordWrong";
     public static final String OLD_PASSWORD_WRONG = "errors.oldPasswordWrong";
 
+    public static final String RECOGNITION_CONCURRENT_LIMIT = "errors.recognitionConcurrentLimit";
+
     public static final String TASK_NOT_FOUND = "errors.taskNotFound";
     public static final String TASK_STATUS_CANNOT_CONFIRM = "errors.taskStatusCannotConfirm";
     public static final String FEISHU_RETRY_CONFIRMED_ONLY = "errors.feishuRetryConfirmedOnly";

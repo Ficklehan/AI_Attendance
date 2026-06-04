@@ -12,6 +12,7 @@ const CODE_KEYS = {
   1006: 'errors.accessDenied',
   2001: 'errors.taskNotFound',
   2002: 'errors.taskStatusCannotConfirm',
+  429: 'errors.recognitionConcurrentLimit',
   3001: 'errors.imageInvalid',
   4001: 'errors.aiNoParseableRecords',
 }

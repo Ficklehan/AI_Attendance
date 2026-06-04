@@ -1,3 +1,5 @@
+const request = require('./request')
+
 function getAppSafe() {
   try {
     return getApp()
@@ -6,33 +8,9 @@ function getAppSafe() {
   }
 }
 
-function getToken() {
-  try {
-    const app = getAppSafe()
-    return (app && app.globalData.token) || tt.getStorageSync('token') || ''
-  } catch (e) {
-    return ''
-  }
-}
-
 function getApiBase() {
   const app = getAppSafe()
   return (app && app.globalData.baseUrl) || ''
-}
-
-function withAuthToken(url) {
-  if (!url || typeof url !== 'string') {
-    return url
-  }
-  if (url.indexOf('/local/image/') === -1) {
-    return url
-  }
-  const token = getToken()
-  if (!token || url.indexOf('token=') !== -1) {
-    return url
-  }
-  const sep = url.indexOf('?') !== -1 ? '&' : '?'
-  return url + sep + 'token=' + encodeURIComponent(token)
 }
 
 function normalizeImageKey(value) {
@@ -54,31 +32,11 @@ function normalizeImageKey(value) {
   return raw.split('?')[0]
 }
 
-function toAbsoluteImageUrl(fileKey, base) {
-  const key = normalizeImageKey(fileKey)
-  if (!key) {
-    return ''
-  }
-  if (key.startsWith('http')) {
-    return withAuthToken(key)
-  }
-  const root = base || getApiBase()
-  if (!root) {
-    return ''
-  }
-  return withAuthToken(`${root}/local/image/${encodeURIComponent(key)}`)
-}
-
-/**
- * 从任务数据解析全部原图（imageUrls + fileKey 回退）。
- */
-function buildTaskImageList(task) {
-  if (!task) {
-    return []
-  }
-  const base = getApiBase()
+function collectImageKeys(task) {
   const keys = []
-
+  if (!task) {
+    return keys
+  }
   if (task.imageUrls) {
     try {
       const raw = typeof task.imageUrls === 'string' ? JSON.parse(task.imageUrls) : task.imageUrls
@@ -94,15 +52,60 @@ function buildTaskImageList(task) {
       console.warn('parse imageUrls failed', e)
     }
   }
-
   const fileKey = normalizeImageKey(task.fileKey)
   if (fileKey && keys.indexOf(fileKey) === -1) {
     keys.unshift(fileKey)
   }
-
   return keys
+}
+
+function appendSignature(baseUrl, signature) {
+  if (!signature || signature.exp == null || !signature.uid || !signature.sig) {
+    return baseUrl
+  }
+  const sep = baseUrl.indexOf('?') !== -1 ? '&' : '?'
+  return `${baseUrl}${sep}exp=${signature.exp}&uid=${encodeURIComponent(signature.uid)}&sig=${encodeURIComponent(signature.sig)}`
+}
+
+function fetchImageSignatures(keys) {
+  if (!keys || !keys.length) {
+    return Promise.resolve({})
+  }
+  return request({
+    url: '/local/image/signatures',
+    method: 'POST',
+    data: { keys }
+  }).then((res) => (res && res.data) || {}).catch((err) => {
+    console.warn('image signatures failed', err)
+    return {}
+  })
+}
+
+function toAbsoluteImageUrl(fileKey, base, signature) {
+  const key = normalizeImageKey(fileKey)
+  if (!key) {
+    return ''
+  }
+  const root = base || getApiBase()
+  if (!root) {
+    return ''
+  }
+  const url = `${root}/local/image/${encodeURIComponent(key)}`
+  return appendSignature(url, signature)
+}
+
+/**
+ * 从任务数据解析全部原图（imageUrls + fileKey 回退），返回带短期签名 URL。
+ */
+function buildTaskImageList(task) {
+  const base = getApiBase()
+  const keys = collectImageKeys(task)
+  if (!keys.length) {
+    return Promise.resolve([])
+  }
+  return fetchImageSignatures(keys).then((signatures) => keys
     .map((key, index) => {
-      const url = toAbsoluteImageUrl(key, base)
+      const url = toAbsoluteImageUrl(key, base, signatures[key])
       return {
         key,
         index: index + 1,
@@ -110,7 +113,7 @@ function buildTaskImageList(task) {
         fileName: formatImageFileName(key)
       }
     })
-    .filter((item) => item.url)
+    .filter((item) => item.url))
 }
 
 function formatImageFileName(key) {
@@ -122,20 +125,15 @@ function formatImageFileName(key) {
   return parts[parts.length - 1] || normalized
 }
 
-/**
- * 小程序 image / previewImage 对带鉴权头更稳：先下载到本地临时路径。
- */
 function prepareLocalImages(imageList) {
   const list = imageList || []
   if (!list.length) {
     return Promise.resolve([])
   }
-  const token = getToken()
   return Promise.all(
     list.map((item) => new Promise((resolve) => {
       tt.downloadFile({
         url: item.url,
-        header: token ? { Authorization: `Bearer ${token}` } : {},
         success: (res) => {
           const displayUrl = res.statusCode === 200 && res.tempFilePath
             ? res.tempFilePath
@@ -178,17 +176,17 @@ function openImagePreview(imageList, index) {
   })
 }
 
-/** @deprecated 使用 openImagePreview */
 function previewTaskImages(imageList, index) {
   return openImagePreview(imageList, index)
 }
 
 module.exports = {
-  withAuthToken,
   buildTaskImageList,
   prepareLocalImages,
   openImagePreview,
   previewTaskImages,
   toAbsoluteImageUrl,
-  formatImageFileName
+  formatImageFileName,
+  fetchImageSignatures,
+  collectImageKeys
 }

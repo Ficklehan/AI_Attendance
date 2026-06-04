@@ -192,6 +192,33 @@ function uploadImageAsync(filePath, country, onProgress, options) {
     })
 }
 
+function fetchTaskProgress(taskId) {
+  const app = getAppSafe()
+  const baseUrl = (app && app.globalData.baseUrl) || ''
+  const token = (app && app.globalData.token) || ''
+
+  return new Promise((resolve, reject) => {
+    tt.request({
+      url: `${baseUrl}/tasks/${taskId}/progress`,
+      method: 'GET',
+      timeout: 15000,
+      header: {
+        Authorization: token ? `Bearer ${token}` : ''
+      },
+      success: (res) => {
+        if (res.statusCode === 200 && isApiSuccess(res.data)) {
+          resolve(getApiData(res.data) || {})
+        } else {
+          reject(new Error(getApiMessage(res.data, t('upload.fetchTaskFail'))))
+        }
+      },
+      fail: (err) => {
+        reject(new Error(translateApiError({ message: (err && err.errMsg) }, t('errors.networkError'))))
+      }
+    })
+  })
+}
+
 function fetchTask(taskId) {
   const app = getAppSafe()
   const baseUrl = (app && app.globalData.baseUrl) || ''
@@ -220,6 +247,10 @@ function fetchTask(taskId) {
 }
 
 function parseRecordCount(task) {
+  if (task == null) return 0
+  if (typeof task.progressRowCount === 'number') {
+    return task.progressRowCount
+  }
   const raw = task.rawData
   if (!raw) return 0
   try {
@@ -231,7 +262,8 @@ function parseRecordCount(task) {
 }
 
 function parseTaskError(task) {
-  if (!task.anomalySummary) return ''
+  if (task && task.progressError) return task.progressError
+  if (!task || !task.anomalySummary) return ''
   try {
     const o = typeof task.anomalySummary === 'string'
       ? JSON.parse(task.anomalySummary)
@@ -242,19 +274,43 @@ function parseTaskError(task) {
   }
 }
 
+function pollIntervalMs(attempt, baseMs) {
+  const capped = Math.min(baseMs * Math.pow(1.25, Math.max(0, attempt - 1)), 8000)
+  if (typeof document !== 'undefined' && document.hidden) {
+    return Math.min(capped * 2, 12000)
+  }
+  return capped
+}
+
 function pollTaskUntilDone(taskId, options) {
-  const intervalMs = (options && options.intervalMs) || 1500
+  const baseIntervalMs = (options && options.intervalMs) || 1500
   const maxAttempts = (options && options.maxAttempts) || 240
   let attempts = 0
+  let hiddenListener = null
 
   return new Promise((resolve, reject) => {
+    const cleanup = () => {
+      if (hiddenListener && typeof document !== 'undefined') {
+        document.removeEventListener('visibilitychange', hiddenListener)
+        hiddenListener = null
+      }
+    }
+
+    if (typeof document !== 'undefined') {
+      hiddenListener = () => {
+        traceLog.log('poll_visibility', { hidden: document.hidden, attempt: attempts })
+      }
+      document.addEventListener('visibilitychange', hiddenListener)
+    }
+
     const tick = () => {
       if (options && options.shouldAbort && options.shouldAbort()) {
+        cleanup()
         resolve({ aborted: true, taskId })
         return
       }
       attempts++
-      fetchTask(taskId)
+      fetchTaskProgress(taskId)
         .then((task) => {
           const status = task.status
           const rowCount = parseRecordCount(task)
@@ -280,45 +336,61 @@ function pollTaskUntilDone(taskId, options) {
           }
 
           if (status === 'processed') {
-            traceLog.logServerTrace(task)
-            traceLog.logTaskParse(task)
-
-            if (engine === 'simulated' || engine.indexOf('simulated') >= 0) {
-              reject(new Error(t('upload.simulatedRecognition')))
-              return
-            }
-            if (rowCount === 0) {
-              reject(new Error(t('upload.emptyResult')))
-              return
-            }
-            if (looksLikeBadRecognitionData(task)) {
-              reject(new Error(t('upload.fabricatedResult')))
-              return
-            }
-            resolve({ task, rowCount, engine })
+            fetchTask(taskId)
+              .then((fullTask) => {
+                traceLog.logServerTrace(fullTask)
+                traceLog.logTaskParse(fullTask)
+                const fullEngine = fullTask.aiRawOutput || engine
+                if (fullEngine === 'simulated' || String(fullEngine).indexOf('simulated') >= 0) {
+                  cleanup()
+                  reject(new Error(t('upload.simulatedRecognition')))
+                  return
+                }
+                const fullCount = parseRecordCount(fullTask)
+                if (fullCount === 0) {
+                  cleanup()
+                  reject(new Error(t('upload.emptyResult')))
+                  return
+                }
+                if (looksLikeBadRecognitionData(fullTask)) {
+                  cleanup()
+                  reject(new Error(t('upload.fabricatedResult')))
+                  return
+                }
+                cleanup()
+                resolve({ task: fullTask, rowCount: fullCount, engine: fullEngine })
+              })
+              .catch((err) => {
+                cleanup()
+                reject(err)
+              })
             return
           }
           if (status === 'failed') {
             traceLog.logServerTrace(task)
+            cleanup()
             reject(new Error(translateApiError({ message: parseTaskError(task) }, t('upload.recognizeFail'))))
             return
           }
           if (attempts >= maxAttempts) {
+            cleanup()
             reject(new Error(t('upload.recognizeTimeout')))
             return
           }
-          setTimeout(tick, intervalMs)
+          setTimeout(tick, pollIntervalMs(attempts, baseIntervalMs))
         })
         .catch((err) => {
           traceLog.log('poll_error', { attempt: attempts, message: err && err.message })
           if (options && options.shouldAbort && options.shouldAbort()) {
+            cleanup()
             resolve({ aborted: true, taskId })
             return
           }
           if (attempts >= maxAttempts) {
+            cleanup()
             reject(err)
           } else {
-            setTimeout(tick, intervalMs)
+            setTimeout(tick, pollIntervalMs(attempts, baseIntervalMs))
           }
         })
     }

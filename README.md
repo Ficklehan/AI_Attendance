@@ -84,11 +84,23 @@ chmod +x start.sh
 start.bat
 ```
 
-### 4. 访问系统
+### 4. 访问系统（本地）
 
 - 前端地址: http://localhost:5175
 - 后端 API: http://localhost:8080/attendance/api
-- 默认账号: admin / admin123（开发环境；生产请改密并关闭 `attendance.bootstrap-default-admin`）
+- 默认账号: admin / admin123（**仅 dev**；生产请改密并关闭 bootstrap）
+- 小程序本地调试: `feishu-miniprogram/config.js` → `USE_PUBLIC_API=false`
+
+### 5. 公网 / 生产
+
+```bash
+vim deploy/environments/production.yaml   # 改 public.host
+./start.sh restart-prod                   # 自动 render + 重启，无需手跑 render 命令
+```
+
+服务器密钥：`cp deploy/secrets.example deploy/secrets.env`。详见 [deploy/README.md](deploy/README.md)。
+
+小程序改域名后需重新上传飞书开发者工具（`USE_PUBLIC_API=true`）。
 
 ## 项目结构
 
@@ -99,9 +111,11 @@ start.bat
 │   ├── src/main/java/        # Spring Boot 业务代码
 │   └── src/main/resources/   # application.yml、MyBatis、canonical 提示词
 ├── frontend/                 # PC Web（Vite 端口 5175）
-├── feishu-miniprogram/       # 飞书小程序
+├── feishu-miniprogram/       # 飞书小程序（config.js 本地 + config.prod.js render）
+├── deploy/                   # 公网域名清单、render 脚本、部署说明
 ├── docs/                     # 架构、数据一致性、SOP 等
-├── start.sh / start.bat      # 启动脚本
+├── package.json              # npm run render:deploy:*
+├── start.sh / start.bat      # 启动脚本（含 render-deploy）
 └── README.md
 ```
 
@@ -163,16 +177,19 @@ mvn test
 
 | 类型 | 位置 | 文档 |
 |------|------|------|
+| **公网域名 / 飞书回调 / 小程序 API** | `deploy/environments/production.yaml` | [deploy/README.md](deploy/README.md) |
 | 密钥与数据库 | `backend/.env` 或环境变量 | 下文示例 |
 | 飞书/提示词/权限 | `base-config/` | [base-config/README.md](base-config/README.md) |
 | 识别提示词（运行时） | MySQL `recognition_prompt` | 启动时自动播种 |
 | 架构总览 | — | [docs/architecture-and-config.md](docs/architecture-and-config.md) |
+| **运维手册** | — | [docs/运维手册.md](docs/运维手册.md) |
 
-### 飞书配置（环境变量 + feishu.md）
+### 飞书配置
 
-```env
-FEISHU_APP_ID=你的飞书应用ID
-FEISHU_APP_SECRET=你的飞书应用密钥
+公网域名与飞书回调 URL 由 render 自动生成；**不要在** `backend/.env` 里写生产域名（本地 dev 除外）。
+
+```bash
+cp deploy/secrets.example deploy/secrets.env
 ```
 
 各国 Bitable Token / 字段映射在 `base-config/feishu.md` 按国家维护。  

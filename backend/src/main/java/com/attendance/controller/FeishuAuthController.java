@@ -1,13 +1,17 @@
 package com.attendance.controller;
 
 import com.attendance.common.Result;
+import com.attendance.config.FeishuCredentialsStartupValidator;
 import com.attendance.config.FeishuProperties;
+import com.attendance.dto.request.FeishuLoginExchangeRequest;
 import com.attendance.dto.request.FeishuMiniprogramLoginRequest;
 import com.attendance.dto.response.LoginResponse;
 import com.attendance.entity.User;
 import com.attendance.service.AuditLogService;
 import com.attendance.service.FeishuService;
 import com.attendance.service.UserService;
+import com.attendance.security.LoginExchangeService;
+import com.attendance.security.OAuthStateService;
 import com.alibaba.fastjson.JSON;
 import com.alibaba.fastjson.JSONObject;
 import okhttp3.MediaType;
@@ -28,7 +32,8 @@ import javax.servlet.http.HttpServletResponse;
 import javax.validation.Valid;
 import java.io.IOException;
 import java.net.URLEncoder;
-import java.util.UUID;
+import java.util.HashMap;
+import java.util.Map;
 
 @RestController
 @RequestMapping("/feishu-auth")
@@ -48,14 +53,31 @@ public class FeishuAuthController {
     @Autowired
     private FeishuService feishuService;
 
-    private final OkHttpClient httpClient = new OkHttpClient.Builder()
-            .connectTimeout(30, java.util.concurrent.TimeUnit.SECONDS)
-            .readTimeout(30, java.util.concurrent.TimeUnit.SECONDS)
-            .build();
+    @Autowired
+    private OAuthStateService oauthStateService;
+
+    @Autowired
+    private LoginExchangeService loginExchangeService;
+
+    @Autowired
+    private FeishuCredentialsStartupValidator feishuCredentialsStartupValidator;
+
+    @Autowired
+    private OkHttpClient httpClient;
+
+    @GetMapping("/readiness")
+    public Result<Map<String, Object>> readiness() {
+        Map<String, Object> body = new HashMap<>();
+        body.put("feishuConfigured", feishuCredentialsStartupValidator.isConfigured());
+        if (feishuProperties.getAppId() != null && !feishuProperties.getAppId().trim().isEmpty()) {
+            body.put("appId", FeishuCredentialsStartupValidator.maskAppId(feishuProperties.getAppId()));
+        }
+        return Result.success(body);
+    }
 
     @GetMapping("/login")
     public void login(HttpServletResponse response) throws IOException {
-        String state = UUID.randomUUID().toString();
+        String state = oauthStateService.createState();
         String redirectUri = URLEncoder.encode(feishuProperties.getRedirectUri(), "UTF-8");
         
         String url = String.format(
@@ -71,12 +93,13 @@ public class FeishuAuthController {
     @GetMapping("/callback")
     public void callback(@RequestParam("code") String code, @RequestParam("state") String state, HttpServletResponse response) throws IOException {
         log.info("飞书回调, code: {}", code);
-        
+
         try {
+            oauthStateService.validateState(state);
             String token = getAccessToken(code);
             JSONObject userInfo = getUserInfo(token);
             
-            log.info("飞书返回的完整用户信息: {}", userInfo.toJSONString());
+            log.debug("飞书返回的用户信息: open_id={}", userInfo.getString("open_id"));
             
             String feishuUserId = userInfo.getString("open_id");
             if (feishuUserId == null || feishuUserId.isEmpty()) {
@@ -105,10 +128,25 @@ public class FeishuAuthController {
             }
             
             auditLogService.log("USER_LOGIN", "user", loginResponse.getUserInfo().getId(), "飞书登录");
-            
-            String jsonData = JSON.toJSONString(loginResponse);
-            String html = generateLoginSuccessHtml(jsonData);
-            
+
+            String exchangeCode = loginExchangeService.issue(loginResponse);
+            String html = generateLoginSuccessHtml(exchangeCode);
+
+            response.setContentType("text/html;charset=UTF-8");
+            response.getWriter().write(html);
+        } catch (IllegalArgumentException e) {
+            log.error("飞书登录失败", e);
+            String html = generateErrorHtml("登录状态无效，请返回重新登录");
+            response.setContentType("text/html;charset=UTF-8");
+            response.getWriter().write(html);
+        } catch (IOException e) {
+            log.error("飞书登录失败：无法连接飞书开放平台", e);
+            String errorMessage = "无法连接飞书服务器，请检查本机网络/DNS 或代理设置后重试";
+            if (e.getCause() instanceof java.net.UnknownHostException
+                    || e instanceof java.net.UnknownHostException) {
+                errorMessage = "无法解析飞书域名 open.feishu.cn，请检查网络或 DNS 后重试";
+            }
+            String html = generateErrorHtml(errorMessage);
             response.setContentType("text/html;charset=UTF-8");
             response.getWriter().write(html);
         } catch (RuntimeException e) {
@@ -116,6 +154,8 @@ public class FeishuAuthController {
             String errorMessage = "登录失败";
             if (e.getMessage() != null && e.getMessage().contains("code has been used")) {
                 errorMessage = "授权码已过期，请返回重新登录";
+            } else if (e.getMessage() != null && e.getMessage().contains("OAuth state")) {
+                errorMessage = "登录状态无效，请返回重新登录";
             }
             String html = generateErrorHtml(errorMessage);
             response.setContentType("text/html;charset=UTF-8");
@@ -123,7 +163,18 @@ public class FeishuAuthController {
         }
     }
     
-    private String generateLoginSuccessHtml(String jsonData) {
+    @PostMapping("/exchange")
+    public Result<LoginResponse> exchangeLogin(@Valid @RequestBody FeishuLoginExchangeRequest request) {
+        LoginResponse loginResponse = loginExchangeService.consume(request.getCode());
+        if (loginResponse == null) {
+            return Result.error(401, "登录凭证无效或已过期，请重新登录");
+        }
+        return Result.success(loginResponse);
+    }
+
+    private String generateLoginSuccessHtml(String exchangeCode) throws java.io.UnsupportedEncodingException {
+        String callbackUrl = feishuProperties.getFrontendCallbackUrl();
+        String encodedCode = URLEncoder.encode(exchangeCode, "UTF-8");
         return "<!DOCTYPE html>\n" +
                "<html lang=\"zh-CN\">\n" +
                "<head>\n" +
@@ -148,17 +199,14 @@ public class FeishuAuthController {
                "        <div class=\"spinner\"></div>\n" +
                "    </div>\n" +
                "    <script>\n" +
-               "        var data = " + jsonData + ";\n" +
-               "        var params = new URLSearchParams();\n" +
-               "        params.set('token', data.token);\n" +
-               "        params.set('userInfo', JSON.stringify(data.userInfo));\n" +
-               "        window.location.href = 'http://localhost:5175/feishu/callback?' + params.toString();\n" +
+               "        window.location.href = '" + callbackUrl + "?exchange=" + encodedCode + "';\n" +
                "    </script>\n" +
                "</body>\n" +
                "</html>";
     }
     
     private String generateErrorHtml(String message) {
+        String loginUrl = feishuProperties.getFrontendLoginUrl();
         return "<!DOCTYPE html>\n" +
                "<html lang=\"zh-CN\">\n" +
                "<head>\n" +
@@ -180,7 +228,7 @@ public class FeishuAuthController {
                "        <div class=\"error-icon\">✗</div>\n" +
                "        <div class=\"title\">登录失败</div>\n" +
                "        <div class=\"message\">" + message + "</div>\n" +
-               "        <button class=\"btn\" onclick=\"window.location.href='http://localhost:5175'\">返回登录页</button>\n" +
+               "        <button class=\"btn\" onclick=\"window.location.href='" + loginUrl + "'\">返回登录页</button>\n" +
                "    </div>\n" +
                "</body>\n" +
                "</html>";
@@ -239,7 +287,7 @@ public class FeishuAuthController {
 
         if (feishuProperties.getAppId() == null || feishuProperties.getAppId().isEmpty()
                 || feishuProperties.getAppSecret() == null || feishuProperties.getAppSecret().isEmpty()) {
-            return Result.error("未配置飞书应用凭证，请在 backend/.env 设置 FEISHU_APP_ID 和 FEISHU_APP_SECRET");
+            return Result.error("飞书应用凭证未配置，请在 UAT 服务器环境变量或 backend/.env 中设置 FEISHU_APP_ID 和 FEISHU_APP_SECRET 后重启服务");
         }
 
         try {
@@ -251,7 +299,7 @@ public class FeishuAuthController {
             String employeeId = tokenData.getString("employee_id");
             
             JSONObject userInfo = getMiniprogramUserInfo(accessToken);
-            log.info("飞书小程序返回的完整用户信息: {}", userInfo.toJSONString());
+            log.debug("飞书小程序用户信息: open_id={}", userInfo.getString("open_id"));
 
             String feishuUserId = openId;
             if (feishuUserId == null || feishuUserId.isEmpty()) {

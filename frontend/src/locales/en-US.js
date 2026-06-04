@@ -624,6 +624,7 @@ export default {
     feishuUserAlreadyExists: 'Feishu user already exists',
     passwordWrong: 'Incorrect password',
     oldPasswordWrong: 'Incorrect current password',
+    recognitionConcurrentLimit: 'Too many recognition jobs in progress. Please try again shortly.',
     taskNotFound: 'Task not found',
     taskStatusCannotConfirm: 'Task status does not allow confirmation',
     feishuRetryConfirmedOnly: 'Only confirmed tasks can retry Feishu sync',

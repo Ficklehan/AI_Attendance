@@ -33,10 +33,34 @@
         WHERE task_id = #{taskId}
     </select>
 
-    <select id="selectTaskList" resultMap="BaseResultMap">
-        SELECT t.task_id, t.user_id, t.file_key, t.status, t.sync_status, t.sync_error, t.prompt_country,
-               t.raw_data, t.confirmed_data, t.image_urls, t.anomaly_summary, t.ai_raw_output, t.processed_by,
-               t.created_at, t.updated_at
+    <select id="selectTaskProgress" resultType="com.attendance.dto.response.TaskProgressDTO">
+        SELECT task_id AS taskId,
+               status,
+               sync_status AS syncStatus,
+               sync_error AS syncError,
+               ai_raw_output AS aiRawOutput,
+               COALESCE(progress_row_count, 0) AS progressRowCount,
+               anomaly_summary AS anomalySummaryRaw
+        FROM tasks
+        WHERE task_id = #{taskId}
+    </select>
+
+    <resultMap id="TaskListRowMap" type="com.attendance.entity.TaskListRow">
+        <id column="task_id" property="taskId"/>
+        <result column="user_id" property="userId"/>
+        <result column="file_key" property="fileKey"/>
+        <result column="status" property="status"/>
+        <result column="sync_status" property="syncStatus"/>
+        <result column="sync_error" property="syncError"/>
+        <result column="image_urls" property="imageUrls"/>
+        <result column="created_at" property="createdAt"/>
+        <result column="user_name" property="userName"/>
+    </resultMap>
+
+    <select id="selectTaskList" resultMap="TaskListRowMap">
+        SELECT t.task_id, t.user_id, t.file_key, t.status, t.sync_status, t.sync_error,
+               t.image_urls, t.created_at,
+               COALESCE(u.real_name, u.username, '') AS user_name
         FROM tasks t
         LEFT JOIN users u ON t.user_id = u.id
         WHERE 1=1
@@ -157,13 +181,28 @@
 
     <update id="updateTaskRawData">
         UPDATE tasks 
-        SET raw_data = #{rawData}, ai_raw_output = #{aiRawOutput}, status = 'processed', updated_at = NOW()
+        SET raw_data = #{rawData},
+            ai_raw_output = #{aiRawOutput},
+            progress_row_count = #{progressRowCount},
+            status = 'processed',
+            updated_at = NOW()
         WHERE task_id = #{taskId}
     </update>
 
     <update id="updateTaskRawDataProgress">
         UPDATE tasks
-        SET raw_data = #{rawData}, ai_raw_output = #{aiRawOutput}, updated_at = NOW()
+        SET raw_data = #{rawData},
+            ai_raw_output = #{aiRawOutput},
+            progress_row_count = #{progressRowCount},
+            updated_at = NOW()
+        WHERE task_id = #{taskId} AND status = 'processing'
+    </update>
+
+    <update id="updateTaskRecognitionProgress">
+        UPDATE tasks
+        SET progress_row_count = #{progressRowCount},
+            ai_raw_output = #{aiRawOutput},
+            updated_at = NOW()
         WHERE task_id = #{taskId} AND status = 'processing'
     </update>
 

@@ -449,6 +449,7 @@ import {
   getMissingRequiredFieldKeys,
   REQUIRED_FIELD_I18N_KEYS,
 } from '@/utils/requiredRecordFields'
+import { startAdaptivePoll } from '@/utils/adaptivePoll'
 
 const { t } = useI18n()
 const route = useRoute()
@@ -461,7 +462,7 @@ const loading = ref(false)
 const submitting = ref(false)
 const retryingSync = ref(false)
 const deleting = ref(false)
-let syncPollTimer = null
+let stopSyncPoll = null
 const records = ref([])
 const rawData = ref('')
 const showAnomalyDetail = ref(true)
@@ -508,21 +509,19 @@ const canRetrySync = computed(() =>
 )
 
 const clearSyncPoll = () => {
-  if (syncPollTimer) {
-    clearInterval(syncPollTimer)
-    syncPollTimer = null
+  if (stopSyncPoll) {
+    stopSyncPoll()
+    stopSyncPoll = null
   }
 }
 
 const startSyncPoll = () => {
   clearSyncPoll()
-  syncPollTimer = setInterval(() => {
-    if (task.value?.syncStatus !== 'pending') {
-      clearSyncPoll()
-      return
-    }
-    loadTask(true)
-  }, 3000)
+  stopSyncPoll = startAdaptivePoll(
+    () => task.value?.syncStatus === 'pending',
+    () => loadTask(true),
+    { intervalMs: 3000, maxIntervalMs: 8000 },
+  )
 }
 
 const stats = computed(() => {
@@ -765,7 +764,7 @@ const loadTask = async (silent = false) => {
     }
     rawData.value = task.value.aiRawOutput || ''
     
-    previewImagesList.value = resolveTaskImageUrls(task.value.imageUrls, task.value.fileKey)
+    previewImagesList.value = await resolveTaskImageUrls(task.value.imageUrls, task.value.fileKey)
   } catch (error) {
     message.error(t('taskEdit.loadingFailed'))
     console.error(error)

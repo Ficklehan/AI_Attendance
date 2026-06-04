@@ -7,9 +7,10 @@ import com.attendance.dto.request.ConfirmTaskRequest;
 import com.attendance.dto.request.TaskQuery;
 import com.attendance.dto.response.EmployeeRecordDTO;
 import com.attendance.dto.response.TaskListDTO;
+import com.attendance.dto.response.TaskProgressDTO;
 import com.attendance.dto.response.TaskSummaryDTO;
 import com.attendance.entity.Task;
-import com.attendance.entity.User;
+import com.attendance.entity.TaskListRow;
 import com.attendance.service.AuditLogService;
 import com.attendance.service.ConfigService;
 import com.attendance.service.TaskService;
@@ -41,14 +42,11 @@ public class TaskController {
     private AuditLogService auditLogService;
     
     @Autowired
-    private UserService userService;
-
-    @Autowired
     private ConfigService configService;
 
     @GetMapping
     public Result<PageResult<TaskListDTO>> getTaskList(TaskQuery query) {
-        List<Task> tasks = taskService.getTaskList(
+        List<TaskListRow> tasks = taskService.getTaskList(
             query.getStatus(), 
             query.getKeyword(),
             query.getSearchField(),
@@ -59,18 +57,16 @@ public class TaskController {
         long total = taskService.countTaskList(query.getStatus(), query.getKeyword(), query.getSearchField());
         
         List<TaskListDTO> records = new ArrayList<>();
-        for (Task task : tasks) {
-            String userName = null;
-            try {
-                User user = userService.getUserById(task.getUserId());
-                userName = user.getRealName() != null ? user.getRealName() : user.getUsername();
-            } catch (Exception e) {
-                log.debug("获取用户名失败: {}", e.getMessage());
-            }
-            records.add(new TaskListDTO(task, userName));
+        for (TaskListRow task : tasks) {
+            records.add(new TaskListDTO(task));
         }
         
         return Result.success(PageResult.of(records, total, query.getCurrent(), query.getSize()));
+    }
+
+    @GetMapping("/{taskId}/progress")
+    public Result<TaskProgressDTO> getTaskProgress(@PathVariable String taskId) {
+        return Result.success(taskService.getTaskProgress(taskId));
     }
 
     @GetMapping("/{taskId:^(?!records$)(?!stats$)(?!summary$).+}")

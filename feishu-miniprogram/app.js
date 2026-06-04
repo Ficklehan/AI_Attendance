@@ -1,13 +1,23 @@
 const { loadPreferences, syncCountryConfig } = require('./utils/preferences')
 const { applyTabBarI18n, setLocale, DEFAULT_LOCALE } = require('./utils/i18n')
 const { COUNTRIES } = require('./utils/countries')
-const { baseUrl } = require('./config')
+const {
+  baseUrl,
+  resolveBaseUrl,
+  USE_PUBLIC_API,
+  LOCAL_BASE_URL,
+  PUBLIC_BASE_URL,
+  clearProdApiOverrideIfLocalDev
+} = require('./config')
 
 App({
   globalData: {
     token: '',
     userInfo: null,
     baseUrl,
+    usePublicApi: USE_PUBLIC_API,
+    localBaseUrl: LOCAL_BASE_URL,
+    publicBaseUrl: PUBLIC_BASE_URL,
     currentCountry: '',
     countries: COUNTRIES,
     countryOptions: COUNTRIES,
@@ -41,6 +51,13 @@ App({
     }
 
     applyTabBarI18n()
-    console.log('飞书小程序启动')
+    clearProdApiOverrideIfLocalDev()
+    this.refreshApiBaseUrl()
+    console.log('飞书小程序启动, API:', this.globalData.baseUrl, 'usePublicApi=', USE_PUBLIC_API)
+  },
+
+  refreshApiBaseUrl: function () {
+    this.globalData.baseUrl = resolveBaseUrl()
+    return this.globalData.baseUrl
   }
 })

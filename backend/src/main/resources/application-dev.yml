@@ -24,8 +24,13 @@ logging:
     com.attendance: DEBUG
     org.springframework.web: DEBUG
 
+mybatis:
+  configuration:
+    log-impl: org.apache.ibatis.logging.stdout.StdOutImpl
+
 attendance:
   bootstrap-default-admin: true
   default-admin-username: ${DEFAULT_ADMIN_USERNAME:admin}
   default-admin-password: ${DEFAULT_ADMIN_PASSWORD:admin123}
   allow-simulated-recognition: ${ALLOW_SIMULATED_RECOGNITION:false}
+  allow-public-registration: true

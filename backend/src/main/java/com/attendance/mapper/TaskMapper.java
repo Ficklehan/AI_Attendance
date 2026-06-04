@@ -1,6 +1,8 @@
 package com.attendance.mapper;
 
+import com.attendance.dto.response.TaskProgressDTO;
 import com.attendance.entity.Task;
+import com.attendance.entity.TaskListRow;
 import org.apache.ibatis.annotations.Mapper;
 import org.apache.ibatis.annotations.Param;
 
@@ -11,17 +13,19 @@ public interface TaskMapper {
 
     Task selectTaskByTaskId(@Param("taskId") String taskId);
 
+    TaskProgressDTO selectTaskProgress(@Param("taskId") String taskId);
+
     Task selectTaskOwningFileKey(@Param("fileKey") String fileKey, @Param("userId") String userId);
 
     /** 管理员查看任意用户任务附件时使用 */
     Task selectTaskByFileKey(@Param("fileKey") String fileKey);
 
-    List<Task> selectTaskList(@Param("userId") String userId,
-                               @Param("status") String status,
-                               @Param("keyword") String keyword,
-                               @Param("keywordField") String keywordField,
-                               @Param("offset") long offset,
-                               @Param("size") long size);
+    List<TaskListRow> selectTaskList(@Param("userId") String userId,
+                                     @Param("status") String status,
+                                     @Param("keyword") String keyword,
+                                     @Param("keywordField") String keywordField,
+                                     @Param("offset") long offset,
+                                     @Param("size") long size);
 
     long countTaskList(@Param("userId") String userId,
                        @Param("status") String status,
@@ -39,11 +43,18 @@ public interface TaskMapper {
     int updateTaskStatus(@Param("taskId") String taskId, @Param("status") String status);
 
     int updateTaskRawData(@Param("taskId") String taskId, @Param("rawData") String rawData,
-                          @Param("aiRawOutput") String aiRawOutput);
+                          @Param("aiRawOutput") String aiRawOutput,
+                          @Param("progressRowCount") int progressRowCount);
 
     /** 识别进行中写入 partial raw_data，不将 status 置为 processed */
     int updateTaskRawDataProgress(@Param("taskId") String taskId, @Param("rawData") String rawData,
-                                  @Param("aiRawOutput") String aiRawOutput);
+                                  @Param("aiRawOutput") String aiRawOutput,
+                                  @Param("progressRowCount") int progressRowCount);
+
+    /** 仅更新进度计数与引擎标记，不写 raw_data */
+    int updateTaskRecognitionProgress(@Param("taskId") String taskId,
+                                      @Param("progressRowCount") int progressRowCount,
+                                      @Param("aiRawOutput") String aiRawOutput);
 
     int updateTaskConfirmedData(@Param("taskId") String taskId, @Param("confirmedData") String confirmedData);
 

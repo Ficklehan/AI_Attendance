@@ -26,6 +26,9 @@ public class FeishuSyncService {
     @Autowired
     private TaskMapper taskMapper;
 
+    @Autowired
+    private TaskRecordSyncService taskRecordSyncService;
+
     @Async
     public void syncConfirmedTask(String taskId, List<Map<String, Object>> data, String configCountry) {
         try {
@@ -126,6 +129,7 @@ public class FeishuSyncService {
         }
         String json = arr.toJSONString();
         taskMapper.updateTaskRecordPayload(taskId, json, json);
+        taskRecordSyncService.syncFromTaskId(taskId);
     }
 
     /**
@@ -168,6 +172,7 @@ public class FeishuSyncService {
         }
         String json = arr.toJSONString();
         taskMapper.updateTaskRecordPayload(taskId, json, json);
+        taskRecordSyncService.syncFromTaskId(taskId);
         log.info("已合并飞书 record_id: taskId={}, count={}", taskId, idIndex);
     }
 

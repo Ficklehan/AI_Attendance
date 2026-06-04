@@ -8,6 +8,7 @@ const authApi = {
 const taskApi = {
   getTaskList: (params) => request({ url: '/tasks', method: 'GET', data: params }),
   getTaskDetail: (taskId) => request({ url: `/tasks/${taskId}`, method: 'GET' }),
+  getTaskProgress: (taskId) => request({ url: `/tasks/${taskId}/progress`, method: 'GET' }),
   confirmTask: (taskId, data) => request({ url: `/tasks/${taskId}/confirm`, method: 'POST', data }),
   checkDuplicateNames: (taskId, records, scope) => request({
     url: `/tasks/${taskId}/duplicate-check`,

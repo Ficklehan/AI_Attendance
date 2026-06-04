@@ -1,6 +1,7 @@
 package com.attendance.controller;
 
 import com.attendance.common.Result;
+import com.attendance.security.AdminAuthService;
 import com.attendance.service.BitableService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -19,8 +20,12 @@ public class BitableController {
     @Autowired
     private BitableService bitableService;
 
+    @Autowired
+    private AdminAuthService adminAuthService;
+
     @GetMapping("/validate")
     public Result validate(@RequestParam String appToken, @RequestParam String tableId) {
+        adminAuthService.requireAdmin();
         log.info("验证飞书多维表连接: appToken={}, tableId={}", appToken, tableId);
 
         try {
@@ -43,6 +48,7 @@ public class BitableController {
 
     @PostMapping("/parse-url")
     public Result parseUrl(@RequestBody Map<String, String> request) {
+        adminAuthService.requireAdmin();
         String url = request.get("url");
 
         if (url == null || url.trim().isEmpty()) {

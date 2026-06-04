@@ -22,7 +22,7 @@ const {
 } = require('../../utils/duplicateCheck')
 
 const PAGE_SIZE = 20
-const SYNC_POLL_MS = 3000
+const { startAdaptivePoll } = require('../../utils/adaptivePoll')
 
 Page({
   data: {
@@ -226,21 +226,26 @@ Page({
   },
 
   clearSyncPoll: function () {
-    if (this._syncPollTimer) {
-      clearInterval(this._syncPollTimer)
-      this._syncPollTimer = null
+    if (this._stopSyncPoll) {
+      this._stopSyncPoll()
+      this._stopSyncPoll = null
     }
   },
 
   startSyncPoll: function () {
     this.clearSyncPoll()
-    this._syncPollTimer = setInterval(() => {
-      if (this.data.syncStatus !== 'pending') {
-        this.clearSyncPoll()
-        return
+    this._stopSyncPoll = startAdaptivePoll({
+      intervalMs: 3000,
+      shouldContinue: () => this.data.syncStatus === 'pending',
+      isPaused: () => false,
+      tick: () => {
+        if (this.data.syncStatus !== 'pending') {
+          this.clearSyncPoll()
+          return Promise.resolve()
+        }
+        return this.loadTaskResult(true)
       }
-      this.loadTaskResult(true)
-    }, SYNC_POLL_MS)
+    })
   },
 
   applySyncUi: function (task) {
@@ -313,27 +318,30 @@ Page({
           const records = parseRecords(payload)
           const engine = task.aiRawOutput || ''
           const promptCountry = engine.indexOf('mimo:') === 0 ? engine.slice(5) : (task.promptCountry || '')
-          const imageList = buildTaskImageList(task)
-          this.setData({
-            taskInfo: mapTaskDetail(task),
-            records,
-            imageList: [],
-            imagesLoading: imageList.length > 0,
-            recognitionEngine: engine,
-            recognitionEngineLabel: formatRecognitionEngine(engine, promptCountry),
-            promptCountryLabel: promptCountry ? getCountryLabel(promptCountry) : ''
-          })
-          this.loadTaskImages(imageList)
-          this.applySyncUi(task)
-          this.refreshDuplicateHints()
-          this.refreshStats()
-          if (!silent && records.length === 0 && task.status === 'processed') {
-            tt.showModal({
-              title: '无识别结果',
-              content: '任务已完成但未解析到记录，请换更清晰照片重试，或查看 PC 端同图是否正常。',
-              showCancel: false
+          const imageListPromise = buildTaskImageList(task)
+          imageListPromise.then((imageList) => {
+            this.setData({
+              taskInfo: mapTaskDetail(task, imageList),
+              records,
+              imageList: [],
+              imagesLoading: imageList.length > 0,
+              recognitionEngine: engine,
+              recognitionEngineLabel: formatRecognitionEngine(engine, promptCountry),
+              promptCountryLabel: promptCountry ? getCountryLabel(promptCountry) : ''
             })
-          }
+            this.loadTaskImages(imageList)
+            this.applySyncUi(task)
+            this.refreshDuplicateHints()
+            this.refreshStats()
+            if (!silent && records.length === 0 && task.status === 'processed') {
+              tt.showModal({
+                title: '无识别结果',
+                content: '任务已完成但未解析到记录，请换更清晰照片重试，或查看 PC 端同图是否正常。',
+                showCancel: false
+              })
+            }
+          })
+          return
         } else if (!silent) {
           tt.showToast({ title: getApiMessage(res.data, t('result.loadFail')), icon: 'none' })
         }

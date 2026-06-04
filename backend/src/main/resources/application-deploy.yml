@@ -1,0 +1,17 @@
+# 部署公共配置（由 deploy/environments/*.yaml + render 脚本生成 env 变量注入）
+# prod / uat profile 通过 spring.profiles.include 引入本文件
+# 域名与回调 URL 不在此硬编码，全部来自 render 输出的环境变量
+
+feishu:
+  redirect-uri: ${FEISHU_REDIRECT_URI}
+  frontend-callback-url: ${FEISHU_FRONTEND_CALLBACK_URL}
+  frontend-login-url: ${FEISHU_FRONTEND_LOGIN_URL}
+
+attendance:
+  bootstrap-default-admin: false
+  allow-simulated-recognition: false
+  allow-public-registration: false
+  cors:
+    allowed-origin-patterns:
+      - "${CORS_ALLOWED_ORIGIN}"
+    allow-credentials: true

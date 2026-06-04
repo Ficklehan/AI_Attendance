@@ -13,6 +13,7 @@ import { useRouter } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
 import { message } from 'ant-design-vue'
 import { setToken } from '@/utils/auth'
+import request from '@/api/index'
 
 const router = useRouter()
 const authStore = useAuthStore()
@@ -20,21 +21,27 @@ const authStore = useAuthStore()
 onMounted(async () => {
   try {
     const urlParams = new URLSearchParams(window.location.search)
-    const token = urlParams.get('token')
-    const userInfoStr = urlParams.get('userInfo')
+    const exchangeCode = urlParams.get('exchange')
 
-    if (!token || !userInfoStr) {
-      throw new Error('缺少登录信息')
+    if (!exchangeCode) {
+      throw new Error('缺少登录凭证')
     }
 
-    const userInfo = JSON.parse(userInfoStr)
+    const res = await request({
+      url: '/feishu-auth/exchange',
+      method: 'post',
+      data: { code: exchangeCode },
+    })
 
-    authStore.token = token
+    const data = res.data
+    const userInfo = data.userInfo
+
+    authStore.token = data.token
     authStore.userInfo = userInfo
-    authStore.roles = userInfo.role ? [userInfo.role] : []
+    authStore.roles = userInfo?.role ? [userInfo.role] : []
 
-    setToken(token)
-    localStorage.setItem('userInfo', userInfoStr)
+    setToken(data.token)
+    localStorage.setItem('userInfo', JSON.stringify(userInfo))
 
     message.success('飞书登录成功')
 
@@ -43,7 +50,7 @@ onMounted(async () => {
     }, 500)
   } catch (error) {
     console.error('飞书登录失败:', error)
-    message.error('登录失败: ' + error.message)
+    message.error('登录失败: ' + (error.message || '请重试'))
     setTimeout(() => {
       router.replace('/login')
     }, 1000)

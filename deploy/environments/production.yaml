@@ -1,0 +1,21 @@
+# 生产环境公网配置（唯一域名来源）
+# 改 public.host 后执行: ./start.sh restart-prod  或  ./scripts/restart-backend-prod.sh
+# 启动时会自动 render 并加载，无需手跑 npm run render:deploy
+
+name: production
+description: 生产 / 公网部署
+
+public:
+  host: uat-guanpei.eminxing.com
+  scheme: https
+
+paths:
+  # 与 server.servlet.context-path 一致
+  api_context: /attendance/api
+  # 相对 api_context 的路径段
+  feishu_oauth_callback: /feishu-auth/callback
+  # 站点根路径（PC 前端飞书登录成功页）
+  frontend_feishu_callback: /feishu/callback
+
+spring:
+  profile: prod

@@ -1,0 +1,255 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+    "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.attendance.mapper.TaskRecordMapper">
+
+    <resultMap id="TaskRecordMap" type="com.attendance.entity.TaskRecord">
+        <id column="id" property="id"/>
+        <result column="task_id" property="taskId"/>
+        <result column="user_id" property="userId"/>
+        <result column="row_key" property="rowKey"/>
+        <result column="record_index" property="recordIndex"/>
+        <result column="deleted" property="deleted"/>
+        <result column="task_status" property="taskStatus"/>
+        <result column="file_key" property="fileKey"/>
+        <result column="image_urls" property="imageUrls"/>
+        <result column="emp_no" property="empNo"/>
+        <result column="emp_name" property="empName"/>
+        <result column="base_name" property="baseName"/>
+        <result column="country" property="country"/>
+        <result column="country_key" property="countryKey"/>
+        <result column="warehouse" property="warehouse"/>
+        <result column="warehouse_key" property="warehouseKey"/>
+        <result column="work_date" property="workDate"/>
+        <result column="agency" property="agency"/>
+        <result column="agency_key" property="agencyKey"/>
+        <result column="shift" property="shift"/>
+        <result column="arrival" property="arrival"/>
+        <result column="departure" property="departure"/>
+        <result column="pause_minutes" property="pauseMinutes"/>
+        <result column="signature" property="signature"/>
+        <result column="observations" property="observations"/>
+        <result column="page_num" property="pageNum"/>
+        <result column="task_created_at" property="taskCreatedAt"/>
+        <result column="user_name" property="userName"/>
+    </resultMap>
+
+    <sql id="RecordSelectColumns">
+        tr.id, tr.task_id, tr.user_id, tr.row_key, tr.record_index, tr.deleted, tr.task_status,
+        tr.file_key, tr.image_urls, tr.emp_no, tr.emp_name, tr.base_name, tr.country, tr.country_key,
+        tr.warehouse, tr.warehouse_key, tr.work_date, tr.agency, tr.agency_key, tr.shift,
+        tr.arrival, tr.departure, tr.pause_minutes, tr.signature, tr.observations, tr.page_num,
+        tr.task_created_at,
+        COALESCE(u.real_name, u.username, '') AS user_name
+    </sql>
+
+    <sql id="RecordFromJoin">
+        FROM task_records tr
+        LEFT JOIN users u ON tr.user_id = u.id
+    </sql>
+
+    <sql id="RecordScopeWhere">
+        WHERE 1=1
+        <if test="userId != null and userId != ''">
+            AND tr.user_id = #{userId}
+        </if>
+        <if test="status != null and status != ''">
+            AND tr.task_status = #{status}
+        </if>
+    </sql>
+
+    <sql id="RecordSearchConditions">
+        <if test="conditions != null and conditions.size() > 0">
+            <foreach collection="conditions" item="cond">
+                <if test="cond.keyword != null and cond.keyword != ''">
+                    <choose>
+                        <when test="cond.field == 'taskId'">
+                            AND tr.task_id LIKE CONCAT('%', #{cond.keyword}, '%')
+                        </when>
+                        <when test="cond.field == 'fileKey'">
+                            AND tr.file_key LIKE CONCAT('%', #{cond.keyword}, '%')
+                        </when>
+                        <when test="cond.field == 'userName'">
+                            AND (u.real_name LIKE CONCAT('%', #{cond.keyword}, '%') OR u.username LIKE CONCAT('%', #{cond.keyword}, '%'))
+                        </when>
+                        <when test="cond.field == 'status'">
+                            AND tr.task_status = #{cond.keyword}
+                        </when>
+                        <when test="cond.field == 'NO'">
+                            AND tr.emp_no LIKE CONCAT('%', #{cond.keyword}, '%')
+                        </when>
+                        <when test="cond.field == 'NOM_PRENOM'">
+                            AND tr.emp_name LIKE CONCAT('%', #{cond.keyword}, '%')
+                        </when>
+                        <when test="cond.field == 'Pays'">
+                            AND tr.country LIKE CONCAT('%', #{cond.keyword}, '%')
+                        </when>
+                        <when test="cond.field == 'Entrepot'">
+                            AND tr.warehouse LIKE CONCAT('%', #{cond.keyword}, '%')
+                        </when>
+                        <when test="cond.field == 'Date'">
+                            AND tr.work_date LIKE CONCAT('%', #{cond.keyword}, '%')
+                        </when>
+                        <when test="cond.field == 'AGENCE_INTERIMAIRE'">
+                            AND tr.agency LIKE CONCAT('%', #{cond.keyword}, '%')
+                        </when>
+                        <when test="cond.field == ''">
+                            AND (
+                                tr.task_id LIKE CONCAT('%', #{cond.keyword}, '%')
+                                OR tr.file_key LIKE CONCAT('%', #{cond.keyword}, '%')
+                                OR tr.emp_no LIKE CONCAT('%', #{cond.keyword}, '%')
+                                OR tr.emp_name LIKE CONCAT('%', #{cond.keyword}, '%')
+                                OR tr.country LIKE CONCAT('%', #{cond.keyword}, '%')
+                                OR tr.warehouse LIKE CONCAT('%', #{cond.keyword}, '%')
+                                OR tr.work_date LIKE CONCAT('%', #{cond.keyword}, '%')
+                                OR tr.agency LIKE CONCAT('%', #{cond.keyword}, '%')
+                                OR u.real_name LIKE CONCAT('%', #{cond.keyword}, '%')
+                                OR u.username LIKE CONCAT('%', #{cond.keyword}, '%')
+                            )
+                        </when>
+                    </choose>
+                </if>
+            </foreach>
+        </if>
+    </sql>
+
+    <delete id="deleteByTaskId">
+        DELETE FROM task_records WHERE task_id = #{taskId}
+    </delete>
+
+    <insert id="batchInsert">
+        INSERT INTO task_records (
+            task_id, user_id, row_key, record_index, deleted, task_status, file_key, image_urls,
+            emp_no, emp_name, base_name, country, country_key, warehouse, warehouse_key, work_date,
+            agency, agency_key, shift, arrival, departure, pause_minutes, signature, observations,
+            page_num, task_created_at
+        ) VALUES
+        <foreach collection="rows" item="r" separator=",">
+            (
+                #{r.taskId}, #{r.userId}, #{r.rowKey}, #{r.recordIndex}, #{r.deleted}, #{r.taskStatus},
+                #{r.fileKey}, #{r.imageUrls}, #{r.empNo}, #{r.empName}, #{r.baseName},
+                #{r.country}, #{r.countryKey}, #{r.warehouse}, #{r.warehouseKey}, #{r.workDate},
+                #{r.agency}, #{r.agencyKey}, #{r.shift}, #{r.arrival}, #{r.departure},
+                #{r.pauseMinutes}, #{r.signature}, #{r.observations}, #{r.pageNum}, #{r.taskCreatedAt}
+            )
+        </foreach>
+    </insert>
+
+    <insert id="upsertBatch">
+        INSERT INTO task_records (
+            task_id, user_id, row_key, record_index, deleted, task_status, file_key, image_urls,
+            emp_no, emp_name, base_name, country, country_key, warehouse, warehouse_key, work_date,
+            agency, agency_key, shift, arrival, departure, pause_minutes, signature, observations,
+            page_num, task_created_at
+        ) VALUES
+        <foreach collection="rows" item="r" separator=",">
+            (
+                #{r.taskId}, #{r.userId}, #{r.rowKey}, #{r.recordIndex}, #{r.deleted}, #{r.taskStatus},
+                #{r.fileKey}, #{r.imageUrls}, #{r.empNo}, #{r.empName}, #{r.baseName},
+                #{r.country}, #{r.countryKey}, #{r.warehouse}, #{r.warehouseKey}, #{r.workDate},
+                #{r.agency}, #{r.agencyKey}, #{r.shift}, #{r.arrival}, #{r.departure},
+                #{r.pauseMinutes}, #{r.signature}, #{r.observations}, #{r.pageNum}, #{r.taskCreatedAt}
+            )
+        </foreach>
+        ON DUPLICATE KEY UPDATE
+            user_id = VALUES(user_id),
+            record_index = VALUES(record_index),
+            deleted = VALUES(deleted),
+            task_status = VALUES(task_status),
+            file_key = VALUES(file_key),
+            image_urls = VALUES(image_urls),
+            emp_no = VALUES(emp_no),
+            emp_name = VALUES(emp_name),
+            base_name = VALUES(base_name),
+            country = VALUES(country),
+            country_key = VALUES(country_key),
+            warehouse = VALUES(warehouse),
+            warehouse_key = VALUES(warehouse_key),
+            work_date = VALUES(work_date),
+            agency = VALUES(agency),
+            agency_key = VALUES(agency_key),
+            shift = VALUES(shift),
+            arrival = VALUES(arrival),
+            departure = VALUES(departure),
+            pause_minutes = VALUES(pause_minutes),
+            signature = VALUES(signature),
+            observations = VALUES(observations),
+            page_num = VALUES(page_num),
+            task_created_at = VALUES(task_created_at),
+            updated_at = CURRENT_TIMESTAMP
+    </insert>
+
+    <delete id="deleteByTaskIdExceptKeys">
+        DELETE FROM task_records WHERE task_id = #{taskId}
+        <if test="rowKeys != null and rowKeys.size() > 0">
+            AND row_key NOT IN
+            <foreach collection="rowKeys" item="k" open="(" separator="," close=")">
+                #{k}
+            </foreach>
+        </if>
+    </delete>
+
+    <select id="selectRecordPage" resultMap="TaskRecordMap">
+        SELECT <include refid="RecordSelectColumns"/>
+        <include refid="RecordFromJoin"/>
+        <include refid="RecordScopeWhere"/>
+        <include refid="RecordSearchConditions"/>
+        ORDER BY tr.task_created_at DESC, tr.record_index ASC
+        LIMIT #{offset}, #{size}
+    </select>
+
+    <select id="countRecords" resultType="long">
+        SELECT COUNT(*)
+        <include refid="RecordFromJoin"/>
+        <include refid="RecordScopeWhere"/>
+        <include refid="RecordSearchConditions"/>
+    </select>
+
+    <select id="selectForExport" resultMap="TaskRecordMap">
+        SELECT <include refid="RecordSelectColumns"/>
+        <include refid="RecordFromJoin"/>
+        <include refid="RecordScopeWhere"/>
+        <include refid="RecordSearchConditions"/>
+        ORDER BY tr.task_created_at DESC, tr.record_index ASC
+        LIMIT #{offset}, #{size}
+    </select>
+
+    <select id="selectDuplicateBaseline" resultType="map">
+        SELECT tr.task_id AS sourceTaskId,
+               tr.row_key AS rowKey,
+               tr.emp_no AS NO,
+               tr.emp_name AS NOM_PRENOM,
+               tr.base_name AS baseName,
+               tr.country_key AS paysKey,
+               tr.warehouse_key AS entrepotKey,
+               tr.work_date AS dateKey,
+               tr.agency_key AS agencyKey
+        FROM task_records tr
+        INNER JOIN tasks t ON tr.task_id = t.task_id
+        WHERE tr.task_id != #{excludeTaskId}
+          AND tr.base_name IS NOT NULL AND tr.base_name != ''
+          AND tr.work_date IS NOT NULL AND tr.work_date != ''
+          <if test="workDates != null and workDates.size() > 0">
+            AND tr.work_date IN
+            <foreach collection="workDates" item="d" open="(" separator="," close=")">
+                #{d}
+            </foreach>
+          </if>
+          <if test="baseNames != null and baseNames.size() > 0">
+            AND tr.base_name IN
+            <foreach collection="baseNames" item="b" open="(" separator="," close=")">
+                #{b}
+            </foreach>
+          </if>
+          AND t.status IN
+        <foreach collection="statuses" item="s" open="(" separator="," close=")">
+            #{s}
+        </foreach>
+        LIMIT 5000
+    </select>
+
+    <select id="countByTaskId" resultType="long">
+        SELECT COUNT(*) FROM task_records WHERE task_id = #{taskId}
+    </select>
+
+</mapper>

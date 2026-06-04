@@ -5,18 +5,23 @@ import com.attendance.common.ErrorCode;
 import com.attendance.common.ErrorKeys;
 import com.attendance.service.AIParserService;
 import com.attendance.service.ConfigService;
+import com.attendance.service.RecognitionConcurrencyGuard;
 import com.attendance.service.RecognitionRunner;
 import com.attendance.service.RecognitionSupport;
 import com.attendance.service.RecognitionTrace;
 import com.attendance.service.SimulatedRecognitionService;
 import com.attendance.service.TaskService;
 import com.attendance.service.UploadMediaSupport;
+import com.attendance.storage.FileStorage;
 import com.attendance.security.TaskAccessService;
+import com.attendance.security.ImageAccessSignatureService;
+import com.attendance.security.SecurityUtils;
 import com.attendance.util.CountryResolver;
 import com.attendance.util.ExcelExportHelper;
 import com.attendance.util.ExcelExportHelper.ExcelSheetWriter;
 import com.attendance.util.ImageUploadValidator;
 import com.attendance.util.RecordCountryDefaults;
+import com.attendance.util.UploadPathSecurity;
 import com.alibaba.fastjson.JSON;
 import com.alibaba.fastjson.JSONArray;
 import com.alibaba.fastjson.JSONObject;
@@ -38,10 +43,11 @@ import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
-import java.util.Locale;
 import java.util.ArrayList;
 import java.util.Base64;
 import java.util.List;
+import java.util.Locale;
+import java.util.Map;
 import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.concurrent.Executor;
 
@@ -73,11 +79,20 @@ public class LocalUploadController {
     private TaskAccessService taskAccessService;
 
     @Autowired
+    private ImageAccessSignatureService imageAccessSignatureService;
+
+    @Autowired
     private UploadMediaSupport uploadMediaSupport;
 
     @Autowired
     @org.springframework.beans.factory.annotation.Qualifier("recognitionExecutor")
     private Executor recognitionExecutor;
+
+    @Autowired
+    private RecognitionConcurrencyGuard recognitionConcurrencyGuard;
+
+    @Autowired
+    private FileStorage fileStorage;
 
     @Value("${server.servlet.context-path:}")
     private String servletContextPath;
@@ -151,7 +166,8 @@ public class LocalUploadController {
         emitter.onError(e -> log.error("SSE连接错误", e));
 
         SecurityContext securityContext = SecurityContextHolder.getContext();
-
+        final String recognitionUserId = taskAccessService.requireCurrentUserId();
+        recognitionConcurrencyGuard.acquire(recognitionUserId);
         recognitionExecutor.execute(() -> {
         SecurityContextHolder.setContext(securityContext);
         try {
@@ -372,6 +388,9 @@ public class LocalUploadController {
             } catch (IOException ex) {
                 log.error("错误发送失败", ex);
             }
+        } finally {
+            recognitionConcurrencyGuard.release(recognitionUserId);
+            SecurityContextHolder.clearContext();
         }
         });
 
@@ -445,6 +464,8 @@ public class LocalUploadController {
             trace.step("upload_received", uploadMeta);
 
             SecurityContext securityContext = SecurityContextHolder.getContext();
+            final String recognitionUserId = taskAccessService.requireCurrentUserId();
+            recognitionConcurrencyGuard.acquire(recognitionUserId);
             List<UploadMediaSupport.ImagePage> recognizePages = uploadMediaSupport.toRecognizablePages(
                     fileBytes, image.getOriginalFilename(), image.getContentType());
             recognitionExecutor.execute(() -> {
@@ -462,6 +483,7 @@ public class LocalUploadController {
                     trace.step("upload_failed", "message", msg);
                     taskService.failTask(taskId, msg, trace);
                 } finally {
+                    recognitionConcurrencyGuard.release(recognitionUserId);
                     SecurityContextHolder.clearContext();
                 }
             });
@@ -507,6 +529,8 @@ public class LocalUploadController {
 
         RecognitionTrace trace = new RecognitionTrace(taskId, client);
         SecurityContext securityContext = SecurityContextHolder.getContext();
+        final String recognitionUserId = taskAccessService.requireCurrentUserId();
+        recognitionConcurrencyGuard.acquire(recognitionUserId);
         recognitionExecutor.execute(() -> {
             SecurityContextHolder.setContext(securityContext);
             try {
@@ -522,6 +546,7 @@ public class LocalUploadController {
                 trace.step("upload_failed", "message", msg);
                 taskService.failTask(taskId, msg, trace);
             } finally {
+                recognitionConcurrencyGuard.release(recognitionUserId);
                 SecurityContextHolder.clearContext();
             }
         });
@@ -536,12 +561,20 @@ public class LocalUploadController {
     }
 
     @GetMapping("/image/{fileKey}")
-    public void getImage(@PathVariable String fileKey, HttpServletResponse response) throws IOException {
-        taskAccessService.requireFileAccess(fileKey);
+    public void getImage(@PathVariable String fileKey,
+                         @RequestParam(value = "exp", required = false) Long exp,
+                         @RequestParam(value = "uid", required = false) String uid,
+                         @RequestParam(value = "sig", required = false) String sig,
+                         HttpServletResponse response) throws IOException {
+        authorizeImageAccess(fileKey, exp, uid, sig);
         try {
-            Path uploadPath = Paths.get("./uploads");
-            Path filePath = uploadPath.resolve(fileKey);
-            
+            if (fileStorage.isRemote()) {
+                response.sendRedirect(fileStorage.publicAccessPath(fileKey));
+                return;
+            }
+            Path filePath = fileStorage.resolveLocalPath(fileKey)
+                    .orElseThrow(() -> new BusinessException(ErrorCode.FILE_UPLOAD_ERROR, ErrorKeys.FILE_NOT_FOUND));
+
             if (!Files.exists(filePath)) {
                 throw new BusinessException(ErrorCode.FILE_UPLOAD_ERROR, ErrorKeys.FILE_NOT_FOUND);
             }
@@ -562,6 +595,7 @@ public class LocalUploadController {
             }
             response.setContentType(contentType);
             response.setContentLength((int) file.length());
+            response.setHeader("Cache-Control", "private, max-age=86400");
 
             try (FileInputStream fis = new FileInputStream(file)) {
                 byte[] buffer = new byte[1024];
@@ -573,6 +607,27 @@ public class LocalUploadController {
         } catch (BusinessException e) {
             response.sendError(HttpServletResponse.SC_NOT_FOUND, e.getMessage());
         }
+    }
+
+    @PostMapping("/image/signatures")
+    public com.attendance.common.Result<Map<String, Map<String, Object>>> signImageUrls(
+            @RequestBody Map<String, List<String>> request) {
+        String userId = taskAccessService.requireCurrentUserId();
+        List<String> keys = request != null ? request.get("keys") : null;
+        return com.attendance.common.Result.success(imageAccessSignatureService.signAll(keys, userId));
+    }
+
+    private void authorizeImageAccess(String fileKey, Long exp, String uid, String sig) {
+        String currentUserId = SecurityUtils.getCurrentUserId();
+        if (currentUserId != null && !currentUserId.isEmpty()) {
+            taskAccessService.requireFileAccess(fileKey);
+            return;
+        }
+        if (exp == null || uid == null || sig == null) {
+            throw new BusinessException(ErrorCode.TOKEN_INVALID, ErrorKeys.LOGIN_REQUIRED);
+        }
+        imageAccessSignatureService.validate(fileKey, uid, exp, sig);
+        taskAccessService.requireFileAccessForUser(fileKey, uid);
     }
 
     @GetMapping("/export/{taskId}/xlsx")

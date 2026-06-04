@@ -17,6 +17,10 @@ import org.springframework.web.servlet.NoHandlerFoundException;
 
 import javax.validation.ConstraintViolation;
 import javax.validation.ConstraintViolationException;
+import java.io.IOException;
+import java.net.ConnectException;
+import java.net.SocketTimeoutException;
+import java.net.UnknownHostException;
 import java.sql.SQLException;
 import java.util.Collections;
 import java.util.Map;
@@ -101,8 +105,29 @@ public class GlobalExceptionHandler {
             log.error("数据库异常: {}", sql.getMessage(), e);
             return resolveDbError(sql);
         }
+        if (isNetworkException(e)) {
+            log.error("网络异常: {}", e.getMessage(), e);
+            return Result.error(503, ErrorKeys.NETWORK_ERROR);
+        }
         log.error("系统异常", e);
         return Result.error(500, ErrorKeys.SYSTEM_ERROR);
+    }
+
+    private boolean isNetworkException(Throwable e) {
+        Throwable cur = e;
+        while (cur != null) {
+            if (cur instanceof UnknownHostException
+                    || cur instanceof ConnectException
+                    || cur instanceof SocketTimeoutException) {
+                return true;
+            }
+            if (cur instanceof IOException && cur.getMessage() != null
+                    && cur.getMessage().contains("open.feishu.cn")) {
+                return true;
+            }
+            cur = cur.getCause();
+        }
+        return false;
     }
 
     private Result<Void> resolveDbError(SQLException e) {

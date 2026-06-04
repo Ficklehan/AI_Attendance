@@ -45,12 +45,19 @@ public class TaskAccessService {
     }
 
     public void requireFileAccess(String fileKey) {
-        requireCurrentUserId();
+        String userId = requireCurrentUserId();
+        requireFileAccessForUser(fileKey, userId);
+    }
+
+    public void requireFileAccessForUser(String fileKey, String userId) {
+        if (userId == null || userId.isEmpty()) {
+            throw new BusinessException(ErrorCode.TOKEN_INVALID, ErrorKeys.LOGIN_REQUIRED);
+        }
         Task task;
-        if (adminAuthService.isCurrentUserAdmin()) {
+        if (adminAuthService.isAdmin(userId)) {
             task = taskMapper.selectTaskByFileKey(fileKey);
         } else {
-            task = taskMapper.selectTaskOwningFileKey(fileKey, requireCurrentUserId());
+            task = taskMapper.selectTaskOwningFileKey(fileKey, userId);
         }
         if (task == null) {
             throw new BusinessException(ErrorCode.PERMISSION_DENIED, ErrorKeys.FILE_ACCESS_DENIED);

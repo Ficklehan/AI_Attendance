@@ -1,0 +1,38 @@
+name: Render deploy config
+
+on:
+  push:
+    paths:
+      - 'deploy/environments/**'
+      - 'scripts/render-deploy-config.mjs'
+  pull_request:
+    paths:
+      - 'deploy/environments/**'
+      - 'scripts/render-deploy-config.mjs'
+  workflow_dispatch:
+
+jobs:
+  render-check:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        env: [production, uat]
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Render ${{ matrix.env }}
+        run: node scripts/render-deploy-config.mjs --env ${{ matrix.env }}
+
+      - name: Validate snapshot
+        run: |
+          test -f deploy/rendered/${{ matrix.env }}.env
+          test -f deploy/rendered/${{ matrix.env }}.snapshot.json
+          node -e "
+            const s = require('./deploy/rendered/${{ matrix.env }}.snapshot.json');
+            if (!s.urls.PUBLIC_HOST || !s.urls.FEISHU_REDIRECT_URI) process.exit(1);
+            console.log('OK', s.urls.PUBLIC_BASE_URL);
+          "

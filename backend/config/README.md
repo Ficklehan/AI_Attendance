@@ -54,6 +54,16 @@ chmod +x backend/config/migrate_all.sh
 
 生产环境建议关闭 `bootstrap-default-admin`，并修改默认密码。
 
+## 公网部署
+
+数据库初始化后，域名与飞书回调由 `deploy/` 统一管理，见 [deploy/README.md](../../deploy/README.md)：
+
+```bash
+npm run render:deploy:all
+set -a && source deploy/rendered/production.env && source /secure/path/secrets.env && set +a
+cd backend && mvn spring-boot:run -Dspring-boot.run.profiles=prod
+```
+
 ## 表与业务含义（摘要）
 
 | 表 | 用途 |

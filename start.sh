@@ -67,8 +67,8 @@ start_backend() {
         "$PROJECT_DIR/scripts/mvn-jdk8.sh" clean compile -DskipTests
     fi
     
-    echo "启动Spring Boot应用..."
-    "$PROJECT_DIR/scripts/mvn-jdk8.sh" spring-boot:run -DskipTests &
+    echo "启动Spring Boot应用 (profile: dev)..."
+    "$PROJECT_DIR/scripts/mvn-jdk8.sh" spring-boot:run -Dspring-boot.run.profiles=dev -DskipTests &
     BACKEND_PID=$!
     
     echo "后端服务启动中 (PID: $BACKEND_PID)..."
@@ -104,16 +104,63 @@ show_usage() {
     echo "用法: ./start.sh [选项]"
     echo ""
     echo "选项:"
-    echo "  all         启动所有服务 (后端+前端)"
-    echo "  backend     仅启动后端服务"
-    echo "  frontend    仅启动前端服务"
-    echo "  init        初始化数据库"
-    echo "  help        显示帮助信息"
+    echo "  all            启动所有服务 (后端 dev + 前端)"
+    echo "  backend        仅启动后端 (profile: dev, localhost:8080)"
+    echo "  frontend       仅启动前端 (localhost:5175)"
+    echo "  init           初始化数据库"
+    echo "  render-deploy   仅渲染配置（一般不必单独执行）"
+    echo "  prod            启动生产/UAT 后端（自动 render + 加载 env）"
+    echo "  restart-prod    改域名后重启生产后端（推荐）"
+    echo "  help            显示帮助信息"
     echo ""
-    echo "示例:"
-    echo "  ./start.sh all       启动所有服务"
-    echo "  ./start.sh backend   仅启动后端"
+    echo "本地开发:"
+    echo "  ./start.sh all"
+    echo "  ./scripts/use-local-dev.sh   # 仅后端 dev（不加载生产域名 env）"
+    echo "  小程序 config.js 设 USE_PUBLIC_API=false"
     echo ""
+    echo "公网 / 生产（改域名只需两步）:"
+    echo "  1. 改 deploy/environments/production.yaml 的 public.host"
+    echo "  2. ./start.sh restart-prod"
+    echo "  密钥放在 deploy/secrets.env（参考 deploy/secrets.example）"
+    echo "  小程序: USE_PUBLIC_API=true，改域名后需重新上传飞书开发者工具"
+    echo ""
+}
+
+render_deploy() {
+    echo ""
+    echo ">>> 渲染部署配置..."
+    if ! command -v node &> /dev/null; then
+        echo "错误: 需要 Node.js 运行 render 脚本"
+        exit 1
+    fi
+    node "$PROJECT_DIR/scripts/render-deploy-config.mjs" --env production
+    node "$PROJECT_DIR/scripts/render-deploy-config.mjs" --env uat
+    echo ""
+    echo "已生成:"
+    echo "  deploy/rendered/production.env"
+    echo "  deploy/rendered/uat.env"
+    echo "  feishu-miniprogram/config.prod.js"
+}
+
+start_backend_prod() {
+    check_java
+    check_maven
+    echo ""
+    echo ">>> 启动生产/UAT 后端（自动 render + 加载 env）..."
+    bash "$PROJECT_DIR/scripts/start-backend-prod.sh" &
+    BACKEND_PID=$!
+    echo "后端服务启动中 (PID: $BACKEND_PID)..."
+    echo "改域名后: ./start.sh restart-prod"
+}
+
+restart_backend_prod() {
+    check_java
+    check_maven
+    echo ""
+    bash "$PROJECT_DIR/scripts/restart-backend-prod.sh" &
+    BACKEND_PID=$!
+    echo "后端已重启 (PID: $BACKEND_PID)..."
+    wait
 }
 
 case "${1:-all}" in
@@ -141,6 +188,16 @@ case "${1:-all}" in
         ;;
     init)
         init_database
+        ;;
+    render-deploy|deploy-render)
+        render_deploy
+        ;;
+    prod|backend-prod)
+        start_backend_prod
+        wait
+        ;;
+    restart-prod|restart)
+        restart_backend_prod
         ;;
     help|--help|-h)
         show_usage

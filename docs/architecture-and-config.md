@@ -74,7 +74,8 @@ flowchart TB
 | `DB_HOST` / `DB_PORT` / `DB_NAME` / `DB_USER` / `DB_PASSWORD` | MySQL 连接 |
 | `JWT_SECRET` | JWT 签名（生产必须修改） |
 | `FEISHU_APP_ID` / `FEISHU_APP_SECRET` | 飞书应用 |
-| `FEISHU_REDIRECT_URI` | OAuth 回调，默认 `http://localhost:8080/attendance/api/feishu-auth/callback` |
+| **公网域名 / 飞书回调 / CORS** | **`deploy/environments/production.yaml`** → `node scripts/render-deploy-config.mjs` → `deploy/rendered/*.env` | [deploy/README.md](../deploy/README.md) |
+| `FEISHU_REDIRECT_URI` 等（本地 dev） | OAuth 回调，默认 `http://localhost:8080/attendance/api/feishu-auth/callback` |
 | `MIMO_API_KEY` / `MIMO_MODEL` | 识图 API |
 | `BITABLE_APP_TOKEN` / `BITABLE_TABLE_ID` | 可选全局默认（多国以 `feishu.md` 为准） |
 
@@ -118,13 +119,24 @@ flowchart TB
 
 ### 3.1 首次部署 checklist
 
+**本地开发**
+
 1. 安装 JDK 8（仅 Java 8）、Maven、Node 18+、MySQL 8+。
 2. 执行 `backend/config/init.sql`（见 [backend/config/README.md](../backend/config/README.md)）。
-3. 配置 `backend/.env`（可复制团队模板；仓库内若有 `.env.example` 以对齐键名）。
+3. 配置 `backend/.env`（参考 `backend/.env.example`）。
 4. 按需编辑 `base-config/feishu.md`、`permissions.json`。
-5. 启动后端：`cd backend && mvn spring-boot:run`（或 `./start.sh backend`）。
-6. 启动前端：`cd frontend && npm run dev` → http://localhost:5175/
-7. 使用 `admin` / `admin123` 登录（生产务必改密并关闭 bootstrap）。
+5. 启动：`./start.sh all` 或 `start.bat`（Windows）。
+6. 小程序：`feishu-miniprogram/config.js` → `USE_PUBLIC_API=false`。
+7. 使用 `admin` / `admin123` 登录（**仅 dev**）。
+
+**公网 / 生产 / 手机测试**
+
+1. 编辑 `deploy/environments/production.yaml` 的 `public.host`（唯一域名来源）。
+2. `npm run render:deploy:all` 或 `./start.sh render-deploy`。
+3. 服务器：`source deploy/rendered/production.env` + secrets（见 [deploy/README.md](../deploy/README.md)）。
+4. 启动后端：`SPRING_PROFILES_ACTIVE=prod`（或 `uat`）。
+5. 飞书开放平台配置重定向 URL 与 request 合法域名（与 rendered env 一致）。
+6. 小程序：`USE_PUBLIC_API=true`，上传飞书开发者工具。
 
 ### 3.2 应用启动自举（Java）
 
@@ -138,8 +150,8 @@ flowchart TB
 
 | 脚本 | 说明 |
 |------|------|
-| `start.sh` | Linux/macOS：`all` / `backend` / `frontend` / `init` |
-| `start.bat` | Windows 同等能力（若存在） |
+| `start.sh` | Linux/macOS：`all` / `backend` / `frontend` / `init` / `render-deploy` |
+| `start.bat` | Windows：启动 dev + 前端；`render-deploy` 渲染公网配置 |
 
 前端开发端口以 `frontend/vite.config.js` 为准（**5175**，`strictPort: true`）。开发时代理将 `/attendance/api` 转发到 `http://localhost:8080`。
 
@@ -183,7 +195,8 @@ AttendanceAgent/
 │       ├── application-dev.yml
 │       └── canonical/prompts.md
 ├── frontend/              # PC，端口 5175
-├── feishu-miniprogram/    # 小程序 config.js → API 基址
+├── feishu-miniprogram/    # 小程序 config.js（本地）+ config.prod.js（render 生成）
+├── deploy/                # 公网域名清单与 render 脚本，见 deploy/README.md
 ├── docs/
 │   ├── architecture-and-config.md  # 本文
 │   └── data-consistency.md

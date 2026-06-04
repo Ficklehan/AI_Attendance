@@ -4,11 +4,15 @@ import com.attendance.common.BusinessException;
 import com.attendance.common.ErrorCode;
 import com.attendance.common.ErrorKeys;
 import com.attendance.entity.Task;
+import com.attendance.entity.TaskListRow;
+import com.attendance.entity.TaskRecord;
 import com.attendance.entity.User;
 import com.attendance.dto.request.TaskQuery;
 import com.attendance.dto.response.EmployeeRecordDTO;
+import com.attendance.dto.response.TaskProgressDTO;
 import com.attendance.dto.response.TaskSummaryDTO;
 import com.attendance.mapper.TaskMapper;
+import com.attendance.mapper.TaskRecordMapper;
 import com.attendance.security.AdminAuthService;
 import com.attendance.security.SecurityUtils;
 import com.attendance.util.ExcelExportHelper;
@@ -17,6 +21,8 @@ import com.attendance.mapper.UserMapper;
 import com.attendance.security.TaskAccessService;
 import com.attendance.util.RecordConfirmValidator;
 import com.attendance.util.RecordNoGenerator;
+import com.attendance.storage.FileStorage;
+import com.attendance.util.UploadPathSecurity;
 import com.alibaba.fastjson.JSON;
 import com.alibaba.fastjson.JSONArray;
 import com.alibaba.fastjson.JSONObject;
@@ -66,6 +72,15 @@ public class TaskService {
 
     @Autowired
     private PermissionService permissionService;
+
+    @Autowired
+    private TaskRecordMapper taskRecordMapper;
+
+    @Autowired
+    private TaskRecordSyncService taskRecordSyncService;
+
+    @Autowired
+    private FileStorage fileStorage;
 
     private static final String[] CALIBRATABLE_FIELDS = {
             "NO", "Pays", "Entrepot", "NOM_PRENOM", "AGENCE_INTERIMAIRE", "HORAIRES_DU_TRAVAIL",
@@ -198,7 +213,7 @@ public class TaskService {
         return taskAccessService.requireOwnedTask(taskId);
     }
 
-    public List<Task> getTaskList(String status, String keyword, String searchField, long offset, long size) {
+    public List<TaskListRow> getTaskList(String status, String keyword, String searchField, long offset, long size) {
         String userId = resolveListScopeUserId();
         return taskMapper.selectTaskList(userId, status, keyword, searchField, offset, size);
     }
@@ -220,15 +235,58 @@ public class TaskService {
             summary.put("recognitionTrace", recognitionTrace.toJson());
             taskMapper.updateTaskAnomalySummary(taskId, summary.toJSONString());
         }
-        taskMapper.updateTaskRawData(taskId, rawData, aiRawOutput);
-        log.info("更新任务AI解析结果: taskId={}, recordCount={}",
-                taskId, rawData != null ? JSON.parseArray(rawData).size() : 0);
+        int rowCount = countJsonArrayRows(rawData);
+        taskMapper.updateTaskRawData(taskId, rawData, aiRawOutput, rowCount);
+        log.info("更新任务AI解析结果: taskId={}, recordCount={}", taskId, rowCount);
+        taskRecordSyncService.syncFromTaskId(taskId);
     }
 
-    /** 异步识别过程中周期性写入，便于小程序轮询展示条数 */
+    /** 仅更新识别进度计数（轮询轻量接口数据源） */
+    @Transactional
+    public void updateTaskRecognitionProgress(String taskId, int rowCount, String engineTag) {
+        taskMapper.updateTaskRecognitionProgress(taskId, rowCount, engineTag);
+    }
+
+    /**
+     * 识别进行中周期性写入全量 raw_data（降频调用），并更新 progress_row_count。
+     */
     @Transactional
     public void updateTaskRawDataProgress(String taskId, String rawData, String aiRawOutput) {
-        taskMapper.updateTaskRawDataProgress(taskId, rawData, aiRawOutput);
+        int rowCount = countJsonArrayRows(rawData);
+        taskMapper.updateTaskRawDataProgress(taskId, rawData, aiRawOutput, rowCount);
+    }
+
+    public TaskProgressDTO getTaskProgress(String taskId) {
+        taskAccessService.requireOwnedTask(taskId);
+        TaskProgressDTO dto = taskMapper.selectTaskProgress(taskId);
+        if (dto == null) {
+            throw new BusinessException(ErrorCode.TASK_NOT_FOUND, ErrorKeys.TASK_NOT_FOUND);
+        }
+        String summary = dto.getAnomalySummaryRaw();
+        dto.setAnomalySummaryRaw(null);
+        if (summary != null && !summary.trim().isEmpty()) {
+            try {
+                JSONObject obj = JSON.parseObject(summary);
+                if (obj != null && obj.getString("error") != null) {
+                    dto.setProgressError(obj.getString("error"));
+                }
+            } catch (Exception ignored) {
+                // ignore
+            }
+        }
+        return dto;
+    }
+
+    private static int countJsonArrayRows(String rawData) {
+        if (rawData == null || rawData.trim().isEmpty()) {
+            return 0;
+        }
+        try {
+            JSONArray arr = JSON.parseArray(rawData);
+            return arr != null ? arr.size() : 0;
+        } catch (Exception e) {
+            return 0;
+        }
     }
 
     @Transactional
@@ -245,6 +303,7 @@ public class TaskService {
         }
         taskMapper.updateTaskAnomalySummary(taskId, summary.toJSONString());
         taskMapper.updateTaskStatus(taskId, "failed");
+        taskRecordSyncService.syncFromTaskId(taskId);
         log.warn("任务识别失败: taskId={}, error={}", taskId, errorMessage);
     }
 
@@ -335,6 +394,7 @@ public class TaskService {
         taskMapper.updateTaskAnomalySummary(taskId, summary.toJSONString());
         taskMapper.updateTaskSyncStatus(taskId, "pending", null);
         log.info("任务确认成功: taskId={}, recordCount={}", taskId, data.size());
+        taskRecordSyncService.syncFromTaskId(taskId);
 
         String feishuCountry = resolveConfirmCountry(countryCode, task);
         log.info("飞书同步国家: requestCountry={}, taskPromptCountry={}, headerCountry={}",
@@ -386,7 +446,9 @@ public class TaskService {
 
     @Transactional
     public void updateTaskImageUrls(String taskId, List<String> imageUrls) {
-        taskMapper.updateTaskImageUrls(taskId, JSON.toJSONString(imageUrls));
+        List<String> safeKeys = UploadPathSecurity.validateFileKeys(imageUrls);
+        taskMapper.updateTaskImageUrls(taskId, JSON.toJSONString(safeKeys));
+        taskRecordSyncService.syncFromTaskId(taskId);
     }
 
     public List<String> parseImageUrlList(Task task) {
@@ -429,23 +491,18 @@ public class TaskService {
             throw new BusinessException(ErrorCode.FILE_UPLOAD_ERROR, ErrorKeys.IMAGE_INVALID);
         }
         taskAccessService.requireFileAccess(fileKey.trim());
-        Path base = Paths.get("./uploads").toAbsolutePath().normalize();
-        Path file = base.resolve(fileKey.trim()).normalize();
-        if (!file.startsWith(base)) {
-            throw new BusinessException(ErrorCode.FILE_UPLOAD_ERROR, ErrorKeys.INVALID_FILE_PATH);
-        }
-        if (!Files.exists(file)) {
+        if (!fileStorage.exists(fileKey.trim())) {
             throw new BusinessException(ErrorCode.FILE_UPLOAD_ERROR, ErrorKeys.FILE_NOT_FOUND,
                     Collections.singletonMap("fileKey", fileKey));
         }
-        return Files.readAllBytes(file);
+        return fileStorage.readBytes(fileKey.trim());
     }
 
     @Transactional
     public void prepareTaskForRecognition(String taskId) {
         taskAccessService.requireOwnedTask(taskId);
         taskMapper.updateTaskStatus(taskId, "processing");
-        taskMapper.updateTaskRawDataProgress(taskId, "[]", "mimo");
+        taskMapper.updateTaskRawDataProgress(taskId, "[]", "mimo", 0);
     }
 
     @Transactional
@@ -460,6 +517,7 @@ public class TaskService {
             throw new BusinessException(ErrorCode.TASK_STATUS_ERROR, ErrorKeys.CONFIRMED_TASK_CANNOT_DELETE);
         }
         deleteTaskUploadFiles(task);
+        taskRecordSyncService.deleteByTaskId(taskId);
         taskMapper.deleteTaskByTaskId(taskId);
         log.info("删除任务: taskId={}", taskId);
     }
@@ -468,21 +526,16 @@ public class TaskService {
         if (task == null) {
             return;
         }
-        Path base = Paths.get("./uploads").toAbsolutePath().normalize();
         for (String fileKey : parseImageUrlList(task)) {
             if (fileKey == null || fileKey.trim().isEmpty()) {
                 continue;
             }
             try {
-                Path file = base.resolve(fileKey.trim()).normalize();
-                if (!file.startsWith(base)) {
-                    log.warn("跳过非法图片路径: taskId={}, fileKey={}", task.getTaskId(), fileKey);
-                    continue;
-                }
-                if (Files.deleteIfExists(file)) {
+                if (fileStorage.exists(fileKey.trim())) {
+                    fileStorage.delete(fileKey.trim());
                     log.info("删除任务图片: taskId={}, fileKey={}", task.getTaskId(), fileKey);
                 }
-            } catch (IOException e) {
+            } catch (Exception e) {
                 log.warn("删除任务图片失败: taskId={}, fileKey={}", task.getTaskId(), fileKey, e);
             }
         }
@@ -555,6 +608,7 @@ public class TaskService {
 
         String json = records.toJSONString();
         taskMapper.updateTaskRecordPayload(taskId, json, json);
+        taskRecordSyncService.syncFromTaskId(taskId);
 
         Map<String, Object> result = new HashMap<>();
         result.put("rowKey", rowKey);
@@ -624,6 +678,7 @@ public class TaskService {
         }
 
         taskMapper.updateTaskStatus(taskId, "cancelled");
+        taskRecordSyncService.syncFromTaskId(taskId);
         log.info("作废任务: taskId={}", taskId);
     }
 
@@ -643,169 +698,44 @@ public class TaskService {
 
     public List<EmployeeRecordDTO> getEmployeeRecordList(String status, String keyword, String searchField, String filters, long offset, long size) {
         String userId = resolveListScopeUserId();
-        List<Task> tasks = taskMapper.selectTasksForRecordView(userId, status);
-        List<EmployeeRecordDTO> all = collectEmployeeRecords(tasks, keyword, searchField, filters);
-        int from = Math.max(0, (int) offset);
-        int to = Math.min(all.size(), from + Math.max(0, (int) size));
-        if (from >= to) {
-            return new ArrayList<>();
+        List<Map<String, String>> conditions = parseFilters(searchField, keyword, filters);
+        List<TaskRecord> rows = taskRecordMapper.selectRecordPage(userId, status, conditions, offset, size);
+        List<EmployeeRecordDTO> result = new ArrayList<>();
+        for (TaskRecord row : rows) {
+            result.add(toEmployeeRecord(row));
         }
-        return all.subList(from, to);
+        return result;
     }
 
     public long countEmployeeRecordList(String status, String keyword, String searchField, String filters) {
         String userId = resolveListScopeUserId();
-        List<Task> tasks = taskMapper.selectTasksForRecordView(userId, status);
-        return collectEmployeeRecords(tasks, keyword, searchField, filters).size();
+        List<Map<String, String>> conditions = parseFilters(searchField, keyword, filters);
+        return taskRecordMapper.countRecords(userId, status, conditions);
     }
 
-    private List<EmployeeRecordDTO> collectEmployeeRecords(List<Task> tasks, String keyword, String searchField, String filters) {
-        List<EmployeeRecordDTO> all = new ArrayList<>();
-        List<Map<String, String>> conditionList = parseFilters(searchField, keyword, filters);
-        Map<String, String> userNameCache = new HashMap<>();
-        for (Task task : tasks) {
-            String payload = task.getConfirmedData();
-            if (isBlank(payload)) {
-                payload = task.getRawData();
-            }
-            if (isBlank(payload)) {
-                continue;
-            }
-            JSONArray rows;
-            try {
-                rows = JSON.parseArray(payload);
-            } catch (Exception e) {
-                log.warn("解析任务记录失败，跳过 taskId={}", task.getTaskId(), e);
-                continue;
-            }
-            if (rows == null || rows.isEmpty()) {
-                continue;
-            }
-            for (int i = 0; i < rows.size(); i++) {
-                JSONObject row = rows.getJSONObject(i);
-                if (row == null) {
-                    continue;
-                }
-                EmployeeRecordDTO dto = toEmployeeRecord(task, row, userNameCache);
-                if (matchesEmployeeSearch(dto, conditionList)) {
-                    all.add(dto);
-                }
-            }
-        }
-        return all;
-    }
-
-    private EmployeeRecordDTO toEmployeeRecord(Task task, Map<String, Object> row, Map<String, String> userNameCache) {
+    private EmployeeRecordDTO toEmployeeRecord(TaskRecord row) {
         EmployeeRecordDTO dto = new EmployeeRecordDTO();
-        dto.setTaskId(task.getTaskId());
-        dto.setFileKey(task.getFileKey());
-        dto.setUserName(resolveUserName(task.getUserId(), userNameCache));
-        dto.setTaskStatus(task.getStatus());
-        dto.setRecordStatus(task.getStatus());
-        dto.setImageUrls(task.getImageUrls());
-        dto.setNo(pick(row, "NO", "No", "no"));
-        dto.setName(pick(row, "NOM_PRENOM", "NOM", "NAME"));
-        dto.setCountry(pick(row, "Pays", "Country", "PAYS"));
-        dto.setWarehouse(pick(row, "Entrepot", "Entrepôt", "Warehouse"));
-        dto.setDate(pick(row, "Date", "DATE"));
-        dto.setAgency(pick(row, "AGENCE_INTERIMAIRE", "AGENCE", "Agency"));
-        dto.setShift(pick(row, "HORAIRES_DU_TRAVAIL", "SHIFT", "Shift"));
-        dto.setArrival(pick(row, "ARRIVEE", "ARRIVE", "ARRIVAL"));
-        dto.setDeparture(pick(row, "DEPAR", "DEPART", "DEPARTURE"));
-        dto.setPauseMinutes(pick(row, "PAUSE", "PAUS", "Break"));
-        dto.setSignature(pick(row, "SIGNATURE", "CHECKER", "Signature"));
-        dto.setObservations(pick(row, "Observations", "OBSERVATIONS", "Remarks"));
-        dto.setPageNum(pick(row, "PAGE_NUM", "PageNum", "pageNum", "页码"));
-        dto.setCreatedAt(task.getCreatedAt() == null ? "" : task.getCreatedAt().toString());
+        dto.setTaskId(row.getTaskId());
+        dto.setFileKey(row.getFileKey());
+        dto.setUserName(row.getUserName());
+        dto.setTaskStatus(row.getTaskStatus());
+        dto.setRecordStatus(row.getTaskStatus());
+        dto.setImageUrls(row.getImageUrls());
+        dto.setNo(row.getEmpNo());
+        dto.setName(row.getEmpName());
+        dto.setCountry(row.getCountry());
+        dto.setWarehouse(row.getWarehouse());
+        dto.setDate(row.getWorkDate());
+        dto.setAgency(row.getAgency());
+        dto.setShift(row.getShift());
+        dto.setArrival(row.getArrival());
+        dto.setDeparture(row.getDeparture());
+        dto.setPauseMinutes(row.getPauseMinutes());
+        dto.setSignature(row.getSignature());
+        dto.setObservations(row.getObservations());
+        dto.setPageNum(row.getPageNum());
+        dto.setCreatedAt(row.getTaskCreatedAt() == null ? "" : row.getTaskCreatedAt().toString());
         return dto;
-    }
-
-    private boolean matchesEmployeeSearch(EmployeeRecordDTO dto, List<Map<String, String>> conditionList) {
-        if (conditionList == null || conditionList.isEmpty()) {
-            return true;
-        }
-        for (Map<String, String> cond : conditionList) {
-            String field = cond.get("field");
-            String needle = cond.get("keyword");
-            if (isBlank(needle)) {
-                continue;
-            }
-            String value = isBlank(field) ? allFieldValue(dto) : fieldValue(dto, field);
-            if (!value.toLowerCase(Locale.ROOT).contains(needle.toLowerCase(Locale.ROOT))) {
-                return false;
-            }
-        }
-        return true;
-    }
-
-    private String allFieldValue(EmployeeRecordDTO dto) {
-        return String.join(" ",
-                nullToEmpty(dto.getTaskId()),
-                nullToEmpty(dto.getFileKey()),
-                nullToEmpty(dto.getUserName()),
-                nullToEmpty(dto.getTaskStatus()),
-                nullToEmpty(dto.getCreatedAt()),
-                nullToEmpty(dto.getNo()),
-                nullToEmpty(dto.getName()),
-                nullToEmpty(dto.getCountry()),
-                nullToEmpty(dto.getWarehouse()),
-                nullToEmpty(dto.getDate()),
-                nullToEmpty(dto.getAgency()),
-                nullToEmpty(dto.getShift()),
-                nullToEmpty(dto.getArrival()),
-                nullToEmpty(dto.getDeparture()),
-                nullToEmpty(dto.getPauseMinutes()),
-                nullToEmpty(dto.getSignature()),
-                nullToEmpty(dto.getObservations()),
-                nullToEmpty(dto.getPageNum())
-        );
-    }
-
-    private String fieldValue(EmployeeRecordDTO dto, String field) {
-        switch (field) {
-            case "taskId":
-                return nullToEmpty(dto.getTaskId());
-            case "fileKey":
-                return nullToEmpty(dto.getFileKey());
-            case "userName":
-                return nullToEmpty(dto.getUserName());
-            case "status":
-                return nullToEmpty(dto.getTaskStatus());
-            case "createdAt":
-                return nullToEmpty(dto.getCreatedAt());
-            case "NO":
-                return nullToEmpty(dto.getNo());
-            case "NOM_PRENOM":
-                return nullToEmpty(dto.getName());
-            case "Pays":
-                return nullToEmpty(dto.getCountry());
-            case "Entrepot":
-                return nullToEmpty(dto.getWarehouse());
-            case "Date":
-                return nullToEmpty(dto.getDate());
-            case "AGENCE_INTERIMAIRE":
-                return nullToEmpty(dto.getAgency());
-            case "HORAIRES_DU_TRAVAIL":
-                return nullToEmpty(dto.getShift());
-            case "ARRIVEE":
-                return nullToEmpty(dto.getArrival());
-            case "DEPAR":
-                return nullToEmpty(dto.getDeparture());
-            case "PAUSE":
-                return nullToEmpty(dto.getPauseMinutes());
-            case "SIGNATURE":
-                return nullToEmpty(dto.getSignature());
-            case "Observations":
-                return nullToEmpty(dto.getObservations());
-            case "PAGE_NUM":
-                return nullToEmpty(dto.getPageNum());
-            default:
-                return "";
-        }
-    }
-
-    private String nullToEmpty(String v) {
-        return v == null ? "" : v;
     }
 
     private List<Map<String, String>> parseFilters(String searchField, String keyword, String filters) {
@@ -839,43 +769,25 @@ public class TaskService {
         return list;
     }
 
-    private String resolveUserName(String userId, Map<String, String> cache) {
-        if (isBlank(userId)) return "";
-        if (cache.containsKey(userId)) return cache.get(userId);
-        String name = userId;
-        try {
-            User user = userMapper.selectUserById(userId);
-            if (user != null) {
-                name = !isBlank(user.getRealName()) ? user.getRealName() : nullToEmpty(user.getUsername());
-            }
-        } catch (Exception e) {
-            log.debug("获取用户名称失败 userId={}", userId, e);
-        }
-        cache.put(userId, name);
-        return name;
-    }
-
     public long exportTaskListToExcel(String userId, String status, String keyword, String searchField,
                                       ExcelSheetWriter writer) throws IOException {
         writer.writeHeader("任务ID", "文件名", "状态", "飞书同步", "同步错误", "操作人", "创建时间");
         long count = 0;
         int offset = 0;
         final int batchSize = 500;
-        Map<String, String> userCache = new HashMap<>();
         while (true) {
-            List<Task> tasks = taskMapper.selectTaskList(userId, status, keyword, searchField, offset, batchSize);
+            List<TaskListRow> tasks = taskMapper.selectTaskList(userId, status, keyword, searchField, offset, batchSize);
             if (tasks == null || tasks.isEmpty()) {
                 break;
             }
-            for (Task task : tasks) {
-                String userName = resolveUserName(task.getUserId(), userCache);
+            for (TaskListRow task : tasks) {
                 writer.writeRow(
                         ExcelExportHelper.cell(task.getTaskId()),
                         ExcelExportHelper.cell(task.getFileKey()),
                         ExcelExportHelper.cell(task.getStatus()),
                         ExcelExportHelper.cell(task.getSyncStatus()),
                         ExcelExportHelper.cell(task.getSyncError()),
-                        ExcelExportHelper.cell(userName),
+                        ExcelExportHelper.cell(task.getUserName()),
                         ExcelExportHelper.cell(task.getCreatedAt()));
                 count++;
             }
@@ -891,37 +803,17 @@ public class TaskService {
                                              String filters, ExcelSheetWriter writer) throws IOException {
         writer.writeHeader("任务ID", "操作人", "任务状态", "创建时间", "页码", "工号", "姓名", "国家", "仓库", "日期",
                 "中介机构", "班次", "到达", "离开", "休息(分钟)", "签名", "备注", "文件名");
-        List<Task> tasks = taskMapper.selectTasksForRecordView(userId, status);
         List<Map<String, String>> conditionList = parseFilters(searchField, keyword, filters);
-        Map<String, String> userNameCache = new HashMap<>();
         long count = 0;
-        for (Task task : tasks) {
-            String payload = task.getConfirmedData();
-            if (isBlank(payload)) {
-                payload = task.getRawData();
-            }
-            if (isBlank(payload)) {
-                continue;
-            }
-            JSONArray rows;
-            try {
-                rows = JSON.parseArray(payload);
-            } catch (Exception e) {
-                log.warn("导出时解析任务记录失败，跳过 taskId={}", task.getTaskId(), e);
-                continue;
-            }
+        int offset = 0;
+        final int batchSize = 500;
+        while (true) {
+            List<TaskRecord> rows = taskRecordMapper.selectForExport(userId, status, conditionList, offset, batchSize);
             if (rows == null || rows.isEmpty()) {
-                continue;
+                break;
             }
-            for (int i = 0; i < rows.size(); i++) {
-                JSONObject row = rows.getJSONObject(i);
-                if (row == null) {
-                    continue;
-                }
-                EmployeeRecordDTO dto = toEmployeeRecord(task, row, userNameCache);
-                if (!matchesEmployeeSearch(dto, conditionList)) {
-                    continue;
-                }
+            for (TaskRecord row : rows) {
+                EmployeeRecordDTO dto = toEmployeeRecord(row);
                 writer.writeRow(
                         ExcelExportHelper.cell(dto.getTaskId()),
                         ExcelExportHelper.cell(dto.getUserName()),
@@ -942,6 +834,10 @@ public class TaskService {
                         ExcelExportHelper.cell(dto.getObservations()),
                         ExcelExportHelper.cell(dto.getFileKey()));
                 count++;
+            }
+            offset += rows.size();
+            if (rows.size() < batchSize) {
+                break;
             }
         }
         return count;
@@ -966,21 +862,29 @@ public class TaskService {
             statuses.add("processing");
         }
 
-        List<Task> confirmedTasks = taskMapper.selectTasksForDuplicateByStatuses(taskId, statuses);
-        List<Map<String, Object>> baseline = new ArrayList<>();
-        for (Task t : confirmedTasks) {
-            try {
-                JSONArray arr = JSON.parseArray(t.getConfirmedData());
-                if (arr == null) continue;
-                for (int i = 0; i < arr.size(); i++) {
-                    JSONObject row = arr.getJSONObject(i);
-                    if (row == null) continue;
-                    baseline.add(toComparableRow(row, t.getTaskId()));
+        List<String> workDates = new ArrayList<>();
+        List<String> baseNames = new ArrayList<>();
+        for (Map<String, Object> current : currentRecords) {
+            Map<String, Object> normalized = toComparableRow(current, taskId);
+            if (!isBlank((String) normalized.get("dateKey"))) {
+                String d = (String) normalized.get("dateKey");
+                if (!workDates.contains(d)) {
+                    workDates.add(d);
                 }
-            } catch (Exception e) {
-                log.warn("解析确认数据失败，跳过 taskId={}", t.getTaskId(), e);
+            }
+            if (!isBlank((String) normalized.get("baseName"))) {
+                String b = (String) normalized.get("baseName");
+                if (!baseNames.contains(b)) {
+                    baseNames.add(b);
+                }
             }
         }
+        if (workDates.isEmpty()) {
+            result.put("duplicates", hits);
+            return result;
+        }
+        List<Map<String, Object>> baseline = taskRecordMapper.selectDuplicateBaseline(
+                taskId, statuses, workDates, baseNames);
 
         for (int i = 0; i < currentRecords.size(); i++) {
             Map<String, Object> current = currentRecords.get(i);

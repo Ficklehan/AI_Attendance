@@ -24,7 +24,6 @@ mybatis:
   type-aliases-package: com.attendance.entity
   configuration:
     map-underscore-to-camel-case: true
-    log-impl: org.apache.ibatis.logging.stdout.StdOutImpl
 
 jwt:
   secret: ${JWT_SECRET:}
@@ -44,6 +43,8 @@ feishu:
   encryption-key: ${FEISHU_ENCRYPT_KEY:}
   verification-token: ${FEISHU_VERIFICATION_TOKEN:}
   redirect-uri: ${FEISHU_REDIRECT_URI:http://localhost:8080/attendance/api/feishu-auth/callback}
+  frontend-callback-url: ${FEISHU_FRONTEND_CALLBACK_URL:http://localhost:5175/feishu/callback}
+  frontend-login-url: ${FEISHU_FRONTEND_LOGIN_URL:http://localhost:5175}
   bitable:
     app-token: ${BITABLE_APP_TOKEN:}
     table-id: ${BITABLE_TABLE_ID:}
@@ -52,6 +53,24 @@ attendance:
   upload:
     pdf-max-pages: 30
     pdf-render-dpi: 200
+  recognition:
+    max-per-user: 2
+  performance:
+    slow-sql-ms: 500
+    slow-api-ms: 800
+  storage:
+    type: local
+    local-path: ./uploads
+    oss-endpoint: ${OSS_ENDPOINT:}
+    oss-bucket: ${OSS_BUCKET:}
+    oss-access-key-id: ${OSS_ACCESS_KEY_ID:}
+    oss-access-key-secret: ${OSS_ACCESS_KEY_SECRET:}
+    oss-key-prefix: ${OSS_KEY_PREFIX:}
+    oss-public-base-url: ${OSS_PUBLIC_BASE_URL:}
+  cors:
+    allowed-origin-patterns:
+      - "*"
+    allow-credentials: true
   prompt:
     # 内置标准模板版本；升级表头/字段后递增，启动时会刷新未自定义的国家提示词
     seed-version: 4

@@ -306,8 +306,8 @@ const openTask = (taskId) => {
   router.push(`/tasks/${taskId}`)
 }
 
-const previewImages = (record) => {
-  const urls = resolveTaskImageUrls(record.imageUrls, record.fileKey)
+const previewImages = async (record) => {
+  const urls = await resolveTaskImageUrls(record.imageUrls, record.fileKey)
   if (!urls.length) {
     message.warning(t('tasks.noImages'))
     return

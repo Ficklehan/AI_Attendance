@@ -23,10 +23,8 @@ public class FeishuService {
     @Autowired
     private FeishuProperties feishuProperties;
 
-    private final OkHttpClient httpClient = new OkHttpClient.Builder()
-            .connectTimeout(30, java.util.concurrent.TimeUnit.SECONDS)
-            .readTimeout(30, java.util.concurrent.TimeUnit.SECONDS)
-            .build();
+    @Autowired
+    private OkHttpClient httpClient;
 
     private String accessToken;
     private long tokenExpireTime;

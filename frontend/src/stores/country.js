@@ -1,5 +1,6 @@
 import { defineStore } from 'pinia'
 import request from '@/api/index'
+import { useAuthStore } from '@/stores/auth'
 import { getCachedWorkingCountry, setCachedWorkingCountry } from '@/utils/countryHeader'
 import { COUNTRY_FLAG_FALLBACK, DEFAULT_COUNTRY_FLAG, resolveCountryFlag } from '@/utils/countryCatalog'
 import { buildCountrySelectOption, formatCountryLabel, translateCountryName } from '@/utils/countryLabels'
@@ -94,11 +95,14 @@ export const useCountryStore = defineStore('country', {
 
     async setWorkingCountry(country) {
       const code = country || 'default'
-      await request({
-        url: '/config/current-country',
-        method: 'put',
-        data: { country: code },
-      })
+      const authStore = useAuthStore()
+      if (authStore.isAdmin) {
+        await request({
+          url: '/config/current-country',
+          method: 'put',
+          data: { country: code },
+        })
+      }
       this.workingCountry = code
       setCachedWorkingCountry(code)
       await this.loadBundle(code)

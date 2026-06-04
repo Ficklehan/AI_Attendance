@@ -38,7 +38,6 @@ public class SecurityConfig {
             .authorizeRequests(auth -> auth
                 .antMatchers("/auth/**").permitAll()
                 .antMatchers("/feishu-auth/**").permitAll()
-                .antMatchers("/uploads/**").permitAll()
                 .antMatchers("/config/current-country", "/config/country-options").permitAll()
                 .anyRequest().authenticated()
             )

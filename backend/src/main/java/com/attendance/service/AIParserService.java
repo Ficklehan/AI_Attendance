@@ -7,6 +7,7 @@ import com.attendance.common.BusinessException;
 import com.attendance.common.ErrorKeys;
 import com.attendance.common.ErrorCode;
 import com.attendance.config.MimoProperties;
+import com.attendance.storage.FileStorage;
 import com.attendance.service.MarkdownConfigService;
 import com.attendance.util.PageNumberNormalizer;
 import com.attendance.util.RecordCountryDefaults;
@@ -18,9 +19,6 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
 import java.io.*;
-import java.nio.file.Files;
-import java.nio.file.Path;
-import java.nio.file.Paths;
 import java.text.SimpleDateFormat;
 import java.util.*;
 import java.util.concurrent.TimeUnit;
@@ -32,8 +30,6 @@ import java.util.Locale;
 public class AIParserService {
 
     private static final Logger log = LoggerFactory.getLogger(AIParserService.class);
-    private static final String UPLOAD_DIR = "./uploads";
-    private static final Pattern UPLOAD_SERIAL_PATTERN = Pattern.compile("^(\\d{8})_(\\d{4})\\.[^.]+$");
     @Autowired
     private MimoProperties mimoProperties;
 
@@ -45,6 +41,9 @@ public class AIParserService {
 
     @Autowired
     private RecognitionQualityGuard recognitionQualityGuard;
+
+    @Autowired
+    private FileStorage fileStorage;
 
     private final OkHttpClient client = new OkHttpClient.Builder()
             .connectTimeout(60, TimeUnit.SECONDS)
@@ -58,10 +57,6 @@ public class AIParserService {
     private final ThreadLocal<String> workingCountryForPays = new ThreadLocal<>();
     private volatile String lastPromptSection = "";
 
-    private final Object uploadNameLock = new Object();
-    private String uploadSerialDate = "";
-    private int uploadSerialCounter = 0;
-
     public interface ParseCallback {
         void onRecord(JSONObject record);
         void onComplete(int totalCount);
@@ -69,83 +64,9 @@ public class AIParserService {
     }
 
     public String saveUploadedFile(byte[] fileBytes, String originalFilename) throws IOException {
-        File dir = new File(UPLOAD_DIR);
-        if (!dir.exists()) {
-            dir.mkdirs();
-        }
-
-        String ext = resolveUploadExtension(originalFilename);
-        String filename = allocateUploadFilename(ext);
-
-        Path filePath = Paths.get(UPLOAD_DIR, filename);
-        Files.write(filePath, fileBytes);
-        log.info("上传图片已保存: {}", filename);
-
+        String filename = fileStorage.save(fileBytes, originalFilename);
+        log.info("上传图片已保存: {} (remote={})", filename, fileStorage.isRemote());
         return filename;
-    }
-
-    private String allocateUploadFilename(String ext) throws IOException {
-        String datePrefix = new SimpleDateFormat("yyyyMMdd").format(new Date());
-        synchronized (uploadNameLock) {
-            if (!datePrefix.equals(uploadSerialDate)) {
-                uploadSerialDate = datePrefix;
-                uploadSerialCounter = scanMaxUploadSerialForDate(datePrefix);
-            }
-            while (uploadSerialCounter >= 9999) {
-                throw new IOException("当日上传流水号已达上限（9999）");
-            }
-            uploadSerialCounter++;
-            String filename = String.format(Locale.ROOT, "%s_%04d%s", datePrefix, uploadSerialCounter, ext);
-            Path target = Paths.get(UPLOAD_DIR, filename);
-            if (Files.exists(target)) {
-                uploadSerialCounter = scanMaxUploadSerialForDate(datePrefix);
-                uploadSerialCounter++;
-                filename = String.format(Locale.ROOT, "%s_%04d%s", datePrefix, uploadSerialCounter, ext);
-                target = Paths.get(UPLOAD_DIR, filename);
-                if (Files.exists(target)) {
-                    throw new IOException("上传文件名冲突: " + filename);
-                }
-            }
-            return filename;
-        }
-    }
-
-    private int scanMaxUploadSerialForDate(String datePrefix) {
-        File dir = new File(UPLOAD_DIR);
-        if (!dir.isDirectory()) {
-            return 0;
-        }
-        File[] files = dir.listFiles();
-        if (files == null) {
-            return 0;
-        }
-        int max = 0;
-        for (File file : files) {
-            Matcher matcher = UPLOAD_SERIAL_PATTERN.matcher(file.getName());
-            if (!matcher.matches() || !datePrefix.equals(matcher.group(1))) {
-                continue;
-            }
-            int serial = Integer.parseInt(matcher.group(2));
-            if (serial > max) {
-                max = serial;
-            }
-        }
-        return max;
-    }
-
-    private String resolveUploadExtension(String originalFilename) {
-        if (originalFilename == null || originalFilename.trim().isEmpty()) {
-            return ".jpg";
-        }
-        int dot = originalFilename.lastIndexOf('.');
-        if (dot < 0 || dot >= originalFilename.length() - 1) {
-            return ".jpg";
-        }
-        String ext = originalFilename.substring(dot).toLowerCase(Locale.ROOT);
-        if (ext.length() > 8 || ext.contains("/") || ext.contains("\\")) {
-            return ".jpg";
-        }
-        return ext;
     }
 
     public void parseImageStreamByLine(String base64Image, ParseCallback callback) {

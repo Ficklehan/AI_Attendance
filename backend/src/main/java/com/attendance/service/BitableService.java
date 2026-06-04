@@ -27,10 +27,8 @@ public class BitableService {
     @Autowired
     private ConfigService configService;
 
-    private final OkHttpClient httpClient = new OkHttpClient.Builder()
-            .connectTimeout(30, java.util.concurrent.TimeUnit.SECONDS)
-            .readTimeout(60, java.util.concurrent.TimeUnit.SECONDS)
-            .build();
+    @Autowired
+    private OkHttpClient httpClient;
 
     private String getAccessToken() throws IOException {
         JSONObject body = new JSONObject();

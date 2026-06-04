@@ -1,0 +1,23 @@
+# 本地开发参考（不经过 render；实际使用 backend/.env + feishu-miniprogram/config.js USE_PUBLIC_API=false）
+
+name: local
+description: 本机开发
+
+public:
+  host: localhost
+  scheme: http
+
+paths:
+  api_context: /attendance/api
+  feishu_oauth_callback: /feishu-auth/callback
+  frontend_feishu_callback: /feishu/callback
+
+frontend:
+  dev_port: 5175
+  login_url: http://localhost:5175
+
+backend:
+  port: 8080
+
+spring:
+  profile: dev

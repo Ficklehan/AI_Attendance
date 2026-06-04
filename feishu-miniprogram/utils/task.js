@@ -1,5 +1,5 @@
 const { t } = require('./i18n')
-const { buildTaskImageList, withAuthToken, toAbsoluteImageUrl } = require('./imageUrl')
+const { buildTaskImageList } = require('./imageUrl')
 const { appendSyncToStatusText, syncStatusMeta } = require('./syncStatus')
 
 function getAppSafe() {
@@ -148,15 +148,13 @@ function buildDisplayRecords(records, maxCount) {
   return buildDisplayRecordsRich(records, maxCount)
 }
 
-function mapTaskDetail(task) {
+function mapTaskDetail(task, images) {
   const status = task.status || ''
   const syncStatus = task.syncStatus || 'none'
   const meta = statusMeta(status)
   const statusText = appendSyncToStatusText(meta.text, status, syncStatus)
-  const app = getAppSafe()
-  const base = (app && app.globalData.baseUrl) || ''
-  const images = buildTaskImageList(task)
-  const imageUrl = images.length > 0 ? images[0].url : toAbsoluteImageUrl(task.fileKey, base)
+  const imageItems = images || []
+  const imageUrl = imageItems.length > 0 ? imageItems[0].url : ''
   return {
     name: shortenName(task.fileKey, task.taskId),
     status,
@@ -167,7 +165,7 @@ function mapTaskDetail(task) {
     createTime: task.createdAt,
     timeText: formatTime(task.createdAt),
     originalImage: imageUrl,
-    imageCount: images.length
+    imageCount: imageItems.length
   }
 }
 

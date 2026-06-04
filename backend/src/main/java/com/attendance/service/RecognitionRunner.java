@@ -34,7 +34,8 @@ public class RecognitionRunner {
     @Autowired
     private UploadMediaSupport uploadMediaSupport;
 
-    private static final int PROGRESS_FLUSH_EVERY = 5;
+    private static final int PROGRESS_COUNT_EVERY = 3;
+    private static final int FULL_RAW_FLUSH_EVERY = 20;
     public static final int RECOGNITION_TIMEOUT_SECONDS = 300;
 
     public static class RecognitionOutcome {
@@ -199,7 +200,7 @@ public class RecognitionRunner {
                         row.put("Date", record.getString("Date"));
                         trace.step("backend_parsed_record", row);
                     }
-                    if (progressTaskId != null && records.size() % PROGRESS_FLUSH_EVERY == 0) {
+                    if (progressTaskId != null && records.size() % PROGRESS_COUNT_EVERY == 0) {
                         flushProgress(progressTaskId, records, engineTag);
                     }
                 }
@@ -334,10 +335,17 @@ public class RecognitionRunner {
     }
 
     private void flushProgress(String taskId, List<JSONObject> records, String engineTag) {
+        if (taskId == null || records == null) {
+            return;
+        }
         try {
-            JSONArray arr = new JSONArray();
-            arr.addAll(records);
-            taskService.updateTaskRawDataProgress(taskId, arr.toJSONString(), engineTag);
+            int size = records.size();
+            taskService.updateTaskRecognitionProgress(taskId, size, engineTag);
+            if (size > 0 && size % FULL_RAW_FLUSH_EVERY == 0) {
+                JSONArray arr = new JSONArray();
+                arr.addAll(records);
+                taskService.updateTaskRawDataProgress(taskId, arr.toJSONString(), engineTag);
+            }
         } catch (Exception e) {
             log.warn("识别进度写入失败: taskId={}", taskId, e);
         }

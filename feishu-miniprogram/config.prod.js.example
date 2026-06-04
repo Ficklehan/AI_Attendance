@@ -1,0 +1,11 @@
+/**
+ * 示例：由 scripts/render-deploy-config.mjs 生成的 config.prod.js 结构
+ * 真机/公网请运行 render 脚本，勿手改本文件
+ */
+module.exports = {
+  PUBLIC_HOST: 'uat-guanpei.eminxing.com',
+  PUBLIC_ORIGIN: 'https://uat-guanpei.eminxing.com',
+  PUBLIC_BASE_URL: 'https://uat-guanpei.eminxing.com/attendance/api',
+  DEPLOY_ENV: 'production',
+  SPRING_PROFILE: 'prod'
+}

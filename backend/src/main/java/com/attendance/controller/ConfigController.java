@@ -100,6 +100,7 @@ public class ConfigController {
     
     @PutMapping("/current-country")
     public Result<Void> setCurrentCountry(@RequestBody Map<String, String> request) {
+        requireAdmin();
         String country = request.get("country");
         if (country == null || country.trim().isEmpty()) {
             return Result.error(400, "国家不能为空");
@@ -128,7 +129,11 @@ public class ConfigController {
     @GetMapping("/country-bundle")
     public Result<CountryConfigBundle> getCountryBundle(
             @RequestParam(required = false, defaultValue = "default") String country) {
-        return Result.success(configService.getCountryConfigBundle(country));
+        CountryConfigBundle bundle = configService.getCountryConfigBundle(country);
+        if (adminAuthService.isCurrentUserAdmin()) {
+            return Result.success(bundle);
+        }
+        return Result.success(bundle.toPublicSummary());
     }
     
     @GetMapping("/ai-prompt")

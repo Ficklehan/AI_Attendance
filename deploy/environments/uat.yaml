@@ -1,0 +1,10 @@
+# UAT：域名/路径继承 production.yaml，仅 spring.profile 不同
+# 用法: node scripts/render-deploy-config.mjs --env uat
+
+inherit: production
+
+name: uat
+description: UAT 部署
+
+spring:
+  profile: uat

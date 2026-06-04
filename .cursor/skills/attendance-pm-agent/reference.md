@@ -16,9 +16,15 @@
 
 ## Environment Variables
 
+**Local dev:** `backend/.env`
+
+**Production / UAT:** `deploy/environments/production.yaml` → `npm run render:deploy` → `deploy/rendered/*.env` + secrets (see `deploy/README.md`)
+
 ```env
+# Secrets (server only, see deploy/secrets.example)
 FEISHU_APP_ID=
 FEISHU_APP_SECRET=
+JWT_SECRET=
 MIMO_API_KEY=
 MIMO_API_URL=https://api.xiaomimimo.com/v1
 MIMO_MODEL=mimo-v2.5
@@ -37,3 +43,4 @@ MIMO_MODEL=mimo-v2.5
 - [ ] i18n keys added for all supported locales
 - [ ] Feishu field mapping validated per country
 - [ ] Admin permission matrix still accurate
+- [ ] Deploy manifest rendered (`npm run render:deploy:all`) if public host changed

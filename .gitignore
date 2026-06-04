@@ -39,6 +39,9 @@ backend/logs/**
 backend/uploads/
 backend/uploads/**
 
+backend/exports/
+backend/exports/**
+
 # --- 前端 ---
 frontend/node_modules/
 frontend/dist/
@@ -52,6 +55,13 @@ pnpm-debug.log*
 # --- 飞书小程序 ---
 feishu-miniprogram/node_modules/
 miniprogram_npm/
+feishu-miniprogram/config.prod.js
+
+deploy/secrets.env
+
+# --- 部署渲染产物（由 scripts/render-deploy-config.mjs 生成）---
+deploy/rendered/*
+!deploy/rendered/*.example
 
 # --- 临时文件 ---
 *.tmp

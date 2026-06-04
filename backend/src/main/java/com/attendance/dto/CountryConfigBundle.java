@@ -107,4 +107,16 @@ public class CountryConfigBundle {
     public void setFeishuFromGlobalFallback(boolean feishuFromGlobalFallback) {
         this.feishuFromGlobalFallback = feishuFromGlobalFallback;
     }
+
+    /** Safe summary for non-admin clients: no tokens, prompts, or field mappings. */
+    public CountryConfigBundle toPublicSummary() {
+        CountryConfigBundle summary = new CountryConfigBundle();
+        summary.setRequestCountry(requestCountry);
+        summary.setEffectivePromptCountry(effectivePromptCountry);
+        summary.setEffectiveFeishuCountry(effectiveFeishuCountry);
+        summary.setPromptSection(promptSection);
+        summary.setPromptFromGlobalFallback(promptFromGlobalFallback);
+        summary.setFeishuFromGlobalFallback(feishuFromGlobalFallback);
+        return summary;
+    }
 }

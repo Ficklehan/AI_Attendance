@@ -1,5 +1,13 @@
 @echo off
 chcp 65001 > nul
+setlocal
+
+if /i "%~1"=="help" goto :usage
+if /i "%~1"=="--help" goto :usage
+if /i "%~1"=="-h" goto :usage
+if /i "%~1"=="render-deploy" goto :render_deploy
+if /i "%~1"=="deploy-render" goto :render_deploy
+
 echo ======================================
 echo   AI考勤智能助手 - 启动脚本 (Windows)
 echo ======================================
@@ -37,11 +45,11 @@ if /i "%INIT_DB%"=="y" (
 )
 
 echo.
-echo [3/4] 启动后端服务...
+echo [3/4] 启动后端服务 (profile: dev)...
 
 cd /d %PROJECT_DIR%backend
 echo 正在启动Spring Boot...
-start "Backend" cmd /k "mvn spring-boot:run -DskipTests"
+start "Backend" cmd /k "mvn spring-boot:run -Dspring-boot.run.profiles=dev -DskipTests"
 
 cd /d %PROJECT_DIR%
 
@@ -66,6 +74,39 @@ echo ======================================
 echo.
 echo 后端: http://localhost:8080/attendance/api
 echo 前端: http://localhost:5175
+echo 小程序本地: feishu-miniprogram\config.js USE_PUBLIC_API=false
+echo.
+echo 公网部署: start.bat render-deploy  详见 deploy\README.md
 echo.
 echo 按任意键退出...
 pause > nul
+exit /b 0
+
+:render_deploy
+set PROJECT_DIR=%~dp0
+cd /d %PROJECT_DIR%
+where node > nul 2>&1
+if %ERRORLEVEL% neq 0 (
+    echo 错误: 需要 Node.js 运行 render 脚本
+    pause
+    exit /b 1
+)
+echo 渲染部署配置...
+node "%PROJECT_DIR%scripts\render-deploy-config.mjs" --env production
+node "%PROJECT_DIR%scripts\render-deploy-config.mjs" --env uat
+echo.
+echo 已生成 deploy\rendered\*.env 与 feishu-miniprogram\config.prod.js
+pause
+exit /b 0
+
+:usage
+echo.
+echo 用法: start.bat [选项]
+echo.
+echo   (无参数)        启动后端 dev + 前端
+echo   render-deploy   渲染公网配置 (production + uat)
+echo   help            显示帮助
+echo.
+echo 公网部署详见 deploy\README.md
+pause
+exit /b 0

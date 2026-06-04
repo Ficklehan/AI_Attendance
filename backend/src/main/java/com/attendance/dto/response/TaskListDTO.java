@@ -1,6 +1,7 @@
 package com.attendance.dto.response;
 
 import com.attendance.entity.Task;
+import com.attendance.entity.TaskListRow;
 import java.time.LocalDateTime;
 
 public class TaskListDTO {
@@ -24,6 +25,20 @@ public class TaskListDTO {
         this.imageUrls = task.getImageUrls();
         this.userName = userName;
         this.createdAt = task.getCreatedAt();
+    }
+
+    public TaskListDTO(TaskListRow row) {
+        if (row == null) {
+            return;
+        }
+        this.taskId = row.getTaskId();
+        this.fileKey = row.getFileKey();
+        this.status = row.getStatus();
+        this.syncStatus = row.getSyncStatus();
+        this.syncError = row.getSyncError();
+        this.imageUrls = row.getImageUrls();
+        this.userName = row.getUserName();
+        this.createdAt = row.getCreatedAt();
     }
 
     public String getTaskId() {
