@@ -1,0 +1,32 @@
+# 生产 Nginx 片段（放入 server_name uat-guanpei.eminxing.com 的 server {}）
+# 修改 alias 路径为实际部署目录后: nginx -t && nginx -s reload
+
+# --- 兜底：旧 OAuth 跳转、浏览器默认 favicon（消除控制台 404）---
+location = /feishu/callback {
+    return 302 /attendance/feishu/callback$is_args$args;
+}
+
+location = /favicon.ico {
+    return 302 /attendance/favicon.svg;
+}
+
+# --- 后端 API ---
+location /attendance/api/ {
+    proxy_pass http://127.0.0.1:8080/attendance/api/;
+    proxy_set_header Host $host;
+    proxy_set_header X-Real-IP $remote_addr;
+    proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+    proxy_set_header X-Forwarded-Proto $scheme;
+    client_max_body_size 20m;
+}
+
+# --- PC 前端（Vite base=/attendance/，需先 npm run build）---
+location /attendance/ {
+    alias /opt/AttendanceAgent/frontend/dist/;
+    try_files $uri $uri/ /attendance/index.html;
+}
+
+# 可选：根路径跳到前端
+location = / {
+    return 302 /attendance/;
+}
