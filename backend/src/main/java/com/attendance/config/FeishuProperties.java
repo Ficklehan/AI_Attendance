@@ -11,8 +11,8 @@ public class FeishuProperties {
     private String encryptionKey;
     private String verificationToken;
     private String redirectUri;
-    private String frontendCallbackUrl = "http://localhost:5175/feishu/callback";
-    private String frontendLoginUrl = "http://localhost:5175";
+    private String frontendCallbackUrl = "http://localhost:5175/attendance/feishu/callback";
+    private String frontendLoginUrl = "http://localhost:5175/attendance/";
 
     public String getAppId() {
         return appId;

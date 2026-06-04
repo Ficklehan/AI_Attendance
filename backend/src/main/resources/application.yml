@@ -46,8 +46,8 @@ feishu:
   encryption-key: ${FEISHU_ENCRYPT_KEY:}
   verification-token: ${FEISHU_VERIFICATION_TOKEN:}
   redirect-uri: ${FEISHU_REDIRECT_URI:http://localhost:8080/attendance/api/feishu-auth/callback}
-  frontend-callback-url: ${FEISHU_FRONTEND_CALLBACK_URL:http://localhost:5175/feishu/callback}
-  frontend-login-url: ${FEISHU_FRONTEND_LOGIN_URL:http://localhost:5175}
+  frontend-callback-url: ${FEISHU_FRONTEND_CALLBACK_URL:http://localhost:5175/attendance/feishu/callback}
+  frontend-login-url: ${FEISHU_FRONTEND_LOGIN_URL:http://localhost:5175/attendance/}
   bitable:
     app-token: ${BITABLE_APP_TOKEN:}
     table-id: ${BITABLE_TABLE_ID:}

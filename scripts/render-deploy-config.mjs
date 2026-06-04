@@ -90,6 +90,25 @@ function joinUrl(origin, ...segments) {
   return url
 }
 
+/** Join URL path segments (no origin), e.g. /attendance + feishu/callback */
+function joinPath(...segments) {
+  let path = ''
+  for (const segment of segments) {
+    const part = String(segment || '').replace(/^\/+|\/+$/g, '')
+    if (part) path += '/' + part
+  }
+  return path || '/'
+}
+
+function resolveFrontendPath(manifest, segment) {
+  const raw = String(segment || '').trim()
+  if (raw.startsWith('/')) {
+    return raw
+  }
+  const webBase = (manifest.paths && manifest.paths.frontend_web_base) || '/attendance'
+  return joinPath(webBase, raw)
+}
+
 function deriveUrls(manifest) {
   const host = manifest.public.host
   const scheme = manifest.public.scheme || 'https'
@@ -97,7 +116,16 @@ function deriveUrls(manifest) {
   const apiContext = manifest.paths.api_context || '/attendance/api'
   const apiBaseUrl = joinUrl(origin, apiContext)
   const feishuOAuthSuffix = manifest.paths.feishu_oauth_callback || '/feishu-auth/callback'
-  const frontendFeishuCallbackPath = manifest.paths.frontend_feishu_callback || '/feishu/callback'
+  const frontendFeishuCallbackPath = resolveFrontendPath(
+    manifest,
+    manifest.paths.frontend_feishu_callback || 'feishu/callback'
+  )
+  const frontendLoginPath = resolveFrontendPath(
+    manifest,
+    manifest.paths.frontend_login != null && manifest.paths.frontend_login !== ''
+      ? manifest.paths.frontend_login
+      : (manifest.paths && manifest.paths.frontend_web_base) || 'attendance'
+  )
 
   return {
     PUBLIC_HOST: host,
@@ -107,7 +135,7 @@ function deriveUrls(manifest) {
     API_CONTEXT_PATH: apiContext.startsWith('/') ? apiContext : `/${apiContext}`,
     FEISHU_REDIRECT_URI: joinUrl(apiBaseUrl, feishuOAuthSuffix),
     FEISHU_FRONTEND_CALLBACK_URL: joinUrl(origin, frontendFeishuCallbackPath),
-    FEISHU_FRONTEND_LOGIN_URL: origin,
+    FEISHU_FRONTEND_LOGIN_URL: joinUrl(origin, frontendLoginPath),
     SPRING_PROFILES_ACTIVE: (manifest.spring && manifest.spring.profile) || 'prod',
     CORS_ALLOWED_ORIGIN: origin
   }

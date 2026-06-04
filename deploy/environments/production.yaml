@@ -14,8 +14,11 @@ paths:
   api_context: /attendance/api
   # 相对 api_context 的路径段
   feishu_oauth_callback: /feishu-auth/callback
-  # 站点根路径（PC 前端飞书登录成功页）
-  frontend_feishu_callback: /feishu/callback
+  # PC 前端 Vite base（与 frontend/vite.config.js base 一致）
+  frontend_web_base: /attendance
+  # 相对 frontend_web_base 的路由（Vue Router /feishu/callback）
+  frontend_feishu_callback: feishu/callback
+  frontend_login: ""
 
 spring:
   profile: prod
