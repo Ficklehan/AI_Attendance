@@ -1,6 +1,6 @@
 {
+  "navigationStyle": "custom",
   "navigationBarTitleText": "拍照识别",
-  "navigationBarBackgroundColor": "#ffffff",
-  "navigationBarTextStyle": "black",
-  "backgroundColor": "#f8fafc"
+  "backgroundColor": "#080E1C",
+  "disableScroll": true
 }

@@ -1,4 +1,5 @@
 const { request } = require('./request')
+const { getApiData } = require('./response')
 
 function getAppSafe() {
   try {
@@ -11,6 +12,22 @@ function getAppSafe() {
 function getApiBase() {
   const app = getAppSafe()
   return (app && app.globalData.baseUrl) || ''
+}
+
+function getDownloadHeaders() {
+  const app = getAppSafe()
+  const token = (app && app.globalData.token) || ''
+  if (!token) {
+    return {}
+  }
+  return { Authorization: `Bearer ${token}` }
+}
+
+function hasSignatureQuery(url) {
+  if (!url || typeof url !== 'string') {
+    return false
+  }
+  return url.indexOf('sig=') !== -1 && url.indexOf('exp=') !== -1
 }
 
 function normalizeImageKey(value) {
@@ -75,7 +92,7 @@ function fetchImageSignatures(keys) {
     url: '/local/image/signatures',
     method: 'POST',
     data: { keys }
-  }).then((res) => (res && res.data) || {}).catch((err) => {
+  }).then((res) => getApiData(res) || {}).catch((err) => {
     console.warn('image signatures failed', err)
     return {}
   })
@@ -125,28 +142,68 @@ function formatImageFileName(key) {
   return parts[parts.length - 1] || normalized
 }
 
+function refreshImageUrl(item) {
+  return fetchImageSignatures([item.key]).then((signatures) => {
+    const url = toAbsoluteImageUrl(item.key, getApiBase(), signatures[item.key])
+    return { ...item, url: url || item.url }
+  })
+}
+
+function downloadImageItem(item, allowRetry) {
+  return new Promise((resolve) => {
+    if (!item.url) {
+      resolve({ ...item, displayUrl: '' })
+      return
+    }
+
+    const runDownload = (target, canRetry) => {
+      tt.downloadFile({
+        url: target.url,
+        header: getDownloadHeaders(),
+        success: (res) => {
+          if (res.statusCode === 401 && canRetry) {
+            refreshImageUrl(target)
+              .then((fresh) => downloadImageItem(fresh, false).then(resolve))
+              .catch(() => resolve({ ...target, displayUrl: target.url }))
+            return
+          }
+          const displayUrl = res.statusCode === 200 && res.tempFilePath
+            ? res.tempFilePath
+            : target.url
+          if (res.statusCode !== 200) {
+            console.warn('image download bad status', target.key, res.statusCode)
+          }
+          resolve({ ...target, displayUrl })
+        },
+        fail: (err) => {
+          const status = err && err.statusCode
+          if (status === 401 && canRetry) {
+            refreshImageUrl(target)
+              .then((fresh) => downloadImageItem(fresh, false).then(resolve))
+              .catch(() => resolve({ ...target, displayUrl: target.url }))
+            return
+          }
+          console.warn('image download failed', target.key, err)
+          resolve({ ...target, displayUrl: target.url })
+        }
+      })
+    }
+
+    if (!hasSignatureQuery(item.url) && allowRetry) {
+      refreshImageUrl(item).then((fresh) => runDownload(fresh, true)).catch(() => runDownload(item, true))
+      return
+    }
+
+    runDownload(item, allowRetry)
+  })
+}
+
 function prepareLocalImages(imageList) {
   const list = imageList || []
   if (!list.length) {
     return Promise.resolve([])
   }
-  return Promise.all(
-    list.map((item) => new Promise((resolve) => {
-      tt.downloadFile({
-        url: item.url,
-        success: (res) => {
-          const displayUrl = res.statusCode === 200 && res.tempFilePath
-            ? res.tempFilePath
-            : item.url
-          resolve({ ...item, displayUrl })
-        },
-        fail: (err) => {
-          console.warn('image download failed', item.key, err)
-          resolve({ ...item, displayUrl: item.url })
-        }
-      })
-    }))
-  )
+  return Promise.all(list.map((item) => downloadImageItem(item, true)))
 }
 
 function openImagePreview(imageList, index) {

@@ -1846,21 +1846,32 @@ page {
    ═══════════════════════════════════════════ */
 
 .camera-page {
-  min-height: 100vh;
+  position: fixed;
+  inset: 0;
+  width: 100vw;
+  height: 100vh;
+  height: 100dvh;
   background: #080E1C;
-  display: flex;
-  flex-direction: column;
+  overflow: hidden;
 }
 
 .camera-header {
-  position: relative;
-  z-index: 12;
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  z-index: 30;
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: var(--sp-4) var(--sp-5) var(--sp-3);
-  padding-top: calc(var(--sp-4) + env(safe-area-inset-top));
-  background: linear-gradient(180deg, rgba(8, 14, 28, 0.88) 0%, rgba(8, 14, 28, 0.1) 100%);
+  padding: 16rpx 24rpx 12rpx;
+  padding-top: calc(12rpx + env(safe-area-inset-top));
+  background: linear-gradient(180deg, rgba(8, 14, 28, 0.72) 0%, rgba(8, 14, 28, 0) 100%);
+  pointer-events: none;
+}
+
+.camera-header .camera-nav-btn {
+  pointer-events: auto;
 }
 
 .camera-header-main {
@@ -1895,11 +1906,8 @@ page {
 }
 
 .camera-viewport {
-  flex: 1;
-  position: relative;
-  display: flex;
-  align-items: center;
-  justify-content: center;
+  position: absolute;
+  inset: 0;
   overflow: hidden;
 }
 
@@ -1910,14 +1918,40 @@ page {
 
 .scan-frame {
   position: absolute;
-  width: 600rpx;
-  height: 400rpx;
-  top: 50%;
-  left: 50%;
-  transform: translate(-50%, -68%);
-  border-radius: var(--radius-lg);
-  box-shadow: inset 0 0 0 1rpx rgba(91, 108, 247, 0.40);
+  border-radius: 20rpx;
+  box-shadow: inset 0 0 0 2rpx rgba(107, 128, 255, 0.55);
   pointer-events: none;
+  z-index: 8;
+}
+
+/* 全屏竖构图：占满安全区内的可视区域 */
+.scan-frame-full {
+  top: calc(env(safe-area-inset-top) + 100rpx);
+  left: 8rpx;
+  right: 8rpx;
+  bottom: calc(152rpx + env(safe-area-inset-bottom));
+  width: auto;
+  height: auto;
+  transform: none;
+}
+
+.camera-mask {
+  position: absolute;
+  left: 0;
+  right: 0;
+  z-index: 6;
+  pointer-events: none;
+  background: rgba(8, 14, 28, 0.38);
+}
+
+.camera-mask-top {
+  top: 0;
+  height: calc(env(safe-area-inset-top) + 100rpx);
+}
+
+.camera-mask-bottom {
+  bottom: 0;
+  height: calc(152rpx + env(safe-area-inset-bottom));
 }
 
 .camera-hint,
@@ -1976,31 +2010,32 @@ page {
 }
 
 @keyframes scanMove {
-  0% { top: 20rpx; opacity: 0; }
-  12% { opacity: 1; }
-  88% { opacity: 1; }
-  100% { top: 376rpx; opacity: 0; }
+  0% { top: 3%; opacity: 0; }
+  10% { opacity: 1; }
+  90% { opacity: 1; }
+  100% { top: 97%; opacity: 0; }
 }
 
 .camera-hint {
   position: absolute;
-  left: 50%;
-  bottom: 280rpx;
-  transform: translateX(-50%);
-  z-index: 8;
-  min-width: 400rpx;
+  left: 20rpx;
+  right: 20rpx;
+  top: calc(env(safe-area-inset-top) + 68rpx);
+  z-index: 12;
   text-align: center;
-  padding: var(--sp-2) var(--sp-4);
-  border-radius: var(--radius-md);
-  background: rgba(8, 14, 28, 0.60);
-  border: 1rpx solid rgba(130, 171, 255, 0.20);
+  padding: 10rpx 16rpx;
+  border-radius: 12rpx;
+  background: rgba(8, 14, 28, 0.55);
+  border: 1rpx solid rgba(130, 171, 255, 0.22);
+  pointer-events: none;
 }
 
 .camera-hint-title {
   display: block;
-  font-size: var(--font-xs);
+  font-size: 24rpx;
   color: #E0ECFF;
-  font-weight: 700;
+  font-weight: 600;
+  line-height: 1.35;
 }
 
 .camera-hint-sub {
@@ -2011,45 +2046,44 @@ page {
 }
 
 .camera-bottom {
-  margin-top: -10rpx;
-  padding: var(--sp-3) var(--sp-5) calc(var(--sp-3) + env(safe-area-inset-bottom));
-  background: linear-gradient(180deg, rgba(8, 14, 28, 0.88) 0%, rgba(4, 8, 18, 0.96) 100%);
-  border-top: 1rpx solid rgba(120, 160, 255, 0.15);
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 30;
+  padding: 8rpx 24rpx calc(10rpx + env(safe-area-inset-bottom));
+  background: linear-gradient(0deg, rgba(4, 8, 18, 0.92) 0%, rgba(8, 14, 28, 0.55) 70%, rgba(8, 14, 28, 0) 100%);
+  pointer-events: none;
+}
+
+.camera-bottom .camera-controls,
+.camera-bottom .camera-tips-row {
+  pointer-events: auto;
 }
 
 .camera-guides {
-  display: flex;
-  justify-content: space-between;
-  gap: var(--sp-2);
+  display: none;
 }
 
-.guide-pill {
-  flex: 1;
-  min-width: 0;
+.camera-tips-row {
   display: flex;
-  align-items: center;
   justify-content: center;
-  gap: 8rpx;
-  padding: 10rpx 8rpx;
-  border-radius: var(--radius-pill);
-  background: rgba(91, 108, 247, 0.08);
-  border: 1rpx solid rgba(91, 108, 247, 0.18);
+  flex-wrap: wrap;
+  gap: 10rpx;
+  margin-top: 10rpx;
 }
 
-.guide-dot {
-  width: 8rpx;
-  height: 8rpx;
-  background: #8BA0FF;
-  border-radius: 50%;
-}
-
-.guide-pill text {
-  font-size: var(--font-micro);
-  color: #DCE4FF;
+.camera-tip-chip {
+  font-size: 20rpx;
+  color: rgba(220, 228, 255, 0.88);
+  padding: 4rpx 14rpx;
+  border-radius: 999rpx;
+  background: rgba(91, 108, 247, 0.12);
+  border: 1rpx solid rgba(130, 171, 255, 0.2);
 }
 
 .camera-controls {
-  margin-top: var(--sp-3);
+  margin-top: 0;
   display: flex;
   align-items: center;
   justify-content: space-around;
@@ -2072,8 +2106,8 @@ page {
 
 .capture-btn {
   position: relative;
-  width: 148rpx;
-  height: 148rpx;
+  width: 132rpx;
+  height: 132rpx;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -2081,15 +2115,15 @@ page {
 
 .capture-ring {
   position: absolute;
-  width: 148rpx;
-  height: 148rpx;
+  width: 132rpx;
+  height: 132rpx;
   border: 4rpx solid rgba(200, 218, 255, 0.35);
   border-radius: 50%;
 }
 
 .capture-inner {
-  width: 112rpx;
-  height: 112rpx;
+  width: 100rpx;
+  height: 100rpx;
   background: var(--primary-gradient-deep);
   border-radius: 50%;
   box-shadow: 0 8rpx 24rpx rgba(91, 108, 247, 0.50);
@@ -2097,11 +2131,13 @@ page {
 
 .camera-init-hint {
   position: absolute;
-  left: var(--sp-6);
-  right: var(--sp-6);
-  bottom: 120rpx;
+  left: 24rpx;
+  right: 24rpx;
+  top: 50%;
+  transform: translateY(-50%);
   text-align: center;
-  z-index: 10;
+  z-index: 20;
+  pointer-events: auto;
 }
 
 .camera-init-hint text {
@@ -2891,7 +2927,13 @@ page {
 .task-swipe-body {
   position: relative;
   z-index: 2;
-  transition: transform 0.15s ease-out;
+  background: var(--surface-1);
+  transition: none;
+}
+
+.task-swipe-body.is-open,
+.task-swipe-body.is-dragging {
+  transition: none;
 }
 
 .task-row-shell,

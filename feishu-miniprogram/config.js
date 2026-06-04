@@ -73,6 +73,11 @@ function resolveBaseUrl() {
     if (publicUrl) {
       return publicUrl
     }
+    // 真机无法访问 localhost；缺 config.prod.js 时勿静默回退
+    console.error(
+      '[config] USE_PUBLIC_API=true 但 config.prod.js 无效。上传前请执行: node scripts/render-deploy-config.mjs --env production'
+    )
+    return ''
   }
   return LOCAL_BASE_URL
 }

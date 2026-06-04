@@ -1,4 +1,4 @@
-<view class="page tasks-page {{showReviewDock ? 'tasks-has-dock' : ''}}">
+<view class="page tasks-page {{showReviewDock ? 'tasks-has-dock' : ''}} {{selectionMode ? 'tasks-has-batch' : ''}}">
   <view class="tasks-filter-wrap">
     <view class="tasks-search-bar">
       <view class="tasks-search-input-wrap">
@@ -31,12 +31,14 @@
       </view>
     </view>
     <text class="tasks-tab-hint">{{headerHint}}</text>
+    <text tt:if="{{!selectionMode && tasks.length > 0}}" class="tasks-gesture-hint">{{texts.swipeHint}} · {{texts.longPressHint}}</text>
   </view>
 
   <scroll-view
     scroll-y
     class="tasks-scroll"
     bindscrolltolower="loadMore"
+    bindscroll="onTaskScroll"
   >
     <view tt:if="{{loading && tasks.length === 0}}" class="tasks-loading">
       <view class="spinner"></view>
@@ -54,23 +56,40 @@
       tt:key="id"
       class="task-swipe"
     >
-      <view class="task-swipe-delete" bindtap="confirmDeleteTask" data-id="{{item.id}}">
+      <view
+        tt:if="{{!selectionMode}}"
+        class="task-swipe-delete"
+        catchtap="confirmDeleteTask"
+        data-id="{{item.id}}"
+      >
         <text>{{texts.delete}}</text>
       </view>
       <view
-        class="task-swipe-body"
-        style="transform: translateX({{item.swipeX}}px);"
+        class="task-swipe-body {{swipeDragging ? 'is-dragging' : ''}} {{openedTaskId === item.id ? 'is-open' : ''}}"
+        style="transform: translateX({{selectionMode ? 0 : (dragTaskId === item.id ? dragOffsetX : (openedTaskId === item.id ? swipeOpenPx : 0))}}px);"
         bindtouchstart="handleTouchStart"
-        bindtouchmove="handleTouchMove"
+        catchtouchmove="handleTouchMove"
         bindtouchend="handleTouchEnd"
+        bindtouchcancel="handleTouchCancel"
         data-index="{{index}}"
+        data-id="{{item.id}}"
       >
         <view
-          class="task-card"
+          class="task-card {{selectionMode ? 'task-card-select' : ''}}"
           bindtap="goToDetail"
+          bindlongpress="onTaskLongPress"
           data-id="{{item.id}}"
           data-status="{{item.status}}"
+          data-index="{{index}}"
         >
+          <view
+            tt:if="{{selectionMode}}"
+            class="task-select-box {{item.selected ? 'checked' : ''}}"
+            catchtap="toggleSelect"
+            data-id="{{item.id}}"
+          >
+            <text tt:if="{{item.selected}}" class="task-select-mark">✓</text>
+          </view>
           <view class="task-card-body">
             <view class="task-row task-row-list">
               <view class="task-main">
@@ -104,6 +123,16 @@
   <view tt:if="{{showReviewDock}}" class="tasks-bottom-bar">
     <view class="btn btn-primary" catchtap="onReviewDock">
       {{primaryCtaLabel}}
+    </view>
+  </view>
+
+  <view tt:if="{{selectionMode}}" class="tasks-batch-bar">
+    <view class="btn btn-ghost tasks-batch-cancel" catchtap="exitSelectionMode">{{texts.cancelSelect}}</view>
+    <view
+      class="btn btn-danger tasks-batch-delete {{selectedCount > 0 ? '' : 'is-disabled'}}"
+      catchtap="confirmBatchDelete"
+    >
+      {{texts.batchDelete}}
     </view>
   </view>
 </view>

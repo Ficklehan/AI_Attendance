@@ -1,87 +1,57 @@
 @import "../../styles/design.ttss";
 
-/* ═══ Camera page — premium viewfinder effects ═══ */
+/* 全屏取景：扫描线随框高度自适应 */
+.camera-page .scan-frame-full .scan-line {
+  animation: scanMoveFull 2.4s linear infinite;
+}
 
-/* Frame corners — subtle pulse animation on active */
+@keyframes scanMoveFull {
+  0% { top: 3%; opacity: 0; }
+  10% { opacity: 1; }
+  90% { opacity: 1; }
+  100% { top: 97%; opacity: 0; }
+}
+
+.camera-page .scan-frame-full::after {
+  inset: -6rpx;
+}
+
 .camera-page .frame-corner {
-  animation: cornerPulse 2.5s ease-in-out infinite;
+  width: 48rpx;
+  height: 48rpx;
+  border-width: 5rpx;
 }
 
-.camera-page .frame-corner.tr,
-.camera-page .frame-corner.bl {
-  animation-delay: 1.25s;
-}
-
-@keyframes cornerPulse {
-  0%, 100% { border-color: #6B80FF; opacity: 0.85; }
-  50% { border-color: #8B9AFF; opacity: 1; }
-}
-
-/* Scan frame — glow effect */
-.camera-page .scan-frame::after {
-  content: '';
-  position: absolute;
-  inset: -8rpx;
-  border-radius: var(--radius-lg);
-  box-shadow: 0 0 32rpx rgba(107, 128, 255, 0.15), inset 0 0 32rpx rgba(107, 128, 255, 0.08);
+.camera-page .camera-header-main {
   pointer-events: none;
 }
 
-/* Capture button — refined press animation */
-.camera-page .capture-inner {
-  transition: transform 0.12s ease, box-shadow 0.12s ease;
+.camera-page .flash-icon {
+  font-size: 28rpx;
 }
 
-.camera-page .capture-btn:active .capture-inner {
-  transform: scale(0.90);
-  box-shadow: 0 4rpx 12rpx rgba(91, 108, 247, 0.60);
+.camera-page .control-btn {
+  min-width: 100rpx;
+  padding: 12rpx 16rpx;
 }
 
-/* Capture ring — breathing animation */
 .camera-page .capture-ring {
   animation: ringBreathe 3s ease-in-out infinite;
 }
 
 @keyframes ringBreathe {
   0%, 100% { transform: scale(1); opacity: 1; }
-  50% { transform: scale(1.06); opacity: 0.7; }
+  50% { transform: scale(1.05); opacity: 0.75; }
 }
 
-/* Guide pills — hover glow */
-.camera-page .guide-pill {
-  transition: background 0.2s ease, border-color 0.2s ease;
+.camera-page .capture-inner {
+  transition: transform 0.12s ease, box-shadow 0.12s ease;
 }
 
-.camera-page .guide-pill:active {
-  background: rgba(91, 108, 247, 0.16);
-  border-color: rgba(91, 108, 247, 0.30);
-}
-
-/* Camera bottom — refined glass gradient */
-.camera-page .camera-bottom {
-  background: linear-gradient(180deg, rgba(8, 14, 28, 0.82) 0%, rgba(4, 8, 18, 0.95) 100%);
-  backdrop-filter: blur(12px);
-  -webkit-backdrop-filter: blur(12px);
-}
-
-/* Header — enhanced glass */
-.camera-page .camera-header {
-  background: linear-gradient(180deg, rgba(8, 14, 28, 0.90) 0%, rgba(8, 14, 28, 0.05) 100%);
-}
-
-/* Control buttons — refined active state */
-.camera-page .control-btn:active {
-  background: rgba(91, 108, 247, 0.18);
-  border-color: rgba(130, 171, 255, 0.30);
-}
-
-/* Camera nav buttons — glass effect */
-.camera-page .camera-nav-btn {
-  backdrop-filter: blur(8px);
-  -webkit-backdrop-filter: blur(8px);
-  transition: background 0.2s ease;
+.camera-page .capture-btn:active .capture-inner {
+  transform: scale(0.9);
 }
 
 .camera-page .camera-nav-btn:active {
-  background: rgba(255, 255, 255, 0.20);
+  background: rgba(255, 255, 255, 0.2);
 }

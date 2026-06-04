@@ -174,8 +174,111 @@
   white-space: nowrap;
 }
 
+.tasks-tab-hint + .tasks-gesture-hint {
+  margin-top: -4rpx;
+}
+
+.tasks-gesture-hint {
+  display: block;
+  margin: 0 var(--sp-6) var(--sp-3);
+  padding-left: 4rpx;
+  font-size: 22rpx;
+  color: var(--text-4);
+  line-height: 1.4;
+}
+
 .tasks-page .task-swipe-body {
-  transition: transform 0.2s cubic-bezier(0.23, 1, 0.32, 1);
+  transition: none;
+}
+
+.tasks-page .task-swipe-body.is-open {
+  transition: none;
+}
+
+.task-card-select {
+  display: flex;
+  flex-direction: row;
+  align-items: stretch;
+}
+
+.task-select-box {
+  flex-shrink: 0;
+  width: 44rpx;
+  height: 44rpx;
+  margin: 28rpx 0 28rpx 24rpx;
+  border: 2rpx solid var(--border);
+  border-radius: 50%;
+  background: #fff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-sizing: border-box;
+}
+
+.task-select-box.checked {
+  border-color: var(--primary);
+  background: var(--primary);
+}
+
+.task-select-mark {
+  color: #fff;
+  font-size: 26rpx;
+  font-weight: 700;
+  line-height: 1;
+}
+
+.task-card-select .task-card-body {
+  flex: 1;
+  min-width: 0;
+}
+
+.tasks-batch-bar {
+  position: fixed;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 130;
+  display: flex;
+  align-items: center;
+  gap: 16rpx;
+  padding: 12rpx var(--sp-6) calc(12rpx + env(safe-area-inset-bottom));
+  background: #f8fafc;
+  border-top: 1rpx solid #e2e8f0;
+  box-shadow: 0 -4rpx 20rpx rgba(15, 23, 42, 0.06);
+  box-sizing: border-box;
+}
+
+.tasks-batch-cancel {
+  flex: 1;
+  min-height: 88rpx;
+  line-height: 88rpx;
+  text-align: center;
+  border-radius: 24rpx;
+  font-size: 30rpx;
+  font-weight: 600;
+  color: var(--text-2);
+  background: #fff;
+  border: 1rpx solid var(--border);
+}
+
+.tasks-batch-delete {
+  flex: 1.2;
+  min-height: 88rpx;
+  line-height: 88rpx;
+  text-align: center;
+  border-radius: 24rpx;
+  font-size: 30rpx;
+  font-weight: 800;
+  color: #fff;
+  background: var(--red);
+}
+
+.tasks-batch-delete.is-disabled {
+  opacity: 0.45;
+}
+
+.tasks-has-batch .tasks-scroll-pad {
+  height: 120rpx;
 }
 
 .tasks-page .task-card:active {

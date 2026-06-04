@@ -1,15 +1,4 @@
 <view class="camera-page">
-  <view class="camera-header">
-    <view class="camera-nav-btn" bindtap="goBack">‹</view>
-    <view class="camera-header-main">
-      <text class="camera-title">{{texts.title}}</text>
-      <text class="camera-subtitle">{{texts.scanGuide}}</text>
-    </view>
-    <view class="camera-nav-btn" bindtap="toggleFlash">
-      <text style="font-size:28rpx;opacity:{{flashMode === 'on' ? '1' : '0.4'}}">⚡</text>
-    </view>
-  </view>
-
   <view class="camera-viewport">
     <camera
       id="camera"
@@ -21,7 +10,7 @@
       binderror="onCameraError"
     ></camera>
 
-    <view class="scan-frame">
+    <view class="scan-frame scan-frame-portrait scan-frame-full">
       <view class="frame-corner tl"></view>
       <view class="frame-corner tr"></view>
       <view class="frame-corner bl"></view>
@@ -29,9 +18,11 @@
       <view class="scan-line"></view>
     </view>
 
+    <view class="camera-mask camera-mask-top"></view>
+    <view class="camera-mask camera-mask-bottom"></view>
+
     <view class="camera-hint">
       <text class="camera-hint-title">{{texts.scanHint}}</text>
-      <text class="camera-hint-sub">{{texts.guideTitle}}</text>
     </view>
 
     <view tt:if="{{initHint}}" class="camera-init-hint" bindtap="onInitHintTap">
@@ -39,22 +30,17 @@
     </view>
   </view>
 
-  <view class="camera-bottom">
-    <view class="camera-guides">
-      <view class="guide-pill">
-        <view class="guide-dot"></view>
-        <text>{{texts.tipLight}}</text>
-      </view>
-      <view class="guide-pill">
-        <view class="guide-dot"></view>
-        <text>{{texts.tipFlat}}</text>
-      </view>
-      <view class="guide-pill">
-        <view class="guide-dot"></view>
-        <text>{{texts.tipAngle}}</text>
-      </view>
+  <view class="camera-header">
+    <view class="camera-nav-btn" bindtap="goBack">‹</view>
+    <view class="camera-header-main">
+      <text class="camera-title">{{texts.title}}</text>
     </view>
+    <view class="camera-nav-btn" bindtap="toggleFlash">
+      <text class="flash-icon" style="opacity:{{flashMode === 'on' ? '1' : '0.45'}}">⚡</text>
+    </view>
+  </view>
 
+  <view class="camera-bottom">
     <view class="camera-controls">
       <view class="control-btn" bindtap="toggleCamera">
         <text>{{texts.flip}}</text>
@@ -66,6 +52,11 @@
       <view class="control-btn" bindtap="chooseFromGallery">
         <text>{{texts.gallery}}</text>
       </view>
+    </view>
+    <view class="camera-tips-row">
+      <text class="camera-tip-chip">{{texts.tipLight}}</text>
+      <text class="camera-tip-chip">{{texts.tipFlat}}</text>
+      <text class="camera-tip-chip">{{texts.tipAngle}}</text>
     </view>
   </view>
 </view>
