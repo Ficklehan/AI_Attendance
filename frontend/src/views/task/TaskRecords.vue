@@ -90,7 +90,10 @@
             </template>
           </TableSortableHeader>
         </template>
-        <template #bodyCell="{ column, record }">
+        <template #bodyCell="{ column, record, index }">
+          <template v-if="column.key === 'serialNo'">
+            <span class="cell-serial">{{ index + 1 }}</span>
+          </template>
           <template v-if="column.key === 'taskStatus'">
             <a-tag :color="getStatusColor(record.taskStatus)">{{ getStatusText(record.taskStatus) }}</a-tag>
           </template>
@@ -209,6 +212,14 @@ const previewImagesList = ref([])
 const previewCurrentIndex = ref(0)
 
 const baseColumns = computed(() => [
+  {
+    title: t('common.serialNumber'),
+    key: 'serialNo',
+    width: 56,
+    autoWidth: false,
+    align: 'center',
+    sorter: false,
+  },
   ...fieldDefs.value.map((def) => ({
     title: def.label,
     dataIndex: def.dataIndex,
@@ -216,6 +227,7 @@ const baseColumns = computed(() => [
     searchField: def.field,
     filterType: def.filterType,
     ellipsis: def.ellipsis,
+    align: 'left',
   })),
   {
     title: t('tasks.imagePreview'),
@@ -223,6 +235,7 @@ const baseColumns = computed(() => [
     key: 'imageUrls',
     autoWidth: false,
     width: 108,
+    align: 'center',
     fixed: 'right',
     sorter: (a, b) => String(a?.fileKey || '').localeCompare(String(b?.fileKey || ''), undefined, { numeric: true }),
   },
@@ -239,7 +252,7 @@ const {
   setFrozenKeys,
   showAllColumns,
   clearFrozenKeys,
-} = useColumnFreeze('task-records', sizedColumns, { defaultFrozen: ['taskId'] })
+} = useColumnFreeze('task-records', sizedColumns, { defaultFrozen: ['serialNo', 'taskId'] })
 
 const searchableFieldDefs = computed(() => {
   const hidden = new Set(hiddenKeys.value)

@@ -5,9 +5,10 @@ import com.attendance.entity.TaskListRow;
 import com.attendance.mapper.TaskMapper;
 import com.attendance.mapper.TaskRecordMapper;
 import com.attendance.entity.User;
-import com.attendance.security.AdminAuthService;
+import com.attendance.security.DataScopeContext;
 import com.attendance.security.TaskAccessService;
 import com.attendance.service.ConfigService;
+import com.attendance.service.DataScopeService;
 import com.attendance.service.FeishuSyncService;
 import com.attendance.service.TaskRecordSyncService;
 import com.attendance.service.TaskService;
@@ -48,7 +49,7 @@ class TaskServiceTest {
     private TaskAccessService taskAccessService;
 
     @Mock
-    private AdminAuthService adminAuthService;
+    private DataScopeService dataScopeService;
 
     @Mock
     private FeishuSyncService feishuSyncService;
@@ -63,11 +64,13 @@ class TaskServiceTest {
     private TaskService taskService;
 
     private Task testTask;
+    private DataScopeContext allUsersScope;
 
     @BeforeEach
     void setUp() {
         when(taskAccessService.requireCurrentUserId()).thenReturn("user001");
-        when(adminAuthService.isCurrentUserAdmin()).thenReturn(true);
+        allUsersScope = DataScopeContext.allUsers();
+        when(dataScopeService.resolveForCurrentUser()).thenReturn(allUsersScope);
 
         testTask = new Task();
         testTask.setTaskId("20260520_001");
@@ -117,15 +120,15 @@ class TaskServiceTest {
         TaskListRow row = new TaskListRow();
         row.setTaskId("20260520_001");
         List<TaskListRow> tasks = Arrays.asList(row);
-        when(taskMapper.selectTaskList(isNull(), isNull(), isNull(), isNull(), anyLong(), anyLong()))
+        when(taskMapper.selectTaskList(any(DataScopeContext.class), isNull(), isNull(), isNull(), anyLong(), anyLong()))
                 .thenReturn(tasks);
-        when(taskMapper.countTaskList(isNull(), isNull(), isNull(), isNull())).thenReturn(1L);
+        when(taskMapper.countTaskList(any(DataScopeContext.class), isNull(), isNull(), isNull())).thenReturn(1L);
 
         List<TaskListRow> result = taskService.getTaskList(null, null, null, 0, 20);
 
         assertNotNull(result);
         assertEquals(1, result.size());
-        verify(taskMapper).selectTaskList(isNull(), isNull(), isNull(), isNull(), anyLong(), anyLong());
+        verify(taskMapper).selectTaskList(any(DataScopeContext.class), isNull(), isNull(), isNull(), anyLong(), anyLong());
     }
 
     @Test

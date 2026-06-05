@@ -160,7 +160,7 @@ public class ExportJobService {
         }
         exportJobMapper.updateStatus(jobId, "running", null);
         TaskQuery query = parseQuery(job.getQueryJson());
-        String listUserId = taskService.resolveListScopeUserIdForExport(query, job.getUserId());
+        com.attendance.security.DataScopeContext scope = taskService.resolveDataScopeForUserId(job.getUserId());
         String prefix = TYPE_TASK_LIST.equals(job.getExportType()) ? "tasks" : "attendance_records";
         String fileName = prefix + "_" + FILE_TS.format(LocalDateTime.now()) + ".xlsx";
         Path dir = Paths.get(exportPath, job.getUserId());
@@ -170,10 +170,10 @@ public class ExportJobService {
             long rowCount;
             if (TYPE_TASK_LIST.equals(job.getExportType())) {
                 rowCount = taskService.exportTaskListToExcel(
-                        listUserId, query.getStatus(), query.getKeyword(), query.getSearchField(), writer);
+                        scope, query.getStatus(), query.getKeyword(), query.getSearchField(), writer);
             } else {
                 rowCount = taskService.exportEmployeeRecordsToExcel(
-                        listUserId, query.getStatus(), query.getKeyword(), query.getSearchField(),
+                        scope, query.getStatus(), query.getKeyword(), query.getSearchField(),
                         query.getFilters(), writer);
             }
             exportJobMapper.updateCompleted(jobId, "completed", fileName, file.toString(), rowCount, null);

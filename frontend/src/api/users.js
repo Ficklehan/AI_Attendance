@@ -15,3 +15,11 @@ export function createUser(data) {
 export function updateUser(userId, data) {
   return request.put(`/users/${userId}`, data)
 }
+
+export function updateUserStatus(userId, status) {
+  return request.patch(`/users/${userId}/status`, { status })
+}
+
+export function deleteUser(userId) {
+  return request.delete(`/users/${userId}`)
+}

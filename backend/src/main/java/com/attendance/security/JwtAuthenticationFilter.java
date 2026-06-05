@@ -1,9 +1,15 @@
 package com.attendance.security;
 
+import com.alibaba.fastjson.JSON;
+import com.attendance.common.ErrorCode;
+import com.attendance.common.ErrorKeys;
+import com.attendance.common.Result;
+import com.attendance.mapper.UserMapper;
 import com.attendance.util.JwtUtil;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.MediaType;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.web.authentication.WebAuthenticationDetailsSource;
@@ -16,6 +22,7 @@ import javax.servlet.ServletException;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
 import java.io.IOException;
+import java.nio.charset.StandardCharsets;
 import java.util.Collections;
 
 @Component
@@ -25,6 +32,9 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
 
     @Autowired
     private JwtUtil jwtUtil;
+
+    @Autowired
+    private UserMapper userMapper;
 
     @Override
     protected void doFilterInternal(HttpServletRequest request, 
@@ -38,6 +48,12 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
                 String username = jwtUtil.getUsernameFromToken(jwt);
 
                 if (userId != null && !jwtUtil.isTokenExpired(jwt)) {
+                    String status = userMapper.selectUserStatusById(userId);
+                    if (status == null || !"active".equals(status)) {
+                        writeUnauthorized(response, ErrorKeys.USER_DISABLED);
+                        return;
+                    }
+
                     UserPrincipal userPrincipal = new UserPrincipal(userId, username);
                     
                     UsernamePasswordAuthenticationToken authentication = 
@@ -56,6 +72,15 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
         }
 
         filterChain.doFilter(request, response);
+    }
+
+    private void writeUnauthorized(HttpServletResponse response, String messageKey) throws IOException {
+        SecurityContextHolder.clearContext();
+        response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
+        response.setCharacterEncoding(StandardCharsets.UTF_8.name());
+        response.setContentType(MediaType.APPLICATION_JSON_VALUE);
+        response.getWriter().write(JSON.toJSONString(
+                Result.error(ErrorCode.TOKEN_INVALID, messageKey)));
     }
 
     private String getJwtFromRequest(HttpServletRequest request) {

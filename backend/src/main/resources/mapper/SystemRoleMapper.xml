@@ -1,0 +1,49 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+    "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.attendance.mapper.SystemRoleMapper">
+
+    <resultMap id="SystemRoleMap" type="com.attendance.entity.SystemRole">
+        <id column="role_key" property="roleKey"/>
+        <result column="role_name" property="roleName"/>
+        <result column="built_in" property="builtIn"/>
+        <result column="sort_order" property="sortOrder"/>
+        <result column="created_at" property="createdAt"/>
+        <result column="updated_at" property="updatedAt"/>
+    </resultMap>
+
+    <select id="selectAll" resultMap="SystemRoleMap">
+        SELECT role_key, role_name, built_in, sort_order, created_at, updated_at
+        FROM system_role
+        ORDER BY sort_order ASC, role_key ASC
+    </select>
+
+    <select id="selectByKey" resultMap="SystemRoleMap">
+        SELECT role_key, role_name, built_in, sort_order, created_at, updated_at
+        FROM system_role
+        WHERE role_key = #{roleKey}
+    </select>
+
+    <insert id="insert">
+        INSERT INTO system_role (role_key, role_name, built_in, sort_order)
+        VALUES (#{roleKey}, #{roleName}, #{builtIn}, #{sortOrder})
+    </insert>
+
+    <update id="updateName">
+        UPDATE system_role SET role_name = #{roleName}, updated_at = NOW()
+        WHERE role_key = #{roleKey}
+    </update>
+
+    <delete id="deleteByKey">
+        DELETE FROM system_role WHERE role_key = #{roleKey}
+    </delete>
+
+    <select id="countUsersByRole" resultType="long">
+        SELECT COUNT(*) FROM users WHERE role = #{roleKey}
+    </select>
+
+    <select id="maxSortOrder" resultType="int">
+        SELECT COALESCE(MAX(sort_order), 0) FROM system_role
+    </select>
+
+</mapper>

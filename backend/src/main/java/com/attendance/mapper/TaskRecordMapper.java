@@ -1,6 +1,7 @@
 package com.attendance.mapper;
 
 import com.attendance.entity.TaskRecord;
+import com.attendance.security.DataScopeContext;
 import org.apache.ibatis.annotations.Mapper;
 import org.apache.ibatis.annotations.Param;
 
@@ -18,17 +19,17 @@ public interface TaskRecordMapper {
 
     int deleteByTaskIdExceptKeys(@Param("taskId") String taskId, @Param("rowKeys") List<String> rowKeys);
 
-    List<TaskRecord> selectRecordPage(@Param("userId") String userId,
+    List<TaskRecord> selectRecordPage(@Param("scope") DataScopeContext scope,
                                       @Param("status") String status,
                                       @Param("conditions") List<Map<String, String>> conditions,
                                       @Param("offset") long offset,
                                       @Param("size") long size);
 
-    long countRecords(@Param("userId") String userId,
+    long countRecords(@Param("scope") DataScopeContext scope,
                       @Param("status") String status,
                       @Param("conditions") List<Map<String, String>> conditions);
 
-    List<TaskRecord> selectForExport(@Param("userId") String userId,
+    List<TaskRecord> selectForExport(@Param("scope") DataScopeContext scope,
                                        @Param("status") String status,
                                        @Param("conditions") List<Map<String, String>> conditions,
                                        @Param("offset") long offset,
@@ -37,7 +38,13 @@ public interface TaskRecordMapper {
     List<Map<String, Object>> selectDuplicateBaseline(@Param("excludeTaskId") String excludeTaskId,
                                                       @Param("statuses") List<String> statuses,
                                                       @Param("workDates") List<String> workDates,
-                                                      @Param("baseNames") List<String> baseNames);
+                                                      @Param("baseNames") List<String> baseNames,
+                                                      @Param("scope") DataScopeContext scope);
 
     long countByTaskId(@Param("taskId") String taskId);
+
+    long countRecordsMatchingScope(@Param("taskId") String taskId,
+                                   @Param("countries") List<String> countries,
+                                   @Param("warehouses") List<String> warehouses,
+                                   @Param("agencies") List<String> agencies);
 }

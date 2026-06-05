@@ -5,6 +5,7 @@ import com.attendance.common.ErrorCode;
 import com.attendance.common.ErrorKeys;
 import com.attendance.entity.Task;
 import com.attendance.mapper.TaskMapper;
+import com.attendance.service.DataScopeService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
@@ -15,7 +16,7 @@ public class TaskAccessService {
     private TaskMapper taskMapper;
 
     @Autowired
-    private AdminAuthService adminAuthService;
+    private DataScopeService dataScopeService;
 
     public String requireCurrentUserId() {
         String userId = SecurityUtils.getCurrentUserId();
@@ -26,11 +27,8 @@ public class TaskAccessService {
     }
 
     public void requireTaskOwner(Task task) {
-        if (adminAuthService.isCurrentUserAdmin()) {
-            return;
-        }
         String userId = requireCurrentUserId();
-        if (task.getUserId() == null || !userId.equals(task.getUserId())) {
+        if (!dataScopeService.canAccessTask(userId, task)) {
             throw new BusinessException(ErrorCode.PERMISSION_DENIED, ErrorKeys.TASK_ACCESS_DENIED);
         }
     }
@@ -53,11 +51,10 @@ public class TaskAccessService {
         if (userId == null || userId.isEmpty()) {
             throw new BusinessException(ErrorCode.TOKEN_INVALID, ErrorKeys.LOGIN_REQUIRED);
         }
-        Task task;
-        if (adminAuthService.isAdmin(userId)) {
-            task = taskMapper.selectTaskByFileKey(fileKey);
-        } else {
-            task = taskMapper.selectTaskOwningFileKey(fileKey, userId);
+        DataScopeContext scope = dataScopeService.resolveForUserId(userId);
+        Task task = taskMapper.selectTaskByFileKeyForScope(fileKey, scope);
+        if (task == null) {
+            task = taskMapper.selectTaskByFileKeyAndUserId(fileKey, userId);
         }
         if (task == null) {
             throw new BusinessException(ErrorCode.PERMISSION_DENIED, ErrorKeys.FILE_ACCESS_DENIED);

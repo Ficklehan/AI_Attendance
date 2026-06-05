@@ -11,6 +11,9 @@ attendance:
   bootstrap-default-admin: false
   allow-simulated-recognition: false
   allow-public-registration: false
+  recognition:
+    distributed:
+      enabled: true
   cors:
     allowed-origin-patterns:
       - "${CORS_ALLOWED_ORIGIN}"

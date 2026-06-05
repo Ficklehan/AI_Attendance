@@ -33,7 +33,7 @@
         <template #bodyCell="{ column, record }">
           <template v-if="column.key === 'role'">
             <a-tag :color="record.role === 'admin' ? 'blue' : 'default'">
-              {{ record.role === 'admin' ? $t('settings.users.roleAdmin') : $t('settings.users.roleUser') }}
+              {{ roleNameMap[record.role] || record.role }}
             </a-tag>
           </template>
           <template v-else-if="column.key === 'status'">
@@ -42,7 +42,51 @@
             </a-tag>
           </template>
           <template v-else-if="column.key === 'action'">
-            <a-button type="link" size="small" @click="openEdit(record)">{{ $t('common.edit') }}</a-button>
+            <a-space :size="4">
+              <a-button type="link" size="small" @click="openEdit(record)">{{ $t('common.edit') }}</a-button>
+              <a-popconfirm
+                v-if="record.status === 'active'"
+                :title="$t('settings.users.disableConfirm', { name: displayName(record) })"
+                :ok-text="$t('settings.users.disable')"
+                :cancel-text="$t('common.cancel')"
+                :disabled="isCurrentUser(record)"
+                @confirm="toggleUserStatus(record, 'disabled')"
+              >
+                <a-button
+                  type="link"
+                  size="small"
+                  danger
+                  :disabled="isCurrentUser(record)"
+                >
+                  {{ $t('settings.users.disable') }}
+                </a-button>
+              </a-popconfirm>
+              <a-popconfirm
+                v-else
+                :title="$t('settings.users.enableConfirm', { name: displayName(record) })"
+                :ok-text="$t('settings.users.enable')"
+                :cancel-text="$t('common.cancel')"
+                @confirm="toggleUserStatus(record, 'active')"
+              >
+                <a-button type="link" size="small">{{ $t('settings.users.enable') }}</a-button>
+              </a-popconfirm>
+              <a-popconfirm
+                :title="$t('settings.users.deleteConfirm', { name: displayName(record) })"
+                :ok-text="$t('common.delete')"
+                :cancel-text="$t('common.cancel')"
+                :disabled="isCurrentUser(record)"
+                @confirm="handleDeleteUser(record)"
+              >
+                <a-button
+                  type="link"
+                  size="small"
+                  danger
+                  :disabled="isCurrentUser(record)"
+                >
+                  {{ $t('common.delete') }}
+                </a-button>
+              </a-popconfirm>
+            </a-space>
           </template>
         </template>
       </a-table>
@@ -91,12 +135,15 @@ import { message } from 'ant-design-vue'
 import { PlusOutlined } from '@ant-design/icons-vue'
 import PageShell from '@/components/PageShell.vue'
 import TableColumnSettings from '@/components/TableColumnSettings.vue'
-import { listUsers, createUser, updateUser } from '@/api/users'
+import { useAuthStore } from '@/stores/auth'
+import { listUsers, createUser, updateUser, updateUserStatus, deleteUser } from '@/api/users'
+import { listRoles } from '@/api/roles'
 import { withTableSorters, keyFieldSorter } from '@/utils/tableSort'
 import { useColumnFreeze } from '@/composables/useColumnFreeze'
 import { sumTableScrollX } from '@/utils/tableAutoColumns'
 
 const { t } = useI18n()
+const authStore = useAuthStore()
 
 const users = ref([])
 const loading = ref(false)
@@ -118,10 +165,31 @@ const form = reactive({
   status: 'active',
 })
 
-const roleOptions = computed(() => [
-  { value: 'user', label: t('settings.users.roleUser') },
-  { value: 'admin', label: t('settings.users.roleAdmin') },
-])
+const systemRoles = ref([])
+
+const roleOptions = computed(() =>
+  systemRoles.value.map((role) => ({
+    value: role.roleKey,
+    label: role.roleName,
+  }))
+)
+
+const roleNameMap = computed(() => {
+  const map = {}
+  systemRoles.value.forEach((role) => {
+    map[role.roleKey] = role.roleName
+  })
+  return map
+})
+
+const fetchRoles = async () => {
+  try {
+    const res = await listRoles()
+    systemRoles.value = res.data || []
+  } catch (e) {
+    console.error(e)
+  }
+}
 
 const statusOptions = computed(() => [
   { value: 'active', label: t('settings.users.statusActive') },
@@ -135,7 +203,7 @@ const baseColumns = computed(() => withTableSorters([
   { title: t('settings.users.feishuUserId'), dataIndex: 'feishuUserId', key: 'feishuUserId', ellipsis: true, width: 140 },
   { title: t('settings.users.role'), key: 'role', width: 100, sorter: keyFieldSorter('role') },
   { title: t('common.status'), key: 'status', width: 100, sorter: keyFieldSorter('status') },
-  { title: t('common.operation'), key: 'action', width: 90, fixed: 'right' },
+  { title: t('common.operation'), key: 'action', width: 220, fixed: 'right' },
 ]))
 const {
   frozenColumns: columns,
@@ -155,6 +223,38 @@ const pagination = computed(() => ({
   total: total.value,
   showSizeChanger: true,
 }))
+
+const displayName = (record) => record.realName || record.username || record.email || record.id
+
+const isCurrentUser = (record) => record.id === authStore.userInfo?.id
+
+const handleDeleteUser = async (record) => {
+  if (isCurrentUser(record)) {
+    message.warning(t('settings.users.cannotDeleteSelf'))
+    return
+  }
+  try {
+    await deleteUser(record.id)
+    message.success(t('settings.users.deleted'))
+    fetchUsers()
+  } catch (e) {
+    message.error(e.message || t('common.error'))
+  }
+}
+
+const toggleUserStatus = async (record, status) => {
+  if (status === 'disabled' && isCurrentUser(record)) {
+    message.warning(t('settings.users.cannotDisableSelf'))
+    return
+  }
+  try {
+    await updateUserStatus(record.id, status)
+    message.success(t('settings.users.statusUpdated'))
+    fetchUsers()
+  } catch (e) {
+    console.error(e)
+  }
+}
 
 const resetForm = () => {
   form.username = ''
@@ -236,5 +336,8 @@ const submitForm = async () => {
   }
 }
 
-onMounted(fetchUsers)
+onMounted(() => {
+  fetchRoles()
+  fetchUsers()
+})
 </script>

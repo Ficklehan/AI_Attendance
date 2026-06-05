@@ -21,6 +21,10 @@ location /attendance/api/ {
 }
 
 # --- PC 前端（Vite base=/attendance/，需先 npm run build）---
+location = /attendance {
+    return 302 /attendance/home$is_args$args;
+}
+
 location /attendance/ {
     alias /opt/AttendanceAgent/frontend/dist/;
     try_files $uri $uri/ /attendance/index.html;

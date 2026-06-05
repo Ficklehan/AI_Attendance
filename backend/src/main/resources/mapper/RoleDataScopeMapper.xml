@@ -1,0 +1,73 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+    "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.attendance.mapper.RoleDataScopeMapper">
+
+    <select id="selectScopeType" resultType="string">
+        SELECT scope_type FROM role_data_scope WHERE role = #{role}
+    </select>
+
+    <select id="selectRulesByRole" resultType="map">
+        SELECT dimension, value
+        FROM role_data_dimension_rule
+        WHERE role = #{role}
+        ORDER BY dimension, value
+    </select>
+
+    <select id="selectAllRoles" resultType="string">
+        SELECT role FROM role_data_scope ORDER BY role
+    </select>
+
+    <insert id="upsertScopeType">
+        INSERT INTO role_data_scope (role, scope_type, updated_at)
+        VALUES (#{role}, #{scopeType}, NOW())
+        ON DUPLICATE KEY UPDATE scope_type = VALUES(scope_type), updated_at = NOW()
+    </insert>
+
+    <delete id="deleteRulesByRole">
+        DELETE FROM role_data_dimension_rule WHERE role = #{role}
+    </delete>
+
+    <delete id="deleteScopeByRole">
+        DELETE FROM role_data_scope WHERE role = #{role}
+    </delete>
+
+    <insert id="insertRule">
+        INSERT INTO role_data_dimension_rule (role, dimension, value)
+        VALUES (#{role}, #{dimension}, #{value})
+    </insert>
+
+    <select id="selectDistinctCountryOptions" resultType="map">
+        SELECT country_key AS value,
+               COALESCE(MAX(NULLIF(TRIM(country), '')), country_key) AS label
+        FROM task_records
+        WHERE deleted = 0
+          AND country_key IS NOT NULL AND country_key != ''
+        GROUP BY country_key
+        ORDER BY label, country_key
+        LIMIT 500
+    </select>
+
+    <select id="selectDistinctWarehouseOptions" resultType="map">
+        SELECT warehouse_key AS value,
+               COALESCE(MAX(NULLIF(TRIM(warehouse), '')), warehouse_key) AS label
+        FROM task_records
+        WHERE deleted = 0
+          AND warehouse_key IS NOT NULL AND warehouse_key != ''
+        GROUP BY warehouse_key
+        ORDER BY label, warehouse_key
+        LIMIT 500
+    </select>
+
+    <select id="selectDistinctAgencyOptions" resultType="map">
+        SELECT agency_key AS value,
+               COALESCE(MAX(NULLIF(TRIM(agency), '')), agency_key) AS label
+        FROM task_records
+        WHERE deleted = 0
+          AND agency_key IS NOT NULL AND agency_key != ''
+        GROUP BY agency_key
+        ORDER BY label, agency_key
+        LIMIT 500
+    </select>
+
+</mapper>

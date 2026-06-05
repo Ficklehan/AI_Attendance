@@ -17,6 +17,9 @@
         <result column="anomaly_summary" property="anomalySummary"/>
         <result column="ai_raw_output" property="aiRawOutput"/>
         <result column="processed_by" property="processedBy"/>
+        <result column="progress_row_count" property="progressRowCount"/>
+        <result column="recognition_checkpoint" property="recognitionCheckpoint"/>
+        <result column="recognition_heartbeat_at" property="recognitionHeartbeatAt"/>
         <result column="created_at" property="createdAt"/>
         <result column="updated_at" property="updatedAt"/>
     </resultMap>
@@ -24,7 +27,49 @@
     <sql id="Base_Column_List">
         task_id, user_id, file_key, status, sync_status, sync_error, prompt_country,
         raw_data, confirmed_data, image_urls, anomaly_summary, ai_raw_output, processed_by,
+        progress_row_count, recognition_checkpoint, recognition_heartbeat_at,
         created_at, updated_at
+    </sql>
+
+    <sql id="DataScopeTaskWhere">
+        <if test="scope != null and !scope.allUsers">
+            <choose>
+                <when test="(scope.ownerUserIds == null or scope.ownerUserIds.size() == 0) and !scope.recordDimensionFilter">
+                    AND 1=0
+                </when>
+                <otherwise>
+                    <if test="scope.ownerUserIds != null and scope.ownerUserIds.size() > 0">
+                        AND t.user_id IN
+                        <foreach collection="scope.ownerUserIds" item="uid" open="(" separator="," close=")">
+                            #{uid}
+                        </foreach>
+                    </if>
+                    <if test="scope.recordDimensionFilter">
+                        AND (
+                            EXISTS (
+                                SELECT 1 FROM task_records tr_ds
+                                WHERE tr_ds.task_id = t.task_id AND tr_ds.deleted = 0
+                                <if test="scope.countries != null and scope.countries.size() > 0">
+                                    AND tr_ds.country_key IN
+                                    <foreach collection="scope.countries" item="cv" open="(" separator="," close=")">#{cv}</foreach>
+                                </if>
+                                <if test="scope.warehouses != null and scope.warehouses.size() > 0">
+                                    AND tr_ds.warehouse_key IN
+                                    <foreach collection="scope.warehouses" item="wv" open="(" separator="," close=")">#{wv}</foreach>
+                                </if>
+                                <if test="scope.agencies != null and scope.agencies.size() > 0">
+                                    AND tr_ds.agency_key IN
+                                    <foreach collection="scope.agencies" item="av" open="(" separator="," close=")">#{av}</foreach>
+                                </if>
+                            )
+                            <if test="scope.viewerUserId != null and scope.viewerUserId != ''">
+                                OR t.user_id = #{scope.viewerUserId}
+                            </if>
+                        )
+                    </if>
+                </otherwise>
+            </choose>
+        </if>
     </sql>
 
     <select id="selectTaskByTaskId" resultMap="BaseResultMap">
@@ -53,20 +98,19 @@
         <result column="sync_status" property="syncStatus"/>
         <result column="sync_error" property="syncError"/>
         <result column="image_urls" property="imageUrls"/>
+        <result column="progress_row_count" property="progressRowCount"/>
         <result column="created_at" property="createdAt"/>
         <result column="user_name" property="userName"/>
     </resultMap>
 
     <select id="selectTaskList" resultMap="TaskListRowMap">
         SELECT t.task_id, t.user_id, t.file_key, t.status, t.sync_status, t.sync_error,
-               t.image_urls, t.created_at,
+               t.image_urls, COALESCE(t.progress_row_count, 0) AS progress_row_count, t.created_at,
                COALESCE(u.real_name, u.username, '') AS user_name
         FROM tasks t
         LEFT JOIN users u ON t.user_id = u.id
         WHERE 1=1
-        <if test="userId != null and userId != ''">
-            AND t.user_id = #{userId}
-        </if>
+        <include refid="DataScopeTaskWhere"/>
         <if test="status != null and status != ''">
             AND t.status = #{status}
         </if>
@@ -114,9 +158,7 @@
         FROM tasks t
         LEFT JOIN users u ON t.user_id = u.id
         WHERE 1=1
-        <if test="userId != null and userId != ''">
-            AND t.user_id = #{userId}
-        </if>
+        <include refid="DataScopeTaskWhere"/>
         <if test="status != null and status != ''">
             AND t.status = #{status}
         </if>
@@ -161,20 +203,21 @@
         SELECT task_id FROM tasks ORDER BY created_at DESC LIMIT 1
     </select>
 
-    <select id="selectTaskOwningFileKey" resultMap="BaseResultMap">
+    <select id="selectTaskByFileKeyForScope" resultMap="BaseResultMap">
         SELECT <include refid="Base_Column_List"/>
-        FROM tasks
-        WHERE user_id = #{userId}
-          AND (file_key = #{fileKey} OR image_urls LIKE CONCAT('%', #{fileKey}, '%'))
-        ORDER BY created_at DESC
+        FROM tasks t
+        WHERE (t.file_key = #{fileKey} OR t.image_urls LIKE CONCAT('%', #{fileKey}, '%'))
+        <include refid="DataScopeTaskWhere"/>
+        ORDER BY t.created_at DESC
         LIMIT 1
     </select>
 
-    <select id="selectTaskByFileKey" resultMap="BaseResultMap">
+    <select id="selectTaskByFileKeyAndUserId" resultMap="BaseResultMap">
         SELECT <include refid="Base_Column_List"/>
-        FROM tasks
-        WHERE file_key = #{fileKey} OR image_urls LIKE CONCAT('%', #{fileKey}, '%')
-        ORDER BY created_at DESC
+        FROM tasks t
+        WHERE t.user_id = #{userId}
+          AND (t.file_key = #{fileKey} OR t.image_urls LIKE CONCAT('%', #{fileKey}, '%'))
+        ORDER BY t.created_at DESC
         LIMIT 1
     </select>
 
@@ -266,6 +309,53 @@
         WHERE task_id = #{taskId}
     </update>
 
+    <update id="updateRecognitionCheckpoint">
+        UPDATE tasks
+        SET recognition_checkpoint = #{checkpoint},
+            recognition_heartbeat_at = NOW(),
+            updated_at = NOW()
+        WHERE task_id = #{taskId}
+    </update>
+
+    <update id="clearRecognitionCheckpoint">
+        UPDATE tasks
+        SET recognition_checkpoint = NULL,
+            updated_at = NOW()
+        WHERE task_id = #{taskId}
+    </update>
+
+    <update id="touchRecognitionHeartbeat">
+        UPDATE tasks
+        SET recognition_heartbeat_at = NOW(),
+            updated_at = NOW()
+        WHERE task_id = #{taskId} AND status = 'processing'
+    </update>
+
+    <select id="selectStaleProcessingTaskIds" resultType="string">
+        SELECT task_id
+        FROM tasks
+        WHERE status = 'processing'
+          AND (
+            (recognition_heartbeat_at IS NOT NULL
+             AND recognition_heartbeat_at &lt; DATE_SUB(NOW(), INTERVAL #{staleSeconds} SECOND))
+            OR
+            (recognition_heartbeat_at IS NULL
+             AND updated_at &lt; DATE_SUB(NOW(), INTERVAL #{staleSeconds} SECOND))
+          )
+        ORDER BY updated_at ASC
+        LIMIT #{batchSize}
+    </select>
+
+    <select id="selectZombieProcessingTaskIds" resultType="string">
+        SELECT task_id
+        FROM tasks
+        WHERE status = 'processing'
+          AND recognition_heartbeat_at IS NULL
+          AND updated_at &lt; DATE_SUB(NOW(), INTERVAL #{zombieMinutes} MINUTE)
+        ORDER BY updated_at ASC
+        LIMIT #{batchSize}
+    </select>
+
     <select id="selectTasksForDuplicateByStatuses" resultMap="BaseResultMap">
         SELECT <include refid="Base_Column_List"/>
         FROM tasks
@@ -285,19 +375,15 @@
         SELECT t.status AS status, COUNT(*) AS cnt
         FROM tasks t
         WHERE 1=1
-        <if test="userId != null and userId != ''">
-            AND t.user_id = #{userId}
-        </if>
+        <include refid="DataScopeTaskWhere"/>
         GROUP BY t.status
     </select>
 
     <select id="selectTasksForRecordView" resultMap="BaseResultMap">
         SELECT <include refid="Base_Column_List"/>
-        FROM tasks
+        FROM tasks t
         WHERE 1=1
-        <if test="userId != null and userId != ''">
-            AND user_id = #{userId}
-        </if>
+        <include refid="DataScopeTaskWhere"/>
         <if test="status != null and status != ''">
             AND status = #{status}
         </if>

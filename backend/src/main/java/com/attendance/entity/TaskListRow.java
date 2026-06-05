@@ -11,6 +11,7 @@ public class TaskListRow {
     private String syncStatus;
     private String syncError;
     private String imageUrls;
+    private Integer progressRowCount;
     private LocalDateTime createdAt;
     private String userName;
 
@@ -68,6 +69,14 @@ public class TaskListRow {
 
     public void setImageUrls(String imageUrls) {
         this.imageUrls = imageUrls;
+    }
+
+    public Integer getProgressRowCount() {
+        return progressRowCount;
+    }
+
+    public void setProgressRowCount(Integer progressRowCount) {
+        this.progressRowCount = progressRowCount;
     }
 
     public LocalDateTime getCreatedAt() {

@@ -1,0 +1,78 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.attendance.mapper.RecognitionQueueMapper">
+
+    <resultMap id="JobResultMap" type="com.attendance.entity.RecognitionQueueJob">
+        <id column="id" property="id"/>
+        <result column="task_id" property="taskId"/>
+        <result column="user_id" property="userId"/>
+        <result column="config_country" property="configCountry"/>
+        <result column="client" property="client"/>
+        <result column="job_source" property="jobSource"/>
+        <result column="status" property="status"/>
+        <result column="instance_id" property="instanceId"/>
+        <result column="created_at" property="createdAt"/>
+        <result column="started_at" property="startedAt"/>
+        <result column="completed_at" property="completedAt"/>
+    </resultMap>
+
+    <insert id="insertJob">
+        INSERT INTO recognition_queue_jobs
+            (id, task_id, user_id, config_country, client, job_source, status, created_at)
+        VALUES
+            (#{id}, #{taskId}, #{userId}, #{configCountry}, #{client}, #{jobSource}, #{status}, NOW())
+    </insert>
+
+    <select id="selectById" resultMap="JobResultMap">
+        SELECT id, task_id, user_id, config_country, client, job_source, status, instance_id,
+               created_at, started_at, completed_at
+        FROM recognition_queue_jobs
+        WHERE id = #{id}
+    </select>
+
+    <select id="selectOldestPending" resultMap="JobResultMap">
+        SELECT id, task_id, user_id, config_country, client, job_source, status, instance_id,
+               created_at, started_at, completed_at
+        FROM recognition_queue_jobs
+        WHERE status = 'pending'
+        ORDER BY created_at ASC
+        LIMIT 1
+    </select>
+
+    <select id="countActiveByTaskId" resultType="int">
+        SELECT COUNT(*)
+        FROM recognition_queue_jobs
+        WHERE task_id = #{taskId}
+          AND status IN ('pending', 'running')
+    </select>
+
+    <update id="markRunning">
+        UPDATE recognition_queue_jobs
+        SET status = 'running', instance_id = #{instanceId}, started_at = NOW()
+        WHERE id = #{id} AND status = 'pending'
+    </update>
+
+    <update id="markCompleted">
+        UPDATE recognition_queue_jobs
+        SET status = 'completed', completed_at = NOW()
+        WHERE id = #{id}
+    </update>
+
+    <update id="markFailed">
+        UPDATE recognition_queue_jobs
+        SET status = 'failed', completed_at = NOW()
+        WHERE id = #{id}
+    </update>
+
+    <select id="countPending" resultType="int">
+        SELECT COUNT(*) FROM recognition_queue_jobs WHERE status = 'pending'
+    </select>
+
+    <update id="requeue">
+        UPDATE recognition_queue_jobs
+        SET status = 'pending', instance_id = NULL, started_at = NULL
+        WHERE id = #{id}
+    </update>
+
+</mapper>

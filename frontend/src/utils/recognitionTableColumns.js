@@ -29,9 +29,18 @@ export function buildRecognitionTableColumns(t, options = {}) {
     REQUIRED_SUBMIT_FIELD_KEYS.includes(key) ? requiredTitle(t, i18nKey) : t(i18nKey)
   )
 
-  const col = (def) => withSearch({ ellipsis: false, ...def })
+  const col = (def) => withSearch({ ellipsis: false, align: 'left', ...def })
 
   const cols = [
+    {
+      title: t('common.serialNumber'),
+      key: 'serialNo',
+      width: 56,
+      autoWidth: false,
+      align: 'center',
+      sorter: false,
+      customCell: cellStyle,
+    },
     col({ title: t('taskEdit.pageNumber'), dataIndex: 'PAGE_NUM', key: 'PAGE_NUM', customCell: cellStyle }),
     col({ title: titleFor('NO', 'taskEdit.workerNumber'), dataIndex: 'NO', key: 'NO', customCell: cellStyle }),
     col({ title: t('taskEdit.countryField'), dataIndex: 'Pays', key: 'Pays', customCell: cellStyle }),

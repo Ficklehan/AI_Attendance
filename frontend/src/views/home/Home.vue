@@ -163,9 +163,21 @@
 
           <div v-if="uploading" class="sidebar__processing">
             <div class="processing-ring"></div>
-            <p>{{ $t('home.recognizing') }}</p>
+            <p v-if="uploadProgress.active">{{ $t('home.uploadingProgress', { uploaded: uploadProgress.uploaded, total: uploadProgress.total }) }}</p>
+            <p v-else>{{ $t('home.recognizing') }}</p>
+            <div v-if="uploadProgress.active && uploadProgress.total > 0" class="sidebar__upload-bar">
+              <div
+                class="sidebar__upload-bar-fill"
+                :style="{ width: `${Math.round((uploadProgress.uploaded / uploadProgress.total) * 100)}%` }"
+              />
+            </div>
+            <p v-if="progressRowCount > 0" class="sidebar__progress">
+              {{ $t('home.progressRows', { count: progressRowCount }) }}
+            </p>
+            <p v-if="networkUnstable" class="sidebar__network-hint">{{ $t('home.networkUnstable') }}</p>
+            <p class="sidebar__bg-hint">{{ $t('home.backgroundRecognitionHint') }}</p>
             <button type="button" class="btn-cancel-recognize" @click="cancelRecognition">
-              {{ $t('home.cancelRecognize') }}
+              {{ $t('home.runInBackground') }}
             </button>
           </div>
         </div>
@@ -210,7 +222,6 @@
             </div>
             <div v-if="showAnomalyDetail" class="anomaly-list">
               <div v-for="(alert, idx) in anomalyAlerts" :key="idx" class="anomaly-item">
-                <span class="anomaly-item__idx">#{{ alert.index + 1 }}</span>
                 <span class="anomaly-item__name">{{ alert.name }}</span>
                 <span class="anomaly-item__tags">
                   <TruncatedTag
@@ -247,7 +258,17 @@
               class="data-table rich-table-header"
               :row-class-name="getRowClassName"
             >
+              <template #headerCell="{ column }">
+                <TableSortableHeader
+                  :column="column"
+                  :title="column.title"
+                  @sort="onSorterToggle"
+                />
+              </template>
               <template #bodyCell="{ column, record, index }">
+                <template v-if="column.key === 'serialNo'">
+                  <span class="cell-text cell-serial">{{ index + 1 }}</span>
+                </template>
                 <template v-if="column.key === 'anomalyReasons'">
                   <div v-if="getRecordAnomalyReasons(record).length > 0" class="inline-anomaly-tags">
                     <TruncatedTag
@@ -353,7 +374,16 @@ import StatOverview from '@/components/StatOverview.vue'
 import TruncatedTag from '@/components/TruncatedTag.vue'
 import StepGuide from '@/components/StepGuide.vue'
 import { useCountryStore } from '@/stores/country'
-import { buildAuthCountryHeaders, getCachedWorkingCountry } from '@/utils/countryHeader'
+import { getTaskDetail } from '@/api/task'
+import { getCachedWorkingCountry } from '@/utils/countryHeader'
+import {
+  submitBackgroundRecognition,
+  pollRecognitionUntilDone,
+  persistBgTaskId,
+  clearBgTaskId,
+  getPersistedBgTaskId,
+  parseRecordsFromTask,
+} from '@/utils/backgroundRecognition'
 import { applyMissingPays } from '@/utils/countryDefaults'
 import {
   translateAnomalyReason,
@@ -372,10 +402,9 @@ import { useTableColumnSort } from '@/composables/useTableColumnSort'
 import { useAutoSizedColumns } from '@/composables/useAutoSizedColumns'
 import { useColumnFreeze } from '@/composables/useColumnFreeze'
 import TableColumnSettings from '@/components/TableColumnSettings.vue'
+import TableSortableHeader from '@/components/TableSortableHeader.vue'
 import { hasRequiredMissing } from '@/utils/requiredRecordFields'
 import { formatCountryLabel } from '@/utils/countryLabels'
-import { showApiError } from '@/utils/translateError'
-import { API_BASE_PATH } from '@/constants/apiBase'
 
 const router = useRouter()
 const { t, locale } = useI18n()
@@ -402,15 +431,74 @@ const previewVisible = ref(false)
 const previewImage = ref('')
 const previewTitle = ref('')
 
-const RECOGNITION_TIMEOUT_MS = 300000
-let uploadAbortController = null
+const stopPolling = ref(false)
+const progressRowCount = ref(0)
+const uploadProgress = ref({ uploaded: 0, total: 0, active: false })
+const networkUnstable = ref(false)
+let lastPartialFetchCount = 0
 
 const cancelRecognition = () => {
-  if (uploadAbortController) {
-    uploadAbortController.abort()
-  }
+  stopPolling.value = true
   uploading.value = false
-  message.info(t('home.recognitionCancelled'))
+  message.info(t('home.runInBackground'))
+  const taskId = currentTaskId.value
+  if (taskId) {
+    router.push({ path: '/tasks', query: { status: 'processing', taskId } })
+  } else {
+    router.push({ path: '/tasks', query: { status: 'processing' } })
+  }
+}
+
+const applyRecordsFromTask = (taskRows) => {
+  records.value = (taskRows || []).map((record) => normalizeRecordPause({ ...record, isDeleted: false }))
+}
+
+const refreshPartialRecords = async (taskId, rowCount) => {
+  if (!taskId || !rowCount || rowCount <= lastPartialFetchCount) return
+  try {
+    const detailRes = await getTaskDetail(taskId)
+    const rows = parseRecordsFromTask(detailRes.data || {})
+    if (rows.length > 0) {
+      applyRecordsFromTask(rows)
+      lastPartialFetchCount = rows.length
+    }
+  } catch {
+    // partial refresh is best-effort
+  }
+}
+
+const resumeBackgroundPolling = async (taskId) => {
+  stopPolling.value = false
+  uploading.value = true
+  showResult.value = true
+  currentTaskId.value = taskId
+  lastPartialFetchCount = 0
+  try {
+    const result = await pollRecognitionUntilDone(taskId, {
+      shouldAbort: () => stopPolling.value,
+      onProgress: async (p) => {
+        currentTaskId.value = p.taskId
+        progressRowCount.value = p.rowCount || 0
+        networkUnstable.value = !!p.networkRetry
+        await refreshPartialRecords(p.taskId, p.rowCount)
+      },
+    })
+    if (result.aborted) return
+    applyRecordsFromTask(result.records)
+    currentTaskId.value = result.taskId
+    message.success(t('home.recognizeSuccess', { count: result.records.length }))
+    router.push(`/tasks/${result.taskId}`)
+  } catch (error) {
+    if (String(error?.message || '').includes(t('errors.taskAccessDenied'))) {
+      clearBgTaskId()
+    }
+    if (!stopPolling.value) {
+      message.error(t('home.uploadFailedGeneric', { reason: error.message || t('errors.requestFailed') }))
+    }
+  } finally {
+    uploading.value = false
+    networkUnstable.value = false
+  }
 }
 
 const guideSteps = computed(() => [
@@ -420,6 +508,7 @@ const guideSteps = computed(() => [
 ])
 
 const resetState = () => {
+  stopPolling.value = true
   fileList.value.forEach(revokePreviewUrl)
   fileList.value = []
   uploading.value = false
@@ -431,18 +520,27 @@ const resetState = () => {
   previewVisible.value = false
   previewImage.value = ''
   previewTitle.value = ''
+  progressRowCount.value = 0
+  uploadProgress.value = { uploaded: 0, total: 0, active: false }
+  networkUnstable.value = false
+  lastPartialFetchCount = 0
 }
 
 onMounted(async () => {
+  const persistedTaskId = getPersistedBgTaskId()
   resetState()
+  stopPolling.value = false
   try {
     await countryStore.hydrate()
   } catch (error) {
     console.error('加载工作国家失败:', error)
   }
+  if (persistedTaskId) {
+    void resumeBackgroundPolling(persistedTaskId)
+  }
 })
 onBeforeUnmount(() => {
-  if (uploadAbortController) uploadAbortController.abort()
+  stopPolling.value = true
   fileList.value.forEach(revokePreviewUrl)
 })
 
@@ -528,7 +626,7 @@ const cellStyle = (record) => {
 }
 
 const baseColumns = computed(() => buildRecognitionTableColumns(t, { cellStyle }))
-const { columns: sortedColumns, sortRows } = useTableColumnSort(baseColumns)
+const { columns: sortedColumns, onSorterToggle, sortRows } = useTableColumnSort(baseColumns, { customHeader: true })
 const tableRecords = computed(() => sortRows(records.value))
 const { columns: sizedColumns, scrollX } = useAutoSizedColumns(sortedColumns, tableRecords, { actionWidth: 50 })
 const {
@@ -540,7 +638,7 @@ const {
   setFrozenKeys,
   showAllColumns,
   clearFrozenKeys,
-} = useColumnFreeze('home-records', sizedColumns, { defaultFrozen: ['PAGE_NUM', 'NO'] })
+} = useColumnFreeze('home-records', sizedColumns, { defaultFrozen: ['serialNo', 'PAGE_NUM', 'NO'] })
 
 const totalSizeDisplay = computed(() => {
   const total = fileList.value.reduce((sum, file) => sum + (file.size || 0), 0)
@@ -668,100 +766,6 @@ const handleFileRemove = (file) => {
   return false
 }
 
-const processSsePayload = (currentEvent, data, ctx) => {
-  if (currentEvent === 'start') {
-    if (!ctx.sharedTaskId) ctx.sharedTaskId = data.taskId
-    if (data.imagePreviewUrl) ctx.imagePreviewUrls.push(data.imagePreviewUrl)
-    return
-  }
-  if (currentEvent === 'record') {
-    if (data.record) {
-      records.value.push(normalizeRecordPause({ ...data.record, isDeleted: false }))
-    }
-    return
-  }
-  if (currentEvent === 'complete') {
-    ctx.fileComplete = true
-    return
-  }
-  if (currentEvent === 'error') {
-    showApiError(data)
-    ctx.hadError = true
-    ctx.fileComplete = true
-    return
-  }
-  if (!currentEvent) {
-    if (data.taskId && !data.record && data.rowCount !== undefined) {
-      ctx.fileComplete = true
-    } else if (data.record) {
-      records.value.push(normalizeRecordPause({ ...data.record, isDeleted: false }))
-    }
-  }
-}
-
-const consumeSseResponse = async (response, ctx) => {
-  const reader = response.body.getReader()
-  const decoder = new TextDecoder()
-  let currentEvent = null
-  let currentData = null
-  let buffer = ''
-
-  const flushEvent = () => {
-    if (!currentData) {
-      currentEvent = null
-      return
-    }
-    try {
-      processSsePayload(currentEvent, JSON.parse(currentData), ctx)
-    } catch (e) {
-      console.warn('Failed to parse SSE data:', e, currentData)
-    }
-    currentEvent = null
-    currentData = null
-  }
-
-  while (true) {
-    const { done, value } = await reader.read()
-    if (value) {
-      buffer += decoder.decode(value, { stream: true })
-      const lines = buffer.split(/\r?\n/)
-      buffer = lines.pop() || ''
-      for (const rawLine of lines) {
-        const line = rawLine.trimEnd()
-        if (line.startsWith('event:')) {
-          currentEvent = line.slice(6).trim()
-        } else if (line.startsWith('data:')) {
-          const chunk = line.slice(5).trim()
-          currentData = currentData ? `${currentData}${chunk}` : chunk
-        } else if (line === '') {
-          flushEvent()
-        }
-      }
-    }
-    if (done) {
-      if (buffer.trim()) {
-        const tail = buffer.trim()
-        if (tail.startsWith('data:')) {
-          currentData = tail.slice(5).trim()
-        }
-      }
-      flushEvent()
-      if (!ctx.fileComplete && !ctx.hadError) {
-        ctx.hadError = true
-        message.error(t('home.recognitionIncomplete'))
-      }
-      break
-    }
-    if (ctx.fileComplete) break
-  }
-
-  try {
-    await reader.cancel()
-  } catch {
-    // ignore
-  }
-}
-
 const handleUpload = async () => {
   if (isPreparingImages.value) {
     message.info(t('home.preparingImages'))
@@ -772,80 +776,64 @@ const handleUpload = async () => {
     message.warning(t('home.selectAtLeastOne'))
     return
   }
+
+  stopPolling.value = false
   uploading.value = true
   showResult.value = true
   records.value = []
-  let sharedTaskId = null
-  const imagePreviewUrls = []
-  let hadError = false
-
-  uploadAbortController = new AbortController()
-  const timeoutId = setTimeout(() => {
-    if (uploadAbortController) {
-      uploadAbortController.abort()
-      message.error(t('home.recognitionTimeout'))
-    }
-  }, RECOGNITION_TIMEOUT_MS)
+  progressRowCount.value = 0
+  uploadProgress.value = { uploaded: 0, total: 0, active: false }
+  networkUnstable.value = false
+  lastPartialFetchCount = 0
 
   try {
-    for (const file of filesToUpload) {
-      if (uploadAbortController.signal.aborted) break
+    const result = await submitBackgroundRecognition(
+      filesToUpload.map((file) => file.raw),
+      {
+        shouldAbort: () => stopPolling.value,
+        onProgress: async (p) => {
+          currentTaskId.value = p.taskId
+          persistBgTaskId(p.taskId)
+          progressRowCount.value = p.rowCount || 0
+          networkUnstable.value = !!p.networkRetry
+          if (p.phase === 'uploading') {
+            uploadProgress.value = {
+              uploaded: p.uploaded || 0,
+              total: p.total || 0,
+              active: true,
+            }
+          } else {
+            uploadProgress.value = { ...uploadProgress.value, active: false }
+          }
+          await refreshPartialRecords(p.taskId, p.rowCount)
+        },
+      },
+    )
 
-      const country = getCachedWorkingCountry()
-      const formData = new FormData()
-      formData.append('image', file.raw)
-      formData.append('country', country)
-      if (sharedTaskId) formData.append('taskId', sharedTaskId)
-
-      const response = await fetch(`${API_BASE_PATH}/local/upload-stream`, {
-        method: 'POST',
-        headers: buildAuthCountryHeaders(),
-        body: formData,
-        signal: uploadAbortController.signal,
-      })
-
-      if (!response.ok) {
-        await response.text()
-        message.error(t('home.uploadFailed', { status: response.status, statusText: response.statusText }))
-        hadError = true
-        continue
-      }
-
-      const recordsBeforeFile = records.value.length
-      const ctx = {
-        sharedTaskId,
-        imagePreviewUrls,
-        fileComplete: false,
-        hadError: false,
-      }
-      await consumeSseResponse(response, ctx)
-      sharedTaskId = ctx.sharedTaskId || sharedTaskId
-      if (ctx.hadError) {
-        hadError = true
-        records.value.splice(recordsBeforeFile)
-      }
-    }
-
-    if (uploadAbortController.signal.aborted) {
+    if (result.aborted) {
       return
     }
-    if (records.value.length > 0 && !hadError) {
-      message.success(t('home.recognizeSuccess', { count: records.value.length }))
-      if (sharedTaskId) router.push(`/tasks/${sharedTaskId}`)
-    } else if (!hadError) {
+
+    applyRecordsFromTask(result.records)
+    currentTaskId.value = result.taskId
+    if (result.records.length > 0) {
+      message.success(t('home.recognizeSuccess', { count: result.records.length }))
+      router.push(`/tasks/${result.taskId}`)
+    } else {
       message.warning(t('home.noRecordsFound'))
     }
   } catch (error) {
-    if (error.name === 'AbortError') {
-      // timeout or user cancel — message already shown
-    } else {
+    if (String(error?.message || '').includes(t('errors.taskAccessDenied'))) {
+      clearBgTaskId()
+    }
+    if (!stopPolling.value) {
       console.error('Upload error:', error)
       message.error(t('home.uploadFailedGeneric', { reason: error.message || t('errors.requestFailed') }))
     }
   } finally {
-    clearTimeout(timeoutId)
-    uploadAbortController = null
     uploading.value = false
+    uploadProgress.value = { uploaded: 0, total: 0, active: false }
+    networkUnstable.value = false
   }
 }
 
@@ -854,7 +842,10 @@ const handleConfirm = () => {
   router.push(`/tasks/${currentTaskId.value}`)
 }
 
-const handleClear = () => { resetState() }
+const handleClear = () => {
+  clearBgTaskId()
+  resetState()
+}
 
 const deleteRecord = (record) => {
   if (record) {
@@ -871,13 +862,13 @@ const showAnomalyDetail = ref(true)
 
 const anomalyAlerts = computed(() => {
   return records.value
-    .map((record, index) => {
+    .map((record) => {
       if (record.isDeleted) return null
       const reasons = getRecordAnomalyReasons(record)
       if (reasons.length === 0) return null
       const no = cellStr(record.NO) || '?'
       const name = cellStr(record.NOM_PRENOM) || '?'
-      return { index, name: no + ' - ' + name, reasons: [...new Set(reasons)] }
+      return { name: no + ' - ' + name, reasons: [...new Set(reasons)] }
     })
     .filter(Boolean)
 })
@@ -1410,7 +1401,39 @@ const getDisplaySmartMark = (record) => {
       font-size: $font-size-sm;
       color: $text-secondary;
       margin: 0;
+      text-align: center;
     }
+  }
+
+  &__progress {
+    font-weight: 600;
+    color: $primary !important;
+  }
+
+  &__network-hint {
+    color: #d48806 !important;
+  }
+
+  &__bg-hint {
+    font-size: $font-size-xs !important;
+    line-height: 1.5;
+    max-width: 220px;
+  }
+
+  &__upload-bar {
+    width: 100%;
+    max-width: 200px;
+    height: 6px;
+    border-radius: 999px;
+    background: rgba($primary, 0.15);
+    overflow: hidden;
+  }
+
+  &__upload-bar-fill {
+    height: 100%;
+    border-radius: inherit;
+    background: $primary;
+    transition: width 0.25s $ease-out;
   }
 }
 
@@ -1600,8 +1623,6 @@ const getDisplaySmartMark = (record) => {
     }
 
     :deep(.ant-table-tbody > tr > td) {
-      padding: $space-3;
-      font-size: $font-size-sm;
       color: $text-primary;
       border-bottom: 1px solid $border-light;
       transition: background $duration-fast;

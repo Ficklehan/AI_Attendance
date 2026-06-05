@@ -1,5 +1,8 @@
 /** 统一数据表表头视觉（任务列表 / 考勤记录 / 任务编辑 / 首页识别表） */
 
+$table-cell-padding-y: 8px;
+$table-cell-padding-x: 10px;
+
 .table-toolbar {
   display: flex;
   justify-content: flex-end;
@@ -15,6 +18,8 @@
   .ant-table-thead > tr > th,
   .ant-table-tbody > tr > td {
     white-space: nowrap;
+    padding: $table-cell-padding-y $table-cell-padding-x !important;
+    vertical-align: middle !important;
   }
 
   .ant-table-tbody > tr > td.cell-wrap {
@@ -25,11 +30,9 @@
   .ant-table-thead > tr > th {
     background: linear-gradient(180deg, #fafbfc 0%, #f2f4f7 100%) !important;
     border-bottom: 1px solid #eaecf0 !important;
-    padding: 8px 10px !important;
     font-weight: 600;
     font-size: 12px;
     color: #344054;
-    vertical-align: middle !important;
     transition: background 0.15s ease;
 
     &::before {
@@ -62,11 +65,58 @@
     display: none !important;
   }
 
+  /* 与 column.align 保持一致 */
+  .ant-table-thead > tr > th.ant-table-cell-align-left,
+  .ant-table-tbody > tr > td.ant-table-cell-align-left {
+    text-align: left !important;
+  }
+
+  .ant-table-thead > tr > th.ant-table-cell-align-center,
+  .ant-table-tbody > tr > td.ant-table-cell-align-center {
+    text-align: center !important;
+  }
+
+  .ant-table-thead > tr > th.ant-table-cell-align-right,
+  .ant-table-tbody > tr > td.ant-table-cell-align-right {
+    text-align: right !important;
+  }
+
   .ant-table-tbody > tr > td {
     border-bottom: 1px solid #f2f4f7;
+    font-size: 13px;
   }
 
   .ant-table-tbody > tr:hover > td {
     background: #f9fafb !important;
+  }
+
+  .cell-serial {
+    display: inline-block;
+    width: 100%;
+    color: #667085;
+    font-variant-numeric: tabular-nums;
+    text-align: inherit;
+  }
+
+  .cell-text {
+    display: inline-block;
+    max-width: 100%;
+    text-align: inherit;
+  }
+
+  .action-buttons {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 2px;
+    width: 100%;
+  }
+
+  .status-cell {
+    display: inline-flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 4px;
+    max-width: 100%;
   }
 }

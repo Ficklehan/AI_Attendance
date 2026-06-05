@@ -118,7 +118,6 @@
             </div>
             <div v-if="showAnomalyDetail" class="anomaly-detail-list">
               <div v-for="(alert, idx) in anomalyAlerts" :key="idx" class="anomaly-item">
-                <span class="anomaly-index">{{ alert.index + 1 }}</span>
                 <span class="anomaly-name">{{ alert.name }}</span>
                 <span class="anomaly-reasons">
                   <TruncatedTag
@@ -227,6 +226,9 @@
               </div>
             </template>
             <template #bodyCell="{ column, record, index }">
+              <template v-if="column.key === 'serialNo'">
+                <span class="cell-text cell-serial">{{ index + 1 }}</span>
+              </template>
               <template v-if="column.key === 'anomalyReasons'">
                 <div v-if="getRecordAnomalyReasons(record).length > 0" class="inline-anomaly-tags">
                   <TruncatedTag
@@ -628,6 +630,22 @@ const baseColumns = computed(() => buildRecognitionTableColumns(t, {
   actionColumnWidth: isConfirmedTask.value && canCalibrateRecord.value ? 88 : 50,
 }))
 const { columns: sortedColumns, onSorterToggle, sortRows } = useTableColumnSort(baseColumns, { customHeader: true })
+
+const filteredRecords = computed(() => {
+  const active = Object.entries(headerFilters.value).filter(([, v]) => {
+    if (Array.isArray(v)) return v.length > 0
+    if (v && typeof v === 'object') return Boolean(v.from?.trim() || v.to?.trim())
+    return String(v || '').trim() !== ''
+  })
+  if (!active.length) return records.value
+  return records.value.filter((row) => active.every(([field, value]) => {
+    const column = sortedColumns.value.find((c) => c.searchField === field)
+    const filterType = resolveColumnFilterType(column || { searchField: field })
+    const keyword = serializeFilterValue(filterType, value)
+    return matchRecordByFilter(filterType, field, keyword, row)
+  }))
+})
+
 const tableRecords = computed(() => sortRows(filteredRecords.value))
 const { columns: sizedColumns, scrollX } = useAutoSizedColumns(sortedColumns, tableRecords, {
   actionWidth: isConfirmedTask.value && canCalibrateRecord.value ? 88 : 50,
@@ -647,22 +665,7 @@ const {
   setFrozenKeys,
   showAllColumns,
   clearFrozenKeys,
-} = useColumnFreeze('task-edit', sizedColumns, { defaultFrozen: ['PAGE_NUM', 'NO'] })
-
-const filteredRecords = computed(() => {
-  const active = Object.entries(headerFilters.value).filter(([, v]) => {
-    if (Array.isArray(v)) return v.length > 0
-    if (v && typeof v === 'object') return Boolean(v.from?.trim() || v.to?.trim())
-    return String(v || '').trim() !== ''
-  })
-  if (!active.length) return records.value
-  return records.value.filter((row) => active.every(([field, value]) => {
-    const column = columns.value.find((c) => c.searchField === field)
-    const filterType = resolveColumnFilterType(column || { searchField: field })
-    const keyword = serializeFilterValue(filterType, value)
-    return matchRecordByFilter(filterType, field, keyword, row)
-  }))
-})
+} = useColumnFreeze('task-edit', sizedColumns, { defaultFrozen: ['serialNo', 'PAGE_NUM', 'NO'] })
 
 const isHeaderFilterActive = (field) => {
   const value = headerFilters.value[field]
@@ -1435,13 +1438,12 @@ const getDisplaySmartMark = (record) => {
 
 const anomalyAlerts = computed(() => {
   return records.value
-    .map((record, index) => {
+    .map((record) => {
       if (record.isDeleted) return null
       const reasons = getRecordAnomalyReasons(record)
       
       if (reasons.length === 0) return null
       return {
-        index,
         name: `${record.NO || '?'} - ${record.NOM_PRENOM || '?'}`,
         reasons: [...new Set(reasons)]
       }
@@ -1800,9 +1802,6 @@ watch(records, () => {
     }
 
     :deep(.ant-table-tbody > tr > td) {
-      padding: 10px 10px;
-      font-size: 13px;
-      vertical-align: middle;
       border-bottom: 1px solid $border;
     }
 

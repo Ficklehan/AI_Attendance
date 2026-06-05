@@ -37,7 +37,7 @@ const navItems = [
   { path: '/settings/ai', labelKey: 'settings.menu.ai', icon: RobotOutlined },
   { path: '/settings/feishu', labelKey: 'settings.menu.feishu', icon: ApiOutlined },
   { path: '/settings/users', labelKey: 'settings.menu.users', icon: TeamOutlined },
-  { path: '/settings/permissions', labelKey: 'settings.menu.permissions', icon: SafetyCertificateOutlined },
+  { path: '/settings/roles', labelKey: 'settings.menu.roles', icon: SafetyCertificateOutlined },
   { path: '/settings/audit', labelKey: 'settings.menu.audit', icon: FileSearchOutlined },
 ]
 

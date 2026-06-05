@@ -29,6 +29,10 @@
         WHERE id = #{id}
     </select>
 
+    <select id="selectUserStatusById" resultType="string">
+        SELECT status FROM users WHERE id = #{id}
+    </select>
+
     <select id="selectUserByUsername" resultMap="BaseResultMap">
         SELECT <include refid="Base_Column_List"/>
         FROM users
@@ -100,6 +104,11 @@
 
     <select id="existsByFeishuUserId" resultType="int">
         SELECT COUNT(*) FROM users WHERE feishu_user_id = #{feishuUserId} AND status != 'deleted'
+    </select>
+
+    <select id="countActiveByRole" resultType="long">
+        SELECT COUNT(*) FROM users
+        WHERE role = #{role} AND status = 'active'
     </select>
 
 </mapper>

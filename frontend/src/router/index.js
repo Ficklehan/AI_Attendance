@@ -77,11 +77,13 @@ const routes = [
             meta: { titleKey: 'settings.menu.users' },
           },
           {
-            path: 'permissions',
-            name: 'SettingsPermissions',
-            component: () => import('@/views/settings/PermissionManagement.vue'),
-            meta: { titleKey: 'settings.menu.permissions' },
+            path: 'roles',
+            name: 'SettingsRoles',
+            component: () => import('@/views/settings/RoleManagement.vue'),
+            meta: { titleKey: 'settings.menu.roles' },
           },
+          { path: 'permissions', redirect: '/settings/roles' },
+          { path: 'data-scope', redirect: '/settings/roles' },
           {
             path: 'audit',
             name: 'SettingsAudit',
@@ -116,7 +118,12 @@ router.beforeEach(async (to, from, next) => {
   }
 
   if (to.path === '/login' && authStore.isAuthenticated) {
-    next('/')
+    next('/home')
+    return
+  }
+
+  if (authStore.isAuthenticated && (to.path === '/' || to.path === '')) {
+    next('/home')
     return
   }
 

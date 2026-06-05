@@ -1,6 +1,7 @@
 /** 表格列默认排序：为带 dataIndex 的列添加可点击排序 */
 
 const DEFAULT_SKIP_KEYS = new Set([
+  'serialNo',
   'action',
   'operation',
   'anomalyReasons',

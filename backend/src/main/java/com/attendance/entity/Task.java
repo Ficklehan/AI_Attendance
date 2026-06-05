@@ -16,6 +16,9 @@ public class Task {
     private String anomalySummary;
     private String aiRawOutput;
     private String processedBy;
+    private Integer progressRowCount;
+    private String recognitionCheckpoint;
+    private LocalDateTime recognitionHeartbeatAt;
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;
 
@@ -121,6 +124,30 @@ public class Task {
 
     public void setProcessedBy(String processedBy) {
         this.processedBy = processedBy;
+    }
+
+    public Integer getProgressRowCount() {
+        return progressRowCount;
+    }
+
+    public void setProgressRowCount(Integer progressRowCount) {
+        this.progressRowCount = progressRowCount;
+    }
+
+    public String getRecognitionCheckpoint() {
+        return recognitionCheckpoint;
+    }
+
+    public void setRecognitionCheckpoint(String recognitionCheckpoint) {
+        this.recognitionCheckpoint = recognitionCheckpoint;
+    }
+
+    public LocalDateTime getRecognitionHeartbeatAt() {
+        return recognitionHeartbeatAt;
+    }
+
+    public void setRecognitionHeartbeatAt(LocalDateTime recognitionHeartbeatAt) {
+        this.recognitionHeartbeatAt = recognitionHeartbeatAt;
     }
 
     public LocalDateTime getCreatedAt() {

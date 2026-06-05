@@ -6,6 +6,7 @@ import com.attendance.common.ErrorKeys;
 import com.attendance.service.AIParserService;
 import com.attendance.service.ConfigService;
 import com.attendance.service.RecognitionConcurrencyGuard;
+import com.attendance.service.RecognitionJobService;
 import com.attendance.service.RecognitionRunner;
 import com.attendance.service.RecognitionSupport;
 import com.attendance.service.RecognitionTrace;
@@ -90,6 +91,9 @@ public class LocalUploadController {
 
     @Autowired
     private RecognitionConcurrencyGuard recognitionConcurrencyGuard;
+
+    @Autowired
+    private RecognitionJobService recognitionJobService;
 
     @Autowired
     private FileStorage fileStorage;
@@ -465,28 +469,11 @@ public class LocalUploadController {
 
             SecurityContext securityContext = SecurityContextHolder.getContext();
             final String recognitionUserId = taskAccessService.requireCurrentUserId();
-            recognitionConcurrencyGuard.acquire(recognitionUserId);
             List<UploadMediaSupport.ImagePage> recognizePages = uploadMediaSupport.toRecognizablePages(
                     fileBytes, image.getOriginalFilename(), image.getContentType());
-            recognitionExecutor.execute(() -> {
-                SecurityContextHolder.setContext(securityContext);
-                try {
-                    RecognitionRunner.RecognitionOutcome outcome = recognitionRunner.runMultiplePages(
-                            recognizePages, configCountry, workingCountry, trace, taskId);
-                    String rawData = JSON.toJSONString(outcome.getRecords());
-                    taskService.updateTaskRawData(taskId, rawData, outcome.getEngine(), trace);
-                    log.info("异步识别完成: taskId={}, engine={}, rows={}",
-                            taskId, outcome.getEngine(), outcome.getRecords().size());
-                } catch (Exception e) {
-                    log.error("异步识别失败: taskId={}", taskId, e);
-                    String msg = e.getMessage() != null ? e.getMessage() : "识别失败";
-                    trace.step("upload_failed", "message", msg);
-                    taskService.failTask(taskId, msg, trace);
-                } finally {
-                    recognitionConcurrencyGuard.release(recognitionUserId);
-                    SecurityContextHolder.clearContext();
-                }
-            });
+            recognitionJobService.submitPagesRecognition(
+                    taskId, recognizePages, configCountry, workingCountry, client,
+                    securityContext, recognitionUserId);
 
             JSONObject result = new JSONObject();
             result.put("taskId", taskId);
@@ -527,29 +514,10 @@ public class LocalUploadController {
 
         log.info("开始多图合并识别: taskId={}, imageCount={}, client={}", taskId, images.size(), client);
 
-        RecognitionTrace trace = new RecognitionTrace(taskId, client);
         SecurityContext securityContext = SecurityContextHolder.getContext();
         final String recognitionUserId = taskAccessService.requireCurrentUserId();
-        recognitionConcurrencyGuard.acquire(recognitionUserId);
-        recognitionExecutor.execute(() -> {
-            SecurityContextHolder.setContext(securityContext);
-            try {
-                RecognitionRunner.RecognitionOutcome outcome = recognitionRunner.recognizeAllTaskImages(
-                        taskId, configCountry, trace);
-                String rawData = JSON.toJSONString(outcome.getRecords());
-                taskService.updateTaskRawData(taskId, rawData, outcome.getEngine(), trace);
-                log.info("多图合并识别完成: taskId={}, engine={}, rows={}, images={}",
-                        taskId, outcome.getEngine(), outcome.getRecords().size(), images.size());
-            } catch (Exception e) {
-                log.error("多图合并识别失败: taskId={}", taskId, e);
-                String msg = e.getMessage() != null ? e.getMessage() : "识别失败";
-                trace.step("upload_failed", "message", msg);
-                taskService.failTask(taskId, msg, trace);
-            } finally {
-                recognitionConcurrencyGuard.release(recognitionUserId);
-                SecurityContextHolder.clearContext();
-            }
-        });
+        recognitionJobService.submitTaskRecognition(
+                taskId, configCountry, client, securityContext, recognitionUserId);
 
         JSONObject result = new JSONObject();
         result.put("taskId", taskId);

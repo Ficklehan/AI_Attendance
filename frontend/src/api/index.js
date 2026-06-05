@@ -35,7 +35,7 @@ request.interceptors.response.use(
     if (res.code !== 200) {
       const text = showApiError(res)
 
-      if (res.code === 401 || res.code === 1004) {
+      if (res.code === 401 || res.code === 1004 || res.messageKey === 'errors.userDisabled') {
         const authStore = useAuthStore()
         authStore.logout()
         router.push('/login')

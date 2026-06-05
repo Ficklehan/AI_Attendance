@@ -41,6 +41,9 @@ public class UserService {
     @Autowired
     private PermissionService permissionService;
 
+    @Autowired
+    private SystemRoleService systemRoleService;
+
     @Transactional
     public LoginResponse register(RegisterRequest request) {
         if (userMapper.existsByUsername(request.getUsername()) > 0) {
@@ -229,7 +232,9 @@ public class UserService {
             user.setEmployeeId(request.getEmployeeId());
         }
         if (request.getStatus() != null && !request.getStatus().trim().isEmpty()) {
-            user.setStatus(request.getStatus().trim());
+            String normalizedStatus = normalizeUserStatus(request.getStatus());
+            assertCanChangeUserStatus(userId, normalizedStatus);
+            user.setStatus(normalizedStatus);
         }
         if (request.getFeishuUserId() != null) {
             String feishuId = request.getFeishuUserId().trim();
@@ -248,14 +253,75 @@ public class UserService {
         return toUserListDto(getUserById(userId));
     }
 
+    @Transactional
+    public UserListDTO updateUserStatusByAdmin(String userId, String status) {
+        User user = getUserById(userId);
+        String normalizedStatus = normalizeUserStatus(status);
+        assertCanChangeUserStatus(userId, normalizedStatus);
+        user.setStatus(normalizedStatus);
+        userMapper.updateUser(user);
+        log.info("管理员更新用户状态: userId={}, status={}", userId, normalizedStatus);
+        return toUserListDto(getUserById(userId));
+    }
+
+    @Transactional
+    public void deleteUserByAdmin(String userId) {
+        User user = getUserById(userId);
+        if ("deleted".equals(user.getStatus())) {
+            throw new BusinessException(ErrorCode.USER_NOT_FOUND, ErrorKeys.USER_NOT_FOUND);
+        }
+        assertCanDeleteUser(user);
+        userMapper.deleteUserById(userId);
+        log.info("管理员删除用户: userId={}, username={}", userId, user.getUsername());
+    }
+
+    public void assertUserActive(User user) {
+        if (user == null || !"active".equals(user.getStatus())) {
+            throw new BusinessException(ErrorCode.USER_NOT_FOUND, ErrorKeys.USER_DISABLED);
+        }
+    }
+
+    private void assertCanChangeUserStatus(String userId, String status) {
+        if (!"disabled".equals(status)) {
+            return;
+        }
+        String currentAdminId = SecurityUtils.getCurrentUserId();
+        if (userId != null && userId.equals(currentAdminId)) {
+            throw new BusinessException(ErrorCode.PERMISSION_DENIED, ErrorKeys.CANNOT_DISABLE_SELF);
+        }
+    }
+
+    private void assertCanDeleteUser(User user) {
+        String currentAdminId = SecurityUtils.getCurrentUserId();
+        if (user.getId() != null && user.getId().equals(currentAdminId)) {
+            throw new BusinessException(ErrorCode.PERMISSION_DENIED, ErrorKeys.CANNOT_DELETE_SELF);
+        }
+        if ("admin".equalsIgnoreCase(user.getRole())
+                && userMapper.countActiveByRole("admin") <= 1) {
+            throw new BusinessException(ErrorCode.PERMISSION_DENIED, ErrorKeys.CANNOT_DELETE_LAST_ADMIN);
+        }
+    }
+
+    private String normalizeUserStatus(String status) {
+        if (status == null || status.trim().isEmpty()) {
+            return "active";
+        }
+        String normalized = status.trim().toLowerCase();
+        if ("active".equals(normalized) || "disabled".equals(normalized)) {
+            return normalized;
+        }
+        throw new BusinessException(400, ErrorKeys.VALIDATION_FAILED,
+                java.util.Collections.singletonMap("detail", "status must be active or disabled"));
+    }
+
     private String normalizeRole(String role) {
         if (role == null || role.trim().isEmpty()) {
             return "user";
         }
-        String normalized = role.trim().toLowerCase();
-        if (!"admin".equals(normalized) && !"user".equals(normalized)) {
+        String normalized = SystemRoleService.normalizeRoleKey(role);
+        if (!systemRoleService.roleExists(normalized)) {
             throw new BusinessException(400, ErrorKeys.VALIDATION_FAILED,
-                    java.util.Collections.singletonMap("detail", "role must be admin or user"));
+                    java.util.Collections.singletonMap("detail", "unknown role: " + role));
         }
         return normalized;
     }

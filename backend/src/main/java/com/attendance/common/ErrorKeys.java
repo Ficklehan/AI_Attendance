@@ -12,6 +12,9 @@ public final class ErrorKeys {
     public static final String EXPORT_JOB_NOT_READY = "errors.exportJobNotReady";
     public static final String USER_NOT_FOUND = "errors.userNotFound";
     public static final String USER_DISABLED = "errors.userDisabled";
+    public static final String CANNOT_DISABLE_SELF = "errors.cannotDisableSelf";
+    public static final String CANNOT_DELETE_SELF = "errors.cannotDeleteSelf";
+    public static final String CANNOT_DELETE_LAST_ADMIN = "errors.cannotDeleteLastAdmin";
     public static final String USER_ALREADY_EXISTS = "errors.userAlreadyExists";
     public static final String EMAIL_ALREADY_EXISTS = "errors.emailAlreadyExists";
     public static final String FEISHU_USER_ALREADY_EXISTS = "errors.feishuUserAlreadyExists";

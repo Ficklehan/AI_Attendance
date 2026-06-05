@@ -11,6 +11,8 @@ public interface UserMapper {
 
     User selectUserById(@Param("id") String id);
 
+    String selectUserStatusById(@Param("id") String id);
+
     User selectUserByUsername(@Param("username") String username);
 
     User selectUserByEmail(@Param("email") String email);
@@ -34,4 +36,6 @@ public interface UserMapper {
     User selectUserByFeishuUserId(@Param("feishuUserId") String feishuUserId);
 
     int existsByFeishuUserId(@Param("feishuUserId") String feishuUserId);
+
+    long countActiveByRole(@Param("role") String role);
 }

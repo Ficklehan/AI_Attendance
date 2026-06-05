@@ -7,13 +7,14 @@ import com.attendance.entity.Task;
 import com.attendance.entity.TaskListRow;
 import com.attendance.entity.TaskRecord;
 import com.attendance.entity.User;
+import com.attendance.dto.RecognitionCheckpoint;
 import com.attendance.dto.request.TaskQuery;
 import com.attendance.dto.response.EmployeeRecordDTO;
 import com.attendance.dto.response.TaskProgressDTO;
 import com.attendance.dto.response.TaskSummaryDTO;
 import com.attendance.mapper.TaskMapper;
 import com.attendance.mapper.TaskRecordMapper;
-import com.attendance.security.AdminAuthService;
+import com.attendance.security.DataScopeContext;
 import com.attendance.security.SecurityUtils;
 import com.attendance.util.ExcelExportHelper;
 import com.attendance.util.ExcelExportHelper.ExcelSheetWriter;
@@ -68,10 +69,10 @@ public class TaskService {
     private TaskAccessService taskAccessService;
 
     @Autowired
-    private AdminAuthService adminAuthService;
+    private PermissionService permissionService;
 
     @Autowired
-    private PermissionService permissionService;
+    private DataScopeService dataScopeService;
 
     @Autowired
     private TaskRecordMapper taskRecordMapper;
@@ -87,44 +88,27 @@ public class TaskService {
             "Date", "ARRIVEE", "DEPAR", "PAUSE", "SIGNATURE", "Observations"
     };
 
-    /**
-     * User id filter for task lists/exports: null = all users (admin only).
-     */
-    public String resolveListScopeUserId() {
-        taskAccessService.requireCurrentUserId();
-        if (adminAuthService.isCurrentUserAdmin()) {
-            return null;
-        }
-        return SecurityUtils.getCurrentUserId();
+    public DataScopeContext resolveDataScope() {
+        return dataScopeService.resolveForCurrentUser();
     }
 
-    public String resolveListScopeUserIdForExport(TaskQuery query, String jobOwnerUserId) {
-        if (query != null && Boolean.TRUE.equals(query.getAllUsersScope())) {
-            return null;
-        }
-        if (query != null && query.getListScopeUserId() != null && !query.getListScopeUserId().trim().isEmpty()) {
-            return query.getListScopeUserId();
-        }
-        return jobOwnerUserId;
+    public DataScopeContext resolveDataScopeForUserId(String userId) {
+        return dataScopeService.resolveForUserId(userId);
     }
 
     public void attachListScopeToQuery(TaskQuery query) {
         if (query == null) {
             return;
         }
-        if (adminAuthService.isCurrentUserAdmin()) {
-            query.setAllUsersScope(true);
-            query.setListScopeUserId(null);
-        } else {
-            query.setAllUsersScope(false);
-            query.setListScopeUserId(taskAccessService.requireCurrentUserId());
-        }
+        DataScopeContext scope = resolveDataScope();
+        query.setAllUsersScope(scope.isAllUsers());
+        query.setListScopeUserId(scope.isAllUsers() ? null : SecurityUtils.getCurrentUserId());
     }
 
     public TaskSummaryDTO getTaskSummary() {
-        String scopeUserId = resolveListScopeUserId();
-        boolean allUsers = scopeUserId == null;
-        List<Map<String, Object>> rows = taskMapper.countTasksGroupByStatus(scopeUserId);
+        DataScopeContext scope = resolveDataScope();
+        boolean allUsers = scope.isAllUsers();
+        List<Map<String, Object>> rows = taskMapper.countTasksGroupByStatus(scope);
 
         long processing = 0;
         long review = 0;
@@ -213,14 +197,82 @@ public class TaskService {
         return taskAccessService.requireOwnedTask(taskId);
     }
 
+    public Task getTaskByIdInternal(String taskId) {
+        return taskMapper.selectTaskByTaskId(taskId);
+    }
+
+    public boolean isRecognitionHeartbeatFresh(String taskId, long maxAgeMs) {
+        Task task = taskMapper.selectTaskByTaskId(taskId);
+        if (task == null || task.getRecognitionHeartbeatAt() == null) {
+            return false;
+        }
+        long ageMs = java.time.Duration.between(
+                task.getRecognitionHeartbeatAt(),
+                java.time.LocalDateTime.now()).toMillis();
+        return ageMs >= 0 && ageMs < maxAgeMs;
+    }
+
+    @Transactional
+    public void touchRecognitionHeartbeat(String taskId) {
+        taskMapper.touchRecognitionHeartbeat(taskId);
+    }
+
+    public RecognitionCheckpoint loadRecognitionCheckpoint(String taskId) {
+        Task task = taskMapper.selectTaskByTaskId(taskId);
+        if (task == null) {
+            return RecognitionCheckpoint.empty();
+        }
+        return RecognitionCheckpoint.fromJson(task.getRecognitionCheckpoint());
+    }
+
+    @Transactional
+    public void saveRecognitionCheckpoint(String taskId, RecognitionCheckpoint checkpoint) {
+        if (checkpoint == null) {
+            return;
+        }
+        taskMapper.updateRecognitionCheckpoint(taskId, checkpoint.toJson());
+    }
+
+    @Transactional
+    public void clearRecognitionCheckpoint(String taskId) {
+        taskMapper.clearRecognitionCheckpoint(taskId);
+    }
+
+    public List<String> findStaleProcessingTaskIds(int staleSeconds, int batchSize) {
+        return taskMapper.selectStaleProcessingTaskIds(
+                Math.max(30, staleSeconds), Math.max(1, batchSize));
+    }
+
+    public List<String> findZombieProcessingTaskIds(int zombieMinutes, int batchSize) {
+        return taskMapper.selectZombieProcessingTaskIds(
+                Math.max(1, zombieMinutes), Math.max(1, batchSize));
+    }
+
+    /**
+     * 识别是否已真正开始（有进度/断点/部分结果），用于区分「仅上传中」的 processing 任务。
+     */
+    public boolean hasRecognitionWorkStarted(Task task) {
+        if (task == null) {
+            return false;
+        }
+        if (task.getProgressRowCount() != null && task.getProgressRowCount() > 0) {
+            return true;
+        }
+        if (countJsonArrayRows(task.getRawData()) > 0) {
+            return true;
+        }
+        RecognitionCheckpoint cp = RecognitionCheckpoint.fromJson(task.getRecognitionCheckpoint());
+        return cp.getImageIndex() > 0 || cp.getRecordCount() > 0 || cp.getRetryCount() > 0;
+    }
+
     public List<TaskListRow> getTaskList(String status, String keyword, String searchField, long offset, long size) {
-        String userId = resolveListScopeUserId();
-        return taskMapper.selectTaskList(userId, status, keyword, searchField, offset, size);
+        DataScopeContext scope = resolveDataScope();
+        return taskMapper.selectTaskList(scope, status, keyword, searchField, offset, size);
     }
 
     public long countTaskList(String status, String keyword, String searchField) {
-        String userId = resolveListScopeUserId();
-        return taskMapper.countTaskList(userId, status, keyword, searchField);
+        DataScopeContext scope = resolveDataScope();
+        return taskMapper.countTaskList(scope, status, keyword, searchField);
     }
 
     @Transactional
@@ -302,10 +354,14 @@ public class TaskService {
             summary.put("recognitionTrace", recognitionTrace.toJson());
         }
         taskMapper.updateTaskAnomalySummary(taskId, summary.toJSONString());
-        taskMapper.updateTaskRawDataProgress(taskId, "[]", "", 0);
+        Task task = taskMapper.selectTaskByTaskId(taskId);
+        int partialRows = task != null ? countJsonArrayRows(task.getRawData()) : 0;
+        if (partialRows <= 0) {
+            taskMapper.updateTaskRawDataProgress(taskId, "[]", "", 0);
+        }
         taskMapper.updateTaskStatus(taskId, "failed");
         taskRecordSyncService.syncFromTaskId(taskId);
-        log.warn("任务识别失败: taskId={}, error={}", taskId, errorMessage);
+        log.warn("任务识别失败: taskId={}, error={}, partialRows={}", taskId, errorMessage, partialRows);
     }
 
     @Transactional
@@ -501,9 +557,40 @@ public class TaskService {
 
     @Transactional
     public void prepareTaskForRecognition(String taskId) {
+        prepareTaskForRecognition(taskId, true);
+    }
+
+    @Transactional
+    public void prepareTaskForRecognition(String taskId, boolean reset) {
         taskAccessService.requireOwnedTask(taskId);
+        prepareTaskForRecognitionInternal(taskId, reset);
+    }
+
+    @Transactional
+    public void prepareTaskForRecognitionInternal(String taskId, boolean reset) {
         taskMapper.updateTaskStatus(taskId, "processing");
-        taskMapper.updateTaskRawDataProgress(taskId, "[]", "mimo", 0);
+        if (reset) {
+            taskMapper.updateTaskRawDataProgress(taskId, "[]", "mimo", 0);
+            clearRecognitionCheckpoint(taskId);
+        }
+        touchRecognitionHeartbeat(taskId);
+    }
+
+    public byte[] readUploadedImageBytesForTask(String taskId, String fileKey) throws IOException {
+        Task task = taskMapper.selectTaskByTaskId(taskId);
+        if (task == null) {
+            throw new BusinessException(ErrorCode.TASK_NOT_FOUND, ErrorKeys.TASK_NOT_FOUND);
+        }
+        List<String> urls = parseImageUrlList(task);
+        String safeKey = fileKey != null ? fileKey.trim() : "";
+        if (safeKey.isEmpty() || !urls.contains(safeKey)) {
+            throw new BusinessException(ErrorCode.FILE_UPLOAD_ERROR, ErrorKeys.IMAGE_INVALID);
+        }
+        if (!fileStorage.exists(safeKey)) {
+            throw new BusinessException(ErrorCode.FILE_UPLOAD_ERROR, ErrorKeys.FILE_NOT_FOUND,
+                    Collections.singletonMap("fileKey", safeKey));
+        }
+        return fileStorage.readBytes(safeKey);
     }
 
     @Transactional
@@ -698,9 +785,9 @@ public class TaskService {
     }
 
     public List<EmployeeRecordDTO> getEmployeeRecordList(String status, String keyword, String searchField, String filters, long offset, long size) {
-        String userId = resolveListScopeUserId();
+        DataScopeContext scope = resolveDataScope();
         List<Map<String, String>> conditions = parseFilters(searchField, keyword, filters);
-        List<TaskRecord> rows = taskRecordMapper.selectRecordPage(userId, status, conditions, offset, size);
+        List<TaskRecord> rows = taskRecordMapper.selectRecordPage(scope, status, conditions, offset, size);
         List<EmployeeRecordDTO> result = new ArrayList<>();
         for (TaskRecord row : rows) {
             result.add(toEmployeeRecord(row));
@@ -709,9 +796,9 @@ public class TaskService {
     }
 
     public long countEmployeeRecordList(String status, String keyword, String searchField, String filters) {
-        String userId = resolveListScopeUserId();
+        DataScopeContext scope = resolveDataScope();
         List<Map<String, String>> conditions = parseFilters(searchField, keyword, filters);
-        return taskRecordMapper.countRecords(userId, status, conditions);
+        return taskRecordMapper.countRecords(scope, status, conditions);
     }
 
     private EmployeeRecordDTO toEmployeeRecord(TaskRecord row) {
@@ -775,14 +862,14 @@ public class TaskService {
         return list;
     }
 
-    public long exportTaskListToExcel(String userId, String status, String keyword, String searchField,
+    public long exportTaskListToExcel(DataScopeContext scope, String status, String keyword, String searchField,
                                       ExcelSheetWriter writer) throws IOException {
         writer.writeHeader("任务ID", "文件名", "状态", "飞书同步", "同步错误", "操作人", "创建时间");
         long count = 0;
         int offset = 0;
         final int batchSize = 500;
         while (true) {
-            List<TaskListRow> tasks = taskMapper.selectTaskList(userId, status, keyword, searchField, offset, batchSize);
+            List<TaskListRow> tasks = taskMapper.selectTaskList(scope, status, keyword, searchField, offset, batchSize);
             if (tasks == null || tasks.isEmpty()) {
                 break;
             }
@@ -805,7 +892,7 @@ public class TaskService {
         return count;
     }
 
-    public long exportEmployeeRecordsToExcel(String userId, String status, String keyword, String searchField,
+    public long exportEmployeeRecordsToExcel(DataScopeContext scope, String status, String keyword, String searchField,
                                              String filters, ExcelSheetWriter writer) throws IOException {
         writer.writeHeader("任务ID", "操作人", "任务状态", "创建时间", "页码", "工号", "姓名", "国家", "仓库", "日期",
                 "中介机构", "班次", "到达", "离开", "休息(分钟)", "签名", "标记", "备注", "文件名");
@@ -814,7 +901,7 @@ public class TaskService {
         int offset = 0;
         final int batchSize = 500;
         while (true) {
-            List<TaskRecord> rows = taskRecordMapper.selectForExport(userId, status, conditionList, offset, batchSize);
+            List<TaskRecord> rows = taskRecordMapper.selectForExport(scope, status, conditionList, offset, batchSize);
             if (rows == null || rows.isEmpty()) {
                 break;
             }
@@ -890,8 +977,9 @@ public class TaskService {
             result.put("duplicates", hits);
             return result;
         }
+        DataScopeContext dataScope = resolveDataScope();
         List<Map<String, Object>> baseline = taskRecordMapper.selectDuplicateBaseline(
-                taskId, statuses, workDates, baseNames);
+                taskId, statuses, workDates, baseNames, dataScope);
 
         for (int i = 0; i < currentRecords.size(); i++) {
             Map<String, Object> current = currentRecords.get(i);

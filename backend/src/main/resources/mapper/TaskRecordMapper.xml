@@ -50,9 +50,39 @@
     </sql>
 
     <sql id="RecordScopeWhere">
-        WHERE 1=1
-        <if test="userId != null and userId != ''">
-            AND tr.user_id = #{userId}
+        WHERE tr.deleted = 0
+        <if test="scope != null and !scope.allUsers">
+            <choose>
+                <when test="(scope.ownerUserIds == null or scope.ownerUserIds.size() == 0) and !scope.recordDimensionFilter">
+                    AND 1=0
+                </when>
+                <otherwise>
+                    AND (
+                        1=1
+                        <if test="scope.ownerUserIds != null and scope.ownerUserIds.size() > 0">
+                            AND tr.user_id IN
+                            <foreach collection="scope.ownerUserIds" item="uid" open="(" separator="," close=")">
+                                #{uid}
+                            </foreach>
+                        </if>
+                        <if test="scope.countries != null and scope.countries.size() > 0">
+                            AND tr.country_key IN
+                            <foreach collection="scope.countries" item="cv" open="(" separator="," close=")">#{cv}</foreach>
+                        </if>
+                        <if test="scope.warehouses != null and scope.warehouses.size() > 0">
+                            AND tr.warehouse_key IN
+                            <foreach collection="scope.warehouses" item="wv" open="(" separator="," close=")">#{wv}</foreach>
+                        </if>
+                        <if test="scope.agencies != null and scope.agencies.size() > 0">
+                            AND tr.agency_key IN
+                            <foreach collection="scope.agencies" item="av" open="(" separator="," close=")">#{av}</foreach>
+                        </if>
+                        <if test="scope.viewerUserId != null and scope.viewerUserId != ''">
+                            OR tr.user_id = #{scope.viewerUserId}
+                        </if>
+                    )
+                </otherwise>
+            </choose>
         </if>
         <if test="status != null and status != ''">
             AND tr.task_status = #{status}
@@ -340,7 +370,43 @@
         <foreach collection="statuses" item="s" open="(" separator="," close=")">
             #{s}
         </foreach>
+        <if test="scope != null and !scope.allUsers">
+            <if test="scope.ownerUserIds != null and scope.ownerUserIds.size() > 0">
+                AND tr.user_id IN
+                <foreach collection="scope.ownerUserIds" item="uid" open="(" separator="," close=")">#{uid}</foreach>
+            </if>
+            <if test="scope.countries != null and scope.countries.size() > 0">
+                AND tr.country_key IN
+                <foreach collection="scope.countries" item="cv" open="(" separator="," close=")">#{cv}</foreach>
+            </if>
+            <if test="scope.warehouses != null and scope.warehouses.size() > 0">
+                AND tr.warehouse_key IN
+                <foreach collection="scope.warehouses" item="wv" open="(" separator="," close=")">#{wv}</foreach>
+            </if>
+            <if test="scope.agencies != null and scope.agencies.size() > 0">
+                AND tr.agency_key IN
+                <foreach collection="scope.agencies" item="av" open="(" separator="," close=")">#{av}</foreach>
+            </if>
+        </if>
         LIMIT 5000
+    </select>
+
+    <select id="countRecordsMatchingScope" resultType="long">
+        SELECT COUNT(*)
+        FROM task_records tr
+        WHERE tr.task_id = #{taskId} AND tr.deleted = 0
+        <if test="countries != null and countries.size() > 0">
+            AND tr.country_key IN
+            <foreach collection="countries" item="cv" open="(" separator="," close=")">#{cv}</foreach>
+        </if>
+        <if test="warehouses != null and warehouses.size() > 0">
+            AND tr.warehouse_key IN
+            <foreach collection="warehouses" item="wv" open="(" separator="," close=")">#{wv}</foreach>
+        </if>
+        <if test="agencies != null and agencies.size() > 0">
+            AND tr.agency_key IN
+            <foreach collection="agencies" item="av" open="(" separator="," close=")">#{av}</foreach>
+        </if>
     </select>
 
     <select id="countByTaskId" resultType="long">

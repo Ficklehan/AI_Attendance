@@ -16,6 +16,7 @@
           <a-select-option value="TASK_CONFIRMED">{{ $t('audit.actionTaskConfirmed') }}</a-select-option>
           <a-select-option value="TASK_DELETED">{{ $t('audit.actionTaskDeleted') }}</a-select-option>
           <a-select-option value="CHANGE_PASSWORD">{{ $t('audit.actionChangePassword') }}</a-select-option>
+          <a-select-option value="USER_DELETED">{{ $t('audit.actionUserDeleted') }}</a-select-option>
         </a-select>
         
         <a-date-picker
@@ -46,9 +47,9 @@
       >
         <template #bodyCell="{ column, record }">
           <template v-if="column.key === 'action'">
-            <a-tag :color="getActionColor(record.action)" class="action-tag">
+            <span :class="['action-tag', getActionClass(record.action)]">
               {{ getActionText(record.action) }}
-            </a-tag>
+            </span>
           </template>
         </template>
       </a-table>
@@ -146,8 +147,9 @@ const handleFilter = () => {
   loadLogs()
 }
 
-const handleSizeChange = (val) => {
-  pageSize.value = val
+const handleSizeChange = (_current, size) => {
+  pageSize.value = size
+  currentPage.value = 1
   loadLogs()
 }
 
@@ -164,20 +166,28 @@ const getActionText = (action) => {
     TASK_CONFIRMED: t('audit.actionTaskConfirmed'),
     TASK_DELETED: t('audit.actionTaskDeleted'),
     CHANGE_PASSWORD: t('audit.actionChangePassword'),
+    USER_DELETED: t('audit.actionUserDeleted'),
+    TASK_CANCELLED: t('audit.actionTaskCancelled'),
+    TASK_SYNC_RETRY: t('audit.actionTaskSyncRetry'),
+    RECORD_CALIBRATED: t('audit.actionRecordCalibrated'),
   }
   return textMap[action] || action
 }
 
-const getActionColor = (action) => {
-  const colorMap = {
-    USER_LOGIN: 'primary',
-    USER_REGISTER: 'success',
-    USER_LOGOUT: 'info',
-    TASK_CONFIRMED: 'success',
-    TASK_DELETED: 'error',
-    CHANGE_PASSWORD: 'warning',
+const getActionClass = (action) => {
+  const classMap = {
+    USER_LOGIN: 'action-tag--login',
+    USER_REGISTER: 'action-tag--register',
+    USER_LOGOUT: 'action-tag--logout',
+    USER_DELETED: 'action-tag--danger',
+    TASK_CONFIRMED: 'action-tag--success',
+    TASK_DELETED: 'action-tag--danger',
+    TASK_CANCELLED: 'action-tag--warning',
+    TASK_SYNC_RETRY: 'action-tag--info',
+    RECORD_CALIBRATED: 'action-tag--info',
+    CHANGE_PASSWORD: 'action-tag--warning',
   }
-  return colorMap[action] || 'default'
+  return classMap[action] || 'action-tag--default'
 }
 
 onMounted(() => {
@@ -282,10 +292,45 @@ onMounted(() => {
       }
       
       .action-tag {
+        display: inline-block;
         border-radius: $radius-sm;
         font-size: $font-size-sm;
         font-weight: $font-weight-medium;
         padding: 2px 10px;
+        line-height: 1.5;
+        white-space: nowrap;
+      }
+
+      .action-tag--login {
+        background: #dbeafe;
+        color: #1e40af;
+      }
+
+      .action-tag--register,
+      .action-tag--success {
+        background: #dcfce7;
+        color: #166534;
+      }
+
+      .action-tag--logout,
+      .action-tag--info {
+        background: #e0e7ff;
+        color: #3730a3;
+      }
+
+      .action-tag--warning {
+        background: #fef3c7;
+        color: #92400e;
+      }
+
+      .action-tag--danger {
+        background: #fee2e2;
+        color: #991b1b;
+      }
+
+      .action-tag--default {
+        background: #f3f4f6;
+        color: #374151;
       }
     }
     

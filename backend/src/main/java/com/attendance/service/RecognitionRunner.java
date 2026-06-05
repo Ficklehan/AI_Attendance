@@ -3,6 +3,7 @@ package com.attendance.service;
 import com.alibaba.fastjson.JSON;
 import com.alibaba.fastjson.JSONArray;
 import com.alibaba.fastjson.JSONObject;
+import com.attendance.dto.RecognitionCheckpoint;
 import com.attendance.util.RecordCountryDefaults;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -34,9 +35,9 @@ public class RecognitionRunner {
     @Autowired
     private UploadMediaSupport uploadMediaSupport;
 
-    private static final int PROGRESS_COUNT_EVERY = 3;
-    private static final int FULL_RAW_FLUSH_EVERY = 20;
-    public static final int RECOGNITION_TIMEOUT_SECONDS = 300;
+    private static final int PROGRESS_COUNT_EVERY = 2;
+    private static final int FULL_RAW_FLUSH_EVERY = 5;
+    public static final int RECOGNITION_TIMEOUT_SECONDS = 900;
 
     public static class RecognitionOutcome {
         private final List<JSONObject> records;
@@ -224,7 +225,7 @@ public class RecognitionRunner {
         }
 
         if (!done.await(RECOGNITION_TIMEOUT_SECONDS, TimeUnit.SECONDS)) {
-            throw new IllegalStateException("识别超时（超过 5 分钟），请稍后重试");
+            throw new IllegalStateException("识别超时（超过 15 分钟），请稍后重试");
         }
         if (error[0] != null) {
             throw error[0];
@@ -271,24 +272,51 @@ public class RecognitionRunner {
      */
     public RecognitionOutcome recognizeAllTaskImages(String taskId, String configCountry,
                                                      RecognitionTrace trace) throws Exception {
-        com.attendance.entity.Task task = taskService.getTaskForCurrentUser(taskId);
+        return recognizeAllTaskImages(taskId, configCountry, trace, false);
+    }
+
+    public RecognitionOutcome recognizeAllTaskImages(String taskId, String configCountry,
+                                                     RecognitionTrace trace, boolean systemRecovery) throws Exception {
+        com.attendance.entity.Task task = systemRecovery
+                ? taskService.getTaskByIdInternal(taskId)
+                : taskService.getTaskForCurrentUser(taskId);
+        if (task == null) {
+            throw new IllegalStateException("任务不存在: " + taskId);
+        }
         List<String> imageKeys = taskService.parseImageUrlList(task);
         if (imageKeys.isEmpty()) {
             throw new IllegalStateException("任务无原图，无法识别");
         }
 
-        taskService.prepareTaskForRecognition(taskId);
+        RecognitionCheckpoint checkpoint = taskService.loadRecognitionCheckpoint(taskId);
+        boolean resuming = checkpoint.getImageIndex() > 0
+                || checkpoint.getRecordCount() > 0
+                || ("processing".equals(task.getStatus()) && hasPartialRawData(task));
+        if (systemRecovery) {
+            taskService.prepareTaskForRecognitionInternal(taskId, !resuming);
+        } else {
+            taskService.prepareTaskForRecognition(taskId, !resuming);
+        }
 
-        List<JSONObject> merged = new ArrayList<>();
-        String finalEngine = null;
+        List<JSONObject> merged = resuming ? loadExistingRecords(task, checkpoint) : new ArrayList<>();
+        String finalEngine = task.getAiRawOutput();
         String finalCountry = configCountry;
         String workingCountry = task.getPromptCountry() != null && !task.getPromptCountry().trim().isEmpty()
                 ? task.getPromptCountry()
                 : configCountry;
         int total = imageKeys.size();
+        int startIndex = Math.min(Math.max(checkpoint.getImageIndex(), 0), total);
 
-        for (int i = 0; i < total; i++) {
+        if (resuming && trace != null) {
+            JSONObject resumeMeta = new JSONObject();
+            resumeMeta.put("imageIndex", startIndex);
+            resumeMeta.put("recordCount", merged.size());
+            trace.step("batch_recognition_resume", resumeMeta);
+        }
+
+        for (int i = startIndex; i < total; i++) {
             String fileKey = imageKeys.get(i);
+            int baselineCount = merged.size();
             if (trace != null) {
                 JSONObject meta = new JSONObject();
                 meta.put("index", i + 1);
@@ -296,7 +324,10 @@ public class RecognitionRunner {
                 meta.put("fileKey", fileKey);
                 trace.step("batch_image_start", meta);
             }
-            byte[] fileBytes = taskService.readUploadedImageBytes(fileKey);
+            taskService.touchRecognitionHeartbeat(taskId);
+            byte[] fileBytes = systemRecovery
+                    ? taskService.readUploadedImageBytesForTask(taskId, fileKey)
+                    : taskService.readUploadedImageBytes(fileKey);
             List<UploadMediaSupport.ImagePage> pages;
             if (uploadMediaSupport.isPdf(fileBytes, fileKey, null)) {
                 pages = uploadMediaSupport.toRecognizablePages(fileBytes, fileKey, "application/pdf");
@@ -313,9 +344,12 @@ public class RecognitionRunner {
                     finalCountry = outcome.getPromptCountry();
                 }
             }
-            flushProgress(taskId, merged, finalEngine != null ? finalEngine : plannedEngine());
-            log.info("多图识别进度: taskId={}, image={}/{}, mergedRows={}",
-                    taskId, i + 1, total, merged.size());
+            checkpoint.setImageIndex(i + 1);
+            checkpoint.setRecordCount(merged.size());
+            checkpoint.setLastError(null);
+            saveCheckpoint(taskId, checkpoint, merged, finalEngine != null ? finalEngine : plannedEngine());
+            log.info("多图识别进度: taskId={}, image={}/{}, mergedRows={}, baseline={}",
+                    taskId, i + 1, total, merged.size(), baselineCount);
         }
 
         if (merged.isEmpty() && !recognitionSupport.shouldUseSimulatedRecognition()) {
@@ -340,14 +374,60 @@ public class RecognitionRunner {
         }
         try {
             int size = records.size();
+            taskService.touchRecognitionHeartbeat(taskId);
             taskService.updateTaskRecognitionProgress(taskId, size, engineTag);
-            if (size > 0 && size % FULL_RAW_FLUSH_EVERY == 0) {
+            if (size > 0 && (size % FULL_RAW_FLUSH_EVERY == 0 || size <= FULL_RAW_FLUSH_EVERY)) {
                 JSONArray arr = new JSONArray();
                 arr.addAll(records);
                 taskService.updateTaskRawDataProgress(taskId, arr.toJSONString(), engineTag);
             }
+            RecognitionCheckpoint cp = taskService.loadRecognitionCheckpoint(taskId);
+            cp.setRecordCount(size);
+            taskService.saveRecognitionCheckpoint(taskId, cp);
         } catch (Exception e) {
             log.warn("识别进度写入失败: taskId={}", taskId, e);
         }
+    }
+
+    private void saveCheckpoint(String taskId, RecognitionCheckpoint checkpoint,
+                                List<JSONObject> records, String engineTag) {
+        flushProgress(taskId, records, engineTag);
+        taskService.saveRecognitionCheckpoint(taskId, checkpoint);
+    }
+
+    private static boolean hasPartialRawData(com.attendance.entity.Task task) {
+        if (task == null || task.getRawData() == null || task.getRawData().trim().isEmpty()) {
+            return false;
+        }
+        try {
+            JSONArray arr = JSON.parseArray(task.getRawData());
+            return arr != null && !arr.isEmpty();
+        } catch (Exception e) {
+            return false;
+        }
+    }
+
+    private static List<JSONObject> loadExistingRecords(com.attendance.entity.Task task,
+                                                        RecognitionCheckpoint checkpoint) {
+        List<JSONObject> merged = new ArrayList<>();
+        if (task == null || task.getRawData() == null || task.getRawData().trim().isEmpty()) {
+            return merged;
+        }
+        try {
+            JSONArray arr = JSON.parseArray(task.getRawData());
+            if (arr == null) {
+                return merged;
+            }
+            int keep = Math.min(checkpoint.getRecordCount(), arr.size());
+            for (int i = 0; i < keep; i++) {
+                JSONObject row = arr.getJSONObject(i);
+                if (row != null) {
+                    merged.add(row);
+                }
+            }
+        } catch (Exception e) {
+            log.warn("恢复 partial raw_data 失败: taskId={}", task.getTaskId(), e);
+        }
+        return merged;
     }
 }

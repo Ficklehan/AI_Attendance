@@ -3,6 +3,7 @@ package com.attendance.mapper;
 import com.attendance.dto.response.TaskProgressDTO;
 import com.attendance.entity.Task;
 import com.attendance.entity.TaskListRow;
+import com.attendance.security.DataScopeContext;
 import org.apache.ibatis.annotations.Mapper;
 import org.apache.ibatis.annotations.Param;
 
@@ -15,24 +16,25 @@ public interface TaskMapper {
 
     TaskProgressDTO selectTaskProgress(@Param("taskId") String taskId);
 
-    Task selectTaskOwningFileKey(@Param("fileKey") String fileKey, @Param("userId") String userId);
+    Task selectTaskByFileKeyForScope(@Param("fileKey") String fileKey,
+                                     @Param("scope") DataScopeContext scope);
 
-    /** 管理员查看任意用户任务附件时使用 */
-    Task selectTaskByFileKey(@Param("fileKey") String fileKey);
+    Task selectTaskByFileKeyAndUserId(@Param("fileKey") String fileKey,
+                                       @Param("userId") String userId);
 
-    List<TaskListRow> selectTaskList(@Param("userId") String userId,
+    List<TaskListRow> selectTaskList(@Param("scope") DataScopeContext scope,
                                      @Param("status") String status,
                                      @Param("keyword") String keyword,
                                      @Param("keywordField") String keywordField,
                                      @Param("offset") long offset,
                                      @Param("size") long size);
 
-    long countTaskList(@Param("userId") String userId,
+    long countTaskList(@Param("scope") DataScopeContext scope,
                        @Param("status") String status,
                        @Param("keyword") String keyword,
                        @Param("keywordField") String keywordField);
 
-    List<java.util.Map<String, Object>> countTasksGroupByStatus(@Param("userId") String userId);
+    List<java.util.Map<String, Object>> countTasksGroupByStatus(@Param("scope") DataScopeContext scope);
 
     String selectLastTaskId();
 
@@ -71,10 +73,23 @@ public interface TaskMapper {
 
     void updateTaskAnomalySummary(@Param("taskId") String taskId, @Param("anomalySummary") String anomalySummary);
 
+    int updateRecognitionCheckpoint(@Param("taskId") String taskId,
+                                    @Param("checkpoint") String checkpoint);
+
+    int clearRecognitionCheckpoint(@Param("taskId") String taskId);
+
+    int touchRecognitionHeartbeat(@Param("taskId") String taskId);
+
+    List<String> selectStaleProcessingTaskIds(@Param("staleSeconds") long staleSeconds,
+                                                @Param("batchSize") int batchSize);
+
+    List<String> selectZombieProcessingTaskIds(@Param("zombieMinutes") int zombieMinutes,
+                                               @Param("batchSize") int batchSize);
+
     List<Task> selectTasksForDuplicateByStatuses(@Param("excludeTaskId") String excludeTaskId,
                                                  @Param("statuses") List<String> statuses);
 
-    List<Task> selectTasksForRecordView(@Param("userId") String userId,
+    List<Task> selectTasksForRecordView(@Param("scope") DataScopeContext scope,
                                         @Param("status") String status);
 
     int deleteTaskByTaskId(@Param("taskId") String taskId);

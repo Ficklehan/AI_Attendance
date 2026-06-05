@@ -156,7 +156,10 @@
             </template>
           </TableSortableHeader>
         </template>
-        <template #bodyCell="{ column, record }">
+        <template #bodyCell="{ column, record, index }">
+          <template v-if="column.key === 'serialNo'">
+            <span class="cell-serial">{{ (currentPage - 1) * pageSize + index + 1 }}</span>
+          </template>
           <template v-if="column.key === 'taskId'">
             <a-button type="link" size="small" class="task-id-link" @click="handleView(record)">
               {{ record.taskId }}
@@ -166,6 +169,9 @@
             <div class="status-cell">
               <a-tag :color="getStatusColor(record.status)" class="status-tag">
                 {{ getStatusText(record.status) }}
+                <span v-if="record.status === 'processing' && record.progressRowCount">
+                  · {{ record.progressRowCount }}
+                </span>
               </a-tag>
               <a-tag
                 v-if="record.status === 'confirmed' && record.syncStatus && record.syncStatus !== 'none'"
@@ -229,7 +235,7 @@
 </template>
 
 <script setup>
-import { computed, ref, onMounted, watch } from 'vue'
+import { computed, ref, onMounted, onBeforeUnmount, watch } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import { useI18n } from 'vue-i18n'
 import { message, Modal } from 'ant-design-vue'
@@ -300,15 +306,23 @@ const rowSelection = computed(() => ({
 }))
 
 const baseColumns = computed(() => [
-  { title: t('tasks.taskId'), dataIndex: 'taskId', key: 'taskId', width: 150, ellipsis: true, searchField: 'taskId' },
-  { title: t('tasks.fileName'), dataIndex: 'fileKey', key: 'fileKey', width: 260, ellipsis: true, searchField: 'fileKey' },
-  { title: t('tasks.operator'), dataIndex: 'userName', key: 'userName', width: 110, ellipsis: true, searchField: 'userName' },
-  { title: t('tasks.status'), dataIndex: 'status', key: 'status', width: 130, searchField: 'status', filterType: FILTER_TYPES.STATUS },
-  { title: t('tasks.createTime'), dataIndex: 'createdAt', key: 'createdAt', width: 170, searchField: 'createdAt', filterType: FILTER_TYPES.DATETIME },
-  { title: t('tasks.operation'), key: 'action', width: 100, fixed: 'right' },
+  {
+    title: t('common.serialNumber'),
+    key: 'serialNo',
+    width: 56,
+    autoWidth: false,
+    align: 'center',
+    sorter: false,
+  },
+  { title: t('tasks.taskId'), dataIndex: 'taskId', key: 'taskId', width: 150, ellipsis: true, align: 'left', searchField: 'taskId' },
+  { title: t('tasks.fileName'), dataIndex: 'fileKey', key: 'fileKey', width: 260, ellipsis: true, align: 'left', searchField: 'fileKey' },
+  { title: t('tasks.operator'), dataIndex: 'userName', key: 'userName', width: 110, ellipsis: true, align: 'left', searchField: 'userName' },
+  { title: t('tasks.status'), dataIndex: 'status', key: 'status', width: 130, align: 'left', searchField: 'status', filterType: FILTER_TYPES.STATUS },
+  { title: t('tasks.createTime'), dataIndex: 'createdAt', key: 'createdAt', width: 170, align: 'left', searchField: 'createdAt', filterType: FILTER_TYPES.DATETIME },
+  { title: t('tasks.operation'), key: 'action', width: 100, align: 'center', fixed: 'right' },
 ])
 const { columns: sortedColumns, onSorterToggle, sortRows } = useTableColumnSort(baseColumns, {
-  skipKeys: ['action'],
+  skipKeys: ['serialNo', 'action'],
   customHeader: true,
 })
 const {
@@ -320,7 +334,7 @@ const {
   setFrozenKeys,
   showAllColumns,
   clearFrozenKeys,
-} = useColumnFreeze('task-list', sortedColumns)
+} = useColumnFreeze('task-list', sortedColumns, { defaultFrozen: ['serialNo', 'taskId'] })
 const taskListScrollX = computed(() => sumTableScrollX(columns.value))
 const displayTasks = computed(() => sortRows(tasks.value))
 
@@ -380,8 +394,40 @@ const loadTaskSummary = async () => {
   }
 }
 
-const loadTasks = async () => {
-  loading.value = true
+let processingPollTimer = null
+
+const hasProcessingTasks = computed(() => tasks.value.some((task) => task.status === 'processing'))
+
+const stopProcessingPoll = () => {
+  if (processingPollTimer) {
+    clearInterval(processingPollTimer)
+    processingPollTimer = null
+  }
+}
+
+const startProcessingPoll = () => {
+  if (processingPollTimer) return
+  processingPollTimer = setInterval(() => {
+    if (hasProcessingTasks.value) {
+      loadTasks({ silent: true })
+      loadTaskSummary()
+    } else {
+      stopProcessingPoll()
+    }
+  }, 5000)
+}
+
+const syncProcessingPoll = () => {
+  if (hasProcessingTasks.value) {
+    startProcessingPoll()
+  } else {
+    stopProcessingPoll()
+  }
+}
+
+const loadTasks = async (options = {}) => {
+  const { silent = false } = options
+  if (!silent) loading.value = true
   try {
     const [listRes] = await Promise.all([
       getTaskList({
@@ -395,10 +441,13 @@ const loadTasks = async () => {
     ])
     tasks.value = listRes.data.records || []
     total.value = listRes.data.total || 0
+    syncProcessingPoll()
   } catch (error) {
-    console.error('加载任务列表失败:', error)
+    if (!silent) {
+      console.error('加载任务列表失败:', error)
+    }
   } finally {
-    loading.value = false
+    if (!silent) loading.value = false
   }
 }
 
@@ -549,8 +598,9 @@ const clearHeaderFilter = () => {
   handleFilter()
 }
 
-const handleSizeChange = (val) => {
-  pageSize.value = val
+const handleSizeChange = (_current, size) => {
+  pageSize.value = size
+  currentPage.value = 1
   loadTasks()
 }
 
@@ -626,13 +676,34 @@ const getSyncStatusText = (syncStatus) => {
   return map[syncStatus] || syncStatus
 }
 
+const applyRouteQuery = () => {
+  const status = typeof route.query.status === 'string' ? route.query.status : ''
+  if (status) {
+    filterStatus.value = status
+    currentPage.value = 1
+  }
+}
+
 onMounted(() => {
+  applyRouteQuery()
   loadTasks()
 })
+
+onBeforeUnmount(() => {
+  stopProcessingPoll()
+})
+
+watch(() => route.query, () => {
+  if (route.path === '/tasks') {
+    applyRouteQuery()
+    loadTasks()
+  }
+}, { deep: true })
 
 watch(() => route.path, (newPath, oldPath) => {
   // 当路径变化时，如果从详情页返回任务列表，重新加载数据
   if (newPath === '/tasks' && oldPath?.startsWith('/tasks/')) {
+    applyRouteQuery()
     loadTasks()
   }
 })
@@ -764,8 +835,6 @@ watch(() => route.path, (newPath, oldPath) => {
       }
       
       :deep(.ant-table-tbody > tr > td) {
-        padding: 12px 16px;
-        font-size: 13px;
         color: $text-strong;
         border-bottom: 1px solid $bg-muted;
       }
@@ -779,10 +848,7 @@ watch(() => route.path, (newPath, oldPath) => {
       }
 
       .status-cell {
-        display: flex;
-        flex-wrap: wrap;
         gap: 6px;
-        align-items: center;
       }
 
       .status-tag,
@@ -795,9 +861,8 @@ watch(() => route.path, (newPath, oldPath) => {
       }
       
       .action-buttons {
-        display: flex;
         gap: 8px;
-        
+
         .view-btn {
           color: $primary;
           

@@ -10,13 +10,20 @@ import java.util.concurrent.ThreadPoolExecutor;
 @Configuration
 public class RecognitionExecutorConfig {
 
+    private final RecognitionProperties recognitionProperties;
+
+    public RecognitionExecutorConfig(RecognitionProperties recognitionProperties) {
+        this.recognitionProperties = recognitionProperties;
+    }
+
     @Bean(name = "recognitionExecutor")
     public Executor recognitionExecutor() {
+        RecognitionProperties.Executor cfg = recognitionProperties.getExecutor();
         ThreadPoolTaskExecutor executor = new ThreadPoolTaskExecutor();
         executor.setThreadNamePrefix("recognition-");
-        executor.setCorePoolSize(4);
-        executor.setMaxPoolSize(16);
-        executor.setQueueCapacity(100);
+        executor.setCorePoolSize(Math.max(1, cfg.getCorePoolSize()));
+        executor.setMaxPoolSize(Math.max(cfg.getCorePoolSize(), cfg.getMaxPoolSize()));
+        executor.setQueueCapacity(Math.max(10, cfg.getQueueCapacity()));
         executor.setRejectedExecutionHandler(new ThreadPoolExecutor.CallerRunsPolicy());
         executor.setWaitForTasksToCompleteOnShutdown(true);
         executor.setAwaitTerminationSeconds(30);

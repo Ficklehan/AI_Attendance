@@ -11,6 +11,7 @@ public class TaskListDTO {
     private String syncStatus;
     private String syncError;
     private String imageUrls;
+    private Integer progressRowCount;
     private String userName;
     private LocalDateTime createdAt;
 
@@ -37,6 +38,7 @@ public class TaskListDTO {
         this.syncStatus = row.getSyncStatus();
         this.syncError = row.getSyncError();
         this.imageUrls = row.getImageUrls();
+        this.progressRowCount = row.getProgressRowCount();
         this.userName = row.getUserName();
         this.createdAt = row.getCreatedAt();
     }
@@ -87,6 +89,14 @@ public class TaskListDTO {
 
     public void setImageUrls(String imageUrls) {
         this.imageUrls = imageUrls;
+    }
+
+    public Integer getProgressRowCount() {
+        return progressRowCount;
+    }
+
+    public void setProgressRowCount(Integer progressRowCount) {
+        this.progressRowCount = progressRowCount;
     }
 
     public String getUserName() {

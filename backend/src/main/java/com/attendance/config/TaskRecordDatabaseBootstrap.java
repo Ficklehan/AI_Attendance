@@ -63,6 +63,7 @@ public class TaskRecordDatabaseBootstrap implements ApplicationRunner {
                     + ") ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");
             ensureTasksIndex();
             ensureProgressRowCountColumn();
+            ensureRecognitionCheckpointColumns();
             ensureSmartMarkColumn();
             log.info("task_records 表已就绪");
         } catch (Exception e) {
@@ -83,6 +84,31 @@ public class TaskRecordDatabaseBootstrap implements ApplicationRunner {
             }
         } catch (Exception e) {
             log.debug("progress_row_count 列可能已存在: {}", e.getMessage());
+        }
+    }
+
+    private void ensureRecognitionCheckpointColumns() {
+        try {
+            Integer checkpoint = jdbcTemplate.queryForObject(
+                    "SELECT COUNT(1) FROM information_schema.columns "
+                            + "WHERE table_schema = DATABASE() AND table_name = 'tasks' "
+                            + "AND column_name = 'recognition_checkpoint'",
+                    Integer.class);
+            if (checkpoint == null || checkpoint == 0) {
+                jdbcTemplate.execute("ALTER TABLE tasks ADD COLUMN recognition_checkpoint TEXT NULL "
+                        + "COMMENT '识别断点 JSON' AFTER progress_row_count");
+            }
+            Integer heartbeat = jdbcTemplate.queryForObject(
+                    "SELECT COUNT(1) FROM information_schema.columns "
+                            + "WHERE table_schema = DATABASE() AND table_name = 'tasks' "
+                            + "AND column_name = 'recognition_heartbeat_at'",
+                    Integer.class);
+            if (heartbeat == null || heartbeat == 0) {
+                jdbcTemplate.execute("ALTER TABLE tasks ADD COLUMN recognition_heartbeat_at DATETIME NULL "
+                        + "COMMENT '识别任务心跳' AFTER recognition_checkpoint");
+            }
+        } catch (Exception e) {
+            log.debug("recognition checkpoint 列可能已存在: {}", e.getMessage());
         }
     }
 

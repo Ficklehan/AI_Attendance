@@ -1,10 +1,13 @@
 <template>
   <div
     class="table-sortable-header"
-    :class="{
-      'table-sortable-header--has-filter': hasFilter,
-      'table-sortable-header--has-sort': sortable,
-    }"
+    :class="[
+      alignClass,
+      {
+        'table-sortable-header--has-filter': hasFilter,
+        'table-sortable-header--has-sort': sortable,
+      },
+    ]"
   >
     <div v-if="sortable" class="table-sortable-header__leading">
       <a-tooltip :title="t('common.sortColumn')" placement="top">
@@ -56,6 +59,11 @@ const { t } = useI18n()
 
 const sortable = computed(() => columnIsSortable(props.column))
 const hasFilter = computed(() => typeof slots.extra === 'function')
+
+const alignClass = computed(() => {
+  const align = props.column?.align || 'left'
+  return `table-sortable-header--align-${align}`
+})
 
 const titleText = computed(() => {
   const v = props.title
@@ -117,7 +125,7 @@ $icon-gap: 4px;
   min-width: 0;
   display: flex;
   align-items: center;
-  justify-content: center;
+  justify-content: flex-start;
   box-sizing: border-box;
   pointer-events: none;
 }
@@ -142,12 +150,28 @@ $icon-gap: 4px;
   display: block;
   max-width: 100%;
   white-space: nowrap;
-  text-align: center;
+  text-align: left;
   line-height: 1.35;
   font-weight: 600;
   font-size: 12px;
   color: #344054;
   user-select: none;
+}
+
+.table-sortable-header--align-center .table-sortable-header__title {
+  justify-content: center;
+}
+
+.table-sortable-header--align-center .table-sortable-header__title-text {
+  text-align: center;
+}
+
+.table-sortable-header--align-right .table-sortable-header__title {
+  justify-content: flex-end;
+}
+
+.table-sortable-header--align-right .table-sortable-header__title-text {
+  text-align: right;
 }
 
 .table-sortable-header__icon-btn {

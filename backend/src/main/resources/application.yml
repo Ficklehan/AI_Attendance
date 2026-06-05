@@ -11,6 +11,11 @@ spring:
       uat: deploy
   application:
     name: attendance-assistant
+  redis:
+    host: ${REDIS_HOST:}
+    port: ${REDIS_PORT:6379}
+    password: ${REDIS_PASSWORD:}
+    timeout: 3000ms
   servlet:
     multipart:
       enabled: true
@@ -57,7 +62,27 @@ attendance:
     pdf-max-pages: 30
     pdf-render-dpi: 200
   recognition:
-    max-per-user: 2
+    max-per-user: ${RECOGNITION_MAX_PER_USER:2}
+    global-max-concurrent: ${RECOGNITION_GLOBAL_MAX:8}
+    mimo-qps: ${RECOGNITION_MIMO_QPS:5}
+    zombie-timeout-minutes: ${RECOGNITION_ZOMBIE_MINUTES:36}
+    upload-grace-minutes: 5
+    stale-heartbeat-seconds: 120
+    recovery-batch-size: 20
+    queue:
+      enabled: true
+      max-pending: 2000
+      worker-threads: 2
+      poll-interval-ms: 500
+      slot-wait-timeout-ms: 300000
+    executor:
+      core-pool-size: ${RECOGNITION_EXECUTOR_CORE:4}
+      max-pool-size: ${RECOGNITION_EXECUTOR_MAX:8}
+      queue-capacity: 100
+    distributed:
+      task-lock-seconds: 900
+      leader-lock-seconds: 55
+      semaphore-ttl-seconds: 3600
   performance:
     slow-sql-ms: 500
     slow-api-ms: 800

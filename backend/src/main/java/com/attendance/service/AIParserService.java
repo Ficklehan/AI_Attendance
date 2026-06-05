@@ -46,6 +46,9 @@ public class AIParserService {
     @Autowired
     private FileStorage fileStorage;
 
+    @Autowired
+    private RecognitionCoordinator recognitionCoordinator;
+
     private final OkHttpClient client = new OkHttpClient.Builder()
             .connectTimeout(60, TimeUnit.SECONDS)
             .readTimeout(600, TimeUnit.SECONDS)
@@ -313,7 +316,7 @@ public class AIParserService {
 
             boolean hasMore = true;
             int currentRound = 0;
-            int maxRounds = 5;
+            int maxRounds = 8;
             StreamRoundOutcome roundOutcome = null;
 
             while (hasMore && currentRound < maxRounds) {
@@ -323,8 +326,27 @@ public class AIParserService {
                     trace.step("model_round_start", "round", currentRound);
                 }
 
-                roundOutcome = callMiMoStream(
-                        messages, extractedRecords, seenRecords, callback, trace, currentRound);
+                try {
+                    recognitionCoordinator.acquireMimoPermit();
+                } catch (InterruptedException ie) {
+                    Thread.currentThread().interrupt();
+                    throw new IOException("MiMo 限流等待被中断", ie);
+                }
+
+                try {
+                    roundOutcome = callMiMoStream(
+                            messages, extractedRecords, seenRecords, callback, trace, currentRound);
+                } catch (Exception streamError) {
+                    if (RecognitionRetrySupport.isRetryable(streamError)
+                            && (!extractedRecords.isEmpty()
+                            || (roundOutcome != null && !roundOutcome.roundText.isEmpty()))) {
+                        log.warn("⚠️ 流中断，转入续写轮: {}", streamError.getMessage());
+                        appendContinuationMessages(messages, continuePrompt,
+                                roundOutcome != null ? roundOutcome.roundText : "");
+                        continue;
+                    }
+                    throw streamError;
+                }
                 String finishReason = roundOutcome.finishReason;
 
                 if (extractedRecords.isEmpty()) {
@@ -336,18 +358,8 @@ public class AIParserService {
                     break;
                 } else if ("length".equals(finishReason)) {
                     log.warn("⚠️ 响应被截断，自动请求续写（已保留本轮 {} 字符）",
-                            roundOutcome != null ? roundOutcome.roundText.length() : 0);
-
-                    JSONObject assistantMsg = new JSONObject();
-                    assistantMsg.put("role", "assistant");
-                    assistantMsg.put("content", roundOutcome != null ? roundOutcome.roundText : "");
-                    messages.add(assistantMsg);
-
-                    JSONObject continueUserMsg = new JSONObject();
-                    continueUserMsg.put("role", "user");
-                    continueUserMsg.put("content", continuePrompt);
-                    messages.add(continueUserMsg);
-                    
+                            roundOutcome.roundText.length());
+                    appendContinuationMessages(messages, continuePrompt, roundOutcome.roundText);
                     continue;
                 } else {
                     hasMore = false;
@@ -442,9 +454,50 @@ public class AIParserService {
         }
     }
 
+    private void appendContinuationMessages(List<JSONObject> messages, String continuePrompt, String roundText) {
+        JSONObject assistantMsg = new JSONObject();
+        assistantMsg.put("role", "assistant");
+        assistantMsg.put("content", roundText != null ? roundText : "");
+        messages.add(assistantMsg);
+
+        JSONObject continueUserMsg = new JSONObject();
+        continueUserMsg.put("role", "user");
+        continueUserMsg.put("content", continuePrompt);
+        messages.add(continueUserMsg);
+    }
+
     private StreamRoundOutcome callMiMoStream(List<JSONObject> messages, List<JSONObject> extractedRecords,
                                   Set<String> seenRecords, ParseCallback callback,
-                                  RecognitionTrace trace, int round) {
+                                  RecognitionTrace trace, int round) throws Exception {
+        Exception lastError = null;
+        for (int attempt = 0; attempt < RecognitionRetrySupport.MAX_STREAM_ATTEMPTS; attempt++) {
+            try {
+                if (attempt > 0) {
+                    log.warn("MiMo 流同轮重试 {}/{} (round={})",
+                            attempt + 1, RecognitionRetrySupport.MAX_STREAM_ATTEMPTS, round);
+                    if (trace != null) {
+                        JSONObject retryMeta = new JSONObject();
+                        retryMeta.put("round", round);
+                        retryMeta.put("attempt", attempt + 1);
+                        trace.step("model_stream_retry", retryMeta);
+                    }
+                    RecognitionRetrySupport.sleepBeforeRetry(attempt - 1);
+                }
+                return callMiMoStreamOnce(messages, extractedRecords, seenRecords, callback, trace, round);
+            } catch (Exception e) {
+                lastError = e;
+                if (!RecognitionRetrySupport.isRetryable(e)
+                        || attempt >= RecognitionRetrySupport.MAX_STREAM_ATTEMPTS - 1) {
+                    throw e;
+                }
+            }
+        }
+        throw lastError != null ? lastError : new IOException("MiMo stream failed");
+    }
+
+    private StreamRoundOutcome callMiMoStreamOnce(List<JSONObject> messages, List<JSONObject> extractedRecords,
+                                  Set<String> seenRecords, ParseCallback callback,
+                                  RecognitionTrace trace, int round) throws Exception {
         String finishReason = null;
         String roundText = "";
         try {
@@ -552,7 +605,7 @@ public class AIParserService {
 
         } catch (Exception e) {
             log.error("调用 MiMo API 失败", e);
-            throw new RuntimeException(e);
+            throw e;
         }
         return new StreamRoundOutcome(finishReason, roundText);
     }

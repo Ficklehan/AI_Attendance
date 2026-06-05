@@ -6,7 +6,9 @@ import com.attendance.common.BusinessException;
 import com.attendance.common.ErrorCode;
 import com.attendance.common.ErrorKeys;
 import com.attendance.config.ConfigPathResolver;
+import com.attendance.entity.SystemRole;
 import com.attendance.entity.User;
+import com.attendance.mapper.SystemRoleMapper;
 import com.attendance.security.AdminAuthService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -35,6 +37,9 @@ public class PermissionService {
     @Autowired
     private AdminAuthService adminAuthService;
 
+    @Autowired
+    private SystemRoleMapper systemRoleMapper;
+
     public Map<String, Map<String, Boolean>> getRolePermissions() {
         return loadAll();
     }
@@ -47,6 +52,13 @@ public class PermissionService {
         Map<String, Map<String, Boolean>> merged = loadAll();
         for (Map.Entry<String, Map<String, Boolean>> entry : body.entrySet()) {
             String role = normalizeRole(entry.getKey());
+            if ("admin".equals(role)) {
+                continue;
+            }
+            if (systemRoleMapper.selectByKey(role) == null) {
+                throw new BusinessException(400, ErrorKeys.VALIDATION_FAILED,
+                        Collections.singletonMap("detail", "unknown role: " + role));
+            }
             Map<String, Boolean> defaults = defaultRole(role);
             Map<String, Boolean> incoming = entry.getValue() != null ? entry.getValue() : Collections.emptyMap();
             Map<String, Boolean> next = new LinkedHashMap<>(defaults);
@@ -54,13 +66,6 @@ public class PermissionService {
                 if (perm.getKey() != null && perm.getValue() != null) {
                     next.put(perm.getKey(), perm.getValue());
                 }
-            }
-            if ("admin".equals(role)) {
-                next.put(RECORD_CALIBRATE, true);
-                next.put("aiConfig", true);
-                next.put("feishuConfig", true);
-                next.put("users", true);
-                next.put("audit", true);
             }
             merged.put(role, next);
         }
@@ -99,6 +104,42 @@ public class PermissionService {
         }
     }
 
+    public void ensureRolePermissions(String roleKey) {
+        if (roleKey == null || roleKey.trim().isEmpty()) {
+            return;
+        }
+        String role = normalizeRole(roleKey);
+        Map<String, Map<String, Boolean>> all = loadAll();
+        if (all.containsKey(role)) {
+            return;
+        }
+        all.put(role, defaultRole(role));
+        try {
+            saveAll(all);
+        } catch (IOException e) {
+            log.error("初始化角色功能权限失败 role={}", role, e);
+            throw new BusinessException(ErrorCode.PERMISSION_DENIED, ErrorKeys.SYSTEM_ERROR);
+        }
+    }
+
+    public void removeRolePermissions(String roleKey) {
+        if (roleKey == null || roleKey.trim().isEmpty()) {
+            return;
+        }
+        String role = normalizeRole(roleKey);
+        Map<String, Map<String, Boolean>> all = loadAll();
+        if (!all.containsKey(role)) {
+            return;
+        }
+        all.remove(role);
+        try {
+            saveAll(all);
+        } catch (IOException e) {
+            log.error("删除角色功能权限失败 role={}", role, e);
+            throw new BusinessException(ErrorCode.PERMISSION_DENIED, ErrorKeys.SYSTEM_ERROR);
+        }
+    }
+
     private Map<String, Map<String, Boolean>> loadAll() {
         Path file = configPathResolver.resolveFile(PERMISSIONS_FILE);
         if (!Files.isRegularFile(file)) {
@@ -114,13 +155,21 @@ public class PermissionService {
             String json = new String(Files.readAllBytes(file), StandardCharsets.UTF_8);
             JSONObject root = JSON.parseObject(json);
             Map<String, Map<String, Boolean>> result = new LinkedHashMap<>();
-            for (String role : new String[]{"admin", "user"}) {
+            for (SystemRole systemRole : systemRoleMapper.selectAll()) {
+                String role = systemRole.getRoleKey();
                 JSONObject roleObj = root.getJSONObject(role);
                 Map<String, Boolean> map = new LinkedHashMap<>(defaultRole(role));
                 if (roleObj != null) {
                     for (String key : roleObj.keySet()) {
                         map.put(key, roleObj.getBooleanValue(key));
                     }
+                }
+                if ("admin".equals(role)) {
+                    map.put(RECORD_CALIBRATE, true);
+                    map.put("aiConfig", true);
+                    map.put("feishuConfig", true);
+                    map.put("users", true);
+                    map.put("audit", true);
                 }
                 result.put(role, map);
             }
@@ -140,9 +189,14 @@ public class PermissionService {
     }
 
     private Map<String, Map<String, Boolean>> defaultAll() {
-        Map<String, Map<String, Boolean>> all = new HashMap<>();
-        all.put("admin", defaultRole("admin"));
-        all.put("user", defaultRole("user"));
+        Map<String, Map<String, Boolean>> all = new LinkedHashMap<>();
+        for (SystemRole systemRole : systemRoleMapper.selectAll()) {
+            all.put(systemRole.getRoleKey(), defaultRole(systemRole.getRoleKey()));
+        }
+        if (all.isEmpty()) {
+            all.put("admin", defaultRole("admin"));
+            all.put("user", defaultRole("user"));
+        }
         return all;
     }
 
@@ -169,10 +223,9 @@ public class PermissionService {
     }
 
     private static String normalizeRole(String role) {
-        if (role == null) {
+        if (role == null || role.trim().isEmpty()) {
             return "user";
         }
-        String r = role.trim().toLowerCase();
-        return "admin".equals(r) ? "admin" : "user";
+        return role.trim().toLowerCase();
     }
 }

@@ -4,6 +4,7 @@ import com.attendance.dto.request.LoginRequest;
 import com.attendance.dto.response.LoginResponse;
 import com.attendance.entity.User;
 import com.attendance.mapper.UserMapper;
+import com.attendance.service.PermissionService;
 import com.attendance.service.UserService;
 import com.attendance.util.JwtUtil;
 import com.attendance.util.PasswordEncoder;
@@ -29,6 +30,9 @@ class UserServiceTest {
 
     @Mock
     private JwtUtil jwtUtil;
+
+    @Mock
+    private PermissionService permissionService;
 
     @InjectMocks
     private UserService userService;
@@ -95,18 +99,29 @@ class UserServiceTest {
     }
 
     @Test
-    void testLoginInactiveUser() {
-        testUser.setStatus("inactive");
-        
+    void testLoginDisabledUser() {
+        testUser.setStatus("disabled");
+
         LoginRequest request = new LoginRequest();
         request.setUsername("testuser");
         request.setPassword("password123");
 
         when(userMapper.selectUserByUsername("testuser")).thenReturn(testUser);
 
-        assertThrows(com.attendance.common.BusinessException.class, () -> {
-            userService.login(request);
-        });
+        com.attendance.common.BusinessException ex = assertThrows(
+                com.attendance.common.BusinessException.class,
+                () -> userService.login(request));
+        assertEquals(com.attendance.common.ErrorKeys.USER_DISABLED, ex.getMessageKey());
+    }
+
+    @Test
+    void testLoginByFeishuDisabledUser() {
+        testUser.setStatus("disabled");
+
+        com.attendance.common.BusinessException ex = assertThrows(
+                com.attendance.common.BusinessException.class,
+                () -> userService.loginByFeishu(testUser));
+        assertEquals(com.attendance.common.ErrorKeys.USER_DISABLED, ex.getMessageKey());
     }
 
     @Test

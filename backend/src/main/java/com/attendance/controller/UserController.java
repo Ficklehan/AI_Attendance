@@ -3,9 +3,11 @@ package com.attendance.controller;
 import com.attendance.common.PageResult;
 import com.attendance.common.Result;
 import com.attendance.dto.request.AdminUserCreateRequest;
+import com.attendance.dto.request.AdminUserStatusRequest;
 import com.attendance.dto.request.AdminUserUpdateRequest;
 import com.attendance.dto.response.UserListDTO;
 import com.attendance.security.AdminAuthService;
+import com.attendance.service.AuditLogService;
 import com.attendance.service.UserService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.validation.annotation.Validated;
@@ -24,6 +26,9 @@ public class UserController {
 
     @Autowired
     private UserService userService;
+
+    @Autowired
+    private AuditLogService auditLogService;
 
     @GetMapping
     public Result<PageResult<UserListDTO>> listUsers(
@@ -54,5 +59,21 @@ public class UserController {
             @Valid @RequestBody AdminUserUpdateRequest request) {
         adminAuthService.requireAdmin();
         return Result.success(userService.updateUserByAdmin(userId, request));
+    }
+
+    @PatchMapping("/{userId}/status")
+    public Result<UserListDTO> updateUserStatus(
+            @PathVariable String userId,
+            @Valid @RequestBody AdminUserStatusRequest request) {
+        adminAuthService.requireAdmin();
+        return Result.success(userService.updateUserStatusByAdmin(userId, request.getStatus()));
+    }
+
+    @DeleteMapping("/{userId}")
+    public Result<Void> deleteUser(@PathVariable String userId) {
+        adminAuthService.requireAdmin();
+        userService.deleteUserByAdmin(userId);
+        auditLogService.log("USER_DELETED", "user", userId, null);
+        return Result.success(null);
     }
 }
