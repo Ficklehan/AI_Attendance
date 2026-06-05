@@ -30,6 +30,7 @@
         <result column="signature" property="signature"/>
         <result column="observations" property="observations"/>
         <result column="page_num" property="pageNum"/>
+        <result column="smart_mark" property="smartMark"/>
         <result column="task_created_at" property="taskCreatedAt"/>
         <result column="user_name" property="userName"/>
     </resultMap>
@@ -39,7 +40,7 @@
         tr.file_key, tr.image_urls, tr.emp_no, tr.emp_name, tr.base_name, tr.country, tr.country_key,
         tr.warehouse, tr.warehouse_key, tr.work_date, tr.agency, tr.agency_key, tr.shift,
         tr.arrival, tr.departure, tr.pause_minutes, tr.signature, tr.observations, tr.page_num,
-        tr.task_created_at,
+        tr.smart_mark, tr.task_created_at,
         COALESCE(u.real_name, u.username, '') AS user_name
     </sql>
 
@@ -63,50 +64,143 @@
             <foreach collection="conditions" item="cond">
                 <if test="cond.keyword != null and cond.keyword != ''">
                     <choose>
-                        <when test="cond.field == 'taskId'">
-                            AND tr.task_id LIKE CONCAT('%', #{cond.keyword}, '%')
+                        <when test="cond.filterType == 'multiselect'">
+                            <choose>
+                                <when test="cond.field == 'SmartMark'">
+                                    AND (
+                                    <foreach collection="cond.keyword.split(';')" item="mv" separator=" OR ">
+                                        tr.smart_mark LIKE CONCAT('%', #{mv}, '%')
+                                    </foreach>
+                                    )
+                                </when>
+                                <when test="cond.field == 'SIGNATURE'">
+                                    AND (
+                                    <foreach collection="cond.keyword.split(';')" item="mv" separator=" OR ">
+                                        tr.signature = #{mv}
+                                    </foreach>
+                                    )
+                                </when>
+                            </choose>
                         </when>
-                        <when test="cond.field == 'fileKey'">
-                            AND tr.file_key LIKE CONCAT('%', #{cond.keyword}, '%')
+                        <when test="cond.filterType == 'datetime' and cond.field == 'createdAt'">
+                            <bind name="dtRange" value="cond.keyword.split('\\|')"/>
+                            <if test="dtRange.length &gt; 0 and dtRange[0] != null and dtRange[0] != ''">
+                                AND tr.task_created_at &gt;= STR_TO_DATE(#{dtRange[0]}, '%Y-%m-%d %H:%i:%s')
+                            </if>
+                            <if test="dtRange.length &gt; 1 and dtRange[1] != null and dtRange[1] != ''">
+                                AND tr.task_created_at &lt;= STR_TO_DATE(#{dtRange[1]}, '%Y-%m-%d %H:%i:%s')
+                            </if>
                         </when>
-                        <when test="cond.field == 'userName'">
-                            AND (u.real_name LIKE CONCAT('%', #{cond.keyword}, '%') OR u.username LIKE CONCAT('%', #{cond.keyword}, '%'))
+                        <when test="cond.filterType == 'date' and cond.field == 'Date'">
+                            <bind name="dateRange" value="cond.keyword.split('\\|')"/>
+                            <if test="dateRange.length &gt; 0 and dateRange[0] != null and dateRange[0] != ''">
+                                AND tr.work_date &gt;= #{dateRange[0]}
+                            </if>
+                            <if test="dateRange.length &gt; 1 and dateRange[1] != null and dateRange[1] != ''">
+                                AND tr.work_date &lt;= #{dateRange[1]}
+                            </if>
                         </when>
-                        <when test="cond.field == 'status'">
-                            AND tr.task_status = #{cond.keyword}
+                        <when test="cond.filterType == 'time' and cond.field == 'ARRIVEE'">
+                            <bind name="timeRange" value="cond.keyword.split('\\|')"/>
+                            <if test="timeRange.length &gt; 0 and timeRange[0] != null and timeRange[0] != ''">
+                                AND REPLACE(REPLACE(tr.arrival, 'h', ':'), 'H', ':') &gt;= #{timeRange[0]}
+                            </if>
+                            <if test="timeRange.length &gt; 1 and timeRange[1] != null and timeRange[1] != ''">
+                                AND REPLACE(REPLACE(tr.arrival, 'h', ':'), 'H', ':') &lt;= #{timeRange[1]}
+                            </if>
                         </when>
-                        <when test="cond.field == 'NO'">
-                            AND tr.emp_no LIKE CONCAT('%', #{cond.keyword}, '%')
+                        <when test="cond.filterType == 'time' and cond.field == 'DEPAR'">
+                            <bind name="timeRange" value="cond.keyword.split('\\|')"/>
+                            <if test="timeRange.length &gt; 0 and timeRange[0] != null and timeRange[0] != ''">
+                                AND REPLACE(REPLACE(tr.departure, 'h', ':'), 'H', ':') &gt;= #{timeRange[0]}
+                            </if>
+                            <if test="timeRange.length &gt; 1 and timeRange[1] != null and timeRange[1] != ''">
+                                AND REPLACE(REPLACE(tr.departure, 'h', ':'), 'H', ':') &lt;= #{timeRange[1]}
+                            </if>
                         </when>
-                        <when test="cond.field == 'NOM_PRENOM'">
-                            AND tr.emp_name LIKE CONCAT('%', #{cond.keyword}, '%')
-                        </when>
-                        <when test="cond.field == 'Pays'">
-                            AND tr.country LIKE CONCAT('%', #{cond.keyword}, '%')
-                        </when>
-                        <when test="cond.field == 'Entrepot'">
-                            AND tr.warehouse LIKE CONCAT('%', #{cond.keyword}, '%')
-                        </when>
-                        <when test="cond.field == 'Date'">
-                            AND tr.work_date LIKE CONCAT('%', #{cond.keyword}, '%')
-                        </when>
-                        <when test="cond.field == 'AGENCE_INTERIMAIRE'">
-                            AND tr.agency LIKE CONCAT('%', #{cond.keyword}, '%')
-                        </when>
-                        <when test="cond.field == ''">
-                            AND (
-                                tr.task_id LIKE CONCAT('%', #{cond.keyword}, '%')
-                                OR tr.file_key LIKE CONCAT('%', #{cond.keyword}, '%')
-                                OR tr.emp_no LIKE CONCAT('%', #{cond.keyword}, '%')
-                                OR tr.emp_name LIKE CONCAT('%', #{cond.keyword}, '%')
-                                OR tr.country LIKE CONCAT('%', #{cond.keyword}, '%')
-                                OR tr.warehouse LIKE CONCAT('%', #{cond.keyword}, '%')
-                                OR tr.work_date LIKE CONCAT('%', #{cond.keyword}, '%')
-                                OR tr.agency LIKE CONCAT('%', #{cond.keyword}, '%')
-                                OR u.real_name LIKE CONCAT('%', #{cond.keyword}, '%')
-                                OR u.username LIKE CONCAT('%', #{cond.keyword}, '%')
-                            )
-                        </when>
+                        <otherwise>
+                            <choose>
+                                <when test="cond.field == 'taskId'">
+                                    AND tr.task_id LIKE CONCAT('%', #{cond.keyword}, '%')
+                                </when>
+                                <when test="cond.field == 'fileKey'">
+                                    AND tr.file_key LIKE CONCAT('%', #{cond.keyword}, '%')
+                                </when>
+                                <when test="cond.field == 'userName'">
+                                    AND (u.real_name LIKE CONCAT('%', #{cond.keyword}, '%') OR u.username LIKE CONCAT('%', #{cond.keyword}, '%'))
+                                </when>
+                                <when test="cond.field == 'status' or cond.filterType == 'status'">
+                                    AND tr.task_status = #{cond.keyword}
+                                </when>
+                                <when test="cond.field == 'NO'">
+                                    AND tr.emp_no LIKE CONCAT('%', #{cond.keyword}, '%')
+                                </when>
+                                <when test="cond.field == 'NOM_PRENOM'">
+                                    AND tr.emp_name LIKE CONCAT('%', #{cond.keyword}, '%')
+                                </when>
+                                <when test="cond.field == 'Pays'">
+                                    AND tr.country LIKE CONCAT('%', #{cond.keyword}, '%')
+                                </when>
+                                <when test="cond.field == 'Entrepot'">
+                                    AND tr.warehouse LIKE CONCAT('%', #{cond.keyword}, '%')
+                                </when>
+                                <when test="cond.field == 'Date'">
+                                    AND tr.work_date LIKE CONCAT('%', #{cond.keyword}, '%')
+                                </when>
+                                <when test="cond.field == 'AGENCE_INTERIMAIRE'">
+                                    AND tr.agency LIKE CONCAT('%', #{cond.keyword}, '%')
+                                </when>
+                                <when test="cond.field == 'HORAIRES_DU_TRAVAIL'">
+                                    AND tr.shift LIKE CONCAT('%', #{cond.keyword}, '%')
+                                </when>
+                                <when test="cond.field == 'ARRIVEE'">
+                                    AND tr.arrival LIKE CONCAT('%', #{cond.keyword}, '%')
+                                </when>
+                                <when test="cond.field == 'DEPAR'">
+                                    AND tr.departure LIKE CONCAT('%', #{cond.keyword}, '%')
+                                </when>
+                                <when test="cond.field == 'PAUSE'">
+                                    AND tr.pause_minutes LIKE CONCAT('%', #{cond.keyword}, '%')
+                                </when>
+                                <when test="cond.field == 'SIGNATURE'">
+                                    AND tr.signature LIKE CONCAT('%', #{cond.keyword}, '%')
+                                </when>
+                                <when test="cond.field == 'Observations'">
+                                    AND tr.observations LIKE CONCAT('%', #{cond.keyword}, '%')
+                                </when>
+                                <when test="cond.field == 'PAGE_NUM'">
+                                    AND tr.page_num LIKE CONCAT('%', #{cond.keyword}, '%')
+                                </when>
+                                <when test="cond.field == 'SmartMark'">
+                                    AND tr.smart_mark LIKE CONCAT('%', #{cond.keyword}, '%')
+                                </when>
+                                <when test="cond.field == 'createdAt'">
+                                    AND DATE_FORMAT(tr.task_created_at, '%Y-%m-%d %H:%i:%s') LIKE CONCAT('%', #{cond.keyword}, '%')
+                                </when>
+                                <when test="cond.field == ''">
+                                    AND (
+                                        tr.task_id LIKE CONCAT('%', #{cond.keyword}, '%')
+                                        OR tr.file_key LIKE CONCAT('%', #{cond.keyword}, '%')
+                                        OR tr.emp_no LIKE CONCAT('%', #{cond.keyword}, '%')
+                                        OR tr.emp_name LIKE CONCAT('%', #{cond.keyword}, '%')
+                                        OR tr.country LIKE CONCAT('%', #{cond.keyword}, '%')
+                                        OR tr.warehouse LIKE CONCAT('%', #{cond.keyword}, '%')
+                                        OR tr.work_date LIKE CONCAT('%', #{cond.keyword}, '%')
+                                        OR tr.agency LIKE CONCAT('%', #{cond.keyword}, '%')
+                                        OR tr.shift LIKE CONCAT('%', #{cond.keyword}, '%')
+                                        OR tr.arrival LIKE CONCAT('%', #{cond.keyword}, '%')
+                                        OR tr.departure LIKE CONCAT('%', #{cond.keyword}, '%')
+                                        OR tr.pause_minutes LIKE CONCAT('%', #{cond.keyword}, '%')
+                                        OR tr.signature LIKE CONCAT('%', #{cond.keyword}, '%')
+                                        OR tr.observations LIKE CONCAT('%', #{cond.keyword}, '%')
+                                        OR tr.page_num LIKE CONCAT('%', #{cond.keyword}, '%')
+                                        OR tr.smart_mark LIKE CONCAT('%', #{cond.keyword}, '%')
+                                        OR u.real_name LIKE CONCAT('%', #{cond.keyword}, '%')
+                                        OR u.username LIKE CONCAT('%', #{cond.keyword}, '%')
+                                    )
+                                </when>
+                            </choose>
+                        </otherwise>
                     </choose>
                 </if>
             </foreach>
@@ -122,7 +216,7 @@
             task_id, user_id, row_key, record_index, deleted, task_status, file_key, image_urls,
             emp_no, emp_name, base_name, country, country_key, warehouse, warehouse_key, work_date,
             agency, agency_key, shift, arrival, departure, pause_minutes, signature, observations,
-            page_num, task_created_at
+            page_num, smart_mark, task_created_at
         ) VALUES
         <foreach collection="rows" item="r" separator=",">
             (
@@ -130,7 +224,7 @@
                 #{r.fileKey}, #{r.imageUrls}, #{r.empNo}, #{r.empName}, #{r.baseName},
                 #{r.country}, #{r.countryKey}, #{r.warehouse}, #{r.warehouseKey}, #{r.workDate},
                 #{r.agency}, #{r.agencyKey}, #{r.shift}, #{r.arrival}, #{r.departure},
-                #{r.pauseMinutes}, #{r.signature}, #{r.observations}, #{r.pageNum}, #{r.taskCreatedAt}
+                #{r.pauseMinutes}, #{r.signature}, #{r.observations}, #{r.pageNum}, #{r.smartMark}, #{r.taskCreatedAt}
             )
         </foreach>
     </insert>
@@ -140,7 +234,7 @@
             task_id, user_id, row_key, record_index, deleted, task_status, file_key, image_urls,
             emp_no, emp_name, base_name, country, country_key, warehouse, warehouse_key, work_date,
             agency, agency_key, shift, arrival, departure, pause_minutes, signature, observations,
-            page_num, task_created_at
+            page_num, smart_mark, task_created_at
         ) VALUES
         <foreach collection="rows" item="r" separator=",">
             (
@@ -148,7 +242,7 @@
                 #{r.fileKey}, #{r.imageUrls}, #{r.empNo}, #{r.empName}, #{r.baseName},
                 #{r.country}, #{r.countryKey}, #{r.warehouse}, #{r.warehouseKey}, #{r.workDate},
                 #{r.agency}, #{r.agencyKey}, #{r.shift}, #{r.arrival}, #{r.departure},
-                #{r.pauseMinutes}, #{r.signature}, #{r.observations}, #{r.pageNum}, #{r.taskCreatedAt}
+                #{r.pauseMinutes}, #{r.signature}, #{r.observations}, #{r.pageNum}, #{r.smartMark}, #{r.taskCreatedAt}
             )
         </foreach>
         ON DUPLICATE KEY UPDATE
@@ -175,6 +269,7 @@
             signature = VALUES(signature),
             observations = VALUES(observations),
             page_num = VALUES(page_num),
+            smart_mark = VALUES(smart_mark),
             task_created_at = VALUES(task_created_at),
             updated_at = CURRENT_TIMESTAMP
     </insert>

@@ -85,7 +85,20 @@
                     AND t.status = #{keyword}
                 </when>
                 <when test="keywordField == 'createdAt'">
-                    AND DATE_FORMAT(t.created_at, '%Y-%m-%d %H:%i:%s') LIKE CONCAT('%', #{keyword}, '%')
+                    <choose>
+                        <when test="keyword.indexOf('|') &gt; -1">
+                            <bind name="dtRange" value="keyword.split('\\|')"/>
+                            <if test="dtRange.length &gt; 0 and dtRange[0] != null and dtRange[0] != ''">
+                                AND t.created_at &gt;= STR_TO_DATE(#{dtRange[0]}, '%Y-%m-%d %H:%i:%s')
+                            </if>
+                            <if test="dtRange.length &gt; 1 and dtRange[1] != null and dtRange[1] != ''">
+                                AND t.created_at &lt;= STR_TO_DATE(#{dtRange[1]}, '%Y-%m-%d %H:%i:%s')
+                            </if>
+                        </when>
+                        <otherwise>
+                            AND DATE_FORMAT(t.created_at, '%Y-%m-%d %H:%i:%s') LIKE CONCAT('%', #{keyword}, '%')
+                        </otherwise>
+                    </choose>
                 </when>
                 <otherwise>
                     AND (t.task_id LIKE CONCAT('%', #{keyword}, '%') OR t.file_key LIKE CONCAT('%', #{keyword}, '%'))
@@ -122,7 +135,20 @@
                     AND t.status = #{keyword}
                 </when>
                 <when test="keywordField == 'createdAt'">
-                    AND DATE_FORMAT(t.created_at, '%Y-%m-%d %H:%i:%s') LIKE CONCAT('%', #{keyword}, '%')
+                    <choose>
+                        <when test="keyword.indexOf('|') &gt; -1">
+                            <bind name="dtRange" value="keyword.split('\\|')"/>
+                            <if test="dtRange.length &gt; 0 and dtRange[0] != null and dtRange[0] != ''">
+                                AND t.created_at &gt;= STR_TO_DATE(#{dtRange[0]}, '%Y-%m-%d %H:%i:%s')
+                            </if>
+                            <if test="dtRange.length &gt; 1 and dtRange[1] != null and dtRange[1] != ''">
+                                AND t.created_at &lt;= STR_TO_DATE(#{dtRange[1]}, '%Y-%m-%d %H:%i:%s')
+                            </if>
+                        </when>
+                        <otherwise>
+                            AND DATE_FORMAT(t.created_at, '%Y-%m-%d %H:%i:%s') LIKE CONCAT('%', #{keyword}, '%')
+                        </otherwise>
+                    </choose>
                 </when>
                 <otherwise>
                     AND (t.task_id LIKE CONCAT('%', #{keyword}, '%') OR t.file_key LIKE CONCAT('%', #{keyword}, '%'))

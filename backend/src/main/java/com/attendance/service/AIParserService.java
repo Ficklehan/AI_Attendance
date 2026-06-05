@@ -12,6 +12,7 @@ import com.attendance.service.MarkdownConfigService;
 import com.attendance.util.PageNumberNormalizer;
 import com.attendance.util.RecordCountryDefaults;
 import com.attendance.util.RecognizedFieldSanitizer;
+import com.attendance.util.SignatureMarkResolver;
 import okhttp3.*;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -380,7 +381,7 @@ public class AIParserService {
             }
 
             if (recognitionQualityGuard.looksFabricated(extractedRecords)) {
-                log.warn("拒绝疑似编造结果");
+                log.warn("拒绝照抄提示词示例的识别结果");
                 if (trace != null) {
                     trace.step("fabricated_rejected", "messageKey", ErrorKeys.AI_FABRICATED);
                 }
@@ -832,7 +833,12 @@ public class AIParserService {
         }
         normalized.put("PAGE_NUM", PageNumberNormalizer.sanitize(normalized.getString("PAGE_NUM")));
         normalized.put("Entrepot", RecognizedFieldSanitizer.sanitizeOptionalText(normalized.getString("Entrepot")));
-        normalized.put("CHECKER", normalized.getString("SIGNATURE"));
+        String rawSignature = normalized.getString("SIGNATURE");
+        String signatureForMatch = SignatureMarkResolver.isBlankSignature(rawSignature)
+                ? "" : rawSignature.trim();
+        String signatureMark = SignatureMarkResolver.resolve(signatureForMatch, normalized.getString("NOM_PRENOM"));
+        normalized.put("SIGNATURE", signatureMark);
+        normalized.put("CHECKER", signatureMark);
 
         JSONObject anomalies = detectAnomalies(normalized);
         normalized.put("isDeleted", anomalies.getBoolean("isDeleted"));
@@ -1156,7 +1162,6 @@ public class AIParserService {
     }
 
     private String generateSmartMark(JSONObject record) {
-        // 如果记录被标记为已删除，只返回"已删除"，不影响其他规则
         if (record.containsKey("isDeleted") && record.getBooleanValue("isDeleted")) {
             return "已删除";
         }
@@ -1173,42 +1178,46 @@ public class AIParserService {
                 || "illegible".equalsIgnoreCase(departTime.trim());
         boolean isAbsent = isArriveEmpty && isDepartEmpty;
 
-        if (isAbsent) {
-            return "未出勤";
-        }
-
         JSONObject quality = detectRecordQuality(record);
+        List<String> marks = new ArrayList<>();
+
         String existingMark = record.containsKey("Mark") && record.getString("Mark") != null
                 ? record.getString("Mark").trim()
                 : "";
         if (!existingMark.isEmpty()) {
-            List<String> marks = new ArrayList<>();
             for (String part : existingMark.split("[;；,，]")) {
                 String mark = part == null ? "" : part.trim();
-                if (!mark.isEmpty() && !marks.contains(mark)) {
+                if (mark.isEmpty() || SignatureMarkResolver.isSignatureMarkToken(mark)) {
+                    continue;
+                }
+                if (!marks.contains(mark)) {
                     marks.add(mark);
                 }
             }
+        }
+
+        if (isAbsent) {
+            if (!marks.contains("未出勤")) {
+                marks.add("未出勤");
+            }
+        } else if (marks.isEmpty()) {
+            if (quality.getBooleanValue("isHandwritten")) {
+                marks.add("手写");
+            } else if (quality.getBooleanValue("isBlurry")) {
+                marks.add("模糊");
+            } else {
+                marks.add("正常");
+            }
+            String shiftType = detectShiftType(arriveTime, departTime);
+            if ("夜班".equals(shiftType) && !marks.contains("夜班")) {
+                marks.add("夜班");
+            }
+        } else {
             if (quality.getBooleanValue("isHandwritten") && !marks.contains("手写")) {
                 marks.add("手写");
             }
-            return String.join(";", marks);
         }
 
-        String qualityMark;
-        if (quality.getBooleanValue("isHandwritten")) {
-            qualityMark = "手写";
-        } else if (quality.getBooleanValue("isBlurry")) {
-            qualityMark = "模糊";
-        } else {
-            qualityMark = "正常";
-        }
-
-        String shiftType = detectShiftType(arriveTime, departTime);
-        if ("夜班".equals(shiftType)) {
-            return qualityMark + ";夜班";
-        }
-
-        return qualityMark;
+        return String.join(";", marks);
     }
 }

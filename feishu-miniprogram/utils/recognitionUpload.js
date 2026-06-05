@@ -46,10 +46,58 @@ function syncCountryBeforeRecognition(app) {
   return Promise.race([sync, timeout])
 }
 
-const TEMPLATE_SURNAMES = [
-  'DUPONT', 'MARTIN', 'BERNARD', 'PETIT', 'ROBERT', 'DURAND',
-  'MOREAU', 'SIMON', 'LAURENT', 'LEFEBVRE'
-]
+const EXAMPLE_KEYS = new Set([
+  '1|张三', '2|李四', '3|王五',
+  '1|John Smith', '2|Jane Doe', '3|Bob Wilson'
+])
+
+function isUnknownField(value) {
+  if (value == null) return true
+  const t = String(value).trim()
+  if (!t) return true
+  const lower = t.toLowerCase()
+  return t === '???' || t === '??' || lower === 'unknown' || lower === 'illegible'
+}
+
+function hasFilledTime(record) {
+  const r = record || {}
+  return !isUnknownField(r.ARRIVEE || r.arrivee) || !isUnknownField(r.DEPAR || r.depart || r.DEPAR)
+}
+
+function isPromptExampleRecord(record) {
+  const r = record || {}
+  const no = String(r.NO || r.no || '').trim()
+  const name = String(r.NOM_PRENOM || r.nom_prenom || '').trim()
+  const agency = String(r.AGENCE_INTERIMAIRE || r.agence || '').trim()
+  if (EXAMPLE_KEYS.has(`${no}|${name}`)) return true
+  if (EXAMPLE_NAMES.has(name)) return true
+  if (name === '???' && no === '4' && agency.indexOf('中介D') >= 0) return true
+  if ((name.indexOf('张三') >= 0 || name.indexOf('李四') >= 0 || name.indexOf('王五') >= 0)
+    && (agency.indexOf('中介A') >= 0 || agency.indexOf('中介B') >= 0 || agency.indexOf('中介C') >= 0)) {
+    return true
+  }
+  return false
+}
+
+function looksUnreadableWithGuessedTimes(records) {
+  if (!Array.isArray(records) || records.length < 3) return false
+  const n = records.length
+  let unknownIdentity = 0
+  let unknownNo = 0
+  let unknownName = 0
+  let filledTimes = 0
+  for (let i = 0; i < n; i++) {
+    const r = records[i] || {}
+    const uNo = isUnknownField(r.NO || r.no)
+    const uName = isUnknownField(r.NOM_PRENOM || r.nom_prenom)
+    if (uNo) unknownNo++
+    if (uName) unknownName++
+    if (uNo && uName) unknownIdentity++
+    if (hasFilledTime(r)) filledTimes++
+  }
+  if (unknownIdentity >= n * 0.6 && filledTimes >= n * 0.5) return true
+  return unknownNo >= n * 0.7 && unknownName >= n * 0.5 && filledTimes >= n * 0.6
+}
 
 function looksLikePromptExamples(task) {
   return looksLikeBadRecognitionData(task)
@@ -64,46 +112,16 @@ function looksLikeBadRecognitionData(task) {
   } catch {
     return false
   }
-  if (!Array.isArray(records) || records.length < 4) {
+  if (!Array.isArray(records) || records.length < 3) {
     return false
   }
 
   let exampleHits = 0
-  let templateHits = 0
-  let sequentialNo = 0
-  const agencies = {}
-  const pauses = new Set()
-  let shiftHits = 0
-
   for (let i = 0; i < records.length; i++) {
-    const r = records[i] || {}
-    const name = String(r.NOM_PRENOM || r.nom_prenom || '').trim()
-    const no = String(r.NO || r.no || '').trim()
-    const agency = String(r.AGENCE_INTERIMAIRE || r.agence || '').trim()
-    const shift = String(r.HORAIRES_DU_TRAVAIL || r.shift || '').toUpperCase()
-    const pause = r.PAUSE != null ? String(r.PAUSE) : ''
-
-    if (EXAMPLE_NAMES.has(name)) exampleHits++
-    const upper = name.toUpperCase()
-    if (TEMPLATE_SURNAMES.some((s) => upper.startsWith(s + ' ') || upper === s)) {
-      templateHits++
-    }
-    if (no === String(i + 1) || no === String(i + 1).padStart(2, '0')) sequentialNo++
-    if (agency) agencies[agency] = (agencies[agency] || 0) + 1
-    if (pause) pauses.add(pause)
-    if (shift === 'MATIN' || shift === 'SOIR' || shift === 'NUIT') shiftHits++
+    if (isPromptExampleRecord(records[i])) exampleHits++
   }
-
   if (exampleHits >= 3) return true
-
-  let score = 0
-  if (sequentialNo >= records.length * 0.75) score++
-  const maxAgency = Math.max(0, ...Object.values(agencies))
-  if (maxAgency >= records.length * 0.85) score++
-  if (pauses.size === 1 && records.length >= 5) score++
-  if (templateHits >= 5) score++
-  if (shiftHits >= records.length * 0.9 && records.length >= 6) score++
-  return score >= 3
+  return looksUnreadableWithGuessedTimes(records)
 }
 
 function uploadImageAsync(filePath, country, onProgress, options) {

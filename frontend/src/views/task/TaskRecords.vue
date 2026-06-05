@@ -24,13 +24,29 @@
           {{ showAdvancedSearch ? $t('tasks.hideAdvancedSearch') : $t('tasks.advancedSearch') }}
         </a-button>
         <a-button type="primary" @click="handleFilter">{{ $t('common.search') }}</a-button>
+        <TableColumnSettings
+          :columns="configurableColumns"
+          :hidden-keys="hiddenKeys"
+          :frozen-keys="frozenKeys"
+          @update:hidden-keys="setHiddenKeys"
+          @update:frozen-keys="setFrozenKeys"
+          @show-all="showAllColumns"
+          @clear-freeze="clearFrozenKeys"
+        />
       </div>
       <div v-if="showAdvancedSearch" class="advanced-panel">
         <div class="advanced-title">{{ $t('tasks.advancedSearch') }}</div>
         <div class="advanced-grid">
           <div v-for="def in searchableFieldDefs" :key="def.field" class="advanced-item">
             <label class="advanced-label">{{ def.label }}</label>
-            <a-input v-model:value="advancedFilters[def.field]" :placeholder="$t('tasks.searchContent')" allow-clear @keyup.enter="handleFilter" />
+            <FieldFilterControl
+              v-model:model-value="advancedFilters[def.field]"
+              :filter-type="def.filterType"
+              :placeholder="filterPlaceholder(def)"
+              :options="getFilterOptions(def)"
+              class="advanced-control"
+              @submit="handleFilter"
+            />
           </div>
         </div>
       </div>
@@ -55,12 +71,22 @@
                 v-if="column.searchField"
                 :title="getFieldLabel(column.searchField)"
                 :open="activeHeaderFilterField === column.searchField"
-                :active="Boolean((advancedFilters[column.searchField] || '').trim())"
-                v-model:keyword="headerFilterKeyword"
-                @openChange="(open) => handleHeaderPopoverOpen(column.searchField, open)"
+                :active="isHeaderFilterActive(column.searchField)"
+                @openChange="(open) => handleHeaderPopoverOpen(column, open)"
                 @reset="clearHeaderFilter"
                 @apply="applyHeaderFilter"
-              />
+              >
+                <template #field>
+                  <FieldFilterControl
+                    v-model:model-value="headerFilterDraft"
+                    :filter-type="column.filterType || 'text'"
+                    :placeholder="getFilterPlaceholder(column.searchField)"
+                    :options="getHeaderFilterOptions(column)"
+                    class="table-header-filter-panel__input"
+                    @submit="applyHeaderFilter"
+                  />
+                </template>
+              </TableHeaderFilter>
             </template>
           </TableSortableHeader>
         </template>
@@ -73,6 +99,27 @@
           </template>
           <template v-if="column.key === 'imageUrls'">
             <a-button type="link" size="small" @click="previewImages(record)">{{ $t('tasks.imagePreview') }}</a-button>
+          </template>
+          <template v-if="column.key === 'signature'">
+            <a-tag
+              :color="getSignatureMarkColor(getDisplaySignature(record.signature))"
+              class="signature-mark-tag"
+            >
+              {{ translateSignatureMark(getDisplaySignature(record.signature), t) }}
+            </a-tag>
+          </template>
+          <template v-if="column.key === 'smartMark'">
+            <a-space v-if="record.smartMark" wrap size="small" class="mark-tags">
+              <a-tag
+                v-for="tag in buildRecordMarkTags(record, { getDisplayMark, isAbsentRow, t })"
+                :key="tag.key"
+                :color="tag.color"
+                class="mark-tag"
+              >
+                {{ tag.label }}
+              </a-tag>
+            </a-space>
+            <span v-else class="cell-muted">-</span>
           </template>
         </template>
       </a-table>
@@ -107,6 +154,7 @@ import { useI18n } from 'vue-i18n'
 import { message } from 'ant-design-vue'
 
 import TableHeaderFilter from '@/components/TableHeaderFilter.vue'
+import FieldFilterControl from '@/components/FieldFilterControl.vue'
 import { getEmployeeRecordList } from '@/api/task'
 import { createEmployeeRecordsExport } from '@/api/export'
 import { useExportCenter } from '@/composables/useExportCenter'
@@ -114,8 +162,30 @@ import { resolveTaskImageUrls } from '@/utils/imageUrl'
 import PageShell from '@/components/PageShell.vue'
 import ImagePreviewModal from '@/components/ImagePreviewModal.vue'
 import TableSortableHeader from '@/components/TableSortableHeader.vue'
+import TableColumnSettings from '@/components/TableColumnSettings.vue'
 import { useTableColumnSort } from '@/composables/useTableColumnSort'
 import { useAutoSizedColumns } from '@/composables/useAutoSizedColumns'
+import { useColumnFreeze } from '@/composables/useColumnFreeze'
+import {
+  buildEmployeeRecordFieldDefs,
+  buildEmptyAdvancedFilters,
+  filterPlaceholder as resolveFilterPlaceholder,
+  findFieldDef,
+} from '@/constants/employeeRecordFields'
+import {
+  buildFilterConditions,
+  emptyFilterValue,
+  getFilterOptions as getFilterOptionsUtil,
+  isFilterActive,
+} from '@/utils/fieldFilterValue'
+import {
+  buildRecordMarkTags,
+  markContains,
+  stripSignatureMarksFromSmartMark,
+  getDisplaySignature,
+  translateSignatureMark,
+  getSignatureMarkColor,
+} from '@/utils/recognitionLabels'
 
 const { t } = useI18n()
 const router = useRouter()
@@ -131,71 +201,22 @@ const filterStatus = ref('')
 const quickKeyword = ref('')
 const showAdvancedSearch = ref(false)
 const activeHeaderFilterField = ref('')
-const headerFilterKeyword = ref('')
-const advancedFilters = ref({
-  taskId: '',
-  fileKey: '',
-  userName: '',
-  status: '',
-  createdAt: '',
-  NO: '',
-  NOM_PRENOM: '',
-  Pays: '',
-  Entrepot: '',
-  Date: '',
-  AGENCE_INTERIMAIRE: '',
-  HORAIRES_DU_TRAVAIL: '',
-  ARRIVEE: '',
-  DEPAR: '',
-  PAUSE: '',
-  SIGNATURE: '',
-  Observations: '',
-  PAGE_NUM: '',
-})
+const headerFilterDraft = ref('')
+const fieldDefs = computed(() => buildEmployeeRecordFieldDefs(t))
+const advancedFilters = ref({})
 const previewVisible = ref(false)
 const previewImagesList = ref([])
 const previewCurrentIndex = ref(0)
 
-const searchableFieldDefs = [
-  { field: 'taskId', label: t('tasks.taskId') },
-  { field: 'fileKey', label: t('tasks.fileName') },
-  { field: 'userName', label: t('tasks.operator') },
-  { field: 'status', label: t('tasks.status') },
-  { field: 'createdAt', label: t('tasks.createTime') },
-  { field: 'PAGE_NUM', label: t('taskEdit.pageNumber') },
-  { field: 'NO', label: t('taskEdit.workerNumber') },
-  { field: 'NOM_PRENOM', label: t('taskEdit.name') },
-  { field: 'Pays', label: t('taskEdit.countryField') },
-  { field: 'Entrepot', label: t('taskEdit.warehouse') },
-  { field: 'Date', label: t('taskEdit.date') },
-  { field: 'AGENCE_INTERIMAIRE', label: t('taskEdit.agency') },
-  { field: 'HORAIRES_DU_TRAVAIL', label: t('taskEdit.shift') },
-  { field: 'ARRIVEE', label: t('taskEdit.arrival') },
-  { field: 'DEPAR', label: t('taskEdit.departure') },
-  { field: 'PAUSE', label: t('taskEdit.breakTime') },
-  { field: 'SIGNATURE', label: t('taskEdit.signature') },
-  { field: 'Observations', label: t('taskEdit.observations') },
-]
-
 const baseColumns = computed(() => [
-  { title: t('tasks.taskId'), dataIndex: 'taskId', key: 'taskId', fixed: 'left', searchField: 'taskId' },
-  { title: t('tasks.operator'), dataIndex: 'userName', key: 'userName', searchField: 'userName' },
-  { title: t('tasks.status'), dataIndex: 'taskStatus', key: 'taskStatus', searchField: 'status' },
-  { title: t('tasks.createTime'), dataIndex: 'createdAt', key: 'createdAt', searchField: 'createdAt' },
-  { title: t('taskEdit.pageNumber'), dataIndex: 'pageNum', key: 'pageNum', searchField: 'PAGE_NUM' },
-  { title: t('taskEdit.workerNumber'), dataIndex: 'no', key: 'no', searchField: 'NO' },
-  { title: t('taskEdit.name'), dataIndex: 'name', key: 'name', ellipsis: false, searchField: 'NOM_PRENOM' },
-  { title: t('taskEdit.countryField'), dataIndex: 'country', key: 'country', searchField: 'Pays' },
-  { title: t('taskEdit.warehouse'), dataIndex: 'warehouse', key: 'warehouse', searchField: 'Entrepot' },
-  { title: t('taskEdit.date'), dataIndex: 'date', key: 'date', searchField: 'Date' },
-  { title: t('taskEdit.agency'), dataIndex: 'agency', key: 'agency', searchField: 'AGENCE_INTERIMAIRE' },
-  { title: t('taskEdit.shift'), dataIndex: 'shift', key: 'shift', searchField: 'HORAIRES_DU_TRAVAIL' },
-  { title: t('taskEdit.arrival'), dataIndex: 'arrival', key: 'arrival', searchField: 'ARRIVEE' },
-  { title: t('taskEdit.departure'), dataIndex: 'departure', key: 'departure', searchField: 'DEPAR' },
-  { title: t('taskEdit.breakTime'), dataIndex: 'pauseMinutes', key: 'pauseMinutes', searchField: 'PAUSE' },
-  { title: t('taskEdit.signature'), dataIndex: 'signature', key: 'signature', searchField: 'SIGNATURE' },
-  { title: t('taskEdit.observations'), dataIndex: 'observations', key: 'observations', searchField: 'Observations' },
-  { title: t('tasks.fileName'), dataIndex: 'fileKey', key: 'fileKey', searchField: 'fileKey' },
+  ...fieldDefs.value.map((def) => ({
+    title: def.label,
+    dataIndex: def.dataIndex,
+    key: def.key,
+    searchField: def.field,
+    filterType: def.filterType,
+    ellipsis: def.ellipsis,
+  })),
   {
     title: t('tasks.imagePreview'),
     dataIndex: 'fileKey',
@@ -208,19 +229,32 @@ const baseColumns = computed(() => [
 ])
 const { columns: sortedColumns, onSorterToggle, sortRows } = useTableColumnSort(baseColumns, { customHeader: true })
 const displayRecords = computed(() => sortRows(records.value))
-const { columns, scrollX } = useAutoSizedColumns(sortedColumns, displayRecords, { defaultMax: 360 })
+const { columns: sizedColumns, scrollX } = useAutoSizedColumns(sortedColumns, displayRecords, { defaultMax: 360 })
+const {
+  frozenColumns: columns,
+  hiddenKeys,
+  frozenKeys,
+  configurableColumns,
+  setHiddenKeys,
+  setFrozenKeys,
+  showAllColumns,
+  clearFrozenKeys,
+} = useColumnFreeze('task-records', sizedColumns, { defaultFrozen: ['taskId'] })
 
-const buildExportFilters = () => {
-  const advancedConditions = searchableFieldDefs
-    .map((def) => ({ field: def.field, keyword: (advancedFilters.value[def.field] || '').trim() }))
-    .filter((item) => item.keyword)
-  const filters = []
+const searchableFieldDefs = computed(() => {
+  const hidden = new Set(hiddenKeys.value)
+  return fieldDefs.value.filter((def) => !hidden.has(def.key))
+})
+
+const buildQueryFilters = () => {
+  const filters = buildFilterConditions(searchableFieldDefs.value, advancedFilters.value)
   if ((quickKeyword.value || '').trim()) {
-    filters.push({ field: '', keyword: quickKeyword.value.trim() })
+    filters.unshift({ field: '', keyword: quickKeyword.value.trim(), filterType: 'text' })
   }
-  filters.push(...advancedConditions)
-  return JSON.stringify(filters)
+  return filters
 }
+
+const buildExportFilters = () => JSON.stringify(buildQueryFilters())
 
 const handleExport = async () => {
   exporting.value = true
@@ -242,19 +276,11 @@ const handleExport = async () => {
 const loadRecords = async () => {
   loading.value = true
   try {
-    const advancedConditions = searchableFieldDefs
-      .map((def) => ({ field: def.field, keyword: (advancedFilters.value[def.field] || '').trim() }))
-      .filter((item) => item.keyword)
-    const filters = []
-    if ((quickKeyword.value || '').trim()) {
-      filters.push({ field: '', keyword: quickKeyword.value.trim() })
-    }
-    filters.push(...advancedConditions)
     const res = await getEmployeeRecordList({
       current: currentPage.value,
       size: pageSize.value,
       status: filterStatus.value,
-      filters: JSON.stringify(filters),
+      filters: JSON.stringify(buildQueryFilters()),
     })
     const list = res.data?.records || []
     records.value = list.map((item, idx) => ({
@@ -274,14 +300,49 @@ const toggleAdvancedSearch = () => {
 }
 
 const getFieldLabel = (field) => {
-  const hit = searchableFieldDefs.find((def) => def.field === field)
+  const hit = searchableFieldDefs.value.find((def) => def.field === field)
   return hit ? hit.label : field
 }
 
-const handleHeaderPopoverOpen = (field, open) => {
+const getFilterPlaceholder = (field) => {
+  const hit = searchableFieldDefs.value.find((def) => def.field === field)
+  return hit ? resolveFilterPlaceholder(hit, t) : t('tasks.searchContent')
+}
+
+const filterPlaceholder = (def) => resolveFilterPlaceholder(def, t)
+
+const getFilterOptions = (def) => getFilterOptionsUtil(def, t)
+
+const getHeaderFilterOptions = (column) => {
+  const def = findFieldDef(fieldDefs.value, column.searchField)
+  return getFilterOptions(def || { filterType: column.filterType })
+}
+
+const isHeaderFilterActive = (field) => {
+  const def = findFieldDef(fieldDefs.value, field)
+  if (!def) return false
+  return isFilterActive(def.filterType, advancedFilters.value[field])
+}
+
+const getDisplayMark = (record) => stripSignatureMarksFromSmartMark(String(record?.smartMark || '').trim())
+
+const isAbsentRow = (record) => markContains(getDisplayMark(record), 'absent')
+
+const handleHeaderPopoverOpen = (column, open) => {
+  const field = column?.searchField
+  if (!field) return
+  const def = findFieldDef(fieldDefs.value, field)
+  const filterType = def?.filterType || column?.filterType || 'text'
   if (open) {
     activeHeaderFilterField.value = field
-    headerFilterKeyword.value = advancedFilters.value[field] || ''
+    const stored = advancedFilters.value[field]
+    if (stored !== undefined && stored !== null && isFilterActive(filterType, stored)) {
+      headerFilterDraft.value = Array.isArray(stored)
+        ? [...stored]
+        : (typeof stored === 'object' ? { ...stored } : stored)
+    } else {
+      headerFilterDraft.value = emptyFilterValue(filterType)
+    }
   } else if (activeHeaderFilterField.value === field) {
     activeHeaderFilterField.value = ''
   }
@@ -289,15 +350,21 @@ const handleHeaderPopoverOpen = (field, open) => {
 
 const applyHeaderFilter = () => {
   if (!activeHeaderFilterField.value) return
-  advancedFilters.value[activeHeaderFilterField.value] = (headerFilterKeyword.value || '').trim()
+  const def = findFieldDef(fieldDefs.value, activeHeaderFilterField.value)
+  const filterType = def?.filterType || 'text'
+  advancedFilters.value[activeHeaderFilterField.value] = isFilterActive(filterType, headerFilterDraft.value)
+    ? headerFilterDraft.value
+    : emptyFilterValue(filterType)
   activeHeaderFilterField.value = ''
   handleFilter()
 }
 
 const clearHeaderFilter = () => {
   if (!activeHeaderFilterField.value) return
-  headerFilterKeyword.value = ''
-  advancedFilters.value[activeHeaderFilterField.value] = ''
+  const def = findFieldDef(fieldDefs.value, activeHeaderFilterField.value)
+  const filterType = def?.filterType || 'text'
+  headerFilterDraft.value = emptyFilterValue(filterType)
+  advancedFilters.value[activeHeaderFilterField.value] = emptyFilterValue(filterType)
   activeHeaderFilterField.value = ''
   handleFilter()
 }
@@ -356,6 +423,7 @@ const handleSizeChange = (_, size) => {
 }
 
 onMounted(() => {
+  advancedFilters.value = buildEmptyAdvancedFilters(fieldDefs.value)
   loadRecords()
 })
 </script>
@@ -398,6 +466,18 @@ onMounted(() => {
 
 .advanced-label {
   font-size: $font-size-sm;
+  color: $text-secondary;
+}
+
+.advanced-control {
+  width: 100%;
+}
+
+.mark-tags {
+  max-width: 280px;
+}
+
+.cell-muted {
   color: $text-secondary;
 }
 

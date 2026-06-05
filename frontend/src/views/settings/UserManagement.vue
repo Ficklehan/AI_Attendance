@@ -10,8 +10,20 @@
     </PageShell>
 
     <a-card class="surface-card" :bordered="false">
+      <div class="table-toolbar">
+        <TableColumnSettings
+          :columns="configurableColumns"
+          :hidden-keys="hiddenKeys"
+          :frozen-keys="frozenKeys"
+          @update:hidden-keys="setHiddenKeys"
+          @update:frozen-keys="setFrozenKeys"
+          @show-all="showAllColumns"
+          @clear-freeze="clearFrozenKeys"
+        />
+      </div>
       <a-table
         :columns="columns"
+        :scroll="{ x: scrollX }"
         :data-source="users"
         :loading="loading"
         row-key="id"
@@ -78,8 +90,11 @@ import { useI18n } from 'vue-i18n'
 import { message } from 'ant-design-vue'
 import { PlusOutlined } from '@ant-design/icons-vue'
 import PageShell from '@/components/PageShell.vue'
+import TableColumnSettings from '@/components/TableColumnSettings.vue'
 import { listUsers, createUser, updateUser } from '@/api/users'
 import { withTableSorters, keyFieldSorter } from '@/utils/tableSort'
+import { useColumnFreeze } from '@/composables/useColumnFreeze'
+import { sumTableScrollX } from '@/utils/tableAutoColumns'
 
 const { t } = useI18n()
 
@@ -113,15 +128,26 @@ const statusOptions = computed(() => [
   { value: 'disabled', label: t('settings.users.statusDisabled') },
 ])
 
-const columns = computed(() => withTableSorters([
+const baseColumns = computed(() => withTableSorters([
   { title: t('auth.username'), dataIndex: 'username', key: 'username' },
   { title: t('settings.users.email'), dataIndex: 'email', key: 'email' },
   { title: t('settings.users.realName'), dataIndex: 'realName', key: 'realName' },
   { title: t('settings.users.feishuUserId'), dataIndex: 'feishuUserId', key: 'feishuUserId', ellipsis: true, width: 140 },
   { title: t('settings.users.role'), key: 'role', width: 100, sorter: keyFieldSorter('role') },
   { title: t('common.status'), key: 'status', width: 100, sorter: keyFieldSorter('status') },
-  { title: t('common.operation'), key: 'action', width: 90 },
+  { title: t('common.operation'), key: 'action', width: 90, fixed: 'right' },
 ]))
+const {
+  frozenColumns: columns,
+  hiddenKeys,
+  frozenKeys,
+  configurableColumns,
+  setHiddenKeys,
+  setFrozenKeys,
+  showAllColumns,
+  clearFrozenKeys,
+} = useColumnFreeze('user-management', baseColumns, { defaultFrozen: ['username'] })
+const scrollX = computed(() => sumTableScrollX(columns.value))
 
 const pagination = computed(() => ({
   current: page.value,

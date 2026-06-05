@@ -2,12 +2,10 @@ const { t } = require('../../utils/i18n')
 const { ensureCountryConfigured } = require('../../utils/preferences')
 
 const CAMERA_ID = 'camera'
-const BOOTSTRAP_MAX_ATTEMPTS = 12
-const BOOTSTRAP_INTERVAL_MS = 350
+const INIT_DONE_TIMEOUT_MS = 8000
 
 Page({
   data: {
-    cameraPosition: 'back',
     flashMode: 'off',
     cameraReady: false,
     initHint: '',
@@ -16,31 +14,38 @@ Page({
 
   onLoad: function (options) {
     this._fromChat = options && options.from === 'chat'
+    this._cameraInitDone = false
+    this._initDoneTimer = null
     if (!ensureCountryConfigured()) {
       return
     }
     this.refreshTexts()
     this.setData({ initHint: t('camera.starting') })
     this.requestCameraPermission(() => {
-      this.scheduleCameraBootstrap()
+      this.armInitDoneTimeout()
     })
   },
 
   onReady: function () {
     this._pageReady = true
-    this.scheduleCameraBootstrap()
+    try {
+      this.cameraContext = tt.createCameraContext(CAMERA_ID)
+    } catch (e) {
+      console.warn('createCameraContext onReady failed', e)
+    }
   },
 
   onShow: function () {
     if (this._needReinitContext) {
       this._needReinitContext = false
+      this._cameraInitDone = false
       this.setData({ initHint: t('camera.starting'), cameraReady: false })
-      this.scheduleCameraBootstrap()
+      this.armInitDoneTimeout()
     }
   },
 
   onUnload: function () {
-    this.clearBootstrapTimer()
+    this.clearInitDoneTimeout()
   },
 
   goBack: function () {
@@ -58,49 +63,42 @@ Page({
         tipFlat: t('camera.tipFlat'),
         tipAngle: t('camera.tipAngle'),
         gallery: t('camera.gallery'),
+        systemCamera: t('camera.systemCamera'),
         flashOn: t('camera.flashOn'),
-        flashOff: t('camera.flashOff'),
-        flip: t('camera.flip')
+        flashOff: t('camera.flashOff')
       }
     })
     tt.setNavigationBarTitle({ title: t('camera.title') })
   },
 
-  clearBootstrapTimer: function () {
-    if (this._bootstrapTimer) {
-      clearTimeout(this._bootstrapTimer)
-      this._bootstrapTimer = null
+  clearInitDoneTimeout: function () {
+    if (this._initDoneTimer) {
+      clearTimeout(this._initDoneTimer)
+      this._initDoneTimer = null
     }
   },
 
-  scheduleCameraBootstrap: function () {
-    if (!this._pageReady) {
-      return
-    }
-    this.clearBootstrapTimer()
-    this._bootstrapAttempt = 0
-    this.bootstrapCameraStep()
+  armInitDoneTimeout: function () {
+    this.clearInitDoneTimeout()
+    this._initDoneTimer = setTimeout(() => {
+      if (!this._cameraInitDone) {
+        this.setData({
+          cameraReady: false,
+          initHint: t('camera.previewUnavailable')
+        })
+      }
+    }, INIT_DONE_TIMEOUT_MS)
   },
 
-  bootstrapCameraStep: function () {
-    const attempt = this._bootstrapAttempt || 0
-    this._bootstrapAttempt = attempt + 1
-
-    if (this.initCameraContext()) {
-      return
+  markCameraReady: function () {
+    this._cameraInitDone = true
+    this.clearInitDoneTimeout()
+    try {
+      this.cameraContext = tt.createCameraContext(CAMERA_ID)
+    } catch (e) {
+      console.warn('createCameraContext failed', e)
     }
-
-    if (attempt >= BOOTSTRAP_MAX_ATTEMPTS) {
-      this.setData({
-        cameraReady: false,
-        initHint: t('camera.previewUnavailable')
-      })
-      return
-    }
-
-    this._bootstrapTimer = setTimeout(() => {
-      this.bootstrapCameraStep()
-    }, BOOTSTRAP_INTERVAL_MS)
+    this.setData({ cameraReady: true, initHint: '' })
   },
 
   requestCameraPermission: function (onGranted) {
@@ -139,8 +137,9 @@ Page({
     tt.openSetting({
       success: (res) => {
         if (res.authSetting && res.authSetting['scope.camera']) {
-          this.setData({ initHint: t('camera.starting') })
-          this.scheduleCameraBootstrap()
+          this._cameraInitDone = false
+          this.setData({ initHint: t('camera.starting'), cameraReady: false })
+          this.armInitDoneTimeout()
         }
       }
     })
@@ -153,104 +152,105 @@ Page({
       return
     }
     if (hint === t('camera.previewUnavailable') || hint === t('camera.unsupported')) {
-      this.chooseFromGallery()
+      this.chooseFromCamera()
     }
   },
 
-  initCameraContext: function () {
-    try {
-      if (typeof tt.createCameraContext !== 'function') {
-        this.setData({
-          cameraReady: false,
-          initHint: t('camera.unsupported')
-        })
-        return false
-      }
-      this.cameraContext = tt.createCameraContext(CAMERA_ID)
-      this.setData({ cameraReady: true, initHint: '' })
-      this.clearBootstrapTimer()
-      return true
-    } catch (e) {
-      console.warn('createCameraContext 失败', e)
-      this.cameraContext = null
-      return false
-    }
+  onCameraInserted: function (e) {
+    const detail = (e && e.detail) || {}
+    console.log('camera inserted', detail)
+    this._sameLayerRender = detail.isRenderInSameLayer !== false
   },
 
   onCameraInitDone: function (e) {
-    console.log('camera init done', e.detail)
+    console.log('camera init done', e && e.detail)
     this._retriedPhoto = false
-    this.initCameraContext()
+    this.markCameraReady()
   },
 
   onCameraStop: function () {
     this.cameraContext = null
+    this._cameraInitDone = false
     this.setData({ cameraReady: false, initHint: t('camera.starting') })
     this._needReinitContext = true
   },
 
-  toggleCamera: function () {
-    this.cameraContext = null
-    this.setData({
-      cameraPosition: this.data.cameraPosition === 'back' ? 'front' : 'back',
-      cameraReady: false,
-      initHint: t('camera.switching')
-    })
-    this.scheduleCameraBootstrap()
-  },
-
   toggleFlash: function () {
     this.setData({
-      flashMode: this.data.flashMode === 'off' ? 'on' : 'off'
+      flashMode: this.data.flashMode === 'off' ? 'torch' : 'off'
     })
+  },
+
+  ensureCameraContext: function () {
+    if (this.cameraContext) {
+      return true
+    }
+    try {
+      if (typeof tt.createCameraContext !== 'function') {
+        return false
+      }
+      this.cameraContext = tt.createCameraContext(CAMERA_ID)
+      return !!this.cameraContext
+    } catch (e) {
+      console.warn('createCameraContext failed', e)
+      return false
+    }
   },
 
   takePhoto: function () {
-    const run = () => {
-      if (!this.cameraContext && !this.initCameraContext()) {
-        this.fallbackCapture(t('camera.notReady'))
-        return
-      }
-      this.cameraContext.takePhoto({
-        quality: 'normal',
-        success: (res) => {
-          if (res.tempImagePath) {
-            this.processPhoto(res.tempImagePath)
-          } else {
-            this.fallbackCapture(t('camera.photoFail'))
-          }
-        },
-        fail: (error) => {
-          console.error('拍照失败:', error)
-          const msg = (error && error.errString) || ''
-          if (msg.indexOf('not found') >= 0 && !this._retriedPhoto) {
-            this._retriedPhoto = true
-            this.scheduleCameraBootstrap()
-            setTimeout(() => this.takePhoto(), 500)
-            return
-          }
-          this.fallbackCapture(t('camera.photoFail'))
-        }
-      })
-    }
-
     if (!this.data.cameraReady) {
       tt.showToast({ title: t('camera.warming'), icon: 'none' })
-      this.scheduleCameraBootstrap()
-      setTimeout(run, 500)
       return
     }
-    run()
+
+    if (!this.ensureCameraContext()) {
+      this.fallbackCapture(t('camera.notReady'), true)
+      return
+    }
+
+    this.cameraContext.takePhoto({
+      quality: 'high',
+      selfieMirror: false,
+      success: (res) => {
+        const path = res && (res.tempImagePath || res.tempFilePath)
+        if (path) {
+          this.processPhoto(path)
+          return
+        }
+        console.warn('takePhoto empty path', res)
+        this.fallbackCapture(t('camera.photoFail'), true)
+      },
+      fail: (error) => {
+        console.error('takePhoto fail', error)
+        const msg = [
+          error && error.errMsg,
+          error && error.errString,
+          error && error.errNo
+        ].filter(Boolean).join(' ')
+        if (msg.indexOf('not found') >= 0 && !this._retriedPhoto) {
+          this._retriedPhoto = true
+          this._cameraInitDone = false
+          this.setData({ cameraReady: false, initHint: t('camera.starting') })
+          this.armInitDoneTimeout()
+          setTimeout(() => this.takePhoto(), 600)
+          return
+        }
+        this.fallbackCapture(t('camera.photoFail'), true)
+      }
+    })
   },
 
-  fallbackCapture: function (reason) {
+  fallbackCapture: function (reason, preferCamera) {
     tt.showModal({
       title: t('camera.photoFail'),
       content: reason + '\n' + t('camera.fallbackHint'),
-      confirmText: t('camera.openAlbum'),
+      confirmText: preferCamera ? t('camera.systemCamera') : t('camera.openAlbum'),
       cancelText: t('common.cancel'),
       success: (res) => {
-        if (res.confirm) {
+        if (!res.confirm) return
+        if (preferCamera) {
+          this.chooseFromCamera()
+        } else {
           this.chooseFromGallery()
         }
       }
@@ -273,6 +273,23 @@ Page({
     })
   },
 
+  chooseFromCamera: function () {
+    tt.chooseImage({
+      count: 1,
+      sizeType: ['compressed'],
+      sourceType: ['camera'],
+      success: (res) => {
+        if (res.tempFilePaths && res.tempFilePaths.length > 0) {
+          this.processPhoto(res.tempFilePaths[0])
+        }
+      },
+      fail: (error) => {
+        console.error('系统相机选图失败', error)
+        tt.showToast({ title: t('camera.photoFail'), icon: 'none' })
+      }
+    })
+  },
+
   chooseFromGallery: function () {
     tt.chooseImage({
       count: 1,
@@ -292,6 +309,7 @@ Page({
   onCameraError: function (error) {
     console.error('相机错误:', error)
     this.cameraContext = null
+    this._cameraInitDone = false
     this.setData({
       cameraReady: false,
       initHint: t('camera.cameraFail')

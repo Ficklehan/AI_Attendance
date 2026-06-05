@@ -6,15 +6,7 @@
       'table-sortable-header--has-sort': sortable,
     }"
   >
-    <div v-if="hasFilter" class="table-sortable-header__leading">
-      <slot name="extra" />
-    </div>
-
-    <div class="table-sortable-header__title" :title="titleText">
-      <span class="table-sortable-header__title-text">{{ title }}</span>
-    </div>
-
-    <div v-if="sortable" class="table-sortable-header__trailing">
+    <div v-if="sortable" class="table-sortable-header__leading">
       <a-tooltip :title="t('common.sortColumn')" placement="top">
         <button
           type="button"
@@ -35,6 +27,14 @@
           </span>
         </button>
       </a-tooltip>
+    </div>
+
+    <div class="table-sortable-header__title" :title="titleText">
+      <span class="table-sortable-header__title-text">{{ title }}</span>
+    </div>
+
+    <div v-if="hasFilter" class="table-sortable-header__trailing">
+      <slot name="extra" />
     </div>
   </div>
 </template>
@@ -131,11 +131,11 @@ $icon-gap: 4px;
 }
 
 .table-sortable-header--has-filter:not(.table-sortable-header--has-sort) .table-sortable-header__title {
-  padding: 0 4px 0 calc($icon-size + $icon-gap);
+  padding: 0 calc($icon-size + $icon-gap) 0 4px;
 }
 
 .table-sortable-header--has-sort:not(.table-sortable-header--has-filter) .table-sortable-header__title {
-  padding: 0 calc($icon-size + $icon-gap) 0 4px;
+  padding: 0 4px 0 calc($icon-size + $icon-gap);
 }
 
 .table-sortable-header__title-text {
@@ -191,7 +191,7 @@ $icon-gap: 4px;
   color: #1677ff;
 }
 
-.table-sortable-header__leading :deep(.table-header-filter-btn) {
+.table-sortable-header__trailing :deep(.table-header-filter-btn) {
   display: inline-flex !important;
   align-items: center;
   justify-content: center;

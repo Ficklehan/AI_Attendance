@@ -105,6 +105,15 @@
           <DeleteOutlined />
           {{ $t('tasks.batchDelete', { count: selectedRowKeys.length }) }}
         </a-button>
+        <TableColumnSettings
+          :columns="configurableColumns"
+          :hidden-keys="hiddenKeys"
+          :frozen-keys="frozenKeys"
+          @update:hidden-keys="setHiddenKeys"
+          @update:frozen-keys="setFrozenKeys"
+          @show-all="showAllColumns"
+          @clear-freeze="clearFrozenKeys"
+        />
       </div>
       
       <a-table 
@@ -112,6 +121,7 @@
         :data-source="displayTasks" 
         :loading="loading" 
         :pagination="false"
+        :scroll="{ x: taskListScrollX }"
         :row-key="(record) => record.taskId"
         :row-selection="rowSelection"
         class="task-table rich-table-header"
@@ -128,25 +138,19 @@
                 :title="column.title"
                 :open="activeHeaderFilterField === column.searchField"
                 :active="isHeaderFilterActive(column)"
-                v-model:keyword="headerFilterKeyword"
-                :placeholder="column.searchField === 'createdAt' ? $t('tasks.searchCreateTime') : (column.filterType === 'status' ? $t('tasks.filterStatus') : $t('tasks.searchContent'))"
                 @openChange="(open) => handleHeaderPopoverOpen(column, open)"
                 @reset="clearHeaderFilter"
                 @apply="applyHeaderFilter"
               >
-                <template v-if="column.filterType === 'status'" #field>
-                  <a-select
-                    v-model:value="headerFilterKeyword"
+                <template #field>
+                  <FieldFilterControl
+                    v-model:model-value="headerFilterDraft"
+                    :filter-type="column.filterType || 'text'"
+                    :placeholder="getHeaderFilterPlaceholder(column)"
+                    :options="getHeaderFilterOptions(column)"
                     class="table-header-filter-panel__input"
-                    :placeholder="$t('tasks.filterStatus')"
-                    allow-clear
-                  >
-                    <a-select-option value="processing">{{ $t('tasks.statusProcessing') }}</a-select-option>
-                    <a-select-option value="processed">{{ $t('tasks.statusProcessed') }}</a-select-option>
-                    <a-select-option value="confirmed">{{ $t('tasks.statusConfirmed') }}</a-select-option>
-                    <a-select-option value="failed">{{ $t('tasks.statusFailed') }}</a-select-option>
-                    <a-select-option value="cancelled">{{ $t('tasks.statusCancelled') }}</a-select-option>
-                  </a-select>
+                    @submit="applyHeaderFilter"
+                  />
                 </template>
               </TableHeaderFilter>
             </template>
@@ -246,7 +250,20 @@ import PageShell from '@/components/PageShell.vue'
 import ImagePreviewModal from '@/components/ImagePreviewModal.vue'
 import TableSortableHeader from '@/components/TableSortableHeader.vue'
 import TableHeaderFilter from '@/components/TableHeaderFilter.vue'
+import FieldFilterControl from '@/components/FieldFilterControl.vue'
+import TableColumnSettings from '@/components/TableColumnSettings.vue'
 import { useTableColumnSort } from '@/composables/useTableColumnSort'
+import { useColumnFreeze } from '@/composables/useColumnFreeze'
+import { sumTableScrollX } from '@/utils/tableAutoColumns'
+import {
+  FILTER_TYPES,
+  buildTaskStatusOptions,
+  emptyFilterValue,
+  getFilterOptions,
+  isFilterActive,
+  parseFilterValue,
+  serializeFilterValue,
+} from '@/utils/fieldFilterValue'
 
 const router = useRouter()
 const route = useRoute()
@@ -265,7 +282,7 @@ const keyword = ref('')
 const searchField = ref('')
 const activeHeaderFilterField = ref('')
 const activeHeaderFilterColumn = ref(null)
-const headerFilterKeyword = ref('')
+const headerFilterDraft = ref('')
 const previewVisible = ref(false)
 const previewImagesList = ref([])
 const previewCurrentIndex = ref(0)
@@ -286,14 +303,25 @@ const baseColumns = computed(() => [
   { title: t('tasks.taskId'), dataIndex: 'taskId', key: 'taskId', width: 150, ellipsis: true, searchField: 'taskId' },
   { title: t('tasks.fileName'), dataIndex: 'fileKey', key: 'fileKey', width: 260, ellipsis: true, searchField: 'fileKey' },
   { title: t('tasks.operator'), dataIndex: 'userName', key: 'userName', width: 110, ellipsis: true, searchField: 'userName' },
-  { title: t('tasks.status'), dataIndex: 'status', key: 'status', width: 130, searchField: 'status', filterType: 'status' },
-  { title: t('tasks.createTime'), dataIndex: 'createdAt', key: 'createdAt', width: 170, searchField: 'createdAt' },
+  { title: t('tasks.status'), dataIndex: 'status', key: 'status', width: 130, searchField: 'status', filterType: FILTER_TYPES.STATUS },
+  { title: t('tasks.createTime'), dataIndex: 'createdAt', key: 'createdAt', width: 170, searchField: 'createdAt', filterType: FILTER_TYPES.DATETIME },
   { title: t('tasks.operation'), key: 'action', width: 100, fixed: 'right' },
 ])
-const { columns, onSorterToggle, sortRows } = useTableColumnSort(baseColumns, {
+const { columns: sortedColumns, onSorterToggle, sortRows } = useTableColumnSort(baseColumns, {
   skipKeys: ['action'],
   customHeader: true,
 })
+const {
+  frozenColumns: columns,
+  hiddenKeys,
+  frozenKeys,
+  configurableColumns,
+  setHiddenKeys,
+  setFrozenKeys,
+  showAllColumns,
+  clearFrozenKeys,
+} = useColumnFreeze('task-list', sortedColumns)
+const taskListScrollX = computed(() => sumTableScrollX(columns.value))
 const displayTasks = computed(() => sortRows(tasks.value))
 
 const searchFieldLabel = computed(() => {
@@ -307,9 +335,22 @@ const searchFieldLabel = computed(() => {
   return dict[searchField.value] || ''
 })
 
+const getHeaderFilterPlaceholder = (column) => {
+  if (column.filterType === FILTER_TYPES.STATUS) return t('tasks.filterStatus')
+  if (column.filterType === FILTER_TYPES.DATETIME) return t('tasks.filterDateTimeRange')
+  return t('tasks.searchContent')
+}
+
+const getHeaderFilterOptions = (column) => {
+  if (column.filterType === FILTER_TYPES.STATUS) return buildTaskStatusOptions(t)
+  return getFilterOptions(column, t)
+}
+
 const isHeaderFilterActive = (column) => {
-  if (column.filterType === 'status') return !!filterStatus.value
-  return searchField.value === column.searchField && !!keyword.value
+  if (column.filterType === FILTER_TYPES.STATUS) return !!filterStatus.value
+  if (searchField.value !== column.searchField) return false
+  const filterType = column.filterType || FILTER_TYPES.TEXT
+  return isFilterActive(filterType, parseFilterValue(filterType, keyword.value))
 }
 
 const handleExport = async () => {
@@ -457,15 +498,16 @@ const clearSearchField = () => {
 
 const handleHeaderPopoverOpen = (column, open) => {
   const field = column.searchField
+  const filterType = column.filterType || FILTER_TYPES.TEXT
   if (open) {
     activeHeaderFilterField.value = field
     activeHeaderFilterColumn.value = column
-    if (column.filterType === 'status') {
-      headerFilterKeyword.value = filterStatus.value || undefined
-    } else if (searchField.value === field) {
-      headerFilterKeyword.value = keyword.value
+    if (column.filterType === FILTER_TYPES.STATUS) {
+      headerFilterDraft.value = filterStatus.value || ''
+    } else if (searchField.value === field && keyword.value) {
+      headerFilterDraft.value = parseFilterValue(filterType, keyword.value)
     } else {
-      headerFilterKeyword.value = ''
+      headerFilterDraft.value = emptyFilterValue(filterType)
     }
   } else if (activeHeaderFilterField.value === field) {
     activeHeaderFilterField.value = ''
@@ -476,15 +518,16 @@ const handleHeaderPopoverOpen = (column, open) => {
 const applyHeaderFilter = () => {
   const column = activeHeaderFilterColumn.value
   if (!column?.searchField) return
-  if (column.filterType === 'status') {
-    filterStatus.value = headerFilterKeyword.value || ''
+  const filterType = column.filterType || FILTER_TYPES.TEXT
+  if (column.filterType === FILTER_TYPES.STATUS) {
+    filterStatus.value = String(headerFilterDraft.value || '').trim()
     activeHeaderFilterField.value = ''
     activeHeaderFilterColumn.value = null
     handleFilter()
     return
   }
   searchField.value = column.searchField
-  keyword.value = (headerFilterKeyword.value || '').trim()
+  keyword.value = serializeFilterValue(filterType, headerFilterDraft.value)
   activeHeaderFilterField.value = ''
   activeHeaderFilterColumn.value = null
   handleFilter()
@@ -493,13 +536,14 @@ const applyHeaderFilter = () => {
 const clearHeaderFilter = () => {
   const column = activeHeaderFilterColumn.value
   if (!column?.searchField) return
-  if (column.filterType === 'status') {
+  const filterType = column.filterType || FILTER_TYPES.TEXT
+  if (column.filterType === FILTER_TYPES.STATUS) {
     filterStatus.value = ''
   } else if (searchField.value === column.searchField) {
     searchField.value = ''
     keyword.value = ''
   }
-  headerFilterKeyword.value = ''
+  headerFilterDraft.value = emptyFilterValue(filterType)
   activeHeaderFilterField.value = ''
   activeHeaderFilterColumn.value = null
   handleFilter()

@@ -18,8 +18,10 @@ public class RecognitionPromptGuard {
 
     /** 识别与续写共用，替代原【硬性要求】+ HANDWRITING_MARK_RULE 重复段落 */
     public static final String API_OUTPUT_CONSTRAINT = "\n\n【输出约束·API】\n"
-            + "· 每行合法 JSON 数组、双引号字符串；禁止表头占位、禁止示例姓名/中介/仓库/时间\n"
-            + "· 先填 NO、姓名，再填到离；看不清用 ???\n"
+            + "· 每行合法 JSON 数组、双引号字符串；禁止表头占位、禁止照抄提示词示例中的姓名/中介/时间\n"
+            + "· 先填 NO、姓名，再填到离；看不清必须用 ??? 或 \"\"，禁止猜测、补全、编造\n"
+            + "· 图中未出现的字段不得填写；禁止为凑行数多输出行\n"
+            + "· 姓名或工号为 ???/空时，到达/离开必须为空，禁止臆测时间\n"
             + "· 上述 15 字段顺序与【标记】【PAGE_NUM】规则以提示词正文为准";
 
     private static final Set<String> EXAMPLE_KEYS = new HashSet<>(Arrays.asList(

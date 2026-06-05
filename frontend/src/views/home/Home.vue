@@ -227,6 +227,17 @@
 
           <!-- Data Table -->
           <div v-if="records.length > 0" class="table-wrap">
+            <div class="table-toolbar">
+              <TableColumnSettings
+                :columns="configurableColumns"
+                :hidden-keys="hiddenKeys"
+                :frozen-keys="frozenKeys"
+                @update:hidden-keys="setHiddenKeys"
+                @update:frozen-keys="setFrozenKeys"
+                @show-all="showAllColumns"
+                @clear-freeze="clearFrozenKeys"
+              />
+            </div>
             <a-table
               :columns="columns"
               :data-source="tableRecords"
@@ -256,6 +267,14 @@
                 </template>
                 <template v-if="column.key === 'PAUSE'">
                   <span class="cell-text">{{ formatPauseDisplay(record.PAUSE) }}</span>
+                </template>
+                <template v-if="column.key === 'SIGNATURE'">
+                  <a-tag
+                    :color="getSignatureMarkColor(getDisplaySignature(record.SIGNATURE))"
+                    class="signature-mark-tag"
+                  >
+                    {{ translateSignatureMark(getDisplaySignature(record.SIGNATURE), t) }}
+                  </a-tag>
                 </template>
                 <template v-if="column.key === 'action'">
                   <a-tooltip :title="record.isDeleted ? $t('common.undo') : $t('common.delete')">
@@ -339,12 +358,20 @@ import { applyMissingPays } from '@/utils/countryDefaults'
 import {
   translateAnomalyReason,
   translateSmartMark,
+  stripSignatureMarksFromSmartMark,
+  getDisplaySignature,
+  translateSignatureMark,
+  getSignatureMarkColor,
   markContains,
+  normalizeLegacySignature,
   anomalyReasonKind,
+  calculateRecordStats,
 } from '@/utils/recognitionLabels'
 import { buildRecognitionTableColumns } from '@/utils/recognitionTableColumns'
 import { useTableColumnSort } from '@/composables/useTableColumnSort'
 import { useAutoSizedColumns } from '@/composables/useAutoSizedColumns'
+import { useColumnFreeze } from '@/composables/useColumnFreeze'
+import TableColumnSettings from '@/components/TableColumnSettings.vue'
 import { hasRequiredMissing } from '@/utils/requiredRecordFields'
 import { formatCountryLabel } from '@/utils/countryLabels'
 import { showApiError } from '@/utils/translateError'
@@ -419,20 +446,7 @@ onBeforeUnmount(() => {
   fileList.value.forEach(revokePreviewUrl)
 })
 
-const stats = computed(() => {
-  const result = { normal: 0, handwriting: 0, blurred: 0, night: 0, absent: 0, deleted: 0 }
-  records.value.forEach(record => {
-    if (record.isDeleted) { result.deleted++; return }
-    const anomalies = getEffectiveAnomalies(record)
-    const mark = getDisplaySmartMark(record)
-    if (anomalies.length === 0 && !hasRequiredMissing(record)) result.normal++
-    if (mark.includes('手写')) result.handwriting++
-    if (mark.includes('模糊')) result.blurred++
-    if (mark.includes('夜班')) result.night++
-    if (mark.includes('未出勤')) result.absent++
-  })
-  return result
-})
+const stats = computed(() => calculateRecordStats(records.value))
 
 const statItems = computed(() => [
   { key: 'normal', variant: 'normal', value: stats.value.normal, label: t('home.statsNormal') },
@@ -468,14 +482,19 @@ const normalizePauseMinutes = (value) => {
   return value
 }
 
-const normalizeRecordPause = (record) => applyMissingPays(
-  {
-    ...record,
-    PAUSE: normalizePauseMinutes(record?.PAUSE),
-    PAGE_NUM: record?.PAGE_NUM ?? record?.pageNum ?? '',
-  },
-  getCachedWorkingCountry()
-)
+const normalizeRecordPause = (record) => {
+  const signatureMark = normalizeLegacySignature(record?.SIGNATURE || record?.CHECKER || '')
+  return applyMissingPays(
+    {
+      ...record,
+      PAUSE: normalizePauseMinutes(record?.PAUSE),
+      PAGE_NUM: record?.PAGE_NUM ?? record?.pageNum ?? '',
+      SIGNATURE: signatureMark,
+      CHECKER: signatureMark,
+    },
+    getCachedWorkingCountry()
+  )
+}
 
 const formatPauseDisplay = (value) => {
   const minutes = normalizePauseMinutes(value)
@@ -511,7 +530,17 @@ const cellStyle = (record) => {
 const baseColumns = computed(() => buildRecognitionTableColumns(t, { cellStyle }))
 const { columns: sortedColumns, sortRows } = useTableColumnSort(baseColumns)
 const tableRecords = computed(() => sortRows(records.value))
-const { columns, scrollX } = useAutoSizedColumns(sortedColumns, tableRecords, { actionWidth: 50 })
+const { columns: sizedColumns, scrollX } = useAutoSizedColumns(sortedColumns, tableRecords, { actionWidth: 50 })
+const {
+  frozenColumns: columns,
+  hiddenKeys,
+  frozenKeys,
+  configurableColumns,
+  setHiddenKeys,
+  setFrozenKeys,
+  showAllColumns,
+  clearFrozenKeys,
+} = useColumnFreeze('home-records', sizedColumns, { defaultFrozen: ['PAGE_NUM', 'NO'] })
 
 const totalSizeDisplay = computed(() => {
   const total = fileList.value.reduce((sum, file) => sum + (file.size || 0), 0)
@@ -782,6 +811,7 @@ const handleUpload = async () => {
         continue
       }
 
+      const recordsBeforeFile = records.value.length
       const ctx = {
         sharedTaskId,
         imagePreviewUrls,
@@ -790,13 +820,16 @@ const handleUpload = async () => {
       }
       await consumeSseResponse(response, ctx)
       sharedTaskId = ctx.sharedTaskId || sharedTaskId
-      if (ctx.hadError) hadError = true
+      if (ctx.hadError) {
+        hadError = true
+        records.value.splice(recordsBeforeFile)
+      }
     }
 
     if (uploadAbortController.signal.aborted) {
       return
     }
-    if (records.value.length > 0) {
+    if (records.value.length > 0 && !hadError) {
       message.success(t('home.recognizeSuccess', { count: records.value.length }))
       if (sharedTaskId) router.push(`/tasks/${sharedTaskId}`)
     } else if (!hadError) {
@@ -869,6 +902,12 @@ const getAnomalyTagColor = (reason) => {
 const getMarkColor = (mark) => {
   const m = cellStr(mark)
   if (!m) return 'default'
+  const parts = m.split(/[;；,，]/).map((p) => p.trim()).filter(Boolean)
+  for (const part of parts) {
+    if (part === '已签字确认') return 'success'
+    if (part === '未签字确认') return 'warning'
+    if (part === '已签字') return 'processing'
+  }
   if (markContains(m, 'absent')) return 'error'
   if (markContains(m, 'blurred')) return 'warning'
   if (markContains(m, 'handwriting')) return 'processing'
@@ -889,7 +928,9 @@ const hasHandwrittenIdentity = (record) => {
 
 const getDisplaySmartMark = (record) => {
   const sourceMarks = [record?.SmartMark, record?.Mark, record?.mark, record?.smartMark].map(v => cellStr(v)).filter(Boolean)
-  const raw = [...new Set(sourceMarks.join(';').split(/[;；,，]/).map(v => v.trim()).filter(Boolean))].join(';')
+  const raw = stripSignatureMarksFromSmartMark(
+    [...new Set(sourceMarks.join(';').split(/[;；,，]/).map(v => v.trim()).filter(Boolean))].join(';')
+  )
   const hasHandwritten = hasHandwrittenIdentity(record) || raw.includes('手写')
   if (!hasHandwritten || raw.includes('已删除') || raw.includes('未出勤')) return raw || '-'
   if (!raw || raw === '-' || raw === '正常') return '手写'

@@ -1,5 +1,11 @@
 /** 统一数据表表头视觉（任务列表 / 考勤记录 / 任务编辑 / 首页识别表） */
 
+.table-toolbar {
+  display: flex;
+  justify-content: flex-end;
+  margin-bottom: 10px;
+}
+
 .rich-table-header {
   .ant-table-content > table {
     width: max-content !important;

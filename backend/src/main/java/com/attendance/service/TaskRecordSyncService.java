@@ -7,6 +7,7 @@ import com.attendance.entity.Task;
 import com.attendance.entity.TaskRecord;
 import com.attendance.mapper.TaskMapper;
 import com.attendance.mapper.TaskRecordMapper;
+import com.attendance.util.SignatureMarkResolver;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -132,9 +133,11 @@ public class TaskRecordSyncService {
         tr.setArrival(pickJson(row, "ARRIVEE", "ARRIVE", "ARRIVAL"));
         tr.setDeparture(pickJson(row, "DEPAR", "DEPART", "DEPARTURE"));
         tr.setPauseMinutes(pickJson(row, "PAUSE", "PAUS", "Break"));
-        tr.setSignature(pickJson(row, "SIGNATURE", "CHECKER", "Signature"));
+        String rawSignature = pickJson(row, "SIGNATURE", "CHECKER", "Signature");
+        tr.setSignature(SignatureMarkResolver.normalizeLegacySignature(rawSignature));
         tr.setObservations(pickJson(row, "Observations", "OBSERVATIONS", "Remarks"));
         tr.setPageNum(pickJson(row, "PAGE_NUM", "PageNum", "pageNum", "页码"));
+        tr.setSmartMark(pickJson(row, "SmartMark", "Mark", "smartMark", "标记"));
         tr.setTaskCreatedAt(taskCreatedAt);
         return tr;
     }

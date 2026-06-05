@@ -20,7 +20,18 @@ const MARK_TOKEN_KEYS = {
   夜班: 'recognition.marks.nightShift',
   未出勤: 'recognition.marks.absent',
   已删除: 'recognition.marks.deleted',
+  已签字确认: 'recognition.marks.signedConfirmed',
+  未签字确认: 'recognition.marks.unsignedConfirmed',
+  已签字: 'recognition.marks.signed',
 }
+
+const SIGNATURE_RESULT_MARKS = new Set(['已签字确认', '未签字确认', '已签字'])
+
+const BLANK_SIGNATURE_TOKENS = new Set([
+  '', '???', '??', 'unknown', 'illegible', 'n/a', 'na', 'none', 'null',
+  '员工签名', 'signature', 'signatura', 'firma', '员工签', '签名',
+  'sign', 'signed', 'unsigned',
+])
 
 const MARK_DETECT = {
   absent: ['未出勤', 'absent', 'ausente', 'abwesend', 'afwezig', 'nieobecny', 'nepřítom'],
@@ -65,6 +76,65 @@ export function splitSmartMarkParts(mark) {
   return [...new Set(String(mark).split(/[;；,，]/).map((p) => p.trim()).filter(Boolean))]
 }
 
+export function isSignatureResultMark(value) {
+  return SIGNATURE_RESULT_MARKS.has(String(value || '').trim())
+}
+
+export function isBlankSignature(value) {
+  if (value == null) return true
+  const trimmed = String(value).trim()
+  if (!trimmed) return true
+  const lower = trimmed.toLowerCase()
+  if (BLANK_SIGNATURE_TOKENS.has(lower)) return true
+  if (lower === 'signature' || lower === '员工签名') return true
+  return false
+}
+
+/** 旧数据：已是三档标记则保留；空白为未签字确认；其余手写原文默认已签字确认 */
+export function normalizeLegacySignature(signature) {
+  if (isSignatureResultMark(signature)) return String(signature).trim()
+  if (isBlankSignature(signature)) return '未签字确认'
+  return '已签字确认'
+}
+
+export function getDisplaySignature(signature) {
+  return normalizeLegacySignature(signature)
+}
+
+/** 标记列不展示签字结果（签字结果仅在 SIGNATURE 列） */
+export function stripSignatureMarksFromSmartMark(mark) {
+  const parts = splitSmartMarkParts(mark).filter((part) => !isSignatureResultMark(part))
+  return parts.length ? parts.join(';') : ''
+}
+
+/** 原始 SmartMark（合并多字段、去掉签字标记，不做手写等展示推断） */
+export function getRawSmartMark(record) {
+  const sourceMarks = [
+    record?.SmartMark,
+    record?.Mark,
+    record?.mark,
+    record?.smartMark,
+  ].map((v) => String(v || '').trim()).filter(Boolean)
+  if (!sourceMarks.length) return ''
+  return stripSignatureMarksFromSmartMark(
+    [...new Set(sourceMarks.join(';').split(/[;；,，]/).map((v) => v.trim()).filter(Boolean))].join(';')
+  )
+}
+
+export function translateSignatureMark(value, t) {
+  const text = String(value || '').trim()
+  if (!text) return '-'
+  return translateSmartMarkPart(text, t)
+}
+
+export function getSignatureMarkColor(value) {
+  const p = String(value || '').trim()
+  if (p === '已签字确认') return 'success'
+  if (p === '未签字确认') return 'warning'
+  if (p === '已签字') return 'processing'
+  return 'default'
+}
+
 export function translateSmartMarkPart(part, t) {
   const p = String(part || '').trim()
   if (!p) return '-'
@@ -80,6 +150,7 @@ export function translateSmartMarkPart(part, t) {
 
 export function getMarkColorForPart(part) {
   if (!part) return 'default'
+  if (isSignatureResultMark(part)) return 'default'
   if (markContains(part, 'absent')) return 'error'
   if (markContains(part, 'blurred')) return 'warning'
   if (markContains(part, 'handwriting')) return 'processing'
@@ -130,6 +201,34 @@ export function markContains(mark, kind) {
   const text = String(mark).toLowerCase()
   const patterns = MARK_DETECT[kind] || []
   return patterns.some((p) => text.includes(p.toLowerCase()))
+}
+
+/** 多值标记（; 分隔）中是否含某类标记 */
+export function markHasKind(mark, kind) {
+  return splitSmartMarkParts(mark).some((part) => markContains(part, kind))
+}
+
+/**
+ * 识别结果统计卡片：按原始 SmartMark 显式标记计数，各类可叠加（如 正常;夜班 同时计入两卡）。
+ * 手写仅统计标记中显式含「手写」的行，不含工号/姓名推断。
+ * 已删除行仅计入「已删除」，不参与其余统计。
+ */
+export function calculateRecordStats(records, { getDisplayMark } = {}) {
+  const resolveMark = getDisplayMark || getRawSmartMark
+  const stats = { normal: 0, handwriting: 0, blurred: 0, night: 0, absent: 0, deleted: 0 }
+  for (const record of records || []) {
+    if (record?.isDeleted) {
+      stats.deleted++
+      continue
+    }
+    const mark = resolveMark(record) || ''
+    if (markHasKind(mark, 'normal')) stats.normal++
+    if (markHasKind(mark, 'handwriting')) stats.handwriting++
+    if (markHasKind(mark, 'blurred')) stats.blurred++
+    if (markHasKind(mark, 'nightShift')) stats.night++
+    if (markHasKind(mark, 'absent')) stats.absent++
+  }
+  return stats
 }
 
 export function anomalyReasonKind(reason) {

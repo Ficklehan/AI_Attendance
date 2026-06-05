@@ -243,7 +243,15 @@ export default {
     searchField: '搜索字段', 
     allField: '全部字段', 
     searchContent: '输入搜索内容',
-    searchCreateTime: '输入日期或时间，如 2025-05-29', 
+    searchCreateTime: '输入日期或时间，如 2025-05-29',
+    searchWorkDate: '输入工作日期，如 2026-05-17',
+    searchMark: '输入标记，如 已签字确认、正常',
+    filterDateRange: '选择日期范围',
+    filterDateTimeRange: '选择日期时间范围',
+    filterTimeRange: '选择时间段',
+    filterMultiSelect: '选择一项或多项',
+    filterRangeStart: '开始',
+    filterRangeEnd: '结束',
     allStatus: '全部', 
     statusProcessing: '识别中', 
     statusProcessed: '待核对', 
@@ -275,6 +283,15 @@ export default {
     batchDelete: '批量删除 ({count})',
     batchDeleteConfirm: '确定要删除选中的 {count} 个任务吗？任务及图片将被永久删除，此操作不可恢复。',
     batchDeleteSuccess: '已删除 {count} 个任务'
+  },
+  table: {
+    columnSettings: '列设置',
+    visibleColumns: '显示列',
+    visibleColumnsHint: '取消勾选可隐藏该列',
+    showAllColumns: '全部显示',
+    freezeColumns: '冻结列',
+    freezeColumnsHint: '勾选后从左侧连续冻结，横向滚动时保持可见',
+    freezeReset: '清除冻结',
   },
   taskEdit: {
     title: '任务详情',
@@ -596,7 +613,10 @@ export default {
       blurred: '模糊',
       nightShift: '夜班',
       absent: '未出勤',
-      deleted: '已删除'
+      deleted: '已删除',
+      signedConfirmed: '已签字确认',
+      unsignedConfirmed: '未签字确认',
+      signed: '已签字'
     },
     missing: {
       NO: '工号未识别',
@@ -662,7 +682,7 @@ export default {
     aiInvalidJson: '模型返回了无法解析的 JSON 行，请换更清晰图片重试。',
     aiNoParseableRecords: '模型未返回可解析的考勤 JSON 行，请换更清晰图片重试。',
     aiParsePreviewLabel: '模型原始响应摘要',
-    aiFabricated: '识别结果疑似模型编造而非读图，请换更清晰、完整的考勤表照片重试',
+    aiFabricated: '识别结果含多条提示词示例行（非图中真实数据），请换更清晰、完整的考勤表照片重试',
     aiUnreadableTimes: '表格大量工号/姓名为 ??? 或无法辨认，但到达/离开时间却被整齐填写，疑似模型臆测。请换更清晰照片重试',
     validationFailed: '参数校验失败: {detail}',
     missingParameter: '缺少请求参数: {name}',

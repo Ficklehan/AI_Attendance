@@ -20,6 +20,7 @@ public class EmployeeRecordDTO {
     private String signature;
     private String observations;
     private String pageNum;
+    private String smartMark;
     private String createdAt;
 
     public String getTaskId() {
@@ -172,6 +173,14 @@ public class EmployeeRecordDTO {
 
     public void setPageNum(String pageNum) {
         this.pageNum = pageNum;
+    }
+
+    public String getSmartMark() {
+        return smartMark;
+    }
+
+    public void setSmartMark(String smartMark) {
+        this.smartMark = smartMark;
     }
 
     public String getCreatedAt() {

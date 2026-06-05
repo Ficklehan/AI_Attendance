@@ -7,13 +7,20 @@
 [NO,Pays,Entrepot,Date,NOM_PRENOM,AGENCE_INTERIMAIRE,HORAIRES_DU_TRAVAIL,ARRIVEE,DEPAR,PAUSE,SIGNATURE,Observations,标记,已删除,PAGE_NUM]
 
 【数据与格式】
-· 只输出图中真实行；看不清用 ??? 或 ""；禁止编造、补全、连号演示(1,2,3…)、把表头当数据(NO/姓名/供应商/签名/备注等)
+· 只输出图中真实行；看不清必须用 ??? 或 ""，禁止猜测补全
+· 【严禁编造】图中未出现的姓名、工号、日期、到离时间、中介、班次、仓库等不得填写；禁止为凑行数多输出行；不要把表头当数据(NO/姓名/供应商/签名/备注等)
+· 工号按图读取（连续 1、2、3 等为正常）；姓名或工号为 ???/空时，到达/离开必须为空，禁止臆测时间
 · 每行仅一个 JSON 数组，不要包大数组
 · 时间→HH:MM(24h)：6h→06:00；6h30/6.30/630→06:30；18h30→18:30
 · 日期→YYYY-MM-DD：17/05/2026、17-05-2026、17-05-26 等均规范为 2026-05-17
 · 表头语义→字段：国家/Pays/Country/Paese→Pays；仓库/Entrepôt/Warehouse/Magazzino→Entrepot；签名/SIGNATURE/Firma→SIGNATURE；备注/Observations/Remarks/Osservazioni→Observations
 · PAUSE 只输出分钟整数(去 min/mn/h 等单位)
 · Entrepot 仅读图，无列或看不清则 ""，禁止按国家猜 AMS/PAR 等
+
+【SIGNATURE·第11项】
+· 读取签名栏手写姓名/笔迹并转写为文本；栏位完全空白则 ""
+· 禁止把表头字样(员工签名/SIGNATURE/Firma)写入；看不清用 "" 或 ???
+· SIGNATURE 列由系统写入签字结果（已签字确认/未签字确认/已签字）；识别时尽力读取手写姓名供比对，勿写入「标记」列
 
 【标记·第13项】取值：手写|模糊|正常|夜班|未出勤，`;` 连接。
 · 夜班：到达≥20:00 或 离开≤06:00/跨午夜
@@ -45,13 +52,20 @@
 [NO,Pays,Entrepot,Date,NOM_PRENOM,AGENCE_INTERIMAIRE,HORAIRES_DU_TRAVAIL,ARRIVEE,DEPAR,PAUSE,SIGNATURE,Observations,标记,已删除,PAGE_NUM]
 
 【数据与格式】
-· 只输出图中真实行；看不清用 ??? 或 ""；禁止编造、补全、连号演示(1,2,3…)、把表头当数据(NO/姓名/供应商/签名/备注等)
+· 只输出图中真实行；看不清必须用 ??? 或 ""，禁止猜测补全
+· 【严禁编造】图中未出现的姓名、工号、日期、到离时间、中介、班次、仓库等不得填写；禁止为凑行数多输出行；不要把表头当数据(NO/姓名/供应商/签名/备注等)
+· 工号按图读取（连续 1、2、3 等为正常）；姓名或工号为 ???/空时，到达/离开必须为空，禁止臆测时间
 · 每行仅一个 JSON 数组，不要包大数组
 · 时间→HH:MM(24h)：6h→06:00；6h30/6.30/630→06:30；18h30→18:30
 · 日期→YYYY-MM-DD：17/05/2026、17-05-2026、17-05-26 等均规范为 2026-05-17
 · 表头语义→字段：国家/Pays/Country/Paese→Pays；仓库/Entrepôt/Warehouse/Magazzino→Entrepot；签名/SIGNATURE/Firma→SIGNATURE；备注/Observations/Remarks/Osservazioni→Observations
 · PAUSE 只输出分钟整数(去 min/mn/h 等单位)
 · Entrepot 仅读图，无列或看不清则 ""，禁止按国家猜 AMS/PAR 等
+
+【SIGNATURE·第11项】
+· 读取签名栏手写姓名/笔迹并转写为文本；栏位完全空白则 ""
+· 禁止把表头字样(员工签名/SIGNATURE/Firma)写入；看不清用 "" 或 ???
+· SIGNATURE 列由系统写入签字结果（已签字确认/未签字确认/已签字）；识别时尽力读取手写姓名供比对，勿写入「标记」列
 
 【标记·第13项】取值：手写|模糊|正常|夜班|未出勤，`;` 连接。
 · 夜班：到达≥20:00 或 离开≤06:00/跨午夜
@@ -83,13 +97,20 @@
 [NO,Pays,Entrepot,Date,NOM_PRENOM,AGENCE_INTERIMAIRE,HORAIRES_DU_TRAVAIL,ARRIVEE,DEPAR,PAUSE,SIGNATURE,Observations,标记,已删除,PAGE_NUM]
 
 【数据与格式】
-· 只输出图中真实行；看不清用 ??? 或 ""；禁止编造、补全、连号演示(1,2,3…)、把表头当数据(NO/姓名/供应商/签名/备注等)
+· 只输出图中真实行；看不清必须用 ??? 或 ""，禁止猜测补全
+· 【严禁编造】图中未出现的姓名、工号、日期、到离时间、中介、班次、仓库等不得填写；禁止为凑行数多输出行；不要把表头当数据(NO/姓名/供应商/签名/备注等)
+· 工号按图读取（连续 1、2、3 等为正常）；姓名或工号为 ???/空时，到达/离开必须为空，禁止臆测时间
 · 每行仅一个 JSON 数组，不要包大数组
 · 时间→HH:MM(24h)：6h→06:00；6h30/6.30/630→06:30；18h30→18:30
 · 日期→YYYY-MM-DD：2026-05-17 等规范为 YYYY-MM-DD
 · 表头语义→字段：国家/Pays/Country/Paese→Pays；仓库/Entrepôt/Warehouse/Magazzino→Entrepot；签名/SIGNATURE/Firma→SIGNATURE；备注/Observations/Remarks/Osservazioni→Observations
 · PAUSE 只输出分钟整数(去 min/mn/h 等单位)
 · Entrepot 仅读图，无列或看不清则 ""，禁止按国家猜 AMS/PAR 等
+
+【SIGNATURE·第11项】
+· 读取签名栏手写姓名/笔迹并转写为文本；栏位完全空白则 ""
+· 禁止把表头字样(员工签名/SIGNATURE/Firma)写入；看不清用 "" 或 ???
+· SIGNATURE 列由系统写入签字结果（已签字确认/未签字确认/已签字）；识别时尽力读取手写姓名供比对，勿写入「标记」列
 
 【标记·第13项】取值：手写|模糊|正常|夜班|未出勤，`;` 连接。
 · 夜班：到达≥20:00 或 离开≤06:00/跨午夜
@@ -121,13 +142,20 @@
 [NO,Pays,Entrepot,Date,NOM_PRENOM,AGENCE_INTERIMAIRE,HORAIRES_DU_TRAVAIL,ARRIVEE,DEPAR,PAUSE,SIGNATURE,Observations,标记,已删除,PAGE_NUM]
 
 【数据与格式】
-· 只输出图中真实行；看不清用 ??? 或 ""；禁止编造、补全、连号演示(1,2,3…)、把表头当数据(NO/姓名/供应商/签名/备注等)
+· 只输出图中真实行；看不清必须用 ??? 或 ""，禁止猜测补全
+· 【严禁编造】图中未出现的姓名、工号、日期、到离时间、中介、班次、仓库等不得填写；禁止为凑行数多输出行；不要把表头当数据(NO/姓名/供应商/签名/备注等)
+· 工号按图读取（连续 1、2、3 等为正常）；姓名或工号为 ???/空时，到达/离开必须为空，禁止臆测时间
 · 每行仅一个 JSON 数组，不要包大数组
 · 时间→HH:MM(24h)：德国常见写法，按 6h→06:00、6h30/630→06:30 等规范
 · 日期→YYYY-MM-DD：德国常用 DD.MM.YYYY(如 17.05.2026→2026-05-17)
 · 表头语义→字段：国家/Pays/Country/Paese→Pays；仓库/Entrepôt/Warehouse/Magazzino→Entrepot；签名/SIGNATURE/Firma→SIGNATURE；备注/Observations/Remarks/Osservazioni→Observations
 · PAUSE 只输出分钟整数(去 min/mn/h 等单位)
 · Entrepot 仅读图，无列或看不清则 ""，禁止按国家猜 AMS/PAR 等
+
+【SIGNATURE·第11项】
+· 读取签名栏手写姓名/笔迹并转写为文本；栏位完全空白则 ""
+· 禁止把表头字样(员工签名/SIGNATURE/Firma)写入；看不清用 "" 或 ???
+· SIGNATURE 列由系统写入签字结果（已签字确认/未签字确认/已签字）；识别时尽力读取手写姓名供比对，勿写入「标记」列
 
 【标记·第13项】取值：手写|模糊|正常|夜班|未出勤，`;` 连接。
 · 夜班：到达≥20:00 或 离开≤06:00/跨午夜
@@ -159,13 +187,20 @@
 [NO,Pays,Entrepot,Date,NOM_PRENOM,AGENCE_INTERIMAIRE,HORAIRES_DU_TRAVAIL,ARRIVEE,DEPAR,PAUSE,SIGNATURE,Observations,标记,已删除,PAGE_NUM]
 
 【数据与格式】
-· 只输出图中真实行；看不清用 ??? 或 ""；禁止编造、补全、连号演示(1,2,3…)、把表头当数据(NO/姓名/供应商/签名/备注等)
+· 只输出图中真实行；看不清必须用 ??? 或 ""，禁止猜测补全
+· 【严禁编造】图中未出现的姓名、工号、日期、到离时间、中介、班次、仓库等不得填写；禁止为凑行数多输出行；不要把表头当数据(NO/姓名/供应商/签名/备注等)
+· 工号按图读取（连续 1、2、3 等为正常）；姓名或工号为 ???/空时，到达/离开必须为空，禁止臆测时间
 · 每行仅一个 JSON 数组，不要包大数组
 · 时间→HH:MM(24h)：可读12小时制(含 AM/PM)，输出须24小时(如 08:00 AM→08:00)
 · 日期→YYYY-MM-DD：美国常用 MM/DD/YYYY(如 05/17/2026→2026-05-17)
 · 表头语义→字段：国家/Pays/Country/Paese→Pays；仓库/Entrepôt/Warehouse/Magazzino→Entrepot；签名/SIGNATURE/Firma→SIGNATURE；备注/Observations/Remarks/Osservazioni→Observations
 · PAUSE 只输出分钟整数(去 min/mn/h 等单位)
 · Entrepot 仅读图，无列或看不清则 ""，禁止按国家猜 AMS/PAR 等
+
+【SIGNATURE·第11项】
+· 读取签名栏手写姓名/笔迹并转写为文本；栏位完全空白则 ""
+· 禁止把表头字样(员工签名/SIGNATURE/Firma)写入；看不清用 "" 或 ???
+· SIGNATURE 列由系统写入签字结果（已签字确认/未签字确认/已签字）；识别时尽力读取手写姓名供比对，勿写入「标记」列
 
 【标记·第13项】取值：手写|模糊|正常|夜班|未出勤，`;` 连接。
 · 夜班：到达≥20:00 或 离开≤06:00/跨午夜
@@ -197,13 +232,20 @@
 [NO,Pays,Entrepot,Date,NOM_PRENOM,AGENCE_INTERIMAIRE,HORAIRES_DU_TRAVAIL,ARRIVEE,DEPAR,PAUSE,SIGNATURE,Observations,标记,已删除,PAGE_NUM]
 
 【数据与格式】
-· 只输出图中真实行；看不清用 ??? 或 ""；禁止编造、补全、连号演示(1,2,3…)、把表头当数据(NO/姓名/供应商/签名/备注等)
+· 只输出图中真实行；看不清必须用 ??? 或 ""，禁止猜测补全
+· 【严禁编造】图中未出现的姓名、工号、日期、到离时间、中介、班次、仓库等不得填写；禁止为凑行数多输出行；不要把表头当数据(NO/姓名/供应商/签名/备注等)
+· 工号按图读取（连续 1、2、3 等为正常）；姓名或工号为 ???/空时，到达/离开必须为空，禁止臆测时间
 · 每行仅一个 JSON 数组，不要包大数组
 · 时间→HH:MM(24h)：6h→06:00；6h30/6.30/630→06:30；18h30→18:30
 · 日期→YYYY-MM-DD：17/05/2026、17-05-2026、17-05-26 等均规范为 2026-05-17
 · 表头语义→字段：国家/Pays/Country/Paese→Pays；仓库/Entrepôt/Warehouse/Magazzino→Entrepot；签名/SIGNATURE/Firma→SIGNATURE；备注/Observations/Remarks/Osservazioni→Observations
 · PAUSE 只输出分钟整数(去 min/mn/h 等单位)
 · Entrepot 仅读图，无列或看不清则 ""，禁止按国家猜 AMS/PAR 等
+
+【SIGNATURE·第11项】
+· 读取签名栏手写姓名/笔迹并转写为文本；栏位完全空白则 ""
+· 禁止把表头字样(员工签名/SIGNATURE/Firma)写入；看不清用 "" 或 ???
+· SIGNATURE 列由系统写入签字结果（已签字确认/未签字确认/已签字）；识别时尽力读取手写姓名供比对，勿写入「标记」列
 
 【标记·第13项】取值：手写|模糊|正常|夜班|未出勤，`;` 连接。
 · 夜班：到达≥20:00 或 离开≤06:00/跨午夜
@@ -235,13 +277,20 @@
 [NO,Pays,Entrepot,Date,NOM_PRENOM,AGENCE_INTERIMAIRE,HORAIRES_DU_TRAVAIL,ARRIVEE,DEPAR,PAUSE,SIGNATURE,Observations,标记,已删除,PAGE_NUM]
 
 【数据与格式】
-· 只输出图中真实行；看不清用 ??? 或 ""；禁止编造、补全、连号演示(1,2,3…)、把表头当数据(NO/姓名/供应商/签名/备注等)
+· 只输出图中真实行；看不清必须用 ??? 或 ""，禁止猜测补全
+· 【严禁编造】图中未出现的姓名、工号、日期、到离时间、中介、班次、仓库等不得填写；禁止为凑行数多输出行；不要把表头当数据(NO/姓名/供应商/签名/备注等)
+· 工号按图读取（连续 1、2、3 等为正常）；姓名或工号为 ???/空时，到达/离开必须为空，禁止臆测时间
 · 每行仅一个 JSON 数组，不要包大数组
 · 时间→HH:MM(24h)：6h→06:00；6h30/6.30/630→06:30；18h30→18:30
 · 日期→YYYY-MM-DD：17/05/2026、17-05-2026、17-05-26 等均规范为 2026-05-17
 · 表头语义→字段：国家/Pays/Country/Paese→Pays；仓库/Entrepôt/Warehouse/Magazzino→Entrepot；签名/SIGNATURE/Firma→SIGNATURE；备注/Observations/Remarks/Osservazioni→Observations
 · PAUSE 只输出分钟整数(去 min/mn/h 等单位)
 · Entrepot 仅读图，无列或看不清则 ""，禁止按国家猜 AMS/PAR 等
+
+【SIGNATURE·第11项】
+· 读取签名栏手写姓名/笔迹并转写为文本；栏位完全空白则 ""
+· 禁止把表头字样(员工签名/SIGNATURE/Firma)写入；看不清用 "" 或 ???
+· SIGNATURE 列由系统写入签字结果（已签字确认/未签字确认/已签字）；识别时尽力读取手写姓名供比对，勿写入「标记」列
 
 【标记·第13项】取值：手写|模糊|正常|夜班|未出勤，`;` 连接。
 · 夜班：到达≥20:00 或 离开≤06:00/跨午夜
@@ -273,13 +322,20 @@
 [NO,Pays,Entrepot,Date,NOM_PRENOM,AGENCE_INTERIMAIRE,HORAIRES_DU_TRAVAIL,ARRIVEE,DEPAR,PAUSE,SIGNATURE,Observations,标记,已删除,PAGE_NUM]
 
 【数据与格式】
-· 只输出图中真实行；看不清用 ??? 或 ""；禁止编造、补全、连号演示(1,2,3…)、把表头当数据(NO/姓名/供应商/签名/备注等)
+· 只输出图中真实行；看不清必须用 ??? 或 ""，禁止猜测补全
+· 【严禁编造】图中未出现的姓名、工号、日期、到离时间、中介、班次、仓库等不得填写；禁止为凑行数多输出行；不要把表头当数据(NO/姓名/供应商/签名/备注等)
+· 工号按图读取（连续 1、2、3 等为正常）；姓名或工号为 ???/空时，到达/离开必须为空，禁止臆测时间
 · 每行仅一个 JSON 数组，不要包大数组
 · 时间→HH:MM(24h)：6h→06:00；6h30/6.30/630→06:30；18h30→18:30
 · 日期→YYYY-MM-DD：17/05/2026、17-05-2026、17-05-26 等均规范为 2026-05-17
 · 表头语义→字段：国家/Pays/Country/País→Pays；仓库/Entrepôt/Warehouse/Almacén→Entrepot；签名/SIGNATURE/Firma→SIGNATURE；备注/Observations/Remarks/Observaciones→Observations
 · PAUSE 只输出分钟整数(去 min/mn/h 等单位)
 · Entrepot 仅读图，无列或看不清则 ""，禁止按国家猜 AMS/PAR 等
+
+【SIGNATURE·第11项】
+· 读取签名栏手写姓名/笔迹并转写为文本；栏位完全空白则 ""
+· 禁止把表头字样(员工签名/SIGNATURE/Firma)写入；看不清用 "" 或 ???
+· SIGNATURE 列由系统写入签字结果（已签字确认/未签字确认/已签字）；识别时尽力读取手写姓名供比对，勿写入「标记」列
 
 【标记·第13项】取值：手写|模糊|正常|夜班|未出勤，`;` 连接。
 · 夜班：到达≥20:00 或 离开≤06:00/跨午夜

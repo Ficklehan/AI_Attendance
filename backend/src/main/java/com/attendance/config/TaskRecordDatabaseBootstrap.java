@@ -63,6 +63,7 @@ public class TaskRecordDatabaseBootstrap implements ApplicationRunner {
                     + ") ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");
             ensureTasksIndex();
             ensureProgressRowCountColumn();
+            ensureSmartMarkColumn();
             log.info("task_records 表已就绪");
         } catch (Exception e) {
             log.error("创建 task_records 表失败", e);
@@ -82,6 +83,22 @@ public class TaskRecordDatabaseBootstrap implements ApplicationRunner {
             }
         } catch (Exception e) {
             log.debug("progress_row_count 列可能已存在: {}", e.getMessage());
+        }
+    }
+
+    private void ensureSmartMarkColumn() {
+        try {
+            Integer cnt = jdbcTemplate.queryForObject(
+                    "SELECT COUNT(1) FROM information_schema.columns "
+                            + "WHERE table_schema = DATABASE() AND table_name = 'task_records' "
+                            + "AND column_name = 'smart_mark'",
+                    Integer.class);
+            if (cnt == null || cnt == 0) {
+                jdbcTemplate.execute("ALTER TABLE task_records ADD COLUMN smart_mark VARCHAR(255) NULL "
+                        + "COMMENT '识别标记(SmartMark)' AFTER page_num");
+            }
+        } catch (Exception e) {
+            log.debug("smart_mark 列可能已存在: {}", e.getMessage());
         }
     }
 

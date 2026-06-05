@@ -25,6 +25,15 @@
           class="date-picker"
           @change="handleFilter"
         />
+        <TableColumnSettings
+          :columns="configurableColumns"
+          :hidden-keys="hiddenKeys"
+          :frozen-keys="frozenKeys"
+          @update:hidden-keys="setHiddenKeys"
+          @update:frozen-keys="setFrozenKeys"
+          @show-all="showAllColumns"
+          @clear-freeze="clearFrozenKeys"
+        />
       </div>
       
       <a-table 
@@ -32,7 +41,8 @@
         :data-source="displayLogs" 
         :loading="loading" 
         :pagination="false"
-        class="audit-table"
+        :scroll="{ x: scrollX }"
+        class="audit-table rich-table-header"
       >
         <template #bodyCell="{ column, record }">
           <template v-if="column.key === 'action'">
@@ -65,7 +75,10 @@ import { ref, computed, onMounted } from 'vue'
 import { useI18n } from 'vue-i18n'
 import request from '@/api/index'
 import PageShell from '@/components/PageShell.vue'
+import TableColumnSettings from '@/components/TableColumnSettings.vue'
 import { useTableColumnSort } from '@/composables/useTableColumnSort'
+import { useColumnFreeze } from '@/composables/useColumnFreeze'
+import { sumTableScrollX } from '@/utils/tableAutoColumns'
 
 const { t } = useI18n()
 
@@ -85,8 +98,19 @@ const baseColumns = computed(() => [
   { title: t('audit.details'), dataIndex: 'details', key: 'details', ellipsis: true },
   { title: t('audit.createdAt'), dataIndex: 'createdAt', key: 'createdAt', width: 180 },
 ])
-const { columns, sortRows } = useTableColumnSort(baseColumns)
+const { columns: sortedColumns, sortRows } = useTableColumnSort(baseColumns)
+const {
+  frozenColumns: columns,
+  hiddenKeys,
+  frozenKeys,
+  configurableColumns,
+  setHiddenKeys,
+  setFrozenKeys,
+  showAllColumns,
+  clearFrozenKeys,
+} = useColumnFreeze('audit-log', sortedColumns, { defaultFrozen: ['username'] })
 const displayLogs = computed(() => sortRows(logs.value))
+const scrollX = computed(() => sumTableScrollX(columns.value))
 
 const loadLogs = async () => {
   loading.value = true

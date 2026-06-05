@@ -20,7 +20,7 @@
 }
 
 .table-header-filter-panel {
-  width: 280px;
+  width: min(360px, calc(100vw - 32px));
   padding: 14px 16px 16px;
   background: #fff;
 }

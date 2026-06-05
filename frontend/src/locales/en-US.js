@@ -244,6 +244,14 @@ export default {
     allField: 'All Fields',
     searchContent: 'Enter search content',
     searchCreateTime: 'Enter date or time, e.g. 2025-05-29',
+    searchWorkDate: 'Enter work date, e.g. 2026-05-17',
+    searchMark: 'Enter mark, e.g. signed confirmed, normal',
+    filterDateRange: 'Select date range',
+    filterDateTimeRange: 'Select date & time range',
+    filterTimeRange: 'Select time range',
+    filterMultiSelect: 'Select one or more',
+    filterRangeStart: 'Start',
+    filterRangeEnd: 'End',
     allStatus: 'All',
     statusProcessing: 'Recognizing',
     statusProcessed: 'To review',
@@ -275,6 +283,15 @@ export default {
     batchDelete: 'Delete selected ({count})',
     batchDeleteConfirm: 'Delete {count} selected task(s)? Tasks and images will be permanently removed. This cannot be undone.',
     batchDeleteSuccess: 'Deleted {count} task(s)'
+  },
+  table: {
+    columnSettings: 'Columns',
+    visibleColumns: 'Visible columns',
+    visibleColumnsHint: 'Uncheck to hide a column from the table',
+    showAllColumns: 'Show all',
+    freezeColumns: 'Freeze columns',
+    freezeColumnsHint: 'Freeze consecutive columns from the left; they stay visible when scrolling horizontally',
+    freezeReset: 'Clear freeze',
   },
   taskEdit: {
     title: 'Task Details',
@@ -596,7 +613,10 @@ export default {
       blurred: 'Blurry',
       nightShift: 'Night shift',
       absent: 'Absent',
-      deleted: 'Deleted'
+      deleted: 'Deleted',
+      signedConfirmed: 'Signed (confirmed)',
+      unsignedConfirmed: 'Unsigned (confirmed)',
+      signed: 'Signed'
     },
     missing: {
       NO: 'Worker ID not recognized',
@@ -662,7 +682,7 @@ export default {
     aiInvalidJson: 'The model returned JSON lines that could not be parsed. Try a clearer image.',
     aiNoParseableRecords: 'The model did not return parsable attendance JSON rows. Try a clearer image.',
     aiParsePreviewLabel: 'Model response preview',
-    aiFabricated: 'Results look fabricated rather than read from the image. Upload a clearer, complete attendance sheet',
+    aiFabricated: 'Results contain multiple prompt example rows, not real sheet data. Upload a clearer, complete attendance sheet',
     aiUnreadableTimes: 'Many names/IDs are unreadable but times look filled in uniformly — likely guessed. Upload a clearer photo',
     validationFailed: 'Validation failed: {detail}',
     missingParameter: 'Missing request parameter: {name}',

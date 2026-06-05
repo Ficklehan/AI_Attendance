@@ -1,6 +1,5 @@
 @import "../../styles/design.ttss";
 
-/* 全屏取景：扫描线随框高度自适应 */
 .camera-page .scan-frame-full .scan-line {
   animation: scanMoveFull 2.4s linear infinite;
 }
@@ -22,17 +21,12 @@
   border-width: 5rpx;
 }
 
-.camera-page .camera-header-main {
-  pointer-events: none;
+.camera-page .capture-inner {
+  transition: transform 0.12s ease, box-shadow 0.12s ease;
 }
 
-.camera-page .flash-icon {
-  font-size: 28rpx;
-}
-
-.camera-page .control-btn {
-  min-width: 100rpx;
-  padding: 12rpx 16rpx;
+.camera-page .capture-btn:active .capture-inner {
+  transform: scale(0.9);
 }
 
 .camera-page .capture-ring {
@@ -42,16 +36,4 @@
 @keyframes ringBreathe {
   0%, 100% { transform: scale(1); opacity: 1; }
   50% { transform: scale(1.05); opacity: 0.75; }
-}
-
-.camera-page .capture-inner {
-  transition: transform 0.12s ease, box-shadow 0.12s ease;
-}
-
-.camera-page .capture-btn:active .capture-inner {
-  transform: scale(0.9);
-}
-
-.camera-page .camera-nav-btn:active {
-  background: rgba(255, 255, 255, 0.2);
 }

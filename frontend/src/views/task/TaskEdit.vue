@@ -86,6 +86,17 @@
       
       <a-tabs v-model:active-key="activeTab" class="edit-tabs">
         <a-tab-pane key="edit" :tab="$t('taskEdit.editData')">
+          <div class="table-toolbar">
+            <TableColumnSettings
+              :columns="configurableColumns"
+              :hidden-keys="hiddenKeys"
+              :frozen-keys="frozenKeys"
+              @update:hidden-keys="setHiddenKeys"
+              @update:frozen-keys="setFrozenKeys"
+              @show-all="showAllColumns"
+              @clear-freeze="clearFrozenKeys"
+            />
+          </div>
           <div class="duplicate-scope-bar">
             <span class="duplicate-scope-label">{{ $t('taskEdit.duplicateScopeLabel') }}</span>
             <a-radio-group
@@ -148,12 +159,21 @@
                     v-if="column.searchField"
                     :title="formatHeaderTitle(column.title)"
                     :open="activeHeaderFilterField === column.searchField"
-                    :active="Boolean((headerFilters[column.searchField] || '').trim())"
-                    v-model:keyword="headerFilterKeyword"
-                    @openChange="(open) => handleHeaderPopoverOpen(column.searchField, open)"
+                    :active="isHeaderFilterActive(column.searchField)"
+                    @openChange="(open) => handleHeaderPopoverOpen(column, open)"
                     @reset="clearHeaderFilter"
                     @apply="applyHeaderFilter"
-                  />
+                  >
+                    <template #field>
+                      <FieldFilterControl
+                        v-model:model-value="headerFilterDraft"
+                        :filter-type="resolveColumnFilterType(column)"
+                        :options="resolveColumnFilterOptions(column, t)"
+                        class="table-header-filter-panel__input"
+                        @submit="applyHeaderFilter"
+                      />
+                    </template>
+                  </TableHeaderFilter>
                 </template>
               </TableSortableHeader>
               <span v-else></span>
@@ -293,8 +313,26 @@
                 <span v-else class="cell-text">{{ formatPauseDisplay(record.PAUSE) }}</span>
               </template>
               <template v-if="column.key === 'SIGNATURE'">
-                <a-input v-if="isRecordEditable(record)" v-model:value="record.SIGNATURE" size="small" :bordered="false" />
-                <span v-else class="cell-text">{{ record.SIGNATURE }}</span>
+                <a-select
+                  v-if="isRecordEditable(record)"
+                  v-model:value="record.SIGNATURE"
+                  size="small"
+                  :bordered="false"
+                  class="signature-mark-select"
+                  :placeholder="$t('taskEdit.signature')"
+                  allow-clear
+                >
+                  <a-select-option value="已签字确认">{{ $t('recognition.marks.signedConfirmed') }}</a-select-option>
+                  <a-select-option value="未签字确认">{{ $t('recognition.marks.unsignedConfirmed') }}</a-select-option>
+                  <a-select-option value="已签字">{{ $t('recognition.marks.signed') }}</a-select-option>
+                </a-select>
+                <a-tag
+                  v-else
+                  :color="getSignatureMarkColor(getDisplaySignature(record.SIGNATURE))"
+                  class="signature-mark-tag"
+                >
+                  {{ translateSignatureMark(getDisplaySignature(record.SIGNATURE), t) }}
+                </a-tag>
               </template>
               <template v-if="column.key === 'Observations'">
                 <a-input v-if="isRecordEditable(record)" v-model:value="record.Observations" size="small" :bordered="false" />
@@ -435,7 +473,24 @@ import {
   buildRecordMarkTags,
   markContains,
   anomalyReasonKind,
+  stripSignatureMarksFromSmartMark,
+  normalizeLegacySignature,
+  getDisplaySignature,
+  translateSignatureMark,
+  getSignatureMarkColor,
+  calculateRecordStats,
 } from '@/utils/recognitionLabels'
+import FieldFilterControl from '@/components/FieldFilterControl.vue'
+import TableColumnSettings from '@/components/TableColumnSettings.vue'
+import { useColumnFreeze } from '@/composables/useColumnFreeze'
+import {
+  emptyFilterValue,
+  isFilterActive,
+  matchRecordByFilter,
+  resolveColumnFilterOptions,
+  resolveColumnFilterType,
+  serializeFilterValue,
+} from '@/utils/fieldFilterValue'
 import { buildRecognitionTableColumns } from '@/utils/recognitionTableColumns'
 import {
   hasManualCalibration,
@@ -486,7 +541,7 @@ const duplicateMetaMap = ref({})
 const duplicateRefreshing = ref(false)
 const duplicateScope = ref('confirmed_only')
 const activeHeaderFilterField = ref('')
-const headerFilterKeyword = ref('')
+const headerFilterDraft = ref('')
 const headerFilters = ref({})
 
 const syncAlertType = computed(() => {
@@ -524,43 +579,7 @@ const startSyncPoll = () => {
   )
 }
 
-const stats = computed(() => {
-  const result = {
-    normal: 0,
-    handwriting: 0,
-    blurred: 0,
-    night: 0,
-    absent: 0,
-    deleted: 0,
-  }
-  
-  records.value.forEach(record => {
-    // 统计已删除的记录
-    if (record.isDeleted) {
-      result.deleted++
-      return
-    }
-    
-    // 统计识别结果 - 根据anomalies字段来判断
-    const anomalies = getEffectiveAnomalies(record)
-    const mark = getDisplaySmartMark(record)
-    
-    // 如果有效 anomalies 为空，说明识别时正常；夜班不算异常
-    if (anomalies.length === 0 && !hasRequiredMissing(record)) {
-      result.normal++
-    }
-    
-    // 手写根据SmartMark中标记为手写的统计
-    if (mark.includes('手写')) result.handwriting++
-    
-    // 其他类型根据SmartMark来判断
-    if (mark.includes('模糊')) result.blurred++
-    if (mark.includes('夜班')) result.night++
-    if (mark.includes('未出勤')) result.absent++
-  })
-  
-  return result
-})
+const stats = computed(() => calculateRecordStats(records.value))
 
 const statItems = computed(() => [
   { key: 'normal', variant: 'normal', value: stats.value.normal, label: t('home.statsNormal') },
@@ -610,7 +629,7 @@ const baseColumns = computed(() => buildRecognitionTableColumns(t, {
 }))
 const { columns: sortedColumns, onSorterToggle, sortRows } = useTableColumnSort(baseColumns, { customHeader: true })
 const tableRecords = computed(() => sortRows(filteredRecords.value))
-const { columns, scrollX } = useAutoSizedColumns(sortedColumns, tableRecords, {
+const { columns: sizedColumns, scrollX } = useAutoSizedColumns(sortedColumns, tableRecords, {
   actionWidth: isConfirmedTask.value && canCalibrateRecord.value ? 88 : 50,
   getCellSample: (col, record) => {
     if (col.key === 'workHours') return calculateWorkHours(record)
@@ -619,22 +638,53 @@ const { columns, scrollX } = useAutoSizedColumns(sortedColumns, tableRecords, {
     return undefined
   },
 })
+const {
+  frozenColumns: columns,
+  hiddenKeys,
+  frozenKeys,
+  configurableColumns,
+  setHiddenKeys,
+  setFrozenKeys,
+  showAllColumns,
+  clearFrozenKeys,
+} = useColumnFreeze('task-edit', sizedColumns, { defaultFrozen: ['PAGE_NUM', 'NO'] })
 
 const filteredRecords = computed(() => {
-  const active = Object.entries(headerFilters.value).filter(([, v]) => String(v || '').trim())
-  if (!active.length) return records.value
-  return records.value.filter((row) => {
-    return active.every(([field, keyword]) => {
-      const value = row?.[field]
-      return String(value ?? '').toLowerCase().includes(String(keyword).toLowerCase())
-    })
+  const active = Object.entries(headerFilters.value).filter(([, v]) => {
+    if (Array.isArray(v)) return v.length > 0
+    if (v && typeof v === 'object') return Boolean(v.from?.trim() || v.to?.trim())
+    return String(v || '').trim() !== ''
   })
+  if (!active.length) return records.value
+  return records.value.filter((row) => active.every(([field, value]) => {
+    const column = columns.value.find((c) => c.searchField === field)
+    const filterType = resolveColumnFilterType(column || { searchField: field })
+    const keyword = serializeFilterValue(filterType, value)
+    return matchRecordByFilter(filterType, field, keyword, row)
+  }))
 })
 
-const handleHeaderPopoverOpen = (field, open) => {
+const isHeaderFilterActive = (field) => {
+  const value = headerFilters.value[field]
+  const column = columns.value.find((c) => c.searchField === field)
+  const filterType = resolveColumnFilterType(column || { searchField: field })
+  return isFilterActive(filterType, value)
+}
+
+const handleHeaderPopoverOpen = (column, open) => {
+  const field = column?.searchField
+  if (!field) return
+  const filterType = resolveColumnFilterType(column)
   if (open) {
     activeHeaderFilterField.value = field
-    headerFilterKeyword.value = headerFilters.value[field] || ''
+    const stored = headerFilters.value[field]
+    if (stored !== undefined && stored !== null && isFilterActive(filterType, stored)) {
+      headerFilterDraft.value = Array.isArray(stored)
+        ? [...stored]
+        : (typeof stored === 'object' ? { ...stored } : stored)
+    } else {
+      headerFilterDraft.value = emptyFilterValue(filterType)
+    }
   } else if (activeHeaderFilterField.value === field) {
     activeHeaderFilterField.value = ''
   }
@@ -642,20 +692,26 @@ const handleHeaderPopoverOpen = (field, open) => {
 
 const applyHeaderFilter = () => {
   if (!activeHeaderFilterField.value) return
+  const column = columns.value.find((c) => c.searchField === activeHeaderFilterField.value)
+  const filterType = resolveColumnFilterType(column || { searchField: activeHeaderFilterField.value })
   headerFilters.value = {
     ...headerFilters.value,
-    [activeHeaderFilterField.value]: (headerFilterKeyword.value || '').trim(),
+    [activeHeaderFilterField.value]: isFilterActive(filterType, headerFilterDraft.value)
+      ? headerFilterDraft.value
+      : emptyFilterValue(filterType),
   }
   activeHeaderFilterField.value = ''
 }
 
 const clearHeaderFilter = () => {
   if (!activeHeaderFilterField.value) return
+  const column = columns.value.find((c) => c.searchField === activeHeaderFilterField.value)
+  const filterType = resolveColumnFilterType(column || { searchField: activeHeaderFilterField.value })
   headerFilters.value = {
     ...headerFilters.value,
-    [activeHeaderFilterField.value]: '',
+    [activeHeaderFilterField.value]: emptyFilterValue(filterType),
   }
-  headerFilterKeyword.value = ''
+  headerFilterDraft.value = emptyFilterValue(filterType)
   activeHeaderFilterField.value = ''
 }
 
@@ -751,14 +807,20 @@ const loadTask = async (silent = false) => {
         : task.value.rawData
     if (dataPayload) {
       const parsedRecords = JSON.parse(dataPayload)
-      records.value = parsedRecords.map((record, idx) => normalizeRecordPause({
-        ...record,
-        isDeleted: record.isDeleted || false,
-        _rowKey: record._rowKey || `${taskId.value}-${idx}-${Date.now()}`,
-        _baseName: String(record.NOM_PRENOM || '').trim(),
-        _nameAutoNumbered: false,
-        _duplicateConfirmedUnique: false
-      }))
+      records.value = parsedRecords.map((record, idx) => {
+        const normalized = normalizeRecordPause({
+          ...record,
+          isDeleted: record.isDeleted || false,
+          _rowKey: record._rowKey || `${taskId.value}-${idx}-${Date.now()}`,
+          _baseName: String(record.NOM_PRENOM || '').trim(),
+          _nameAutoNumbered: false,
+          _duplicateConfirmedUnique: false
+        })
+        const signatureMark = normalizeLegacySignature(normalized.SIGNATURE || normalized.CHECKER || '')
+        normalized.SIGNATURE = signatureMark
+        normalized.CHECKER = signatureMark
+        return normalized
+      })
       refreshDuplicateDecorations()
       await fetchConfirmedDuplicateHints()
     }
@@ -1319,6 +1381,12 @@ const getRowClassName = (record, index) => {
 
 const getMarkColor = (mark) => {
   if (!mark) return 'default'
+  const parts = String(mark).split(/[;；,，]/).map((p) => p.trim()).filter(Boolean)
+  for (const part of parts) {
+    if (part === '已签字确认') return 'success'
+    if (part === '未签字确认') return 'warning'
+    if (part === '已签字') return 'processing'
+  }
   if (markContains(mark, 'absent')) return 'error'
   if (markContains(mark, 'blurred')) return 'warning'
   if (markContains(mark, 'handwriting')) return 'processing'
@@ -1353,7 +1421,9 @@ const getDisplaySmartMark = (record) => {
   const sourceMarks = [record?.SmartMark, record?.Mark, record?.mark, record?.smartMark]
     .map(v => String(v || '').trim())
     .filter(Boolean)
-  const raw = [...new Set(sourceMarks.join(';').split(/[;；,，]/).map(v => v.trim()).filter(Boolean))].join(';')
+  const raw = stripSignatureMarksFromSmartMark(
+    [...new Set(sourceMarks.join(';').split(/[;；,，]/).map(v => v.trim()).filter(Boolean))].join(';')
+  )
   const hasHandwritten = hasHandwrittenIdentity(record) || raw.includes('手写')
   if (!hasHandwritten || raw.includes('已删除') || raw.includes('未出勤')) {
     return raw || '-'

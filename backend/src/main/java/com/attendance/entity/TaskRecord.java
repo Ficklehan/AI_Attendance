@@ -29,6 +29,7 @@ public class TaskRecord {
     private String signature;
     private String observations;
     private String pageNum;
+    private String smartMark;
     private LocalDateTime taskCreatedAt;
     private String userName;
 
@@ -238,6 +239,14 @@ public class TaskRecord {
 
     public void setPageNum(String pageNum) {
         this.pageNum = pageNum;
+    }
+
+    public String getSmartMark() {
+        return smartMark;
+    }
+
+    public void setSmartMark(String smartMark) {
+        this.smartMark = smartMark;
     }
 
     public LocalDateTime getTaskCreatedAt() {

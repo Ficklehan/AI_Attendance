@@ -302,6 +302,7 @@ public class TaskService {
             summary.put("recognitionTrace", recognitionTrace.toJson());
         }
         taskMapper.updateTaskAnomalySummary(taskId, summary.toJSONString());
+        taskMapper.updateTaskRawDataProgress(taskId, "[]", "", 0);
         taskMapper.updateTaskStatus(taskId, "failed");
         taskRecordSyncService.syncFromTaskId(taskId);
         log.warn("任务识别失败: taskId={}, error={}", taskId, errorMessage);
@@ -731,9 +732,10 @@ public class TaskService {
         dto.setArrival(row.getArrival());
         dto.setDeparture(row.getDeparture());
         dto.setPauseMinutes(row.getPauseMinutes());
-        dto.setSignature(row.getSignature());
+        dto.setSignature(com.attendance.util.SignatureMarkResolver.normalizeLegacySignature(row.getSignature()));
         dto.setObservations(row.getObservations());
         dto.setPageNum(row.getPageNum());
+        dto.setSmartMark(row.getSmartMark());
         dto.setCreatedAt(row.getTaskCreatedAt() == null ? "" : row.getTaskCreatedAt().toString());
         return dto;
     }
@@ -749,10 +751,14 @@ public class TaskService {
                         if (item == null) continue;
                         String field = item.getString("field");
                         String value = item.getString("keyword");
+                        String filterType = item.getString("filterType");
                         if (isBlank(value)) continue;
                         Map<String, String> one = new HashMap<>();
                         one.put("field", field == null ? "" : field.trim());
                         one.put("keyword", value.trim());
+                        if (!isBlank(filterType)) {
+                            one.put("filterType", filterType.trim());
+                        }
                         list.add(one);
                     }
                 }
@@ -802,7 +808,7 @@ public class TaskService {
     public long exportEmployeeRecordsToExcel(String userId, String status, String keyword, String searchField,
                                              String filters, ExcelSheetWriter writer) throws IOException {
         writer.writeHeader("任务ID", "操作人", "任务状态", "创建时间", "页码", "工号", "姓名", "国家", "仓库", "日期",
-                "中介机构", "班次", "到达", "离开", "休息(分钟)", "签名", "备注", "文件名");
+                "中介机构", "班次", "到达", "离开", "休息(分钟)", "签名", "标记", "备注", "文件名");
         List<Map<String, String>> conditionList = parseFilters(searchField, keyword, filters);
         long count = 0;
         int offset = 0;
@@ -831,6 +837,7 @@ public class TaskService {
                         ExcelExportHelper.cell(dto.getDeparture()),
                         ExcelExportHelper.cell(dto.getPauseMinutes()),
                         ExcelExportHelper.cell(dto.getSignature()),
+                        ExcelExportHelper.cell(dto.getSmartMark()),
                         ExcelExportHelper.cell(dto.getObservations()),
                         ExcelExportHelper.cell(dto.getFileKey()));
                 count++;

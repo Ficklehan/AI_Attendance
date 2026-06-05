@@ -39,8 +39,59 @@ public class TaskRecordBackfillRunner implements ApplicationRunner {
     public void run(ApplicationArguments args) {
         try {
             backfillMissing();
+            backfillSmartMark();
+            backfillLegacySignature();
         } catch (Exception e) {
             log.warn("task_records 历史回填跳过: {}", e.getMessage());
+        }
+    }
+
+    /** 补齐 smart_mark：对已有行但标记为空的任务重新同步（每轮限量，避免启动过慢） */
+    private void backfillSmartMark() {
+        List<String> taskIds = jdbcTemplate.queryForList(
+                "SELECT DISTINCT tr.task_id FROM task_records tr "
+                        + "WHERE tr.smart_mark IS NULL OR TRIM(tr.smart_mark) = '' "
+                        + "ORDER BY tr.task_id DESC LIMIT ?",
+                String.class, BATCH);
+        if (taskIds.isEmpty()) {
+            return;
+        }
+        int synced = 0;
+        for (String taskId : taskIds) {
+            try {
+                taskRecordSyncService.syncFromTaskId(taskId);
+                synced++;
+            } catch (Exception e) {
+                log.debug("smart_mark 回填跳过 taskId={}: {}", taskId, e.getMessage());
+            }
+        }
+        if (synced > 0) {
+            log.info("task_records smart_mark 回填: {} 个任务", synced);
+        }
+    }
+
+    /** 将员工签字列中的旧手写原文规范为三档标记（每轮限量） */
+    private void backfillLegacySignature() {
+        List<String> taskIds = jdbcTemplate.queryForList(
+                "SELECT DISTINCT tr.task_id FROM task_records tr "
+                        + "WHERE tr.signature IS NOT NULL AND TRIM(tr.signature) != '' "
+                        + "AND TRIM(tr.signature) NOT IN ('已签字确认', '未签字确认', '已签字') "
+                        + "ORDER BY tr.task_id DESC LIMIT ?",
+                String.class, BATCH);
+        if (taskIds.isEmpty()) {
+            return;
+        }
+        int synced = 0;
+        for (String taskId : taskIds) {
+            try {
+                taskRecordSyncService.syncFromTaskId(taskId);
+                synced++;
+            } catch (Exception e) {
+                log.debug("legacy signature 回填跳过 taskId={}: {}", taskId, e.getMessage());
+            }
+        }
+        if (synced > 0) {
+            log.info("task_records 员工签字列历史回填: {} 个任务", synced);
         }
     }
 

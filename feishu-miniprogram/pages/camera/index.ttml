@@ -1,10 +1,22 @@
 <view class="camera-page">
+  <view class="camera-header">
+    <view class="camera-nav-btn" bindtap="goBack">‹</view>
+    <view class="camera-header-main">
+      <text class="camera-title">{{texts.title}}</text>
+      <text class="camera-hint-inline">{{texts.scanHint}}</text>
+    </view>
+    <view class="camera-nav-btn" bindtap="toggleFlash">
+      <text class="flash-icon" style="opacity:{{flashMode === 'torch' ? '1' : '0.45'}}">⚡</text>
+    </view>
+  </view>
+
   <view class="camera-viewport">
     <camera
       id="camera"
       class="camera-core"
-      device-position="{{cameraPosition}}"
+      device-position="back"
       flash="{{flashMode}}"
+      bindinserted="onCameraInserted"
       bindinitdone="onCameraInitDone"
       bindstop="onCameraStop"
       binderror="onCameraError"
@@ -18,39 +30,22 @@
       <view class="scan-line"></view>
     </view>
 
-    <view class="camera-mask camera-mask-top"></view>
-    <view class="camera-mask camera-mask-bottom"></view>
-
-    <view class="camera-hint">
-      <text class="camera-hint-title">{{texts.scanHint}}</text>
-    </view>
-
     <view tt:if="{{initHint}}" class="camera-init-hint" bindtap="onInitHintTap">
       <text>{{initHint}}</text>
     </view>
   </view>
 
-  <view class="camera-header">
-    <view class="camera-nav-btn" bindtap="goBack">‹</view>
-    <view class="camera-header-main">
-      <text class="camera-title">{{texts.title}}</text>
-    </view>
-    <view class="camera-nav-btn" bindtap="toggleFlash">
-      <text class="flash-icon" style="opacity:{{flashMode === 'on' ? '1' : '0.45'}}">⚡</text>
-    </view>
-  </view>
-
   <view class="camera-bottom">
     <view class="camera-controls">
-      <view class="control-btn" bindtap="toggleCamera">
-        <text>{{texts.flip}}</text>
+      <view class="control-btn" bindtap="chooseFromGallery">
+        <text>{{texts.gallery}}</text>
       </view>
-      <view class="capture-btn" bindtap="takePhoto">
+      <view class="capture-btn" catchtap="takePhoto">
         <view class="capture-ring"></view>
         <view class="capture-inner"></view>
       </view>
-      <view class="control-btn" bindtap="chooseFromGallery">
-        <text>{{texts.gallery}}</text>
+      <view class="control-btn control-btn-muted" bindtap="chooseFromCamera">
+        <text>{{texts.systemCamera}}</text>
       </view>
     </view>
     <view class="camera-tips-row">

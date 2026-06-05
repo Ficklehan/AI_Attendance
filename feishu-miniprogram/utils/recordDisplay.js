@@ -8,7 +8,12 @@ const {
   translateSmartMarkPart,
   splitSmartMarkParts,
   markContains,
-  anomalyReasonKind
+  anomalyReasonKind,
+  getDisplaySignature,
+  normalizeLegacySignature,
+  calculateRecordStats,
+  stripSignatureMarksFromSmartMark,
+  translateSignatureMark
 } = require('./recognitionLabels')
 
 function pickField(record, ...keys) {
@@ -107,7 +112,9 @@ function getEffectiveSmartMark(record) {
     record && record.mark,
     record && record.smartMark
   ].map((v) => String(v || '').trim()).filter(Boolean)
-  const raw = [...new Set(sourceMarks.join(';').split(/[;；,，]/).map((v) => v.trim()).filter(Boolean))].join(';')
+  const raw = stripSignatureMarksFromSmartMark(
+    [...new Set(sourceMarks.join(';').split(/[;；,，]/).map((v) => v.trim()).filter(Boolean))].join(';')
+  )
   const hasHandwritten = hasHandwrittenIdentity(record) || markContains(raw, 'handwriting')
   if (!hasHandwritten || markContains(raw, 'deleted') || markContains(raw, 'absent')) {
     return raw
@@ -129,6 +136,12 @@ const { hasRequiredMissing } = require('./requiredRecordFields')
 
 function getMarkTag(mark) {
   if (!mark) return 'tag-default'
+  const parts = String(mark).split(/[;；,，]/).map((p) => p.trim()).filter(Boolean)
+  for (const part of parts) {
+    if (part === '已签字确认') return 'tag-success'
+    if (part === '未签字确认') return 'tag-warning'
+    if (part === '已签字') return 'tag-info'
+  }
   if (markContains(mark, 'deleted')) return 'tag-default'
   if (markContains(mark, 'absent')) return 'tag-error'
   if (markContains(mark, 'blurred')) return 'tag-warning'
@@ -139,6 +152,10 @@ function getMarkTag(mark) {
 }
 
 function getMarkTagForPart(part) {
+  const p = String(part || '').trim()
+  if (p === '已签字确认') return 'tag-success'
+  if (p === '未签字确认') return 'tag-warning'
+  if (p === '已签字') return 'tag-info'
   return getMarkTag(part)
 }
 
@@ -331,7 +348,7 @@ function buildRecordFieldRows(record, ctx) {
     cell('Entrepot', 'result.fieldWarehouse', ctx.Entrepot, null, false),
     cell('HORAIRES_DU_TRAVAIL', 'result.fieldShift', ctx.HORAIRES_DU_TRAVAIL, null, false),
     cell('AGENCE_INTERIMAIRE', 'result.fieldAgency', ctx.AGENCE_INTERIMAIRE, null, false),
-    cell('SIGNATURE', 'result.fieldSignature', ctx.SIGNATURE, null, false),
+    cell('SIGNATURE', 'result.fieldSignature', ctx.SIGNATURE, ctx.signatureDisplayText, false),
     cell('Observations', 'result.fieldObservations', ctx.Observations, null, false)
   ]
 
@@ -349,7 +366,8 @@ function enrichRecord(record, index) {
   const Entrepot = pickField(record, 'Entrepot', 'Entrepôt')
   const HORAIRES_DU_TRAVAIL = pickField(record, 'HORAIRES_DU_TRAVAIL')
   const AGENCE_INTERIMAIRE = pickField(record, 'AGENCE_INTERIMAIRE')
-  const SIGNATURE = pickField(record, 'SIGNATURE', 'CHECKER')
+  const rawSignature = pickField(record, 'SIGNATURE', 'CHECKER')
+  const SIGNATURE = normalizeLegacySignature(rawSignature)
   const Observations = pickField(record, 'Observations')
   const PAGE_NUM = pickField(record, 'PAGE_NUM', 'PageNum', 'pageNum', '页码')
   const SmartMark = record.SmartMark || ''
@@ -366,6 +384,7 @@ function enrichRecord(record, index) {
   const pauseText = formatPauseText(normalizedPause)
   const workHoursText = workHours || '-'
   const smartMarkDisplay = getSmartMarkDisplay({ ...record, SmartMark: effectiveSmartMark, HORAIRES_DU_TRAVAIL })
+  const signatureDisplayText = translateSignatureMark(getDisplaySignature(SIGNATURE), t)
 
   const display = {
     ...record,
@@ -381,6 +400,7 @@ function enrichRecord(record, index) {
     HORAIRES_DU_TRAVAIL,
     AGENCE_INTERIMAIRE,
     SIGNATURE,
+    signatureDisplayText,
     Observations,
     PAGE_NUM,
     SmartMark: effectiveSmartMark,
@@ -436,7 +456,7 @@ function enrichRecord(record, index) {
       Entrepot ? `${t('result.fieldWarehouse')}:${Entrepot}` : '',
       HORAIRES_DU_TRAVAIL ? `${t('result.fieldShift')}:${HORAIRES_DU_TRAVAIL}` : '',
       AGENCE_INTERIMAIRE ? `${t('result.fieldAgency')}:${AGENCE_INTERIMAIRE}` : '',
-      SIGNATURE ? `${t('result.fieldSignature')}:${SIGNATURE}` : '',
+      SIGNATURE ? `${t('result.fieldSignature')}:${signatureDisplayText}` : '',
       Observations ? `${t('result.fieldObservations')}:${Observations}` : ''
     ].filter(Boolean).join('  ')
   }
@@ -452,40 +472,9 @@ function buildDisplayRecords(records, maxCount) {
   return records.slice(0, limit).map((r, i) => enrichRecord(r, i))
 }
 
-function calculateRecordStats(records) {
-  const stats = {
-    total: records.length,
-    normal: 0,
-    handwritten: 0,
-    blurred: 0,
-    night: 0,
-    absent: 0,
-    deleted: 0
-  }
-
-  records.forEach((record) => {
-    if (record.isDeleted) {
-      stats.deleted++
-      return
-    }
-    const anomalies = Array.isArray(record.anomalies)
-      ? record.anomalies.filter((a) => a && !markContains(String(a), 'nightShift'))
-      : []
-    const mark = getEffectiveSmartMark(record)
-    if (anomalies.length === 0 && !markContains(mark, 'blurred') && !markContains(mark, 'absent')) {
-      stats.normal++
-    }
-    const noVal = pickField(record, 'NO')
-    const nameVal = pickField(record, 'NOM_PRENOM', 'Name')
-    if (hasHandwrittenText(noVal) || hasHandwrittenText(nameVal) || markContains(mark, 'handwriting')) {
-      stats.handwritten++
-    }
-    if (markContains(mark, 'blurred')) stats.blurred++
-    if (markContains(mark, 'nightShift')) stats.night++
-    if (markContains(mark, 'absent')) stats.absent++
-  })
-
-  return stats
+function calculateRecordStatsForDisplay(records) {
+  const stats = calculateRecordStats(records)
+  return { total: records.length, ...stats, handwritten: stats.handwriting }
 }
 
 function buildAnomalyAlerts(records) {
@@ -511,7 +500,7 @@ module.exports = {
   hasRequiredMissing,
   enrichRecord,
   buildDisplayRecords,
-  calculateRecordStats,
+  calculateRecordStats: calculateRecordStatsForDisplay,
   buildAnomalyAlerts,
   getMarkTag
 }

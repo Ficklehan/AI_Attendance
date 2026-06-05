@@ -2,6 +2,7 @@
 
 import { appendRequiredMark, REQUIRED_SUBMIT_FIELD_KEYS } from './requiredRecordFields'
 import { withTableSorters } from './tableSort'
+import { getRecognitionFieldFilterMeta } from './fieldFilterValue'
 
 function requiredTitle(t, key) {
   return appendRequiredMark(t(key))
@@ -17,9 +18,12 @@ export function buildRecognitionTableColumns(t, options = {}) {
     fixedAction = false,
   } = options
 
-  const withSearch = (col) => (searchFields && col.dataIndex
-    ? { ...col, searchField: col.dataIndex }
-    : col)
+  const filterMeta = getRecognitionFieldFilterMeta()
+  const withSearch = (col) => {
+    if (!searchFields || !col.dataIndex) return col
+    const meta = filterMeta[col.dataIndex] || { filterType: 'text' }
+    return { ...col, searchField: col.dataIndex, filterType: meta.filterType, filterOptionsKey: meta.filterOptionsKey }
+  }
 
   const titleFor = (key, i18nKey) => (
     REQUIRED_SUBMIT_FIELD_KEYS.includes(key) ? requiredTitle(t, i18nKey) : t(i18nKey)

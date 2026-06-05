@@ -9,8 +9,20 @@
     </PageShell>
 
     <a-card class="surface-card" :bordered="false" :loading="loading">
+      <div class="table-toolbar">
+        <TableColumnSettings
+          :columns="configurableColumns"
+          :hidden-keys="hiddenKeys"
+          :frozen-keys="frozenKeys"
+          @update:hidden-keys="setHiddenKeys"
+          @update:frozen-keys="setFrozenKeys"
+          @show-all="showAllColumns"
+          @clear-freeze="clearFrozenKeys"
+        />
+      </div>
       <a-table
         :columns="columns"
+        :scroll="{ x: scrollX }"
         :data-source="rows"
         :pagination="false"
         row-key="key"
@@ -48,8 +60,11 @@ import { useI18n } from 'vue-i18n'
 import { message } from 'ant-design-vue'
 import { CheckOutlined, CloseOutlined } from '@ant-design/icons-vue'
 import PageShell from '@/components/PageShell.vue'
+import TableColumnSettings from '@/components/TableColumnSettings.vue'
 import { getRolePermissions, updateRolePermissions } from '@/api/permissions'
 import { withTableSorters, keyFieldSorter } from '@/utils/tableSort'
+import { useColumnFreeze } from '@/composables/useColumnFreeze'
+import { sumTableScrollX } from '@/utils/tableAutoColumns'
 
 const { t } = useI18n()
 const loading = ref(false)
@@ -80,11 +95,22 @@ const rows = computed(() =>
   }))
 )
 
-const columns = computed(() => withTableSorters([
+const baseColumns = computed(() => withTableSorters([
   { title: t('settings.permissions.feature'), dataIndex: 'name', key: 'name' },
   { title: t('settings.users.roleAdmin'), key: 'admin', width: 120, align: 'center', sorter: keyFieldSorter('admin') },
   { title: t('settings.users.roleUser'), key: 'user', width: 140, align: 'center', sorter: keyFieldSorter('user') },
 ]))
+const {
+  frozenColumns: columns,
+  hiddenKeys,
+  frozenKeys,
+  configurableColumns,
+  setHiddenKeys,
+  setFrozenKeys,
+  showAllColumns,
+  clearFrozenKeys,
+} = useColumnFreeze('permission-management', baseColumns, { defaultFrozen: ['name'] })
+const scrollX = computed(() => sumTableScrollX(columns.value))
 
 const loadPermissions = async () => {
   loading.value = true

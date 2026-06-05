@@ -13,13 +13,24 @@ const LEGACY_ANOMALY_KEYS = {
   必填字段缺失: 'result.requiredFieldMissingShort'
 }
 
+const SIGNATURE_RESULT_MARKS = { '已签字确认': true, '未签字确认': true, '已签字': true }
+
+const BLANK_SIGNATURE_TOKENS = {
+  '': true, '???': true, '??': true, unknown: true, illegible: true, 'n/a': true, na: true,
+  none: true, null: true, 员工签名: true, signature: true, signatura: true, firma: true,
+  员工签: true, 签名: true, sign: true, signed: true, unsigned: true
+}
+
 const MARK_TOKEN_KEYS = {
   正常: 'recognition.marks.normal',
   手写: 'recognition.marks.handwriting',
   模糊: 'recognition.marks.blurred',
   夜班: 'recognition.marks.nightShift',
   未出勤: 'recognition.marks.absent',
-  已删除: 'recognition.marks.deleted'
+  已删除: 'recognition.marks.deleted',
+  已签字确认: 'recognition.marks.signedConfirmed',
+  未签字确认: 'recognition.marks.unsignedConfirmed',
+  已签字: 'recognition.marks.signed'
 }
 
 const MARK_DETECT = {
@@ -53,6 +64,49 @@ function splitSmartMarkParts(mark) {
   return [...new Set(String(mark).split(/[;；,，]/).map((p) => p.trim()).filter(Boolean))]
 }
 
+function isSignatureResultMark(value) {
+  return !!SIGNATURE_RESULT_MARKS[String(value || '').trim()]
+}
+
+function isBlankSignature(value) {
+  if (value == null) return true
+  const trimmed = String(value).trim()
+  if (!trimmed) return true
+  const lower = trimmed.toLowerCase()
+  if (BLANK_SIGNATURE_TOKENS[lower]) return true
+  if (lower === 'signature' || lower === '员工签名') return true
+  return false
+}
+
+function normalizeLegacySignature(signature) {
+  if (isSignatureResultMark(signature)) return String(signature).trim()
+  if (isBlankSignature(signature)) return '未签字确认'
+  return '已签字确认'
+}
+
+function getDisplaySignature(signature) {
+  return normalizeLegacySignature(signature)
+}
+
+function stripSignatureMarksFromSmartMark(mark) {
+  const parts = splitSmartMarkParts(mark).filter((part) => !isSignatureResultMark(part))
+  return parts.length ? parts.join(';') : ''
+}
+
+function translateSignatureMark(value, t) {
+  const text = String(value || '').trim()
+  if (!text) return '-'
+  return translateSmartMarkPart(text, t)
+}
+
+function getSignatureMarkTagClass(value) {
+  const p = String(value || '').trim()
+  if (p === '已签字确认') return 'tag-success'
+  if (p === '未签字确认') return 'tag-warning'
+  if (p === '已签字') return 'tag-info'
+  return 'tag-default'
+}
+
 function translateSmartMarkPart(part, t) {
   const p = String(part || '').trim()
   if (!p) return '-'
@@ -78,6 +132,42 @@ function markContains(mark, kind) {
   return patterns.some((p) => text.includes(p.toLowerCase()))
 }
 
+function markHasKind(mark, kind) {
+  return splitSmartMarkParts(mark).some((part) => markContains(part, kind))
+}
+
+function getRawSmartMark(record) {
+  const sourceMarks = [
+    record && record.SmartMark,
+    record && record.Mark,
+    record && record.mark,
+    record && record.smartMark
+  ].map((v) => String(v || '').trim()).filter(Boolean)
+  if (!sourceMarks.length) return ''
+  return stripSignatureMarksFromSmartMark(
+    [...new Set(sourceMarks.join(';').split(/[;；,，]/).map((v) => v.trim()).filter(Boolean))].join(';')
+  )
+}
+
+function calculateRecordStats(records, options) {
+  const getDisplayMark = options && options.getDisplayMark
+  const resolveMark = getDisplayMark || getRawSmartMark
+  const stats = { normal: 0, handwriting: 0, blurred: 0, night: 0, absent: 0, deleted: 0 }
+  for (const record of records || []) {
+    if (record && record.isDeleted) {
+      stats.deleted++
+      continue
+    }
+    const mark = resolveMark(record) || ''
+    if (markHasKind(mark, 'normal')) stats.normal++
+    if (markHasKind(mark, 'handwriting')) stats.handwriting++
+    if (markHasKind(mark, 'blurred')) stats.blurred++
+    if (markHasKind(mark, 'nightShift')) stats.night++
+    if (markHasKind(mark, 'absent')) stats.absent++
+  }
+  return stats
+}
+
 function anomalyReasonKind(reason) {
   const text = String(reason || '')
   if (text.startsWith('missing.') || /未识别|必填|required|missing/i.test(text)) return 'missing'
@@ -96,5 +186,15 @@ module.exports = {
   translateSmartMarkPart,
   splitSmartMarkParts,
   markContains,
-  anomalyReasonKind
+  anomalyReasonKind,
+  isSignatureResultMark,
+  isBlankSignature,
+  normalizeLegacySignature,
+  getDisplaySignature,
+  markHasKind,
+  getRawSmartMark,
+  calculateRecordStats,
+  stripSignatureMarksFromSmartMark,
+  translateSignatureMark,
+  getSignatureMarkTagClass
 }
