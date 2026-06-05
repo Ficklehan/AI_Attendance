@@ -1,8 +1,15 @@
 const { t } = require('../../utils/i18n')
 const { ensureCountryConfigured } = require('../../utils/preferences')
+const {
+  isIosPlatform,
+  extractTempImagePath,
+  formatCameraError,
+  shouldRecreateContext,
+} = require('../../utils/cameraCapture')
 
 const CAMERA_ID = 'camera'
 const INIT_DONE_TIMEOUT_MS = 8000
+const IOS_READY_DELAY_MS = 500
 
 Page({
   data: {
@@ -14,8 +21,14 @@ Page({
 
   onLoad: function (options) {
     this._fromChat = options && options.from === 'chat'
+    this._isIos = isIosPlatform()
+    this._sameLayerRender = true
     this._cameraInitDone = false
     this._initDoneTimer = null
+    this._readyDelayTimer = null
+    this._photoInProgress = false
+    this._retriedPhoto = false
+    this._iosAutoFallback = this._isIos
     if (!ensureCountryConfigured()) {
       return
     }
@@ -24,15 +37,6 @@ Page({
     this.requestCameraPermission(() => {
       this.armInitDoneTimeout()
     })
-  },
-
-  onReady: function () {
-    this._pageReady = true
-    try {
-      this.cameraContext = tt.createCameraContext(CAMERA_ID)
-    } catch (e) {
-      console.warn('createCameraContext onReady failed', e)
-    }
   },
 
   onShow: function () {
@@ -46,6 +50,7 @@ Page({
 
   onUnload: function () {
     this.clearInitDoneTimeout()
+    this.clearReadyDelayTimer()
   },
 
   goBack: function () {
@@ -56,7 +61,7 @@ Page({
     this.setData({
       texts: {
         title: t('camera.title'),
-        scanHint: t('camera.scanHint'),
+        scanHint: this._isIos ? t('camera.iosSystemCameraHint') : t('camera.scanHint'),
         scanGuide: t('camera.scanGuide'),
         guideTitle: t('camera.guideTitle'),
         tipLight: t('camera.tipLight'),
@@ -78,6 +83,13 @@ Page({
     }
   },
 
+  clearReadyDelayTimer: function () {
+    if (this._readyDelayTimer) {
+      clearTimeout(this._readyDelayTimer)
+      this._readyDelayTimer = null
+    }
+  },
+
   armInitDoneTimeout: function () {
     this.clearInitDoneTimeout()
     this._initDoneTimer = setTimeout(() => {
@@ -93,12 +105,35 @@ Page({
   markCameraReady: function () {
     this._cameraInitDone = true
     this.clearInitDoneTimeout()
+    this.clearReadyDelayTimer()
+
+    const applyReady = () => {
+      this.refreshCameraContext(true)
+      this.setData({ cameraReady: true, initHint: '' })
+    }
+
+    if (this._isIos) {
+      this._readyDelayTimer = setTimeout(applyReady, IOS_READY_DELAY_MS)
+      return
+    }
+    applyReady()
+  },
+
+  refreshCameraContext: function (forceNew) {
+    if (!forceNew && this.cameraContext && !shouldRecreateContext(this._isIos)) {
+      return !!this.cameraContext
+    }
+    this.cameraContext = null
     try {
+      if (typeof tt.createCameraContext !== 'function') {
+        return false
+      }
       this.cameraContext = tt.createCameraContext(CAMERA_ID)
+      return !!this.cameraContext
     } catch (e) {
       console.warn('createCameraContext failed', e)
+      return false
     }
-    this.setData({ cameraReady: true, initHint: '' })
   },
 
   requestCameraPermission: function (onGranted) {
@@ -181,52 +216,63 @@ Page({
     })
   },
 
-  ensureCameraContext: function () {
-    if (this.cameraContext) {
-      return true
-    }
-    try {
-      if (typeof tt.createCameraContext !== 'function') {
-        return false
-      }
-      this.cameraContext = tt.createCameraContext(CAMERA_ID)
-      return !!this.cameraContext
-    } catch (e) {
-      console.warn('createCameraContext failed', e)
-      return false
-    }
-  },
-
   takePhoto: function () {
+    if (this._photoInProgress || this._chooseInProgress) {
+      return
+    }
+
+    // iOS 上组件 takePhoto 在非同层渲染时几乎必败，快门直接走系统相机。
+    if (this._isIos) {
+      this.chooseFromCamera()
+      return
+    }
+
     if (!this.data.cameraReady) {
       tt.showToast({ title: t('camera.warming'), icon: 'none' })
       return
     }
 
-    if (!this.ensureCameraContext()) {
-      this.fallbackCapture(t('camera.notReady'), true)
+    if (!this.refreshCameraContext(true)) {
+      this.handleCaptureFailure(t('camera.notReady'), { preferSystemCamera: true })
       return
     }
 
+    this.invokeTakePhoto('high')
+  },
+
+  invokeTakePhoto: function (quality, allowRetry) {
+    if (!this.cameraContext) {
+      this.handleCaptureFailure(t('camera.notReady'), { preferSystemCamera: true })
+      return
+    }
+
+    this._photoInProgress = true
+    const options = { quality: quality || 'high' }
+    if (!this._isIos) {
+      options.selfieMirror = false
+    }
+
     this.cameraContext.takePhoto({
-      quality: 'high',
-      selfieMirror: false,
+      quality: options.quality,
+      selfieMirror: options.selfieMirror,
       success: (res) => {
-        const path = res && (res.tempImagePath || res.tempFilePath)
+        const path = extractTempImagePath(res)
+        this._photoInProgress = false
         if (path) {
           this.processPhoto(path)
           return
         }
         console.warn('takePhoto empty path', res)
-        this.fallbackCapture(t('camera.photoFail'), true)
+        if (allowRetry !== false && quality === 'high') {
+          this.invokeTakePhoto('medium', false)
+          return
+        }
+        this.handleCaptureFailure(t('camera.photoFail'), { preferSystemCamera: true })
       },
       fail: (error) => {
+        this._photoInProgress = false
         console.error('takePhoto fail', error)
-        const msg = [
-          error && error.errMsg,
-          error && error.errString,
-          error && error.errNo
-        ].filter(Boolean).join(' ')
+        const msg = formatCameraError(error)
         if (msg.indexOf('not found') >= 0 && !this._retriedPhoto) {
           this._retriedPhoto = true
           this._cameraInitDone = false
@@ -235,9 +281,22 @@ Page({
           setTimeout(() => this.takePhoto(), 600)
           return
         }
-        this.fallbackCapture(t('camera.photoFail'), true)
+        if (allowRetry !== false && quality === 'high') {
+          this.invokeTakePhoto('medium', false)
+          return
+        }
+        this.handleCaptureFailure(t('camera.photoFail'), { preferSystemCamera: true, error: msg })
       }
     })
+  },
+
+  handleCaptureFailure: function (reason, options) {
+    const opts = options || {}
+    if (this._iosAutoFallback || this._isIos) {
+      this.chooseFromCamera({ silent: true, fromFallback: true })
+      return
+    }
+    this.fallbackCapture(reason, opts.preferSystemCamera !== false)
   },
 
   fallbackCapture: function (reason, preferCamera) {
@@ -273,18 +332,33 @@ Page({
     })
   },
 
-  chooseFromCamera: function () {
+  chooseFromCamera: function (options) {
+    const opts = options || {}
+    if (this._chooseInProgress) {
+      return
+    }
+    this._chooseInProgress = true
     tt.chooseImage({
       count: 1,
       sizeType: ['compressed'],
       sourceType: ['camera'],
       success: (res) => {
+        this._chooseInProgress = false
         if (res.tempFilePaths && res.tempFilePaths.length > 0) {
           this.processPhoto(res.tempFilePaths[0])
+        } else if (!opts.silent) {
+          tt.showToast({ title: t('camera.photoFail'), icon: 'none' })
+        } else if (!opts.fromFallback) {
+          this.fallbackCapture(t('camera.photoFail'), true)
         }
       },
       fail: (error) => {
+        this._chooseInProgress = false
         console.error('系统相机选图失败', error)
+        if (opts.silent && opts.fromFallback) {
+          this.fallbackCapture(t('camera.photoFail'), true)
+          return
+        }
         tt.showToast({ title: t('camera.photoFail'), icon: 'none' })
       }
     })

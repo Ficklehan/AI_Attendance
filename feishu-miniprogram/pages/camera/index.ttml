@@ -4,35 +4,25 @@
     <view class="camera-header-main">
       <text class="camera-title">{{texts.title}}</text>
       <text class="camera-hint-inline">{{texts.scanHint}}</text>
+      <text tt:if="{{initHint}}" class="camera-init-hint-inline" bindtap="onInitHintTap">{{initHint}}</text>
     </view>
     <view class="camera-nav-btn" bindtap="toggleFlash">
       <text class="flash-icon" style="opacity:{{flashMode === 'torch' ? '1' : '0.45'}}">⚡</text>
     </view>
   </view>
 
-  <view class="camera-viewport">
+  <view class="camera-viewport camera-viewport--framed">
     <camera
       id="camera"
       class="camera-core"
       device-position="back"
       flash="{{flashMode}}"
+      resolution="medium"
       bindinserted="onCameraInserted"
       bindinitdone="onCameraInitDone"
       bindstop="onCameraStop"
       binderror="onCameraError"
     ></camera>
-
-    <view class="scan-frame scan-frame-portrait scan-frame-full">
-      <view class="frame-corner tl"></view>
-      <view class="frame-corner tr"></view>
-      <view class="frame-corner bl"></view>
-      <view class="frame-corner br"></view>
-      <view class="scan-line"></view>
-    </view>
-
-    <view tt:if="{{initHint}}" class="camera-init-hint" bindtap="onInitHintTap">
-      <text>{{initHint}}</text>
-    </view>
   </view>
 
   <view class="camera-bottom">
