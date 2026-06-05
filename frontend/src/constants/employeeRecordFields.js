@@ -18,6 +18,7 @@ export function buildEmployeeRecordFieldDefs(t) {
     { field: 'ARRIVEE', label: t('taskEdit.arrival'), dataIndex: 'arrival', key: 'arrival', filterType: FILTER_TYPES.TIME },
     { field: 'DEPAR', label: t('taskEdit.departure'), dataIndex: 'departure', key: 'departure', filterType: FILTER_TYPES.TIME },
     { field: 'PAUSE', label: t('taskEdit.breakTime'), dataIndex: 'pauseMinutes', key: 'pauseMinutes', filterType: FILTER_TYPES.TEXT },
+    { field: 'workHours', label: t('taskEdit.workHours'), dataIndex: 'workHours', key: 'workHours', filterable: false, ellipsis: false },
     { field: 'SIGNATURE', label: t('taskEdit.signature'), dataIndex: 'signature', key: 'signature', filterType: FILTER_TYPES.MULTISELECT, filterOptionsKey: 'signatureMarks' },
     { field: 'SmartMark', label: t('taskEdit.mark'), dataIndex: 'smartMark', key: 'smartMark', filterType: FILTER_TYPES.MULTISELECT, filterOptionsKey: 'smartMarks' },
     { field: 'Observations', label: t('taskEdit.observations'), dataIndex: 'observations', key: 'observations', filterType: FILTER_TYPES.TEXT },

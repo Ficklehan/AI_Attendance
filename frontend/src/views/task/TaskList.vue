@@ -669,9 +669,9 @@ const getSyncStatusColor = (syncStatus) => {
 
 const getSyncStatusText = (syncStatus) => {
   const map = {
-    pending: t('taskEdit.syncPending'),
-    synced: t('taskEdit.syncSynced'),
-    sync_failed: t('taskEdit.syncFailed'),
+    pending: t('tasks.syncPendingShort'),
+    synced: t('tasks.syncSyncedShort'),
+    sync_failed: t('tasks.syncFailedShort'),
   }
   return map[syncStatus] || syncStatus
 }

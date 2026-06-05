@@ -111,6 +111,9 @@
               {{ translateSignatureMark(getDisplaySignature(record.signature), t) }}
             </a-tag>
           </template>
+          <template v-if="column.key === 'workHours'">
+            <span>{{ calculateWorkHours(record) }}</span>
+          </template>
           <template v-if="column.key === 'smartMark'">
             <a-space v-if="record.smartMark" wrap size="small" class="mark-tags">
               <a-tag
@@ -189,6 +192,8 @@ import {
   translateSignatureMark,
   getSignatureMarkColor,
 } from '@/utils/recognitionLabels'
+import { calculateWorkHours } from '@/utils/workHours'
+import { compareTableValues } from '@/utils/tableSort'
 
 const { t } = useI18n()
 const router = useRouter()
@@ -224,10 +229,14 @@ const baseColumns = computed(() => [
     title: def.label,
     dataIndex: def.dataIndex,
     key: def.key,
-    searchField: def.field,
-    filterType: def.filterType,
+    ...(def.filterable === false
+      ? {}
+      : { searchField: def.field, filterType: def.filterType }),
     ellipsis: def.ellipsis,
     align: 'left',
+    ...(def.key === 'workHours'
+      ? { sorter: (a, b) => compareTableValues(calculateWorkHours(a), calculateWorkHours(b)) }
+      : {}),
   })),
   {
     title: t('tasks.imagePreview'),
@@ -256,7 +265,7 @@ const {
 
 const searchableFieldDefs = computed(() => {
   const hidden = new Set(hiddenKeys.value)
-  return fieldDefs.value.filter((def) => !hidden.has(def.key))
+  return fieldDefs.value.filter((def) => def.filterable !== false && !hidden.has(def.key))
 })
 
 const buildQueryFilters = () => {

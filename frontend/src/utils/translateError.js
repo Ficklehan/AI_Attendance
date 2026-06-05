@@ -63,6 +63,9 @@ const LEGACY_EXACT = {
   '请求方法不支持': 'errors.methodNotAllowed',
   '请求失败': 'errors.requestFailed',
   '网络错误': 'errors.networkError',
+  '识别任务过多，请稍后再试': 'errors.recognitionConcurrentLimit',
+  '数据库字段缺失，请执行 migration': 'errors.dbMigrationRequired',
+  '数据库字段缺失，请执行 backend/config/migration 下的迁移脚本': 'errors.dbMigrationRequired',
 }
 
 function normalizePayload(payload) {

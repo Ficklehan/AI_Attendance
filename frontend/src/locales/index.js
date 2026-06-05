@@ -22,8 +22,19 @@ const messages = {
 const i18n = createI18n({
   legacy: false,
   locale: 'zh-CN',
-  fallbackLocale: 'zh-CN',
-  messages
+  // 各语言包未覆盖的 key 先回退英文，再回退中文，避免界面露出 tasks.xxx 键名
+  fallbackLocale: {
+    'zh-CN': ['zh-CN'],
+    'en-US': ['en-US', 'zh-CN'],
+    'fr-FR': ['en-US', 'zh-CN'],
+    'nl-NL': ['en-US', 'zh-CN'],
+    'cs-CZ': ['en-US', 'zh-CN'],
+    'pl-PL': ['en-US', 'zh-CN'],
+    'de-DE': ['en-US', 'zh-CN'],
+    'es-ES': ['en-US', 'zh-CN'],
+    default: ['en-US', 'zh-CN'],
+  },
+  messages,
 })
 
 export default i18n

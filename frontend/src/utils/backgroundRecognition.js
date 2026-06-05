@@ -1,6 +1,7 @@
 import { getTaskDetail, getTaskProgress } from '@/api/task'
 import { uploadImageAsync, startTaskRecognition } from '@/api/upload'
 import { getCachedWorkingCountry } from '@/utils/countryHeader'
+import i18n from '@/locales'
 
 export const BG_TASK_STORAGE_KEY = 'attendance.bgRecognition.taskId'
 const POLL_DEADLINE_MS = 16 * 60 * 1000
@@ -129,7 +130,7 @@ export async function pollRecognitionUntilDone(taskId, options = {}) {
 
     if (status === 'failed') {
       clearBgTaskId()
-      const message = parseProgressError(progress) || 'Recognition failed'
+      const message = parseProgressError(progress) || i18n.global.t('home.recognitionError')
       throw new Error(message)
     }
 
@@ -138,7 +139,7 @@ export async function pollRecognitionUntilDone(taskId, options = {}) {
     })
   }
 
-  throw new Error('Recognition timeout')
+  throw new Error(i18n.global.t('home.recognitionTimeout'))
 }
 
 /**
@@ -147,7 +148,7 @@ export async function pollRecognitionUntilDone(taskId, options = {}) {
 export async function submitBackgroundRecognition(files, options = {}) {
   const { onProgress, shouldAbort } = options
   if (!files?.length) {
-    throw new Error('No files selected')
+    throw new Error(i18n.global.t('home.selectAtLeastOne'))
   }
 
   const total = files.length
@@ -156,7 +157,7 @@ export async function submitBackgroundRecognition(files, options = {}) {
   if (total === 1) {
     const payload = await uploadOneFile(files[0], { deferRecognition: false })
     taskId = payload.taskId
-    if (!taskId) throw new Error('Missing task id')
+    if (!taskId) throw new Error(i18n.global.t('errors.taskNotFound'))
     persistBgTaskId(taskId)
     onProgress?.({ taskId, rowCount: 0, phase: 'processing', uploaded: 1, total: 1 })
     return pollRecognitionUntilDone(taskId, { onProgress, shouldAbort })
@@ -164,7 +165,7 @@ export async function submitBackgroundRecognition(files, options = {}) {
 
   const firstPayload = await uploadOneFile(files[0], { deferRecognition: true })
   taskId = firstPayload.taskId
-  if (!taskId) throw new Error('Missing task id')
+  if (!taskId) throw new Error(i18n.global.t('errors.taskNotFound'))
   persistBgTaskId(taskId)
 
   onProgress?.({ taskId, rowCount: 0, phase: 'uploading', uploaded: 1, total })
