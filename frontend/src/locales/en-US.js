@@ -674,6 +674,7 @@ export default {
       nightShift: 'Night shift',
       absent: 'Absent',
       deleted: 'Deleted',
+      unsigned: 'Unsigned',
       signedConfirmed: 'Signed (confirmed)',
       unsignedConfirmed: 'Unsigned (confirmed)',
       signed: 'Signed'

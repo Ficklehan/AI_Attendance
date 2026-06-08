@@ -13,12 +13,17 @@ const LEGACY_ANOMALY_KEYS = {
   必填字段缺失: 'result.requiredFieldMissingShort'
 }
 
-const SIGNATURE_RESULT_MARKS = { '已签字确认': true, '未签字确认': true, '已签字': true }
+const SIGNATURE_RESULT_MARKS = { 未签字: true, 已签字: true, 已签字确认: true, 未签字确认: true }
 
 const BLANK_SIGNATURE_TOKENS = {
-  '': true, '???': true, '??': true, unknown: true, illegible: true, 'n/a': true, na: true,
-  none: true, null: true, 员工签名: true, signature: true, signatura: true, firma: true,
-  员工签: true, 签名: true, sign: true, signed: true, unsigned: true
+  'n/a': true, na: true, none: true, null: true,
+  员工签名: true, signature: true, signatura: true, firma: true,
+  员工签: true, 签名: true,
+}
+
+const ILLEGIBLE_SIGNATURE_TOKENS = {
+  '???': true, '??': true, unknown: true, illegible: true,
+  模糊: true, 不清楚: true, borroso: true, wazig: true, rozmazan: true, unscharf: true, flou: true, borrosa: true,
 }
 
 const MARK_TOKEN_KEYS = {
@@ -28,9 +33,10 @@ const MARK_TOKEN_KEYS = {
   夜班: 'recognition.marks.nightShift',
   未出勤: 'recognition.marks.absent',
   已删除: 'recognition.marks.deleted',
-  已签字确认: 'recognition.marks.signedConfirmed',
-  未签字确认: 'recognition.marks.unsignedConfirmed',
-  已签字: 'recognition.marks.signed'
+  已签字确认: 'recognition.marks.signed',
+  未签字确认: 'recognition.marks.unsigned',
+  已签字: 'recognition.marks.signed',
+  未签字: 'recognition.marks.unsigned',
 }
 
 const MARK_DETECT = {
@@ -68,24 +74,92 @@ function isSignatureResultMark(value) {
   return !!SIGNATURE_RESULT_MARKS[String(value || '').trim()]
 }
 
+function isSignatureHeaderEcho(value) {
+  if (value == null || !String(value).trim()) return false
+  const lower = String(value).trim().toLowerCase()
+  if (BLANK_SIGNATURE_TOKENS[lower] || lower === 'signature' || lower === '员工签名' || lower === 'firma') return true
+  if (lower.includes('firma e conferma') || lower.includes('responsabile')) return true
+  return false
+}
+
+function isSignatureStruckOut(rawSignature) {
+  if (rawSignature == null || !String(rawSignature).trim()) return false
+  const lower = String(rawSignature).trim().toLowerCase()
+  return lower.includes('划线') || lower.includes('划掉') || String(rawSignature).trim() === '划线删除'
+}
+
+function shouldInferSignedWhenEmpty(record) {
+  if (!record) return false
+  const mark = String(record.Mark || record.mark || '').trim()
+  const smartMark = String(record.SmartMark || record.smartMark || '').trim()
+  const hasAbsent = (m) => splitSmartMarkParts(m).includes('未出勤')
+  if (hasAbsent(mark) || hasAbsent(smartMark)) return false
+  const arrivee = record.ARRIVEE ?? record.arrival ?? ''
+  const depart = record.DEPAR ?? record.departure ?? ''
+  const hasTime = (t) => {
+    const v = String(t || '').trim()
+    return v && v !== '???' && /^\d{1,2}:\d{2}$/.test(v)
+  }
+  return hasTime(arrivee) || hasTime(depart)
+}
+
+function sanitizeAiSignature(value) {
+  if (value == null) return ''
+  const trimmed = String(value).trim()
+  if (!trimmed || isSignatureHeaderEcho(trimmed)) return ''
+  return trimmed
+}
+
 function isBlankSignature(value) {
   if (value == null) return true
   const trimmed = String(value).trim()
   if (!trimmed) return true
   const lower = trimmed.toLowerCase()
+  if (ILLEGIBLE_SIGNATURE_TOKENS[lower]) return false
+  if (isSignatureResultMark(trimmed)) return trimmed === '未签字'
   if (BLANK_SIGNATURE_TOKENS[lower]) return true
-  if (lower === 'signature' || lower === '员工签名') return true
-  return false
+  return isSignatureHeaderEcho(trimmed)
 }
 
-function normalizeLegacySignature(signature) {
-  if (isSignatureResultMark(signature)) return String(signature).trim()
-  if (isBlankSignature(signature)) return '未签字确认'
-  return '已签字确认'
+function isRecordDeletedForSignature(record) {
+  if (!record) return false
+  if (record.isDeleted === true || record.deleted === true) return true
+  const mark = String(record.SmartMark || record.smartMark || record.Mark || record.mark || '').trim()
+  return splitSmartMarkParts(mark).includes('已删除')
 }
 
-function getDisplaySignature(signature) {
-  return normalizeLegacySignature(signature)
+function computeSignatureMark(record) {
+  if (!record) return '未签字'
+  if (isRecordDeletedForSignature(record)) return '未签字'
+  const raw = record.SIGNATURE_RAW ?? record.SIGNATURE ?? record.CHECKER ?? ''
+  const rawText = String(raw).trim()
+  if (isSignatureStruckOut(rawText)) return '未签字'
+  const sanitized = sanitizeAiSignature(rawText)
+  if (sanitized && !isBlankSignature(sanitized)) return '已签字'
+  if (isSignatureResultMark(rawText) && record.SIGNATURE_RAW == null) {
+    if (rawText === '已签字') return '已签字'
+    if (shouldInferSignedWhenEmpty(record)) return '已签字'
+    return '未签字'
+  }
+  if (shouldInferSignedWhenEmpty(record)) return '已签字'
+  return '未签字'
+}
+
+function normalizeLegacySignature(signature, recordOrDeleted) {
+  if (recordOrDeleted && typeof recordOrDeleted === 'object') {
+    return computeSignatureMark(recordOrDeleted)
+  }
+  const rowDeleted = typeof recordOrDeleted === 'boolean' ? recordOrDeleted : false
+  if (rowDeleted) return '未签字'
+  if (isBlankSignature(signature)) return '未签字'
+  const trimmed = String(signature || '').trim()
+  if (trimmed === '未签字确认' || trimmed === '未签字') return '未签字'
+  return '已签字'
+}
+
+function getDisplaySignature(signature, record) {
+  if (record) return computeSignatureMark(record)
+  return normalizeLegacySignature(signature, false)
 }
 
 function stripSignatureMarksFromSmartMark(mark) {
@@ -101,9 +175,8 @@ function translateSignatureMark(value, t) {
 
 function getSignatureMarkTagClass(value) {
   const p = String(value || '').trim()
-  if (p === '已签字确认') return 'tag-success'
-  if (p === '未签字确认') return 'tag-warning'
-  if (p === '已签字') return 'tag-info'
+  if (p === '未签字' || p === '未签字确认') return 'tag-warning'
+  if (p === '已签字' || p === '已签字确认') return 'tag-success'
   return 'tag-default'
 }
 
@@ -190,6 +263,7 @@ module.exports = {
   isSignatureResultMark,
   isBlankSignature,
   normalizeLegacySignature,
+  computeSignatureMark,
   getDisplaySignature,
   markHasKind,
   getRawSmartMark,

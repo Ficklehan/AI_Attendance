@@ -20,18 +20,89 @@ const MARK_TOKEN_KEYS = {
   夜班: 'recognition.marks.nightShift',
   未出勤: 'recognition.marks.absent',
   已删除: 'recognition.marks.deleted',
-  已签字确认: 'recognition.marks.signedConfirmed',
-  未签字确认: 'recognition.marks.unsignedConfirmed',
+  已签字确认: 'recognition.marks.signed',
+  未签字确认: 'recognition.marks.unsigned',
   已签字: 'recognition.marks.signed',
+  未签字: 'recognition.marks.unsigned',
 }
 
-const SIGNATURE_RESULT_MARKS = new Set(['已签字确认', '未签字确认', '已签字'])
+const SIGNATURE_RESULT_MARKS = new Set(['已签字', '未签字', '已签字确认', '未签字确认'])
 
 const BLANK_SIGNATURE_TOKENS = new Set([
-  '', '???', '??', 'unknown', 'illegible', 'n/a', 'na', 'none', 'null',
-  '员工签名', 'signature', 'signatura', 'firma', '员工签', '签名',
-  'sign', 'signed', 'unsigned',
+  '', 'n/a', 'na', 'none', 'null',
 ])
+
+const ILLEGIBLE_SIGNATURE_TOKENS = new Set([
+  '???', '??', 'unknown', 'illegible',
+  '模糊', '不清楚', 'borroso', 'wazig', 'rozmazan', 'unscharf', 'flou', 'borrosa',
+])
+
+const SIGNATURE_COLUMN_HEADERS = new Set([
+  '员工签名', 'signature', 'signatura', 'firma', '员工签', '签名',
+  'employee signature', 'handtekening', 'unterschrift',
+])
+
+const SIGNATURE_COLUMN_HEADER_KEYWORDS = [
+  '员工签名', 'signature', 'signatura', 'firma', '员工签', '签名',
+  'employee signature', 'handtekening', 'unterschrift',
+]
+
+export function isSignatureColumnHeaderText(headerText) {
+  if (headerText == null || !String(headerText).trim()) return false
+  const lower = String(headerText).trim().toLowerCase()
+  if (lower.includes('firma e conferma') || lower.includes('responsabile')) return false
+  return SIGNATURE_COLUMN_HEADER_KEYWORDS.some((kw) => lower.includes(kw))
+}
+
+export function isSignatureColumnHeader(value) {
+  if (value == null) return false
+  const trimmed = String(value).trim()
+  if (!trimmed) return false
+  return SIGNATURE_COLUMN_HEADERS.has(trimmed.toLowerCase())
+}
+
+export function isSignatureHeaderEcho(value) {
+  if (value == null || !String(value).trim()) return false
+  if (isSignatureColumnHeader(value)) return true
+  const lower = String(value).trim().toLowerCase()
+  if (lower.includes('firma e conferma') || lower.includes('responsabile')) return true
+  return isSignatureColumnHeaderText(value) && lower.length <= 60
+}
+
+export function isSignatureStruckOut(rawSignature) {
+  if (rawSignature == null || !String(rawSignature).trim()) return false
+  const lower = String(rawSignature).trim().toLowerCase()
+  return lower.includes('划线')
+    || lower.includes('划掉')
+    || String(rawSignature).trim() === '划线删除'
+    || lower.includes('barré')
+    || lower.includes('barrato')
+    || lower.includes('crossed')
+    || lower.includes('strikethrough')
+    || lower.includes('cancellato')
+}
+
+export function shouldInferSignedWhenEmpty(record) {
+  if (!record) return false
+  const mark = String(record.Mark || record.mark || '').trim()
+  const smartMark = String(record.SmartMark || record.smartMark || '').trim()
+  const arrivee = record.ARRIVEE ?? record.arrival ?? ''
+  const depart = record.DEPAR ?? record.departure ?? ''
+  const hasAbsent = (m) => splitSmartMarkParts(m).includes('未出勤')
+  if (hasAbsent(mark) || hasAbsent(smartMark)) return false
+  const hasTime = (t) => {
+    const v = String(t || '').trim()
+    return v && v !== '???' && /^\d{1,2}:\d{2}$/.test(v)
+  }
+  return hasTime(arrivee) || hasTime(depart)
+}
+
+export function sanitizeAiSignature(value) {
+  if (value == null) return ''
+  const trimmed = String(value).trim()
+  if (!trimmed || isSignatureHeaderEcho(trimmed)) return ''
+  return trimmed
+}
 
 const MARK_DETECT = {
   absent: ['未出勤', 'absent', 'ausente', 'abwesend', 'afwezig', 'nieobecny', 'nepřítom'],
@@ -84,21 +155,57 @@ export function isBlankSignature(value) {
   if (value == null) return true
   const trimmed = String(value).trim()
   if (!trimmed) return true
+  if (ILLEGIBLE_SIGNATURE_TOKENS.has(trimmed.toLowerCase())) return false
   const lower = trimmed.toLowerCase()
+  if (isSignatureResultMark(trimmed)) return trimmed === '未签字'
   if (BLANK_SIGNATURE_TOKENS.has(lower)) return true
-  if (lower === 'signature' || lower === '员工签名') return true
-  return false
+  return isSignatureHeaderEcho(trimmed)
 }
 
-/** 旧数据：已是三档标记则保留；空白为未签字确认；其余手写原文默认已签字确认 */
-export function normalizeLegacySignature(signature) {
-  if (isSignatureResultMark(signature)) return String(signature).trim()
-  if (isBlankSignature(signature)) return '未签字确认'
-  return '已签字确认'
+export function isRecordDeletedForSignature(record) {
+  if (!record) return false
+  if (record.isDeleted === true || record.deleted === true) return true
+  const mark = String(record.SmartMark || record.smartMark || record.Mark || record.mark || '').trim()
+  return splitSmartMarkParts(mark).includes('已删除')
 }
 
-export function getDisplaySignature(signature) {
-  return normalizeLegacySignature(signature)
+/** 根据 AI 原始输出与行上下文计算签字结果 */
+export function computeSignatureMark(record) {
+  if (!record) return '未签字'
+  if (isRecordDeletedForSignature(record)) return '未签字'
+  const raw = record.SIGNATURE_RAW ?? record.SIGNATURE ?? record.CHECKER ?? ''
+  const rawText = String(raw).trim()
+  if (isSignatureStruckOut(rawText)) return '未签字'
+
+  const sanitized = sanitizeAiSignature(rawText)
+  if (sanitized && !isBlankSignature(sanitized)) return '已签字'
+
+  if (isSignatureResultMark(rawText) && record.SIGNATURE_RAW == null) {
+    if (rawText === '已签字') return '已签字'
+    if (shouldInferSignedWhenEmpty(record)) return '已签字'
+    return '未签字'
+  }
+
+  if (shouldInferSignedWhenEmpty(record)) return '已签字'
+  return '未签字'
+}
+
+/** 旧数据：统一规范为「未签字 / 已签字」 */
+export function normalizeLegacySignature(signature, recordOrDeleted = false) {
+  if (recordOrDeleted && typeof recordOrDeleted === 'object') {
+    return computeSignatureMark(recordOrDeleted)
+  }
+  const rowDeleted = typeof recordOrDeleted === 'boolean' ? recordOrDeleted : false
+  if (rowDeleted) return '未签字'
+  if (isBlankSignature(signature)) return '未签字'
+  const trimmed = String(signature).trim()
+  if (trimmed === '未签字确认' || trimmed === '未签字') return '未签字'
+  return '已签字'
+}
+
+export function getDisplaySignature(signature, record = null) {
+  if (record) return computeSignatureMark(record)
+  return normalizeLegacySignature(signature, false)
 }
 
 /** 标记列不展示签字结果（签字结果仅在 SIGNATURE 列） */
@@ -129,9 +236,8 @@ export function translateSignatureMark(value, t) {
 
 export function getSignatureMarkColor(value) {
   const p = String(value || '').trim()
-  if (p === '已签字确认') return 'success'
-  if (p === '未签字确认') return 'warning'
-  if (p === '已签字') return 'processing'
+  if (p === '未签字' || p === '未签字确认') return 'warning'
+  if (p === '已签字' || p === '已签字确认') return 'success'
   return 'default'
 }
 

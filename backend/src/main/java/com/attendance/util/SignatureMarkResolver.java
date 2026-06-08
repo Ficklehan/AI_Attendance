@@ -1,26 +1,43 @@
 package com.attendance.util;
 
-import java.text.Normalizer;
 import java.util.Arrays;
 import java.util.HashSet;
 import java.util.Locale;
 import java.util.Set;
 
 /**
- * 根据 SIGNATURE 与姓名列匹配度，生成签字相关 SmartMark 标记。
+ * 根据 SIGNATURE 是否识别到有效内容，生成员工签字结果（未签字 / 已签字）。
  */
 public final class SignatureMarkResolver {
 
-    public static final String SIGNED_CONFIRMED = "已签字确认";
-    public static final String UNSIGNED_CONFIRMED = "未签字确认";
     public static final String SIGNED = "已签字";
+    public static final String UNSIGNED = "未签字";
 
-    private static final double MATCH_THRESHOLD = 0.70;
+    /** @deprecated 历史三档标记，读取时映射为 {@link #SIGNED} */
+    @Deprecated
+    public static final String SIGNED_CONFIRMED = "已签字确认";
+    /** @deprecated 历史三档标记，读取时映射为 {@link #UNSIGNED} */
+    @Deprecated
+    public static final String UNSIGNED_CONFIRMED = "未签字确认";
+
+    /** 签名列表头关键词（表头可含其它说明文字，用于定位列） */
+    private static final String[] SIGNATURE_COLUMN_HEADER_KEYWORDS = {
+            "员工签名", "signature", "signatura", "firma", "员工签", "签名",
+            "employee signature", "handtekening", "unterschrift"
+    };
+
+    private static final Set<String> SIGNATURE_COLUMN_HEADERS = new HashSet<>(Arrays.asList(
+            SIGNATURE_COLUMN_HEADER_KEYWORDS
+    ));
 
     private static final Set<String> BLANK_SIGNATURE_TOKENS = new HashSet<>(Arrays.asList(
-            "", "???", "??", "unknown", "illegible", "n/a", "na", "none", "null",
-            "员工签名", "signature", "signatura", "firma", "员工签", "签名",
-            "sign", "signed", "unsigned"
+            "n/a", "na", "none", "null"
+    ));
+
+    /** 有笔迹但无法转写或模糊时，应视为已签字 */
+    private static final Set<String> ILLEGIBLE_SIGNATURE_TOKENS = new HashSet<>(Arrays.asList(
+            "???", "??", "unknown", "illegible",
+            "模糊", "不清楚", "borroso", "wazig", "rozmazan", "unscharf", "flou", "borrosa"
     ));
 
     private SignatureMarkResolver() {
@@ -31,34 +48,174 @@ public final class SignatureMarkResolver {
             return false;
         }
         String m = mark.trim();
-        return SIGNED_CONFIRMED.equals(m) || UNSIGNED_CONFIRMED.equals(m) || SIGNED.equals(m);
+        return SIGNED.equals(m)
+                || UNSIGNED.equals(m)
+                || SIGNED_CONFIRMED.equals(m)
+                || UNSIGNED_CONFIRMED.equals(m);
     }
 
     /**
-     * 旧数据展示规范化：已是三档标记则保留；空白为未签字确认；其余手写原文默认已签字确认（不再展示原文）。
+     * 表头单元格是否为员工签字列（允许含其它说明文字，如 Firma del dipendente）。
+     */
+    public static boolean isSignatureColumnHeaderText(String headerText) {
+        if (headerText == null || headerText.trim().isEmpty()) {
+            return false;
+        }
+        String lower = headerText.trim().toLowerCase(Locale.ROOT);
+        if (lower.contains("firma e conferma") || lower.contains("responsabile")) {
+            return false;
+        }
+        for (String keyword : SIGNATURE_COLUMN_HEADER_KEYWORDS) {
+            if (lower.contains(keyword)) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    /**
+     * 旧数据展示规范化：三档或手写原文统一映射为「未签字 / 已签字」。
      */
     public static String normalizeLegacySignature(String signature) {
-        if (isSignatureMarkToken(signature)) {
-            return signature.trim();
+        return normalizeLegacySignature(signature, false);
+    }
+
+    public static String normalizeLegacySignature(String signature, boolean rowDeleted) {
+        if (rowDeleted) {
+            return UNSIGNED;
         }
         if (isBlankSignature(signature)) {
-            return UNSIGNED_CONFIRMED;
+            return UNSIGNED;
         }
-        return SIGNED_CONFIRMED;
+        String trimmed = signature.trim();
+        if (UNSIGNED_CONFIRMED.equals(trimmed) || UNSIGNED.equals(trimmed)) {
+            return UNSIGNED;
+        }
+        return SIGNED;
+    }
+
+    /** AI 若误输出签名列表头字面量，视为空白单元格。 */
+    public static String sanitizeAiSignature(String signature) {
+        if (signature == null) {
+            return "";
+        }
+        String trimmed = signature.trim();
+        if (trimmed.isEmpty() || isSignatureHeaderEcho(trimmed)) {
+            return "";
+        }
+        return trimmed;
+    }
+
+    public static boolean isSignatureColumnHeader(String value) {
+        if (value == null) {
+            return false;
+        }
+        String trimmed = value.trim();
+        if (trimmed.isEmpty()) {
+            return false;
+        }
+        return SIGNATURE_COLUMN_HEADERS.contains(trimmed.toLowerCase(Locale.ROOT));
+    }
+
+    /** 数据行误填表头或表头说明文字（非真实签字内容）。 */
+    public static boolean isSignatureHeaderEcho(String value) {
+        if (value == null || value.trim().isEmpty()) {
+            return false;
+        }
+        if (isSignatureColumnHeader(value)) {
+            return true;
+        }
+        String lower = value.trim().toLowerCase(Locale.ROOT);
+        if (lower.contains("firma e conferma") || lower.contains("responsabile")) {
+            return true;
+        }
+        if (isSignatureColumnHeaderText(value) && lower.length() <= 60) {
+            return true;
+        }
+        return false;
+    }
+
+    public static boolean isSignatureStruckOut(String rawSignature) {
+        if (rawSignature == null || rawSignature.trim().isEmpty()) {
+            return false;
+        }
+        String lower = rawSignature.trim().toLowerCase(Locale.ROOT);
+        return lower.contains("划线")
+                || lower.contains("划掉")
+                || "划线删除".equals(rawSignature.trim())
+                || lower.contains("barré")
+                || lower.contains("barrato")
+                || lower.contains("crossed")
+                || lower.contains("strikethrough")
+                || lower.contains("cancellato");
     }
 
     /**
-     * @return 已签字确认 | 未签字确认 | 已签字
+     * @return 已签字 | 未签字
      */
+    public static String resolve(String signature) {
+        return resolve(signature, false);
+    }
+
+    public static String resolve(String signature, boolean rowDeleted) {
+        if (rowDeleted) {
+            return UNSIGNED;
+        }
+        return isBlankSignature(signature) ? UNSIGNED : SIGNED;
+    }
+
+    /**
+     * 根据 AI 原始输出与行上下文生成签字结果。
+     */
+    public static String resolveFromAiOutput(
+            String rawAiSignature,
+            boolean rowDeleted,
+            String smartMark,
+            String arrivee,
+            String depart,
+            String mark) {
+        if (rowDeleted || isRowDeletedForSignature(false, smartMark)) {
+            return UNSIGNED;
+        }
+        if (isSignatureStruckOut(rawAiSignature)) {
+            return UNSIGNED;
+        }
+        String sanitized = sanitizeAiSignature(rawAiSignature);
+        if (!sanitized.isEmpty()) {
+            return resolve(sanitized);
+        }
+        if (shouldInferSignedWhenEmpty(arrivee, depart, mark, smartMark)) {
+            return SIGNED;
+        }
+        return UNSIGNED;
+    }
+
+    /** 兼容旧调用方，忽略姓名参数。 */
     public static String resolve(String signature, String employeeName) {
-        if (isBlankSignature(signature)) {
-            return UNSIGNED_CONFIRMED;
+        return resolve(signature);
+    }
+
+    public static boolean isRowDeletedForSignature(boolean isDeleted, String smartMark) {
+        if (isDeleted) {
+            return true;
         }
-        double ratio = matchRatio(signature, employeeName);
-        if (ratio >= MATCH_THRESHOLD) {
-            return SIGNED_CONFIRMED;
+        if (smartMark == null || smartMark.trim().isEmpty()) {
+            return false;
         }
-        return SIGNED;
+        for (String part : smartMark.split("[;；,，]")) {
+            if ("已删除".equals(part == null ? "" : part.trim())) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    public static boolean shouldInferSignedWhenEmpty(
+            String arrivee, String depart, String mark, String smartMark) {
+        if (containsAbsentMark(mark) || containsAbsentMark(smartMark)) {
+            return false;
+        }
+        return hasFilledTime(arrivee) || hasFilledTime(depart);
     }
 
     public static boolean isBlankSignature(String signature) {
@@ -69,104 +226,50 @@ public final class SignatureMarkResolver {
         if (trimmed.isEmpty()) {
             return true;
         }
+        if (isSignatureMarkToken(trimmed)) {
+            return UNSIGNED.equals(trimmed);
+        }
+        if (isIllegibleSignature(trimmed)) {
+            return false;
+        }
         String lower = trimmed.toLowerCase(Locale.ROOT);
         if (BLANK_SIGNATURE_TOKENS.contains(lower)) {
             return true;
         }
-        if (lower.equals("signature") || lower.equals("员工签名")) {
-            return true;
+        return isSignatureHeaderEcho(trimmed);
+    }
+
+    public static boolean isIllegibleSignature(String signature) {
+        if (signature == null) {
+            return false;
+        }
+        String trimmed = signature.trim();
+        if (trimmed.isEmpty()) {
+            return false;
+        }
+        return ILLEGIBLE_SIGNATURE_TOKENS.contains(trimmed.toLowerCase(Locale.ROOT));
+    }
+
+    private static boolean containsAbsentMark(String mark) {
+        if (mark == null || mark.trim().isEmpty()) {
+            return false;
+        }
+        for (String part : mark.split("[;；,，]")) {
+            if ("未出勤".equals(part == null ? "" : part.trim())) {
+                return true;
+            }
         }
         return false;
     }
 
-    public static double matchRatio(String signature, String employeeName) {
-        if (isBlankSignature(signature) || isBlankName(employeeName)) {
-            return 0.0;
+    private static boolean hasFilledTime(String time) {
+        if (time == null) {
+            return false;
         }
-        String sig = normalize(signature);
-        String name = normalize(employeeName);
-        if (sig.isEmpty() || name.isEmpty()) {
-            return 0.0;
+        String trimmed = time.trim();
+        if (trimmed.isEmpty() || "???".equals(trimmed) || "illegible".equalsIgnoreCase(trimmed)) {
+            return false;
         }
-
-        double best = similarity(sig, name);
-
-        String[] tokens = name.split("\\s+");
-        for (String token : tokens) {
-            if (token.length() >= 2) {
-                best = Math.max(best, similarity(sig, token));
-            }
-        }
-        if (tokens.length >= 2) {
-            best = Math.max(best, similarity(sig, tokens[0]));
-            best = Math.max(best, similarity(sig, tokens[tokens.length - 1]));
-            best = Math.max(best, similarity(sig, tokens[0] + tokens[tokens.length - 1]));
-        }
-
-        if (sig.contains(name) || name.contains(sig)) {
-            int shorter = Math.min(sig.length(), name.length());
-            int longer = Math.max(sig.length(), name.length());
-            if (longer > 0) {
-                best = Math.max(best, (double) shorter / longer);
-            }
-        }
-
-        return best;
-    }
-
-    private static boolean isBlankName(String name) {
-        if (name == null) {
-            return true;
-        }
-        String trimmed = name.trim();
-        return trimmed.isEmpty()
-                || "???".equals(trimmed)
-                || "??".equals(trimmed)
-                || "illegible".equalsIgnoreCase(trimmed)
-                || "unknown".equalsIgnoreCase(trimmed);
-    }
-
-    static String normalize(String value) {
-        if (value == null) {
-            return "";
-        }
-        String folded = Normalizer.normalize(value, Normalizer.Form.NFD)
-                .replaceAll("\\p{M}+", "");
-        String upper = folded.toUpperCase(Locale.ROOT);
-        return upper.replaceAll("[^A-Z0-9\\s]", " ")
-                .replaceAll("\\s+", " ")
-                .trim();
-    }
-
-    static double similarity(String a, String b) {
-        if (a.isEmpty() && b.isEmpty()) {
-            return 1.0;
-        }
-        if (a.isEmpty() || b.isEmpty()) {
-            return 0.0;
-        }
-        int distance = levenshtein(a, b);
-        int maxLen = Math.max(a.length(), b.length());
-        return 1.0 - ((double) distance / maxLen);
-    }
-
-    static int levenshtein(String a, String b) {
-        int[][] dp = new int[a.length() + 1][b.length() + 1];
-        for (int i = 0; i <= a.length(); i++) {
-            dp[i][0] = i;
-        }
-        for (int j = 0; j <= b.length(); j++) {
-            dp[0][j] = j;
-        }
-        for (int i = 1; i <= a.length(); i++) {
-            for (int j = 1; j <= b.length(); j++) {
-                int cost = a.charAt(i - 1) == b.charAt(j - 1) ? 0 : 1;
-                dp[i][j] = Math.min(
-                        Math.min(dp[i - 1][j] + 1, dp[i][j - 1] + 1),
-                        dp[i - 1][j - 1] + cost
-                );
-            }
-        }
-        return dp[a.length()][b.length()];
+        return trimmed.matches("\\d{1,2}:\\d{2}");
     }
 }

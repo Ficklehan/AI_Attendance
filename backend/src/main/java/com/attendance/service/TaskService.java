@@ -819,7 +819,7 @@ public class TaskService {
         dto.setArrival(row.getArrival());
         dto.setDeparture(row.getDeparture());
         dto.setPauseMinutes(row.getPauseMinutes());
-        dto.setSignature(com.attendance.util.SignatureMarkResolver.normalizeLegacySignature(row.getSignature()));
+        dto.setSignature(row.getSignature());
         dto.setObservations(row.getObservations());
         dto.setPageNum(row.getPageNum());
         dto.setSmartMark(row.getSmartMark());

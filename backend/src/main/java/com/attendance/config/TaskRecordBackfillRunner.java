@@ -70,12 +70,12 @@ public class TaskRecordBackfillRunner implements ApplicationRunner {
         }
     }
 
-    /** 将员工签字列中的旧手写原文规范为三档标记（每轮限量） */
+    /** 将员工签字列中的旧手写原文规范为「未签字/已签字」（每轮限量） */
     private void backfillLegacySignature() {
         List<String> taskIds = jdbcTemplate.queryForList(
                 "SELECT DISTINCT tr.task_id FROM task_records tr "
                         + "WHERE tr.signature IS NOT NULL AND TRIM(tr.signature) != '' "
-                        + "AND TRIM(tr.signature) NOT IN ('已签字确认', '未签字确认', '已签字') "
+                        + "AND TRIM(tr.signature) NOT IN ('未签字', '已签字', '已签字确认', '未签字确认') "
                         + "ORDER BY tr.task_id DESC LIMIT ?",
                 String.class, BATCH);
         if (taskIds.isEmpty()) {

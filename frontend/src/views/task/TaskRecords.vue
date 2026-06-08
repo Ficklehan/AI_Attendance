@@ -105,10 +105,10 @@
           </template>
           <template v-if="column.key === 'signature'">
             <a-tag
-              :color="getSignatureMarkColor(getDisplaySignature(record.signature))"
+              :color="getSignatureMarkColor(getDisplaySignature(record.signature, record))"
               class="signature-mark-tag"
             >
-              {{ translateSignatureMark(getDisplaySignature(record.signature), t) }}
+              {{ translateSignatureMark(getDisplaySignature(record.signature, record), t) }}
             </a-tag>
           </template>
           <template v-if="column.key === 'workHours'">

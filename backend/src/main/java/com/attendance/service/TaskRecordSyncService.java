@@ -110,7 +110,7 @@ public class TaskRecordSyncService {
         }
         tr.setRowKey(rowKey);
         tr.setRecordIndex(index);
-        tr.setDeleted(Boolean.TRUE.equals(row.getBoolean("deleted")));
+        tr.setDeleted(isRowDeleted(row));
         tr.setTaskStatus(task.getStatus());
         tr.setFileKey(task.getFileKey());
         tr.setImageUrls(task.getImageUrls());
@@ -133,13 +133,30 @@ public class TaskRecordSyncService {
         tr.setArrival(pickJson(row, "ARRIVEE", "ARRIVE", "ARRIVAL"));
         tr.setDeparture(pickJson(row, "DEPAR", "DEPART", "DEPARTURE"));
         tr.setPauseMinutes(pickJson(row, "PAUSE", "PAUS", "Break"));
-        String rawSignature = pickJson(row, "SIGNATURE", "CHECKER", "Signature");
-        tr.setSignature(SignatureMarkResolver.normalizeLegacySignature(rawSignature));
+        String rawAiSignature = pickJson(row, "SIGNATURE_RAW", "SIGNATURE", "CHECKER", "Signature");
         tr.setObservations(pickJson(row, "Observations", "OBSERVATIONS", "Remarks"));
         tr.setPageNum(pickJson(row, "PAGE_NUM", "PageNum", "pageNum", "页码"));
         tr.setSmartMark(pickJson(row, "SmartMark", "Mark", "smartMark", "标记"));
+        tr.setSignature(SignatureMarkResolver.resolveFromAiOutput(
+                rawAiSignature,
+                tr.isDeleted(),
+                tr.getSmartMark(),
+                pickJson(row, "ARRIVEE", "ARRIVE", "ARRIVAL"),
+                pickJson(row, "DEPAR", "DEPART", "DEPARTURE"),
+                pickJson(row, "Mark", "mark")));
         tr.setTaskCreatedAt(taskCreatedAt);
         return tr;
+    }
+
+    private static boolean isRowDeleted(JSONObject row) {
+        if (row == null) {
+            return false;
+        }
+        if (Boolean.TRUE.equals(row.getBoolean("deleted")) || Boolean.TRUE.equals(row.getBoolean("isDeleted"))) {
+            return true;
+        }
+        return SignatureMarkResolver.isRowDeletedForSignature(
+                false, pickJson(row, "SmartMark", "Mark", "smartMark", "标记"));
     }
 
     private static String pickJson(JSONObject row, String... keys) {

@@ -10,6 +10,7 @@ const {
   markContains,
   anomalyReasonKind,
   getDisplaySignature,
+  computeSignatureMark,
   normalizeLegacySignature,
   calculateRecordStats,
   stripSignatureMarksFromSmartMark,
@@ -138,9 +139,8 @@ function getMarkTag(mark) {
   if (!mark) return 'tag-default'
   const parts = String(mark).split(/[;；,，]/).map((p) => p.trim()).filter(Boolean)
   for (const part of parts) {
-    if (part === '已签字确认') return 'tag-success'
-    if (part === '未签字确认') return 'tag-warning'
-    if (part === '已签字') return 'tag-info'
+    if (part === '未签字' || part === '未签字确认') return 'tag-warning'
+    if (part === '已签字' || part === '已签字确认') return 'tag-success'
   }
   if (markContains(mark, 'deleted')) return 'tag-default'
   if (markContains(mark, 'absent')) return 'tag-error'
@@ -153,9 +153,8 @@ function getMarkTag(mark) {
 
 function getMarkTagForPart(part) {
   const p = String(part || '').trim()
-  if (p === '已签字确认') return 'tag-success'
-  if (p === '未签字确认') return 'tag-warning'
-  if (p === '已签字') return 'tag-info'
+  if (p === '未签字' || p === '未签字确认') return 'tag-warning'
+  if (p === '已签字' || p === '已签字确认') return 'tag-success'
   return getMarkTag(part)
 }
 
@@ -367,10 +366,10 @@ function enrichRecord(record, index) {
   const HORAIRES_DU_TRAVAIL = pickField(record, 'HORAIRES_DU_TRAVAIL')
   const AGENCE_INTERIMAIRE = pickField(record, 'AGENCE_INTERIMAIRE')
   const rawSignature = pickField(record, 'SIGNATURE', 'CHECKER')
-  const SIGNATURE = normalizeLegacySignature(rawSignature)
   const Observations = pickField(record, 'Observations')
   const PAGE_NUM = pickField(record, 'PAGE_NUM', 'PageNum', 'pageNum', '页码')
   const SmartMark = record.SmartMark || ''
+  const SIGNATURE = computeSignatureMark({ ...record, SmartMark, SIGNATURE_RAW: record.SIGNATURE_RAW, SIGNATURE: rawSignature })
   const effectiveSmartMark = getEffectiveSmartMark({ ...record, SmartMark })
   const workHours = computeWorkHours(record)
   const anomalyReasons = collectAnomalyReasons(record)
@@ -384,7 +383,7 @@ function enrichRecord(record, index) {
   const pauseText = formatPauseText(normalizedPause)
   const workHoursText = workHours || '-'
   const smartMarkDisplay = getSmartMarkDisplay({ ...record, SmartMark: effectiveSmartMark, HORAIRES_DU_TRAVAIL })
-  const signatureDisplayText = translateSignatureMark(getDisplaySignature(SIGNATURE), t)
+  const signatureDisplayText = translateSignatureMark(getDisplaySignature(SIGNATURE, { ...record, SmartMark }), t)
 
   const display = {
     ...record,

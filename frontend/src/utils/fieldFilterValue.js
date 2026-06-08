@@ -26,8 +26,7 @@ export function buildTaskStatusOptions(t) {
 
 export function buildSignatureMarkOptions(t) {
   return [
-    { value: '已签字确认', label: t('recognition.marks.signedConfirmed') },
-    { value: '未签字确认', label: t('recognition.marks.unsignedConfirmed') },
+    { value: '未签字', label: t('recognition.marks.unsigned') },
     { value: '已签字', label: t('recognition.marks.signed') },
   ]
 }

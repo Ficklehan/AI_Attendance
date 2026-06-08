@@ -324,16 +324,15 @@
                   :placeholder="$t('taskEdit.signature')"
                   allow-clear
                 >
-                  <a-select-option value="已签字确认">{{ $t('recognition.marks.signedConfirmed') }}</a-select-option>
-                  <a-select-option value="未签字确认">{{ $t('recognition.marks.unsignedConfirmed') }}</a-select-option>
+                  <a-select-option value="未签字">{{ $t('recognition.marks.unsigned') }}</a-select-option>
                   <a-select-option value="已签字">{{ $t('recognition.marks.signed') }}</a-select-option>
                 </a-select>
                 <a-tag
                   v-else
-                  :color="getSignatureMarkColor(getDisplaySignature(record.SIGNATURE))"
+                  :color="getSignatureMarkColor(getDisplaySignature(record.SIGNATURE, record))"
                   class="signature-mark-tag"
                 >
-                  {{ translateSignatureMark(getDisplaySignature(record.SIGNATURE), t) }}
+                  {{ translateSignatureMark(getDisplaySignature(record.SIGNATURE, record), t) }}
                 </a-tag>
               </template>
               <template v-if="column.key === 'Observations'">
@@ -476,7 +475,7 @@ import {
   markContains,
   anomalyReasonKind,
   stripSignatureMarksFromSmartMark,
-  normalizeLegacySignature,
+  computeSignatureMark,
   getDisplaySignature,
   translateSignatureMark,
   getSignatureMarkColor,
@@ -819,7 +818,7 @@ const loadTask = async (silent = false) => {
           _nameAutoNumbered: false,
           _duplicateConfirmedUnique: false
         })
-        const signatureMark = normalizeLegacySignature(normalized.SIGNATURE || normalized.CHECKER || '')
+        const signatureMark = computeSignatureMark(normalized)
         normalized.SIGNATURE = signatureMark
         normalized.CHECKER = signatureMark
         return normalized
@@ -1386,9 +1385,8 @@ const getMarkColor = (mark) => {
   if (!mark) return 'default'
   const parts = String(mark).split(/[;；,，]/).map((p) => p.trim()).filter(Boolean)
   for (const part of parts) {
-    if (part === '已签字确认') return 'success'
-    if (part === '未签字确认') return 'warning'
-    if (part === '已签字') return 'processing'
+    if (part === '未签字' || part === '未签字确认') return 'warning'
+    if (part === '已签字' || part === '已签字确认') return 'success'
   }
   if (markContains(mark, 'absent')) return 'error'
   if (markContains(mark, 'blurred')) return 'warning'

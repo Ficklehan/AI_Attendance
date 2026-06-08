@@ -886,12 +886,8 @@ public class AIParserService {
         }
         normalized.put("PAGE_NUM", PageNumberNormalizer.sanitize(normalized.getString("PAGE_NUM")));
         normalized.put("Entrepot", RecognizedFieldSanitizer.sanitizeOptionalText(normalized.getString("Entrepot")));
-        String rawSignature = normalized.getString("SIGNATURE");
-        String signatureForMatch = SignatureMarkResolver.isBlankSignature(rawSignature)
-                ? "" : rawSignature.trim();
-        String signatureMark = SignatureMarkResolver.resolve(signatureForMatch, normalized.getString("NOM_PRENOM"));
-        normalized.put("SIGNATURE", signatureMark);
-        normalized.put("CHECKER", signatureMark);
+        String rawAiSignature = normalized.getString("SIGNATURE");
+        normalized.put("SIGNATURE_RAW", rawAiSignature);
 
         JSONObject anomalies = detectAnomalies(normalized);
         normalized.put("isDeleted", anomalies.getBoolean("isDeleted"));
@@ -899,6 +895,16 @@ public class AIParserService {
         normalized.put("anomalies", anomalies.getJSONArray("anomalies"));
 
         normalized.put("SmartMark", generateSmartMark(normalized));
+
+        String signatureMark = SignatureMarkResolver.resolveFromAiOutput(
+                rawAiSignature,
+                normalized.getBooleanValue("isDeleted"),
+                normalized.getString("SmartMark"),
+                normalized.getString("ARRIVEE"),
+                normalized.getString("DEPAR"),
+                normalized.getString("Mark"));
+        normalized.put("SIGNATURE", signatureMark);
+        normalized.put("CHECKER", signatureMark);
 
         String baseDate = normalized.getString("Date");
         String arrive = normalized.getString("ARRIVEE");

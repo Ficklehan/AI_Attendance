@@ -291,10 +291,10 @@
                 </template>
                 <template v-if="column.key === 'SIGNATURE'">
                   <a-tag
-                    :color="getSignatureMarkColor(getDisplaySignature(record.SIGNATURE))"
+                    :color="getSignatureMarkColor(getDisplaySignature(record.SIGNATURE, record))"
                     class="signature-mark-tag"
                   >
-                    {{ translateSignatureMark(getDisplaySignature(record.SIGNATURE), t) }}
+                    {{ translateSignatureMark(getDisplaySignature(record.SIGNATURE, record), t) }}
                   </a-tag>
                 </template>
                 <template v-if="column.key === 'action'">
@@ -393,7 +393,7 @@ import {
   translateSignatureMark,
   getSignatureMarkColor,
   markContains,
-  normalizeLegacySignature,
+  computeSignatureMark,
   anomalyReasonKind,
   calculateRecordStats,
 } from '@/utils/recognitionLabels'
@@ -581,7 +581,7 @@ const normalizePauseMinutes = (value) => {
 }
 
 const normalizeRecordPause = (record) => {
-  const signatureMark = normalizeLegacySignature(record?.SIGNATURE || record?.CHECKER || '')
+  const signatureMark = computeSignatureMark(record)
   return applyMissingPays(
     {
       ...record,
@@ -895,9 +895,8 @@ const getMarkColor = (mark) => {
   if (!m) return 'default'
   const parts = m.split(/[;；,，]/).map((p) => p.trim()).filter(Boolean)
   for (const part of parts) {
-    if (part === '已签字确认') return 'success'
-    if (part === '未签字确认') return 'warning'
-    if (part === '已签字') return 'processing'
+    if (part === '未签字' || part === '未签字确认') return 'warning'
+    if (part === '已签字' || part === '已签字确认') return 'success'
   }
   if (markContains(m, 'absent')) return 'error'
   if (markContains(m, 'blurred')) return 'warning'

@@ -297,7 +297,7 @@ export default {
     searchContent: '输入搜索内容',
     searchCreateTime: '输入日期或时间，如 2025-05-29',
     searchWorkDate: '输入工作日期，如 2026-05-17',
-    searchMark: '输入标记，如 已签字确认、正常',
+    searchMark: '输入标记，如 已签字、正常',
     filterDateRange: '选择日期范围',
     filterDateTimeRange: '选择日期时间范围',
     filterTimeRange: '选择时间段',
@@ -674,6 +674,7 @@ export default {
       nightShift: '夜班',
       absent: '未出勤',
       deleted: '已删除',
+      unsigned: '未签字',
       signedConfirmed: '已签字确认',
       unsignedConfirmed: '未签字确认',
       signed: '已签字'

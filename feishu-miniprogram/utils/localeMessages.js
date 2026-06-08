@@ -435,6 +435,7 @@ const zhCN = {
       deleted: '已删除',
       signedConfirmed: '已签字确认',
       unsignedConfirmed: '未签字确认',
+      unsigned: '未签字',
       signed: '已签字'
     },
     missing: {
@@ -946,6 +947,7 @@ const enUS = {
       deleted: 'Deleted',
       signedConfirmed: 'Signed (confirmed)',
       unsignedConfirmed: 'Unsigned (confirmed)',
+      unsigned: 'Unsigned',
       signed: 'Signed'
     },
     missing: {

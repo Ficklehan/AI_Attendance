@@ -2,6 +2,7 @@ package com.attendance.service;
 
 import com.alibaba.fastjson.JSONArray;
 import com.alibaba.fastjson.JSONObject;
+import com.attendance.util.SignatureMarkResolver;
 import org.springframework.stereotype.Component;
 
 import java.util.Arrays;
@@ -18,11 +19,10 @@ public class RecognitionPromptGuard {
 
     /** 识别与续写共用，替代原【硬性要求】+ HANDWRITING_MARK_RULE 重复段落 */
     public static final String API_OUTPUT_CONSTRAINT = "\n\n【输出约束·API】\n"
-            + "· 每行合法 JSON 数组、双引号字符串；禁止表头占位、禁止照抄提示词示例中的姓名/中介/时间\n"
-            + "· 先填 NO、姓名，再填到离；看不清必须用 ??? 或 \"\"，禁止猜测、补全、编造\n"
-            + "· 图中未出现的字段不得填写；禁止为凑行数多输出行\n"
-            + "· 姓名或工号为 ???/空时，到达/离开必须为空，禁止臆测时间\n"
-            + "· 上述 15 字段顺序与【标记】【PAGE_NUM】规则以提示词正文为准";
+            + "· 每行合法JSON数组；禁表头占位/照抄示例；看不清???/\"\"，禁编造凑行\n"
+            + "· 先NO姓名再到离；名/工号???或空→到离必空\n"
+            + "· SIGNATURE只填员工签名列(Firma等关键词列)单元格，禁表头字面量\n"
+            + "· 15字段顺序与标记/PAGE_NUM规则以正文为准";
 
     private static final Set<String> EXAMPLE_KEYS = new HashSet<>(Arrays.asList(
             "1|张三", "2|李四", "3|王五",
@@ -36,7 +36,7 @@ public class RecognitionPromptGuard {
             "供应商名称", "供应商", "agence_interimaire", "agence", "agency", "supplier", "intermediary"
     ));
     private static final Set<String> HEADER_SIGNATURE_VALUES = new HashSet<>(Arrays.asList(
-            "员工签名", "signature", "firma", "signatura"
+            "员工签名", "signature", "firma", "signatura", "签名", "员工签"
     ));
     private static final Set<String> HEADER_OBSERVATION_VALUES = new HashSet<>(Arrays.asList(
             "备注", "observations", "remarks", "osservazioni", "observaciones"
@@ -103,7 +103,8 @@ public class RecognitionPromptGuard {
             return true;
         }
         String sigLower = signature.toLowerCase(Locale.ROOT);
-        boolean sigHeader = HEADER_SIGNATURE_VALUES.contains(sigLower) || sigLower.startsWith("员工签名");
+        boolean sigHeader = HEADER_SIGNATURE_VALUES.contains(sigLower)
+                || SignatureMarkResolver.isSignatureColumnHeader(signature);
         boolean agencyHeader = HEADER_AGENCY_VALUES.contains(agency);
         boolean obsHeader = HEADER_OBSERVATION_VALUES.contains(observations);
         // 仅当多个字段同时像表头时才判定为表头行，避免误杀「供应商名称」出现在数据列的情况

@@ -101,7 +101,7 @@ attendance:
     allow-credentials: true
   prompt:
     # 内置标准模板版本；升级表头/字段后递增，启动时会刷新未自定义的国家提示词
-    seed-version: 4
+    seed-version: 9
     seed-on-startup: true
     # 设为 true 时每次启动强制覆盖全部国家提示词（等同重新初始化）
     force-seed-on-startup: false
