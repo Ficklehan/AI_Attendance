@@ -408,6 +408,7 @@ import { useColumnFreeze } from '@/composables/useColumnFreeze'
 import TableColumnSettings from '@/components/TableColumnSettings.vue'
 import TableSortableHeader from '@/components/TableSortableHeader.vue'
 import { hasRequiredMissing } from '@/utils/requiredRecordFields'
+import { isAbsentRow } from '@/utils/recordDisplay'
 import { formatCountryLabel } from '@/utils/countryLabels'
 
 const router = useRouter()
@@ -558,11 +559,6 @@ const statItems = computed(() => [
   { key: 'absent', variant: 'absent', value: stats.value.absent, label: t('home.statsAbsent') },
   { key: 'deleted', variant: 'deleted', value: stats.value.deleted, label: t('home.statsDeleted') },
 ])
-
-const isAbsentRow = (record) => {
-  const mark = cellStr(record?.SmartMark)
-  return mark.includes('未出勤') && !record?._restored
-}
 
 const normalizePauseMinutes = (value) => {
   if (value === null || value === undefined || value === '') return ''

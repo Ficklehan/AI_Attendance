@@ -1,0 +1,75 @@
+{
+  "language": {
+    "title": "Langue",
+    "select": "Sélectionner la langue",
+    "zhCN": "简体中文",
+    "enUS": "English",
+    "frFR": "Français",
+    "nlNL": "Nederlands",
+    "csCZ": "Čeština",
+    "plPL": "Polski",
+    "deDE": "Deutsch",
+    "esES": "Español",
+    "itIT": "Italiano"
+  },
+  "recognition": {
+    "marks": {
+      "normal": "Normal",
+      "handwriting": "Manuscrit",
+      "blurred": "Flou",
+      "nightShift": "Équipe de nuit",
+      "absent": "Absent",
+      "deleted": "Supprimé",
+      "signedConfirmed": "Signé (confirmé)",
+      "unsignedConfirmed": "Non signé (confirmé)",
+      "signed": "Signé"
+    },
+    "missing": {
+      "NO": "N° employé non reconnu",
+      "Date": "Date non reconnue",
+      "ARRIVEE": "Heure d'arrivée non reconnue",
+      "DEPAR": "Heure de départ non reconnue",
+      "PAUSE": "Pause non reconnue"
+    },
+    "deletedRecord": "Enregistrement marqué comme supprimé"
+  },
+  "country": {
+    "default": "Par défaut global",
+    "CN": "Chine",
+    "FR": "France",
+    "DE": "Allemagne",
+    "US": "États-Unis",
+    "PL": "Pologne",
+    "NL": "Pays-Bas",
+    "IT": "Italie",
+    "ES": "Espagne",
+    "CZ": "République tchèque"
+  },
+  "errors": {
+    "loginRequired": "Veuillez vous connecter",
+    "accessDenied": "Accès refusé",
+    "taskNotFound": "Tâche introuvable",
+    "taskAccessDenied": "Accès refusé à cette tâche",
+    "imageInvalid": "Fichier image invalide",
+    "mimoNotConfigured": "Clé MIMO API non configurée. Définissez MIMO_API_KEY dans backend/.env et redémarrez",
+    "aiHeaderEcho": "Le modèle a renvoyé des en-têtes de colonnes comme données. Vérifiez le pays de travail et uploadez une photo plus claire",
+    "aiInvalidJson": "Le modèle a renvoyé des lignes JSON non analysables. Réessayez avec une image plus claire.",
+    "aiNoParseableRecords": "Aucune ligne JSON d'assiduité analysable. Réessayez avec une image plus claire.",
+    "aiFabricated": "Résultats probablement inventés. Uploadez une feuille de présence plus claire et complète",
+    "aiUnreadableTimes": "Noms/IDs illisibles mais horaires uniformes — probablement devinés. Uploadez une photo plus claire",
+    "systemError": "Erreur système, veuillez réessayer plus tard",
+    "requestFailed": "Échec de la requête",
+    "networkError": "Erreur réseau, vérifiez votre connexion"
+  },
+  "common": {
+    "cancel": "Annuler",
+    "save": "Enregistrer",
+    "loading": "Chargement..."
+  },
+  "validation": {
+    "required": "{field} est requis",
+    "invalidFormat": "Le format de {field} est invalide",
+    "minLength": "{field} doit comporter au moins {min} caractères",
+    "maxLength": "{field} doit comporter au plus {max} caractères"
+  }
+}

@@ -38,35 +38,12 @@
                     AND 1=0
                 </when>
                 <otherwise>
-                    <if test="scope.ownerUserIds != null and scope.ownerUserIds.size() > 0">
-                        AND t.user_id IN
-                        <foreach collection="scope.ownerUserIds" item="uid" open="(" separator="," close=")">
-                            #{uid}
-                        </foreach>
-                    </if>
-                    <if test="scope.recordDimensionFilter">
-                        AND (
-                            EXISTS (
-                                SELECT 1 FROM task_records tr_ds
-                                WHERE tr_ds.task_id = t.task_id AND tr_ds.deleted = 0
-                                <if test="scope.countries != null and scope.countries.size() > 0">
-                                    AND tr_ds.country_key IN
-                                    <foreach collection="scope.countries" item="cv" open="(" separator="," close=")">#{cv}</foreach>
-                                </if>
-                                <if test="scope.warehouses != null and scope.warehouses.size() > 0">
-                                    AND tr_ds.warehouse_key IN
-                                    <foreach collection="scope.warehouses" item="wv" open="(" separator="," close=")">#{wv}</foreach>
-                                </if>
-                                <if test="scope.agencies != null and scope.agencies.size() > 0">
-                                    AND tr_ds.agency_key IN
-                                    <foreach collection="scope.agencies" item="av" open="(" separator="," close=")">#{av}</foreach>
-                                </if>
-                            )
-                            <if test="scope.viewerUserId != null and scope.viewerUserId != ''">
-                                OR t.user_id = #{scope.viewerUserId}
-                            </if>
-                        )
-                    </if>
+                    <include refid="com.attendance.mapper.ScopeFragments.OwnerUserIdsIn">
+                        <property name="tableAlias" value="t"/>
+                    </include>
+                    <include refid="com.attendance.mapper.ScopeFragments.TaskDimensionScopeExists">
+                        <property name="taskTableAlias" value="t"/>
+                    </include>
                 </otherwise>
             </choose>
         </if>

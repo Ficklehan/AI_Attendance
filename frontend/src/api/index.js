@@ -37,7 +37,8 @@ request.interceptors.response.use(
     const res = response.data
     
     if (res.code !== 200) {
-      const text = showApiError(res)
+      const silent = response.config?.silentError === true
+      const text = silent ? (res.message || 'request failed') : showApiError(res)
 
       if (res.code === 401 || res.code === 1004 || res.messageKey === 'errors.userDisabled') {
         const authStore = useAuthStore()
@@ -51,6 +52,9 @@ request.interceptors.response.use(
     return res
   },
   (error) => {
+    if (error.config?.silentError === true) {
+      return Promise.reject(error)
+    }
     const messageText = showErrorMessage(error)
     return Promise.reject(new Error(messageText))
   }

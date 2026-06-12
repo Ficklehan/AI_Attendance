@@ -113,21 +113,17 @@ show_usage() {
     echo "  dev            同 use-local-dev：杀 8080 后前台启动 dev（推荐）"
     echo "  frontend       仅启动前端 (http://localhost:5175/attendance/)"
     echo "  init           初始化数据库"
-    echo "  render-deploy  仅渲染配置（一般不必单独执行）"
+    echo "  apply          ★ 改 production.yaml 后执行（render + 按 mode 重启）"
+    echo "  render-deploy  仅渲染配置（不重启）"
     echo "  prod           启动生产/UAT 后端（自动 render + 加载 env）"
-    echo "  restart-prod   改域名后重启生产后端（会加载 deploy env）"
+    echo "  restart-prod   同 apply（兼容旧命令）"
     echo "  help           显示帮助信息"
     echo ""
     echo "本地开发:"
     echo "  ./start.sh dev"
     echo "  SKIP_DB_INIT=1 ./start.sh backend   # 跳过数据库初始化询问"
-    echo "  小程序 config.js 设 USE_PUBLIC_API=false"
     echo ""
-    echo "公网 / 生产（改域名只需两步）:"
-    echo "  1. 改 deploy/environments/production.yaml 的 public.host"
-    echo "  2. ./start.sh restart-prod"
-    echo "  密钥放在 deploy/secrets.env（参考 deploy/secrets.example）"
-    echo "  小程序: USE_PUBLIC_API=true，改域名后需重新上传飞书开发者工具"
+    echo "唯一配置: deploy/environments/production.yaml → ./start.sh apply"
     echo ""
 }
 
@@ -145,6 +141,13 @@ render_deploy() {
     echo "  deploy/rendered/production.env"
     echo "  deploy/rendered/uat.env"
     echo "  feishu-miniprogram/config.prod.js"
+    echo "  feishu-miniprogram/config.runtime.js"
+}
+
+apply_site_config() {
+    check_java
+    check_maven
+    exec bash "$PROJECT_DIR/scripts/apply-site-config.sh"
 }
 
 start_backend_prod() {
@@ -152,7 +155,7 @@ start_backend_prod() {
     check_maven
     echo ""
     echo ">>> 启动生产/UAT 后端（自动 render + 加载 env）..."
-    echo "改域名后: ./start.sh restart-prod"
+    echo "改配置后: ./start.sh apply"
     exec bash "$PROJECT_DIR/scripts/start-backend-prod.sh"
 }
 
@@ -196,6 +199,9 @@ case "${1:-all}" in
         ;;
     render-deploy|deploy-render)
         render_deploy
+        ;;
+    apply|site)
+        apply_site_config
         ;;
     prod|backend-prod)
         start_backend_prod

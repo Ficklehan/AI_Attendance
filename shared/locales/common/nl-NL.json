@@ -1,0 +1,96 @@
+{
+  "language": {
+    "title": "Taal",
+    "select": "Selecteer taal",
+    "zhCN": "简体中文",
+    "enUS": "English",
+    "frFR": "Français",
+    "nlNL": "Nederlands",
+    "csCZ": "Čeština",
+    "plPL": "Polski",
+    "deDE": "Deutsch",
+    "esES": "Español",
+    "itIT": "Italiano"
+  },
+  "recognition": {
+    "marks": {
+      "normal": "Normaal",
+      "handwriting": "Handgeschreven",
+      "blurred": "Wazig",
+      "nightShift": "Nachtdienst",
+      "absent": "Afwezig",
+      "deleted": "Verwijderd",
+      "signedConfirmed": "Getekend (bevestigd)",
+      "unsignedConfirmed": "Niet getekend (bevestigd)",
+      "signed": "Getekend"
+    },
+    "missing": {
+      "NO": "Werknemer-ID niet herkend",
+      "Date": "Datum niet herkend",
+      "ARRIVEE": "Aankomsttijd niet herkend",
+      "DEPAR": "Vertrektijd niet herkend",
+      "PAUSE": "Pauzetijd niet herkend"
+    },
+    "deletedRecord": "Record gemarkeerd als verwijderd"
+  },
+  "country": {
+    "default": "Globaal standaard",
+    "CN": "China",
+    "FR": "Frankrijk",
+    "DE": "Duitsland",
+    "US": "Verenigde Staten",
+    "PL": "Polen",
+    "NL": "Nederland",
+    "IT": "Italië",
+    "ES": "Spanje",
+    "CZ": "Tsjechië"
+  },
+  "errors": {
+    "loginRequired": "Log eerst in",
+    "accessDenied": "Toegang geweigerd",
+    "userNotFound": "Gebruiker niet gevonden",
+    "userDisabled": "Gebruikersaccount uitgeschakeld",
+    "userAlreadyExists": "Gebruikersnaam bestaat al",
+    "emailAlreadyExists": "E-mail is al in gebruik",
+    "recognitionConcurrentLimit": "Te veel herkenningstaken tegelijk. Probeer het later opnieuw.",
+    "taskNotFound": "Taak niet gevonden",
+    "taskStatusCannotConfirm": "Taakstatus staat bevestiging niet toe",
+    "taskAccessDenied": "Geen toegang tot deze taak",
+    "fileAccessDenied": "Geen toegang tot dit bestand",
+    "noExportData": "Geen gegevens om te exporteren",
+    "fileNotFound": "Bestand niet gevonden",
+    "fileNotFoundWithKey": "Bestand niet gevonden: {fileKey}",
+    "imageInvalid": "Ongeldig afbeeldingsbestand",
+    "invalidFilePath": "Ongeldig bestandspad",
+    "uploadImageTooSmall": "Afbeelding ongeldig of te klein ({size} bytes)",
+    "imagesOnly": "Alleen afbeeldingsbestanden worden ondersteund",
+    "unrecognizedImageFormat": "Onbekend afbeeldingsformaat. Gebruik JPG of PNG",
+    "mimoNotConfigured": "MIMO API Key niet geconfigureerd",
+    "aiPromptNotFound": "Herkenningsprompt niet gevonden",
+    "aiContinuePromptNotFound": "Vervolgprompt niet gevonden",
+    "aiHeaderEcho": "Model gaf kolomkoppen terug als data",
+    "aiInvalidJson": "Ongeldige JSON van model. Samenvatting: {preview}",
+    "aiNoParseableRecords": "Geen analyseerbare JSON-regels. Samenvatting: {preview}",
+    "aiFabricated": "Resultaten lijken verzonnen",
+    "aiUnreadableTimes": "Veel ??? bij namen maar tijden ingevuld",
+    "validationFailed": "Validatie mislukt: {detail}",
+    "missingParameter": "Ontbrekende parameter: {name}",
+    "fileSizeExceeded": "Bestand overschrijdt 10 MB",
+    "apiNotFound": "API-endpoint niet gevonden",
+    "methodNotAllowed": "HTTP-methode niet toegestaan",
+    "systemError": "Systeemfout, probeer later opnieuw",
+    "requestFailed": "Verzoek mislukt",
+    "networkError": "Netwerkfout, controleer je verbinding"
+  },
+  "common": {
+    "cancel": "Annuleren",
+    "save": "Opslaan",
+    "loading": "Laden..."
+  },
+  "validation": {
+    "required": "{field} is verplicht",
+    "invalidFormat": "{field} formaat is ongeldig",
+    "minLength": "{field} moet ten minste {min} tekens lang zijn",
+    "maxLength": "{field} mag maximaal {max} tekens lang zijn"
+  }
+}

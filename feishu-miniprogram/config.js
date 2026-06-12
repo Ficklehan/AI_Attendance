@@ -1,19 +1,23 @@
 /**
- * 飞书小程序 — 本地开发配置（公网地址由 config.prod.js 提供，脚本生成）
- *
- * 本地开发者工具：USE_PUBLIC_API = false，后端 localhost:8080
- * 手机 / 公网真机：USE_PUBLIC_API = true，先运行 node scripts/render-deploy-config.mjs
- *
- * 临时覆盖：tt.setStorageSync('apiBaseUrlOverride', 'https://xxx/attendance/api')
+ * 飞书小程序 API 配置（开关由 config.runtime.js 自动生成，源：production.yaml）
+ * 运维：改 deploy/environments/production.yaml 后执行 ./start.sh apply
  */
 
-const LOCAL_BASE_URL = 'http://localhost:8080/attendance/api'
+const DEFAULT_RUNTIME = {
+  RUNTIME_MODE: 'local',
+  USE_PUBLIC_API: false,
+  LOCAL_BASE_URL: 'http://localhost:8080/attendance/api',
+}
 
-/**
- * false = localhost（本机开发者工具 + 本地后端）
- * true  = config.prod.js（公网部署，手机飞书）
- */
-const USE_PUBLIC_API = true
+let runtime = DEFAULT_RUNTIME
+try {
+  runtime = { ...DEFAULT_RUNTIME, ...require('./config.runtime.js') }
+} catch (e) {
+  console.warn('[config] config.runtime.js 不存在，请先执行: ./start.sh apply')
+}
+
+const LOCAL_BASE_URL = runtime.LOCAL_BASE_URL || DEFAULT_RUNTIME.LOCAL_BASE_URL
+const USE_PUBLIC_API = !!runtime.USE_PUBLIC_API
 
 const STORAGE_KEY = 'apiBaseUrlOverride'
 
@@ -27,7 +31,7 @@ function loadProdConfig() {
   } catch (e) {
     prodConfig = false
     console.warn(
-      '[config] config.prod.js 不存在。公网/真机请先执行: node scripts/render-deploy-config.mjs'
+      '[config] config.prod.js 不存在。请先执行: ./start.sh apply'
     )
   }
   return prodConfig
@@ -75,7 +79,7 @@ function resolveBaseUrl() {
     }
     // 真机无法访问 localhost；缺 config.prod.js 时勿静默回退
     console.error(
-      '[config] USE_PUBLIC_API=true 但 config.prod.js 无效。上传前请执行: node scripts/render-deploy-config.mjs --env production'
+      '[config] USE_PUBLIC_API=true 但 config.prod.js 无效。请先执行: ./start.sh apply'
     )
     return ''
   }

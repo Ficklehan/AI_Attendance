@@ -1,0 +1,48 @@
+name: Locale checks
+
+on:
+  push:
+    paths:
+      - 'shared/locales/**'
+      - 'scripts/*locale*'
+      - 'scripts/build-locales.mjs'
+      - 'frontend/src/locales/**'
+      - 'feishu-miniprogram/utils/localeMessages.js'
+      - '.github/workflows/locale-check.yml'
+  pull_request:
+    paths:
+      - 'shared/locales/**'
+      - 'scripts/*locale*'
+      - 'scripts/build-locales.mjs'
+      - 'frontend/src/locales/**'
+      - 'feishu-miniprogram/utils/localeMessages.js'
+      - '.github/workflows/locale-check.yml'
+
+jobs:
+  locale:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Install frontend deps
+        working-directory: frontend
+        run: npm ci
+
+      - name: Common locale parity (zh / en)
+        working-directory: frontend
+        run: npm run check:locale:common
+
+      - name: Build locales from shared sources
+        working-directory: frontend
+        run: npm run build:locales
+
+      - name: PC locale parity (zh / en)
+        working-directory: frontend
+        run: npm run check:locale
+
+      - name: Generated files match sources
+        run: node scripts/check-locale-generated.mjs --no-build

@@ -4,7 +4,7 @@ const { t } = require('../../utils/i18n')
 const { translateErrorMessage } = require('../../utils/translateError')
 const { getCountry } = require('../../utils/preferences')
 const { startRecognition } = require('../../utils/recognitionUpload')
-const { taskApi } = require('../../utils/api')
+const { taskApi, chatApi } = require('../../utils/api')
 const { parseRecords } = require('../../utils/task')
 const { calculateRecordStats } = require('../../utils/recordDisplay')
 const { runWithCountryGate } = require('../../utils/countryGate')
@@ -302,30 +302,15 @@ Page({
   },
 
   sendTextMessage: function (text) {
-    return new Promise((resolve, reject) => {
-      tt.request({
-        url: `${App.globalData.baseUrl}/chat/completion`,
-        method: 'POST',
-        data: {
-          message: text,
-          country: getCountry()
-        },
-        header: {
-          'Content-Type': 'application/json',
-          'Authorization': App.globalData.token ? `Bearer ${App.globalData.token}` : ''
-        },
-        success: (res) => {
-          if (isApiSuccess(res.data)) {
-            const payload = getApiData(res.data) || {}
-            resolve(payload.content)
-          } else {
-            reject(new Error(getApiMessage(res.data)))
-          }
-        },
-        fail: (error) => {
-          reject(error)
-        }
-      })
+    return chatApi.sendMessage({
+      message: text,
+      country: getCountry()
+    }).then((body) => {
+      if (!body || !isApiSuccess(body)) {
+        throw new Error(getApiMessage(body))
+      }
+      const payload = getApiData(body) || {}
+      return payload.content
     })
   },
 

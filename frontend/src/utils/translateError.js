@@ -13,10 +13,10 @@ const CODE_FALLBACK_KEYS = {
   1004: 'errors.loginRequired',
   1006: 'errors.accessDenied',
   2001: 'errors.taskNotFound',
+  /** 2002 = TASK_STATUS_ERROR；导出未就绪等场景后端会带 messageKey，优先走 messageKey */
   2002: 'errors.taskStatusCannotConfirm',
   3001: 'errors.imageInvalid',
   4001: 'errors.aiNoParseableRecords',
-  2002: 'errors.exportJobNotReady',
 }
 
 const ERROR_WITH_PREVIEW = new Set([

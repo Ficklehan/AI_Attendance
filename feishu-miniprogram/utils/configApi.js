@@ -1,108 +1,72 @@
 const { isApiSuccess, getApiData, getApiMessage } = require('./response')
-const { COUNTRIES, mergeCountryOptions } = require('./countries')
+const { mergeCountryOptions } = require('./countries')
 const { t } = require('./i18n')
 const { translateApiError } = require('./translateError')
+const { apiCall, getAppSafe, getAuthToken } = require('./request')
 
 function getAppInstance(app) {
   if (app && app.globalData) {
     return app
   }
-  try {
-    return getApp()
-  } catch (e) {
-    return null
-  }
-}
-
-function authHeader(app) {
-  const instance = getAppInstance(app)
-  if (!instance || !instance.globalData.token) {
-    return {}
-  }
-  return { Authorization: `Bearer ${instance.globalData.token}` }
+  return getAppSafe()
 }
 
 function fetchCountryOptions(app) {
-  return new Promise((resolve) => {
-    const instance = getAppInstance(app)
-    if (!instance || !instance.globalData.token) {
-      resolve(mergeCountryOptions([]))
-      return
-    }
-
-    tt.request({
-      url: `${instance.globalData.baseUrl}/config/country-options`,
-      method: 'GET',
-      timeout: 15000,
-      header: authHeader(app),
-      success: (res) => {
-        if (isApiSuccess(res.data)) {
-          const list = getApiData(res.data) || []
-          instance.globalData.countryOptions = mergeCountryOptions(list)
-          resolve(instance.globalData.countryOptions)
-          return
-        }
-        resolve(mergeCountryOptions([]))
-      },
-      fail: () => resolve(mergeCountryOptions([]))
+  const instance = getAppInstance(app)
+  if (!instance || !getAuthToken()) {
+    return Promise.resolve(mergeCountryOptions([]))
+  }
+  return apiCall({ url: '/config/country-options', timeout: 15000 })
+    .then((res) => {
+      if (isApiSuccess(res.data)) {
+        const list = getApiData(res.data) || []
+        instance.globalData.countryOptions = mergeCountryOptions(list)
+        return instance.globalData.countryOptions
+      }
+      return mergeCountryOptions([])
     })
-  })
+    .catch(() => mergeCountryOptions([]))
 }
 
 function fetchCurrentCountry(app) {
-  return new Promise((resolve) => {
-    const instance = getAppInstance(app)
-    if (!instance || !instance.globalData.token) {
-      resolve(null)
-      return
-    }
-
-    tt.request({
-      url: `${instance.globalData.baseUrl}/config/current-country`,
-      method: 'GET',
-      timeout: 15000,
-      header: authHeader(app),
-      success: (res) => {
-        if (isApiSuccess(res.data)) {
-          const payload = getApiData(res.data) || {}
-          resolve(payload.country || null)
-          return
-        }
-        resolve(null)
-      },
-      fail: () => resolve(null)
+  const instance = getAppInstance(app)
+  if (!instance || !getAuthToken()) {
+    return Promise.resolve(null)
+  }
+  return apiCall({ url: '/config/current-country', timeout: 15000 })
+    .then((res) => {
+      if (isApiSuccess(res.data)) {
+        const payload = getApiData(res.data) || {}
+        return payload.country || null
+      }
+      return null
     })
-  })
+    .catch(() => null)
 }
 
 function updateCurrentCountry(country, app) {
-  return new Promise((resolve, reject) => {
-    const instance = getAppInstance(app)
-    if (!instance || !instance.globalData.token) {
-      reject(new Error(t('errors.loginRequired')))
-      return
+  const instance = getAppInstance(app)
+  if (!instance || !getAuthToken()) {
+    return Promise.reject(new Error(t('errors.loginRequired')))
+  }
+  return apiCall({
+    url: '/config/current-country',
+    method: 'PUT',
+    data: { country },
+    timeout: 15000
+  }).then((res) => {
+    if (isApiSuccess(res.data)) {
+      return country
     }
-
-    tt.request({
-      url: `${instance.globalData.baseUrl}/config/current-country`,
-      method: 'PUT',
-      timeout: 15000,
-      header: {
-        ...authHeader(app),
-        'Content-Type': 'application/json'
-      },
-      data: JSON.stringify({ country }),
-      success: (res) => {
-        if (res.statusCode === 200 && isApiSuccess(res.data)) {
-          resolve(country)
-          return
-        }
-        reject(new Error(getApiMessage(res.data, t('settings.countrySyncFail'))))
-      },
-      fail: (err) => {
-        reject(new Error(translateApiError({ message: (err && err.errMsg) || (err && err.message) }, t('errors.networkError'))))
-      }
-    })
+    throw new Error(getApiMessage(res.data, t('settings.countrySyncFail')))
+  }).catch((err) => {
+    if (err && err.message && err.message.indexOf('login') !== -1) {
+      throw err
+    }
+    throw new Error(translateApiError(
+      { message: (err && err.errMsg) || (err && err.message) },
+      t('errors.networkError')
+    ))
   })
 }
 

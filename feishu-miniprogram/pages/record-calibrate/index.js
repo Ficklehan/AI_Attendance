@@ -1,6 +1,6 @@
-const App = getApp()
 const { t } = require('../../utils/i18n')
 const { isApiSuccess, getApiData, getApiMessage } = require('../../utils/response')
+const { apiCall } = require('../../utils/request')
 const { parseRecords } = require('../../utils/task')
 const {
   CALIBRATABLE_FIELDS,
@@ -52,13 +52,10 @@ Page({
   },
 
   loadRecord: function () {
+    const taskId = this.data.taskId
     tt.showLoading({ title: t('common.loading') })
-    tt.request({
-      url: `${App.globalData.baseUrl}/tasks/${this.data.taskId}`,
-      header: {
-        Authorization: App.globalData.token ? `Bearer ${App.globalData.token}` : ''
-      },
-      success: (res) => {
+    apiCall({ url: `/tasks/${taskId}` })
+      .then((res) => {
         if (!isApiSuccess(res.data)) {
           tt.showToast({ title: getApiMessage(res.data, t('result.loadFail')), icon: 'none' })
           return
@@ -83,12 +80,14 @@ Page({
         })
         const historyEntries = buildCalibrationHistoryUi(record)
         this.setData({ original, draft, historyEntries }, () => this.rebuildForm())
-      },
-      fail: () => {
+      })
+      .catch(() => {
         tt.showToast({ title: t('common.networkFail'), icon: 'none' })
-      },
-      complete: () => tt.hideLoading()
-    })
+      })
+      .then(
+        () => tt.hideLoading(),
+        () => tt.hideLoading()
+      )
   },
 
   rebuildForm: function () {
@@ -139,19 +138,12 @@ Page({
       return
     }
     this.setData({ submitting: true })
-    tt.request({
-      url: `${App.globalData.baseUrl}/tasks/${this.data.taskId}/calibrate-record`,
+    apiCall({
+      url: `/tasks/${this.data.taskId}/calibrate-record`,
       method: 'POST',
-      header: {
-        'Content-Type': 'application/json',
-        Authorization: App.globalData.token ? `Bearer ${App.globalData.token}` : ''
-      },
-      data: {
-        rowKey: this.data.rowKey,
-        updates,
-        reason
-      },
-      success: (res) => {
+      data: { rowKey: this.data.rowKey, updates, reason }
+    })
+      .then((res) => {
         if (isApiSuccess(res.data)) {
           tt.showToast({ title: t('calibration.success'), icon: 'success' })
           const pages = getCurrentPages()
@@ -163,12 +155,14 @@ Page({
         } else {
           tt.showToast({ title: getApiMessage(res.data, t('calibration.submitFail')), icon: 'none' })
         }
-      },
-      fail: () => {
+      })
+      .catch(() => {
         tt.showToast({ title: t('common.networkFail'), icon: 'none' })
-      },
-      complete: () => this.setData({ submitting: false })
-    })
+      })
+      .then(
+        () => this.setData({ submitting: false }),
+        () => this.setData({ submitting: false })
+      )
   },
 
   goBack: function () {

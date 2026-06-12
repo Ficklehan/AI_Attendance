@@ -2,6 +2,7 @@ import { createRouter, createWebHistory } from 'vue-router'
 import { message } from 'ant-design-vue'
 import { useAuthStore } from '@/stores/auth'
 import i18n from '@/locales'
+import { loadNightShiftRules } from '@/utils/nightShiftRules'
 
 const routes = [
   {
@@ -121,6 +122,10 @@ router.beforeEach(async (to, from, next) => {
   if (requiresAuth && !authStore.isAuthenticated) {
     next('/login')
     return
+  }
+
+  if (authStore.isAuthenticated) {
+    loadNightShiftRules().catch(() => {})
   }
 
   if (to.path === '/login' && authStore.isAuthenticated) {

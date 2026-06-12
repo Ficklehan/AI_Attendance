@@ -2,6 +2,7 @@ const { isApiSuccess, getApiData, getApiMessage } = require('./response')
 const { t } = require('./i18n')
 const { translateApiError } = require('./translateError')
 const { getCountry } = require('./preferences')
+const { apiCall } = require('./request')
 const { updateCurrentCountry } = require('./configApi')
 const { formatRecognitionEngine } = require('./engineLabel')
 const { prepareImageForUpload } = require('./imagePrep')
@@ -211,57 +212,35 @@ function uploadImageAsync(filePath, country, onProgress, options) {
 }
 
 function fetchTaskProgress(taskId) {
-  const app = getAppSafe()
-  const baseUrl = (app && app.globalData.baseUrl) || ''
-  const token = (app && app.globalData.token) || ''
-
-  return new Promise((resolve, reject) => {
-    tt.request({
-      url: `${baseUrl}/tasks/${taskId}/progress`,
-      method: 'GET',
-      timeout: 15000,
-      header: {
-        Authorization: token ? `Bearer ${token}` : ''
-      },
-      success: (res) => {
-        if (res.statusCode === 200 && isApiSuccess(res.data)) {
-          resolve(getApiData(res.data) || {})
-        } else {
-          reject(new Error(getApiMessage(res.data, t('upload.fetchTaskFail'))))
-        }
-      },
-      fail: (err) => {
-        reject(new Error(translateApiError({ message: (err && err.errMsg) }, t('errors.networkError'))))
+  return apiCall({ url: `/tasks/${taskId}/progress`, timeout: 15000 })
+    .then((res) => {
+      if (isApiSuccess(res.data)) {
+        return getApiData(res.data) || {}
       }
+      throw new Error(getApiMessage(res.data, t('upload.fetchTaskFail')))
     })
-  })
+    .catch((err) => {
+      throw new Error(translateApiError(
+        { message: (err && err.errMsg) || (err && err.message) },
+        t('errors.networkError')
+      ))
+    })
 }
 
 function fetchTask(taskId) {
-  const app = getAppSafe()
-  const baseUrl = (app && app.globalData.baseUrl) || ''
-  const token = (app && app.globalData.token) || ''
-
-  return new Promise((resolve, reject) => {
-    tt.request({
-      url: `${baseUrl}/tasks/${taskId}`,
-      method: 'GET',
-      timeout: 20000,
-      header: {
-        Authorization: token ? `Bearer ${token}` : ''
-      },
-      success: (res) => {
-        if (res.statusCode === 200 && isApiSuccess(res.data)) {
-          resolve(getApiData(res.data) || {})
-        } else {
-          reject(new Error(getApiMessage(res.data, t('upload.fetchTaskFail'))))
-        }
-      },
-      fail: (err) => {
-        reject(new Error(translateApiError({ message: (err && err.errMsg) }, t('errors.networkError'))))
+  return apiCall({ url: `/tasks/${taskId}`, timeout: 20000 })
+    .then((res) => {
+      if (isApiSuccess(res.data)) {
+        return getApiData(res.data) || {}
       }
+      throw new Error(getApiMessage(res.data, t('upload.fetchTaskFail')))
     })
-  })
+    .catch((err) => {
+      throw new Error(translateApiError(
+        { message: (err && err.errMsg) || (err && err.message) },
+        t('errors.networkError')
+      ))
+    })
 }
 
 function parseRecordCount(task) {
@@ -421,36 +400,33 @@ function pollTaskUntilDone(taskId, options) {
  * shouldAbort 返回 true 时停止前端轮询（服务端仍继续处理）。
  */
 function startTaskRecognition(taskId, country, options) {
-  const app = getAppSafe()
-  const baseUrl = (app && app.globalData.baseUrl) || ''
-  const token = (app && app.globalData.token) || ''
   const uploadCountry = country || resolveUploadCountry()
   const onProgress = options && options.onProgress
   const shouldAbort = options && options.shouldAbort
 
-  return new Promise((resolve, reject) => {
-    tt.request({
-      url: `${baseUrl}/local/tasks/${encodeURIComponent(taskId)}/recognize`,
-      method: 'POST',
-      timeout: 60000,
-      header: {
-        Authorization: token ? `Bearer ${token}` : '',
-        'X-Country': uploadCountry,
-        'X-Client': 'feishu-miniprogram'
-      },
-      data: { country: uploadCountry },
-      success: (res) => {
-        if (res.statusCode === 200 && isApiSuccess(res.data)) {
-          resolve(getApiData(res.data) || {})
-          return
-        }
-        reject(new Error(getApiMessage(res.data, t('upload.startRecognizeFail'))))
-      },
-      fail: (err) => {
-        reject(new Error(translateApiError({ message: (err && err.errMsg) }, t('upload.startRecognizeFail'))))
+  return apiCall({
+    url: `/local/tasks/${encodeURIComponent(taskId)}/recognize`,
+    method: 'POST',
+    timeout: 60000,
+    header: {
+      'X-Country': uploadCountry,
+      'X-Client': 'feishu-miniprogram'
+    },
+    data: { country: uploadCountry }
+  })
+    .then((res) => {
+      if (!isApiSuccess(res.data)) {
+        throw new Error(getApiMessage(res.data, t('upload.startRecognizeFail')))
       }
+      return getApiData(res.data) || {}
     })
-  }).then(() => {
+    .catch((err) => {
+      throw new Error(translateApiError(
+        { message: (err && err.errMsg) || (err && err.message) },
+        t('upload.startRecognizeFail')
+      ))
+    })
+    .then(() => {
     if (shouldAbort && shouldAbort()) {
       return { aborted: true, taskId, promptCountry: uploadCountry }
     }

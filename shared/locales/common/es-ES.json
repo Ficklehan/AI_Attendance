@@ -1,0 +1,75 @@
+{
+  "language": {
+    "title": "Idioma",
+    "select": "Seleccionar idioma",
+    "zhCN": "简体中文",
+    "enUS": "English",
+    "frFR": "Français",
+    "nlNL": "Nederlands",
+    "csCZ": "Čeština",
+    "plPL": "Polski",
+    "deDE": "Deutsch",
+    "esES": "Español",
+    "itIT": "Italiano"
+  },
+  "recognition": {
+    "marks": {
+      "normal": "Normal",
+      "handwriting": "Manuscrito",
+      "blurred": "Borroso",
+      "nightShift": "Turno nocturno",
+      "absent": "Ausente",
+      "deleted": "Eliminado",
+      "signedConfirmed": "Firmado (confirmado)",
+      "unsignedConfirmed": "Sin firma (confirmado)",
+      "signed": "Firmado"
+    },
+    "missing": {
+      "NO": "N.º de empleado no reconocido",
+      "Date": "Fecha no reconocida",
+      "ARRIVEE": "Hora de llegada no reconocida",
+      "DEPAR": "Hora de salida no reconocida",
+      "PAUSE": "Descanso no reconocido"
+    },
+    "deletedRecord": "Registro marcado como eliminado"
+  },
+  "country": {
+    "default": "Predeterminado global",
+    "CN": "China",
+    "FR": "Francia",
+    "DE": "Alemania",
+    "US": "Estados Unidos",
+    "PL": "Polonia",
+    "NL": "Países Bajos",
+    "IT": "Italia",
+    "ES": "España",
+    "CZ": "República Checa"
+  },
+  "errors": {
+    "loginRequired": "Inicie sesión primero",
+    "accessDenied": "Acceso denegado",
+    "taskNotFound": "Tarea no encontrada",
+    "taskAccessDenied": "No tiene acceso a esta tarea",
+    "imageInvalid": "Archivo de imagen no válido",
+    "mimoNotConfigured": "MIMO API Key no configurada. Configure MIMO_API_KEY en backend/.env y reinicie el backend",
+    "aiHeaderEcho": "El modelo devolvió encabezados de columna (p. ej. nombre/proveedor) como datos. Verifique el país de trabajo y suba una foto más clara",
+    "aiInvalidJson": "El modelo devolvió JSON inválido sin comillas. Intente con una imagen más clara. Resumen: {preview}",
+    "aiNoParseableRecords": "El modelo no devolvió filas JSON de asistencia analizables. Intente con una imagen más clara. Resumen: {preview}",
+    "aiFabricated": "Los resultados parecen inventados y no leídos de la imagen. Suba una hoja de asistencia más clara y completa",
+    "aiUnreadableTimes": "Muchos nombres/IDs ilegibles pero horarios uniformes — probablemente inventados. Suba una foto más clara",
+    "systemError": "Error del sistema, inténtelo más tarde",
+    "requestFailed": "Solicitud fallida",
+    "networkError": "Error de red, compruebe su conexión"
+  },
+  "common": {
+    "cancel": "Cancelar",
+    "save": "Guardar",
+    "loading": "Cargando..."
+  },
+  "validation": {
+    "required": "{field} es obligatorio",
+    "invalidFormat": "El formato de {field} no es válido",
+    "minLength": "{field} debe tener al menos {min} caracteres",
+    "maxLength": "{field} debe tener como máximo {max} caracteres"
+  }
+}

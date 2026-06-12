@@ -1,6 +1,11 @@
 const { isApiSuccess, getApiMessage } = require('./response')
 const { t } = require('./i18n')
-const { getCountry } = require('./preferences')
+
+/** 延迟加载，避免 request → preferences → configApi → request 循环依赖 */
+function readCountryAndLocale() {
+  const { getCountry, getLocale } = require('./preferences')
+  return { getCountry, getLocale }
+}
 
 function getAppSafe() {
   try {
@@ -10,62 +15,101 @@ function getAppSafe() {
   }
 }
 
-const request = (options) => {
-  const { url, method = 'GET', data = {}, header = {} } = options
+function getBaseUrl() {
   const app = getAppSafe()
-  const baseUrl = (app && app.globalData.baseUrl) || ''
-  const token = (app && app.globalData.token) || ''
+  return (app && app.globalData.baseUrl) || ''
+}
 
-  const country = getCountry()
-  const defaultHeader = {
+function getAuthToken() {
+  const app = getAppSafe()
+  return (app && app.globalData.token) || ''
+}
+
+/** 统一鉴权 / 国家 / 语言请求头（供 request 与页面级 apiCall 共用） */
+function buildDefaultHeaders(extra = {}) {
+  const token = getAuthToken()
+  const headers = {
     'Content-Type': 'application/json',
-    'Authorization': token ? `Bearer ${token}` : ''
+    ...extra
   }
+  if (token) {
+    headers.Authorization = `Bearer ${token}`
+  }
+  const { getCountry, getLocale } = readCountryAndLocale()
+  const country = getCountry()
   if (country) {
-    defaultHeader['X-Country'] = country
+    headers['X-Country'] = country
   }
+  const locale = getLocale()
+  if (locale) {
+    headers['X-Locale'] = locale
+  }
+  return headers
+}
 
+/**
+ * 底层 HTTP：返回 { statusCode, data }，失败 reject
+ */
+function apiCall(options) {
+  const {
+    url,
+    method = 'GET',
+    data,
+    header = {},
+    timeout = 30000,
+    showErrorToast = false
+  } = options
+  const path = url.startsWith('http') ? url : `${getBaseUrl()}${url}`
   return new Promise((resolve, reject) => {
     tt.request({
-      url: `${baseUrl}${url}`,
+      url: path,
       method,
       data,
-      header: { ...defaultHeader, ...header },
-      timeout: 30000,
+      header: buildDefaultHeaders(header),
+      timeout,
       success: (res) => {
         if (res.statusCode === 200) {
-          if (!isApiSuccess(res.data)) {
-            tt.showToast({
-              title: getApiMessage(res.data),
-              icon: 'none'
-            })
-            return resolve(null)
-          }
-          resolve(res.data)
-        } else {
-          tt.showToast({
-            title: t('common.networkError'),
-            icon: 'none'
-          })
-          resolve(null)
+          resolve(res)
+          return
         }
+        if (showErrorToast) {
+          tt.showToast({ title: t('common.networkError'), icon: 'none' })
+        }
+        reject(new Error(`HTTP ${res.statusCode}`))
       },
       fail: (error) => {
         console.error('请求异常:', error)
-        tt.showToast({
-          title: t('common.networkFail'),
-          icon: 'none'
-        })
-        resolve(null)
+        if (showErrorToast) {
+          tt.showToast({ title: t('common.networkFail'), icon: 'none' })
+        }
+        reject(error)
       }
     })
   })
 }
 
+const request = (options) => {
+  const { url, method = 'GET', data = {}, header = {} } = options
+  return new Promise((resolve) => {
+    apiCall({ url, method, data, header })
+      .then((res) => {
+        if (!isApiSuccess(res.data)) {
+          tt.showToast({
+            title: getApiMessage(res.data),
+            icon: 'none'
+          })
+          return resolve(null)
+        }
+        resolve(res.data)
+      })
+      .catch(() => resolve(null))
+  })
+}
+
 const uploadFile = (filePath, fileName = 'image.jpg') => {
-  const app = getAppSafe()
-  const baseUrl = (app && app.globalData.baseUrl) || ''
-  const token = (app && app.globalData.token) || ''
+  const baseUrl = getBaseUrl()
+  const token = getAuthToken()
+  const { getCountry } = readCountryAndLocale()
   const country = getCountry() || 'default'
 
   return new Promise((resolve, reject) => {
@@ -75,10 +119,7 @@ const uploadFile = (filePath, fileName = 'image.jpg') => {
       name: 'image',
       fileName,
       formData: { country },
-      header: {
-        Authorization: token ? `Bearer ${token}` : '',
-        'X-Country': country
-      },
+      header: buildDefaultHeaders(),
       success: (res) => {
         try {
           const data = JSON.parse(res.data)
@@ -96,5 +137,10 @@ const uploadFile = (filePath, fileName = 'image.jpg') => {
 
 module.exports = {
   request,
-  uploadFile
+  uploadFile,
+  apiCall,
+  buildDefaultHeaders,
+  getBaseUrl,
+  getAuthToken,
+  getAppSafe
 }

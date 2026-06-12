@@ -6,8 +6,8 @@ PROJECT_DIR="$(cd "$(dirname "$0")/.." && pwd)"
 cd "$PROJECT_DIR"
 
 echo ">>> 本地开发模式"
-echo "    小程序: feishu-miniprogram/config.js → USE_PUBLIC_API=false"
-echo "    API:    http://localhost:8080/attendance/api"
+echo "    推荐: production.yaml → runtime.mode: local  然后  ./start.sh apply"
+echo "    API:  http://localhost:8080/attendance/api"
 echo "    PC 前端: http://localhost:5175/attendance/"
 echo ""
 

@@ -183,10 +183,7 @@ public class RoleDataScopeService {
     }
 
     private String normalizeRole(String role) {
-        if (role == null || role.trim().isEmpty()) {
-            return "user";
-        }
-        String r = role.trim().toLowerCase();
+        String r = SystemRoleService.normalizeRoleKey(role);
         if (!systemRoleService.roleExists(r)) {
             throw new BusinessException(400, ErrorKeys.VALIDATION_FAILED,
                     java.util.Collections.singletonMap("detail", "unsupported role: " + role));

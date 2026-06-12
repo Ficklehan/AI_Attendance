@@ -3,11 +3,13 @@ package com.attendance.controller;
 import com.attendance.common.Result;
 import com.attendance.config.CountryCatalog;
 import com.attendance.dto.ConfirmValidationConfigDTO;
+import com.attendance.dto.NightShiftConfigDTO;
 import com.attendance.dto.CountryConfigBundle;
 import com.attendance.dto.request.SystemConfigRequest;
 import com.attendance.dto.response.SystemConfigDTO;
 import com.attendance.service.ConfigService;
 import com.attendance.service.ConfirmValidationService;
+import com.attendance.service.NightShiftConfigService;
 import com.attendance.service.MarkdownConfigService;
 import com.attendance.service.PluginConfigService;
 import com.attendance.service.RecognitionPromptGuard;
@@ -54,6 +56,9 @@ public class ConfigController {
 
     @Autowired
     private ConfirmValidationService confirmValidationService;
+
+    @Autowired
+    private NightShiftConfigService nightShiftConfigService;
 
     private void requireAdmin() {
         adminAuthService.requireAdmin();
@@ -312,6 +317,15 @@ public class ConfigController {
     @GetMapping("/confirm-validation")
     public Result<ConfirmValidationConfigDTO> getConfirmValidationConfig() {
         return Result.success(confirmValidationService.getConfig());
+    }
+
+    /**
+     * 夜班判定规则（任务展示/标记推断只读，任意登录用户可拉取）。
+     * 路径使用 /runtime/ 前缀，避免与 DELETE /config/{configKey} 单段路径冲突导致 405。
+     */
+    @GetMapping("/runtime/night-shift")
+    public Result<NightShiftConfigDTO> getNightShiftConfig() {
+        return Result.success(nightShiftConfigService.getConfig());
     }
 
     @PutMapping("/system")

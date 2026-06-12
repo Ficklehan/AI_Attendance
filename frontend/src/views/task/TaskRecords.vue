@@ -188,11 +188,13 @@ import {
   buildRecordMarkTags,
   markContains,
   stripSignatureMarksFromSmartMark,
+  withInferredNightShiftMark,
   getDisplaySignature,
   translateSignatureMark,
   getSignatureMarkColor,
 } from '@/utils/recognitionLabels'
 import { calculateWorkHours } from '@/utils/workHours'
+import { isAbsentRow } from '@/utils/recordDisplay'
 import { compareTableValues } from '@/utils/tableSort'
 
 const { t } = useI18n()
@@ -346,9 +348,10 @@ const isHeaderFilterActive = (field) => {
   return isFilterActive(def.filterType, advancedFilters.value[field])
 }
 
-const getDisplayMark = (record) => stripSignatureMarksFromSmartMark(String(record?.smartMark || '').trim())
-
-const isAbsentRow = (record) => markContains(getDisplayMark(record), 'absent')
+const getDisplayMark = (record) => {
+  const raw = stripSignatureMarksFromSmartMark(String(record?.smartMark || record?.SmartMark || '').trim())
+  return withInferredNightShiftMark(raw, record)
+}
 
 const handleHeaderPopoverOpen = (column, open) => {
   const field = column?.searchField

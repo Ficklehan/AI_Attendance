@@ -1,0 +1,96 @@
+{
+  "language": {
+    "title": "Sprache",
+    "select": "Sprache wählen",
+    "zhCN": "简体中文",
+    "enUS": "English",
+    "frFR": "Français",
+    "nlNL": "Nederlands",
+    "csCZ": "Čeština",
+    "plPL": "Polski",
+    "deDE": "Deutsch",
+    "esES": "Español",
+    "itIT": "Italiano"
+  },
+  "recognition": {
+    "marks": {
+      "normal": "Normal",
+      "handwriting": "Handschrift",
+      "blurred": "Unscharf",
+      "nightShift": "Nachtschicht",
+      "absent": "Abwesend",
+      "deleted": "Gelöscht",
+      "signedConfirmed": "Unterschrieben (bestätigt)",
+      "unsignedConfirmed": "Nicht unterschrieben (bestätigt)",
+      "signed": "Unterschrieben"
+    },
+    "missing": {
+      "NO": "Personalnummer nicht erkannt",
+      "Date": "Datum nicht erkannt",
+      "ARRIVEE": "Ankunftszeit nicht erkannt",
+      "DEPAR": "Abfahrtszeit nicht erkannt",
+      "PAUSE": "Pausenzeit nicht erkannt"
+    },
+    "deletedRecord": "Datensatz als gelöscht markiert"
+  },
+  "country": {
+    "default": "Global Standard",
+    "CN": "China",
+    "FR": "Frankreich",
+    "DE": "Deutschland",
+    "US": "Vereinigte Staaten",
+    "PL": "Polen",
+    "NL": "Niederlande",
+    "IT": "Italien",
+    "ES": "Spanien",
+    "CZ": "Tschechien"
+  },
+  "errors": {
+    "loginRequired": "Bitte melden Sie sich zuerst an",
+    "accessDenied": "Zugriff verweigert",
+    "userNotFound": "Benutzer nicht gefunden",
+    "userDisabled": "Benutzerkonto deaktiviert",
+    "userAlreadyExists": "Benutzername existiert bereits",
+    "emailAlreadyExists": "E-Mail wird bereits verwendet",
+    "recognitionConcurrentLimit": "Zu viele Erkennungsaufträge. Bitte später erneut versuchen.",
+    "taskNotFound": "Aufgabe nicht gefunden",
+    "taskStatusCannotConfirm": "Aufgabenstatus erlaubt keine Bestätigung",
+    "taskAccessDenied": "Kein Zugriff auf diese Aufgabe",
+    "fileAccessDenied": "Kein Zugriff auf diese Datei",
+    "noExportData": "Keine exportierbaren Daten",
+    "fileNotFound": "Datei nicht gefunden",
+    "fileNotFoundWithKey": "Datei nicht gefunden: {fileKey}",
+    "imageInvalid": "Ungültige Bilddatei",
+    "invalidFilePath": "Ungültiger Dateipfad",
+    "uploadImageTooSmall": "Bild ungültig oder zu klein ({size} Bytes)",
+    "imagesOnly": "Nur Bilddateien werden unterstützt",
+    "unrecognizedImageFormat": "Unbekanntes Bildformat. JPG oder PNG verwenden",
+    "mimoNotConfigured": "MIMO API Key nicht konfiguriert",
+    "aiPromptNotFound": "Erkennungs-Prompt nicht gefunden",
+    "aiContinuePromptNotFound": "Fortsetzungs-Prompt nicht gefunden",
+    "aiHeaderEcho": "Modell hat Spaltenüberschriften als Daten zurückgegeben",
+    "aiInvalidJson": "Ungültiges JSON vom Modell. Zusammenfassung: {preview}",
+    "aiNoParseableRecords": "Keine analysierbaren JSON-Zeilen. Zusammenfassung: {preview}",
+    "aiFabricated": "Ergebnisse wirken erfunden",
+    "aiUnreadableTimes": "Viele ??? bei Namen, aber Zeiten ausgefüllt",
+    "validationFailed": "Validierung fehlgeschlagen: {detail}",
+    "missingParameter": "Fehlender Parameter: {name}",
+    "fileSizeExceeded": "Datei überschreitet 10 MB",
+    "apiNotFound": "API-Endpunkt nicht gefunden",
+    "methodNotAllowed": "HTTP-Methode nicht erlaubt",
+    "systemError": "Systemfehler, bitte später erneut versuchen",
+    "requestFailed": "Anfrage fehlgeschlagen",
+    "networkError": "Netzwerkfehler, Verbindung prüfen"
+  },
+  "common": {
+    "cancel": "Abbrechen",
+    "save": "Speichern",
+    "loading": "Laden..."
+  },
+  "validation": {
+    "required": "{field} ist erforderlich",
+    "invalidFormat": "{field} Format ist ungültig",
+    "minLength": "{field} muss mindestens {min} Zeichen lang sein",
+    "maxLength": "{field} darf höchstens {max} Zeichen lang sein"
+  }
+}

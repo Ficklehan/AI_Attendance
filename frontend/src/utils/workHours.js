@@ -1,4 +1,4 @@
-import { markContains, stripSignatureMarksFromSmartMark } from '@/utils/recognitionLabels'
+import { isAbsentRow } from '@/utils/recordDisplay'
 
 function pickField(record, ...keys) {
   if (!record) return ''
@@ -61,19 +61,9 @@ export function parseTimeToMinutes(timeStr) {
   return null
 }
 
-function getEffectiveMark(record) {
-  const raw = record?.smartMark ?? record?.SmartMark ?? ''
-  return stripSignatureMarksFromSmartMark(String(raw).trim())
-}
-
-function isAbsentRecord(record) {
-  if (record?.isDeleted) return true
-  return markContains(getEffectiveMark(record), 'absent')
-}
-
 /** 与任务编辑页一致：由到达/离开/休息计算出勤工时（小时，保留两位小数） */
 export function calculateWorkHours(record) {
-  if (isAbsentRecord(record)) {
+  if (record?.isDeleted || isAbsentRow(record)) {
     return '-'
   }
 

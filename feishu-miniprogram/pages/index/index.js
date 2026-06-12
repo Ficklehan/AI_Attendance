@@ -7,6 +7,7 @@ const {
   fetchFirstReviewTask,
   shouldReloadTaskData
 } = require('../../utils/taskSummary')
+const { taskApi } = require('../../utils/api')
 const { t, getLocale, localeToLanguageKey } = require('../../utils/i18n')
 const { runWithCountryGate } = require('../../utils/countryGate')
 const {
@@ -323,9 +324,7 @@ Page({
   },
 
   loadTasks: function () {
-    const token = App.globalData.token ? `Bearer ${App.globalData.token}` : ''
-    const base = App.globalData.baseUrl
-    if (!base || !App.globalData.token) return
+    if (!App.globalData.baseUrl || !App.globalData.token) return
 
     fetchTaskSummary().then((summary) => {
       this._taskSummary = summary
@@ -333,21 +332,17 @@ Page({
       this.setData({ statusSummary: toStatusSummary(summary) }, () => this.refreshTexts())
     })
 
-    tt.request({
-      url: `${base}/tasks`,
-      data: { current: 1, size: 3 },
-      header: { Authorization: token },
-      success: (res) => {
-        if (!isApiSuccess(res.data)) return
-        const page = getApiData(res.data) || {}
+    taskApi.getTaskList({ current: 1, size: 3 })
+      .then((body) => {
+        if (!isApiSuccess(body)) return
+        const page = getApiData(body) || {}
         const recent = mapTaskList(page.records || [])
         this._todayTaskCount = recent.filter((task) => this.isToday(task.createTime)).length
         this.setData({ recentTasks: recent }, () => this.refreshTexts())
-      },
-      fail: (error) => {
+      })
+      .catch((error) => {
         console.error('加载近期任务失败:', error)
-      }
-    })
+      })
   },
 
   isToday: function (time) {

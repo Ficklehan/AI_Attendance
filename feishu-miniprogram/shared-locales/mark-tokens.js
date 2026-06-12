@@ -1,0 +1,13 @@
+/** AUTO-GENERATED from shared/js — run: npm run sync:miniprogram-shared */
+module.exports = {
+  "正常": "recognition.marks.normal",
+  "手写": "recognition.marks.handwriting",
+  "模糊": "recognition.marks.blurred",
+  "夜班": "recognition.marks.nightShift",
+  "未出勤": "recognition.marks.absent",
+  "已删除": "recognition.marks.deleted",
+  "已签字确认": "recognition.marks.signed",
+  "未签字确认": "recognition.marks.unsigned",
+  "已签字": "recognition.marks.signed",
+  "未签字": "recognition.marks.unsigned"
+}

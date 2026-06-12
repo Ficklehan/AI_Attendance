@@ -1,6 +1,6 @@
-const App = getApp()
 const { t } = require('../../utils/i18n')
 const { isApiSuccess, getApiData, getApiMessage } = require('../../utils/response')
+const { apiCall } = require('../../utils/request')
 const { parseRecords } = require('../../utils/task')
 const { isAbsentRow } = require('../../utils/recordDisplay')
 const {
@@ -68,12 +68,8 @@ Page({
 
   loadFromApi: function () {
     tt.showLoading({ title: t('common.loading') })
-    tt.request({
-      url: `${App.globalData.baseUrl}/tasks/${this.data.taskId}`,
-      header: {
-        Authorization: App.globalData.token ? `Bearer ${App.globalData.token}` : ''
-      },
-      success: (res) => {
+    apiCall({ url: `/tasks/${this.data.taskId}` })
+      .then((res) => {
         if (!isApiSuccess(res.data)) {
           tt.showToast({ title: getApiMessage(res.data, t('result.loadFail')), icon: 'none' })
           return
@@ -94,12 +90,14 @@ Page({
           return
         }
         this.initDraft(record)
-      },
-      fail: () => {
+      })
+      .catch(() => {
         tt.showToast({ title: t('common.networkFail'), icon: 'none' })
-      },
-      complete: () => tt.hideLoading()
-    })
+      })
+      .then(
+        () => tt.hideLoading(),
+        () => tt.hideLoading()
+      )
   },
 
   initDraft: function (record) {

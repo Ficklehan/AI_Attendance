@@ -599,53 +599,20 @@ public class LocalUploadController {
     }
 
     @GetMapping("/export/{taskId}/xlsx")
-    public void exportXlsx(@PathVariable String taskId, HttpServletResponse response) {
+    public void exportXlsx(@PathVariable String taskId, HttpServletResponse response) throws IOException {
         java.nio.file.Path tempFile = null;
         try {
-            com.attendance.entity.Task task = taskService.getTaskForCurrentUser(taskId);
-            String data = task.getConfirmedData() != null ? task.getConfirmedData() : task.getRawData();
-
-            if (data == null) {
-                throw new BusinessException(ErrorCode.TASK_NOT_FOUND, ErrorKeys.NO_EXPORT_DATA);
-            }
-
-            JSONArray records = JSON.parseArray(data);
-            tempFile = Files.createTempFile("attendance-export-", ".xlsx");
-            try (ExcelSheetWriter writer = ExcelExportHelper.open(tempFile)) {
-                writer.writeHeader("工号", "国家", "仓库", "日期", "姓名", "中介机构", "班次",
-                        "到达时间", "离开时间", "休息(分钟)", "员工签名", "备注", "标记");
-                for (int i = 0; i < records.size(); i++) {
-                    JSONObject record = records.getJSONObject(i);
-                    writer.writeRow(
-                            ExcelExportHelper.cell(record.getString("NO")),
-                            ExcelExportHelper.cell(record.getString("Pays")),
-                            ExcelExportHelper.cell(record.getString("Entrepot")),
-                            ExcelExportHelper.cell(record.getString("Date")),
-                            ExcelExportHelper.cell(record.getString("NOM_PRENOM")),
-                            ExcelExportHelper.cell(record.getString("AGENCE_INTERIMAIRE")),
-                            ExcelExportHelper.cell(record.getString("HORAIRES_DU_TRAVAIL")),
-                            ExcelExportHelper.cell(record.getString("ARRIVEE")),
-                            ExcelExportHelper.cell(record.getString("DEPAR")),
-                            ExcelExportHelper.cell(record.getInteger("PAUSE")),
-                            ExcelExportHelper.cell(record.getString("SIGNATURE")),
-                            ExcelExportHelper.cell(record.getString("Observations")),
-                            ExcelExportHelper.cell(record.getString("SmartMark")));
-                }
-            }
-
+            tempFile = taskService.createTaskExportTempFile(taskId);
             response.setContentType(ExcelExportHelper.CONTENT_TYPE);
             response.setHeader("Content-Disposition",
                     "attachment;filename=\"attendance_" + taskId + ".xlsx\"");
             Files.copy(tempFile, response.getOutputStream());
-        } catch (BusinessException e) {
-            throw e;
-        } catch (Exception e) {
-            log.error("导出失败", e);
         } finally {
             if (tempFile != null) {
                 try {
                     Files.deleteIfExists(tempFile);
                 } catch (IOException ignored) {
+                    // ignore
                 }
             }
         }

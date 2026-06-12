@@ -31,8 +31,13 @@ jobs:
         run: |
           test -f deploy/rendered/${{ matrix.env }}.env
           test -f deploy/rendered/${{ matrix.env }}.snapshot.json
+          if [ "${{ matrix.env }}" = "production" ]; then
+            test -f feishu-miniprogram/config.runtime.js
+            test -f feishu-miniprogram/config.prod.js
+          fi
           node -e "
             const s = require('./deploy/rendered/${{ matrix.env }}.snapshot.json');
             if (!s.urls.PUBLIC_HOST || !s.urls.FEISHU_REDIRECT_URI) process.exit(1);
-            console.log('OK', s.urls.PUBLIC_BASE_URL);
+            if (!s.runtime || !s.runtime.RUNTIME_MODE) process.exit(1);
+            console.log('OK', s.urls.PUBLIC_BASE_URL, 'mode=', s.runtime.RUNTIME_MODE);
           "

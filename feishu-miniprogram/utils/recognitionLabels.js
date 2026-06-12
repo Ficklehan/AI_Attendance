@@ -1,5 +1,51 @@
 /** 小程序识别结果展示翻译（与 PC recognitionLabels 对齐） */
 
+const markCore = require('../shared-js/recognitionMarkCore')
+const markTokens = require('../shared-locales/mark-tokens')
+const { getNightShiftRules, shouldMarkNightShift } = require('./nightShiftRules')
+
+const {
+  splitSmartMarkParts,
+  isSignatureResultMark,
+  markContains,
+  markHasKind,
+  stripSignatureMarksFromSmartMark,
+} = markCore
+
+function stripNightShiftMarkParts(mark) {
+  return splitSmartMarkParts(mark).filter((part) => !markContains(part, 'nightShift'))
+}
+
+/** 按当前到离/排班重算夜班标记（可增可删，与 PC TaskEdit 一致） */
+function refreshNightShiftInSmartMark(mark, record) {
+  if (!record || record.isDeleted) {
+    return stripNightShiftMarkParts(mark || '').join(';')
+  }
+  const markSources = [mark, record.SmartMark, record.Mark, record.mark, record.smartMark]
+    .filter(Boolean)
+    .join(';')
+  if (markContains(markSources, 'absent') || markContains(markSources, 'deleted')) {
+    return stripNightShiftMarkParts(mark || record.SmartMark || '').join(';')
+  }
+  let parts = stripNightShiftMarkParts(mark || record.SmartMark || record.Mark || '')
+  if (!parts.length) parts = ['正常']
+  if (shouldMarkNightShift(record, getNightShiftRules())) {
+    parts = [...parts, '夜班']
+  }
+  return [...new Set(parts)].join(';')
+}
+
+function refreshRecordNightShiftMark(record) {
+  if (!record || record.isDeleted) return
+  const refreshed = refreshNightShiftInSmartMark(getRawSmartMark(record), record)
+  record.SmartMark = refreshed
+  if (record.Mark != null && record.Mark !== '') {
+    record.Mark = refreshed
+  }
+}
+
+const MARK_TOKEN_KEYS = markTokens
+
 const LEGACY_ANOMALY_KEYS = {
   工号未识别: 'recognition.missing.NO',
   日期未识别: 'recognition.missing.Date',
@@ -13,8 +59,6 @@ const LEGACY_ANOMALY_KEYS = {
   必填字段缺失: 'result.requiredFieldMissingShort'
 }
 
-const SIGNATURE_RESULT_MARKS = { 未签字: true, 已签字: true, 已签字确认: true, 未签字确认: true }
-
 const BLANK_SIGNATURE_TOKENS = {
   'n/a': true, na: true, none: true, null: true,
   员工签名: true, signature: true, signatura: true, firma: true,
@@ -24,28 +68,6 @@ const BLANK_SIGNATURE_TOKENS = {
 const ILLEGIBLE_SIGNATURE_TOKENS = {
   '???': true, '??': true, unknown: true, illegible: true,
   模糊: true, 不清楚: true, borroso: true, wazig: true, rozmazan: true, unscharf: true, flou: true, borrosa: true,
-}
-
-const MARK_TOKEN_KEYS = {
-  正常: 'recognition.marks.normal',
-  手写: 'recognition.marks.handwriting',
-  模糊: 'recognition.marks.blurred',
-  夜班: 'recognition.marks.nightShift',
-  未出勤: 'recognition.marks.absent',
-  已删除: 'recognition.marks.deleted',
-  已签字确认: 'recognition.marks.signed',
-  未签字确认: 'recognition.marks.unsigned',
-  已签字: 'recognition.marks.signed',
-  未签字: 'recognition.marks.unsigned',
-}
-
-const MARK_DETECT = {
-  absent: ['未出勤', 'absent', 'ausente', 'abwesend', 'afwezig', 'nieobecny'],
-  blurred: ['模糊', 'blur', 'borroso', 'unscharf', 'wazig', 'rozmazan'],
-  handwriting: ['手写', 'handwritten', 'manuscrit', 'manuscrito', 'handschrift'],
-  nightShift: ['夜班', 'night', 'noche', 'nuit', 'notte', 'nacht', 'noc'],
-  deleted: ['已删除', 'deleted', 'eliminado', 'supprimé', 'gelöscht'],
-  normal: ['正常', 'normal', 'normale', 'normaal']
 }
 
 function translateAnomalyReason(reason, t) {
@@ -63,15 +85,6 @@ function translateAnomalyReason(reason, t) {
   const dupMatch = text.match(/^重名疑似[：:]\s*(.+)$/)
   if (dupMatch) return t('result.duplicateSuspect', { names: dupMatch[1] })
   return text
-}
-
-function splitSmartMarkParts(mark) {
-  if (mark == null || mark === '' || mark === '-') return []
-  return [...new Set(String(mark).split(/[;；,，]/).map((p) => p.trim()).filter(Boolean))]
-}
-
-function isSignatureResultMark(value) {
-  return !!SIGNATURE_RESULT_MARKS[String(value || '').trim()]
 }
 
 function isSignatureHeaderEcho(value) {
@@ -162,11 +175,6 @@ function getDisplaySignature(signature, record) {
   return normalizeLegacySignature(signature, false)
 }
 
-function stripSignatureMarksFromSmartMark(mark) {
-  const parts = splitSmartMarkParts(mark).filter((part) => !isSignatureResultMark(part))
-  return parts.length ? parts.join(';') : ''
-}
-
 function translateSignatureMark(value, t) {
   const text = String(value || '').trim()
   if (!text) return '-'
@@ -196,17 +204,6 @@ function translateSmartMark(mark, t) {
   const parts = splitSmartMarkParts(mark)
   if (!parts.length) return '-'
   return [...new Set(parts.map((part) => translateSmartMarkPart(part, t)))].join('; ')
-}
-
-function markContains(mark, kind) {
-  if (!mark) return false
-  const text = String(mark).toLowerCase()
-  const patterns = MARK_DETECT[kind] || []
-  return patterns.some((p) => text.includes(p.toLowerCase()))
-}
-
-function markHasKind(mark, kind) {
-  return splitSmartMarkParts(mark).some((part) => markContains(part, kind))
 }
 
 function getRawSmartMark(record) {
@@ -267,6 +264,8 @@ module.exports = {
   getDisplaySignature,
   markHasKind,
   getRawSmartMark,
+  refreshNightShiftInSmartMark,
+  refreshRecordNightShiftMark,
   calculateRecordStats,
   stripSignatureMarksFromSmartMark,
   translateSignatureMark,

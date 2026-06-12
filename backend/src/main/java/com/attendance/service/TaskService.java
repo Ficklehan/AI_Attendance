@@ -21,7 +21,9 @@ import com.attendance.util.ExcelExportHelper.ExcelSheetWriter;
 import com.attendance.mapper.UserMapper;
 import com.attendance.security.TaskAccessService;
 import com.attendance.util.RecognizedFieldSanitizer;
+import com.attendance.util.RecordJsonSupport;
 import com.attendance.util.RecordNoGenerator;
+import com.attendance.util.SmartMarkNightShiftRefresher;
 import com.attendance.storage.FileStorage;
 import com.attendance.util.UploadPathSecurity;
 import com.alibaba.fastjson.JSON;
@@ -88,6 +90,9 @@ public class TaskService {
 
     @Autowired
     private UserNotificationService userNotificationService;
+
+    @Autowired
+    private NightShiftConfigService nightShiftConfigService;
 
     private static final String[] CALIBRATABLE_FIELDS = {
             "NO", "Pays", "Entrepot", "NOM_PRENOM", "AGENCE_INTERIMAIRE", "HORAIRES_DU_TRAVAIL",
@@ -390,6 +395,7 @@ public class TaskService {
         if (data != null) {
             for (Map<String, Object> record : data) {
                 RecognizedFieldSanitizer.sanitizeRecordPlaceholders(record);
+                refreshNightShiftSmartMark(record);
             }
         }
         confirmValidationService.validateConfirmRecords(data);
@@ -708,6 +714,7 @@ public class TaskService {
         history.add(entry);
         record.put("_calibrationHistory", history);
         record.put("_manualCalibrated", true);
+        refreshNightShiftSmartMark(record);
 
         String json = records.toJSONString();
         taskMapper.updateTaskRecordPayload(taskId, json, json);
@@ -729,10 +736,10 @@ public class TaskService {
 
     private JSONArray parseTaskRecordsArray(Task task) {
         String payload = task.getConfirmedData();
-        if (isBlank(payload)) {
+        if (RecordJsonSupport.isBlank(payload)) {
             payload = task.getRawData();
         }
-        if (isBlank(payload)) {
+        if (RecordJsonSupport.isBlank(payload)) {
             throw new BusinessException(ErrorCode.TASK_STATUS_ERROR, ErrorKeys.CONFIRMED_DATA_EMPTY);
         }
         try {
@@ -844,7 +851,7 @@ public class TaskService {
 
     private List<Map<String, String>> parseFilters(String searchField, String keyword, String filters) {
         List<Map<String, String>> list = new ArrayList<>();
-        if (!isBlank(filters)) {
+        if (!RecordJsonSupport.isBlank(filters)) {
             try {
                 JSONArray arr = JSON.parseArray(filters);
                 if (arr != null) {
@@ -854,11 +861,11 @@ public class TaskService {
                         String field = item.getString("field");
                         String value = item.getString("keyword");
                         String filterType = item.getString("filterType");
-                        if (isBlank(value)) continue;
+                        if (RecordJsonSupport.isBlank(value)) continue;
                         Map<String, String> one = new HashMap<>();
                         one.put("field", field == null ? "" : field.trim());
                         one.put("keyword", value.trim());
-                        if (!isBlank(filterType)) {
+                        if (!RecordJsonSupport.isBlank(filterType)) {
                             one.put("filterType", filterType.trim());
                         }
                         list.add(one);
@@ -868,7 +875,7 @@ public class TaskService {
                 log.warn("解析 filters 失败，退化为单条件", e);
             }
         }
-        if (list.isEmpty() && !isBlank(keyword)) {
+        if (list.isEmpty() && !RecordJsonSupport.isBlank(keyword)) {
             Map<String, String> one = new HashMap<>();
             one.put("field", searchField == null ? "" : searchField.trim());
             one.put("keyword", keyword.trim());
@@ -905,6 +912,70 @@ public class TaskService {
             }
         }
         return count;
+    }
+
+    private static final String[] TASK_JSON_EXPORT_HEADERS = {
+            "工号", "国家", "仓库", "日期", "姓名", "中介机构", "班次",
+            "到达时间", "离开时间", "休息(分钟)", "员工签名", "备注", "标记"
+    };
+
+    /**
+     * 单任务导出：从 tasks.confirmed_data / raw_data JSON 写入 Excel（任务编辑页下载）
+     */
+    public void writeTaskJsonRecordsToExcel(Task task, ExcelSheetWriter writer) throws IOException {
+        if (task == null) {
+            throw new BusinessException(ErrorCode.TASK_NOT_FOUND, ErrorKeys.TASK_NOT_FOUND);
+        }
+        String data = task.getConfirmedData() != null ? task.getConfirmedData() : task.getRawData();
+        if (data == null || data.trim().isEmpty()) {
+            throw new BusinessException(ErrorCode.TASK_NOT_FOUND, ErrorKeys.NO_EXPORT_DATA);
+        }
+        JSONArray records = JSON.parseArray(data);
+        writer.writeHeader(TASK_JSON_EXPORT_HEADERS);
+        if (records != null) {
+            for (int i = 0; i < records.size(); i++) {
+                JSONObject record = records.getJSONObject(i);
+                if (record == null) {
+                    continue;
+                }
+                writer.writeRow(
+                        ExcelExportHelper.cell(record.getString("NO")),
+                        ExcelExportHelper.cell(record.getString("Pays")),
+                        ExcelExportHelper.cell(record.getString("Entrepot")),
+                        ExcelExportHelper.cell(record.getString("Date")),
+                        ExcelExportHelper.cell(record.getString("NOM_PRENOM")),
+                        ExcelExportHelper.cell(record.getString("AGENCE_INTERIMAIRE")),
+                        ExcelExportHelper.cell(record.getString("HORAIRES_DU_TRAVAIL")),
+                        ExcelExportHelper.cell(record.getString("ARRIVEE")),
+                        ExcelExportHelper.cell(record.getString("DEPAR")),
+                        ExcelExportHelper.cell(record.getInteger("PAUSE")),
+                        ExcelExportHelper.cell(record.getString("SIGNATURE")),
+                        ExcelExportHelper.cell(record.getString("Observations")),
+                        ExcelExportHelper.cell(record.getString("SmartMark")));
+            }
+        }
+    }
+
+    public Path createTaskExportTempFile(String taskId) throws IOException {
+        Task task = getTaskForCurrentUser(taskId);
+        Path tempFile = Files.createTempFile("attendance-export-", ".xlsx");
+        try (ExcelSheetWriter writer = ExcelExportHelper.open(tempFile)) {
+            writeTaskJsonRecordsToExcel(task, writer);
+        } catch (Exception e) {
+            try {
+                Files.deleteIfExists(tempFile);
+            } catch (IOException ignored) {
+                // ignore cleanup failure
+            }
+            if (e instanceof IOException) {
+                throw (IOException) e;
+            }
+            if (e instanceof BusinessException) {
+                throw (BusinessException) e;
+            }
+            throw new BusinessException(ErrorCode.FILE_UPLOAD_ERROR, ErrorKeys.SYSTEM_ERROR);
+        }
+        return tempFile;
     }
 
     public long exportEmployeeRecordsToExcel(DataScopeContext scope, String status, String keyword, String searchField,
@@ -975,13 +1046,13 @@ public class TaskService {
         List<String> baseNames = new ArrayList<>();
         for (Map<String, Object> current : currentRecords) {
             Map<String, Object> normalized = toComparableRow(current, taskId);
-            if (!isBlank((String) normalized.get("dateKey"))) {
+            if (!RecordJsonSupport.isBlank((String) normalized.get("dateKey"))) {
                 String d = (String) normalized.get("dateKey");
                 if (!workDates.contains(d)) {
                     workDates.add(d);
                 }
             }
-            if (!isBlank((String) normalized.get("baseName"))) {
+            if (!RecordJsonSupport.isBlank((String) normalized.get("baseName"))) {
                 String b = (String) normalized.get("baseName");
                 if (!baseNames.contains(b)) {
                     baseNames.add(b);
@@ -1024,7 +1095,7 @@ public class TaskService {
     private static Map<String, Object> toComparableRow(Map<String, Object> row, String sourceTaskId) {
         Map<String, Object> m = new HashMap<>();
         String name = pick(row, "NOM_PRENOM", "NOM", "NAME");
-        String baseName = stripSerialSuffix(name);
+        String baseName = RecordJsonSupport.stripSerialSuffix(name);
         String pays = pick(row, "Pays", "Country", "PAYS");
         String entrepot = pick(row, "Entrepot", "Entrepôt", "Warehouse");
         String date = pick(row, "Date", "DATE");
@@ -1041,17 +1112,18 @@ public class TaskService {
         m.put("Observations", pick(row, "Observations", "OBSERVATIONS", "Remarks"));
         m.put("AGENCE_INTERIMAIRE", agency);
         m.put("NOM_PRENOM", name);
-        m.put("baseName", upper(baseName));
-        m.put("paysKey", upper(pays));
-        m.put("entrepotKey", upper(entrepot));
+        m.put("baseName", RecordJsonSupport.upper(baseName));
+        m.put("paysKey", RecordJsonSupport.upper(pays));
+        m.put("entrepotKey", RecordJsonSupport.upper(entrepot));
         m.put("dateKey", date);
-        m.put("agencyKey", upper(agency));
+        m.put("agencyKey", RecordJsonSupport.upper(agency));
         m.put("sourceTaskId", sourceTaskId);
         return m;
     }
 
     private static boolean isDuplicateComparable(Map<String, Object> row) {
-        return !isBlank((String) row.get("Date")) && !isBlank((String) row.get("baseName"));
+        return !RecordJsonSupport.isBlank((String) row.get("Date"))
+                && !RecordJsonSupport.isBlank((String) row.get("baseName"));
     }
 
     private static boolean isSameDuplicateGroup(Map<String, Object> a, Map<String, Object> b) {
@@ -1084,16 +1156,30 @@ public class TaskService {
         return "";
     }
 
-    private static String upper(String v) {
-        return v == null ? "" : v.toUpperCase();
+    private void refreshNightShiftSmartMark(Map<String, Object> record) {
+        if (record == null) {
+            return;
+        }
+        JSONObject json = new JSONObject(record);
+        String refreshed = SmartMarkNightShiftRefresher.refresh(
+                pickSmartMark(record), json, nightShiftConfigService.getConfig());
+        record.put("SmartMark", refreshed);
     }
 
-    private static boolean isBlank(String v) {
-        return v == null || v.trim().isEmpty();
+    private void refreshNightShiftSmartMark(JSONObject record) {
+        if (record == null) {
+            return;
+        }
+        String refreshed = SmartMarkNightShiftRefresher.refresh(
+                RecordJsonSupport.pickJson(record, "SmartMark", "Mark", "smartMark", "标记"),
+                record,
+                nightShiftConfigService.getConfig());
+        record.put("SmartMark", refreshed);
     }
 
-    private static String stripSerialSuffix(String name) {
-        if (name == null) return "";
-        return name.trim().replaceAll("\\s\\d{2}$", "").trim();
+    private static String pickSmartMark(Map<String, Object> record) {
+        String mark = pick(record, "SmartMark", "smartMark", "Mark", "mark", "标记");
+        return mark.isEmpty() ? "正常" : mark;
     }
+
 }

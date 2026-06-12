@@ -1,6 +1,7 @@
 import { defineConfig } from 'vite'
 import vue from '@vitejs/plugin-vue'
 import path from 'path'
+import { vitePluginSharedCjs } from './vite-plugin-shared-cjs.mjs'
 
 const API_BASE_PATH = '/attendance/api'
 const API_DEV_SERVER_ORIGIN = 'http://localhost:8080'
@@ -26,13 +27,16 @@ function redirectAttendanceRoot() {
   }
 }
 
+const sharedJsDir = path.resolve(__dirname, '../shared/js')
+
 export default defineConfig({
-  plugins: [vue(), redirectAttendanceRoot()],
-  
+  plugins: [vitePluginSharedCjs(sharedJsDir), vue(), redirectAttendanceRoot()],
+
   resolve: {
     alias: {
       '@': path.resolve(__dirname, 'src'),
       '~': path.resolve(__dirname, 'src'),
+      '@shared': path.resolve(__dirname, '../shared/js'),
     },
   },
   
@@ -40,6 +44,9 @@ export default defineConfig({
     port: 5175,
     strictPort: true,
     host: '0.0.0.0',
+    fs: {
+      allow: [path.resolve(__dirname, '..')],
+    },
     proxy: {
       [API_BASE_PATH]: {
         target: API_DEV_SERVER_ORIGIN,
@@ -64,6 +71,9 @@ export default defineConfig({
     assetsDir: 'assets',
     sourcemap: false,
     chunkSizeWarningLimit: 1500,
+    commonjsOptions: {
+      include: [/shared\/js/, /node_modules/],
+    },
   },
   
   css: {

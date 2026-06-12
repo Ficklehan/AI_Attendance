@@ -74,10 +74,22 @@ function saveCountry(code, options = {}) {
     })
 }
 
+function getLocale() {
+  const app = getAppSafe()
+  if (app && app.globalData && app.globalData.locale) {
+    return app.globalData.locale
+  }
+  return tt.getStorageSync(STORAGE_LOCALE) || 'zh-CN'
+}
+
 function saveLocale(locale) {
   const { setLocale } = require('./i18n')
   setLocale(locale)
   tt.setStorageSync(STORAGE_LOCALE, locale)
+  const app = getAppSafe()
+  if (app && app.globalData) {
+    app.globalData.locale = locale
+  }
 }
 
 function loadPreferences(app) {
@@ -120,6 +132,7 @@ module.exports = {
   STORAGE_COUNTRY_CONFIGURED,
   STORAGE_LOCALE,
   getCountry,
+  getLocale,
   isCountryConfigured,
   getCountryLabel,
   saveCountry,

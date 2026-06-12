@@ -37,6 +37,54 @@ public class FeishuService {
     /**
      * 小程序 code2session：tt.login 的 code 换用户凭证（官方 mina/v2/tokenLoginValidate）
      */
+    /**
+     * PC Web OAuth：授权码换用户 access_token（authen/v1/access_token）
+     */
+    public String exchangeWebOAuthCode(String code) throws IOException {
+        JSONObject body = new JSONObject();
+        body.put("app_id", feishuProperties.getAppId());
+        body.put("app_secret", feishuProperties.getAppSecret());
+        body.put("code", code);
+        body.put("grant_type", "authorization_code");
+
+        Request request = new Request.Builder()
+                .url("https://open.feishu.cn/open-apis/authen/v1/access_token")
+                .header("Content-Type", "application/json")
+                .post(RequestBody.create(body.toJSONString(), MediaType.parse("application/json")))
+                .build();
+
+        Response response = httpClient.newCall(request).execute();
+        String responseBody = response.body() != null ? response.body().string() : "";
+        if (!response.isSuccessful()) {
+            throw new RuntimeException("获取飞书 access_token 失败: HTTP " + response.code());
+        }
+
+        JSONObject result = JSON.parseObject(responseBody);
+        assertFeishuApiSuccess(result, "获取用户 access_token");
+        return result.getJSONObject("data").getString("access_token");
+    }
+
+    /**
+     * 使用用户 access_token 拉取 authen 用户信息（Web / 小程序共用）
+     */
+    public JSONObject fetchAuthenUserInfo(String userAccessToken) throws IOException {
+        Request request = new Request.Builder()
+                .url("https://open.feishu.cn/open-apis/authen/v1/user_info")
+                .header("Authorization", "Bearer " + userAccessToken)
+                .get()
+                .build();
+
+        Response response = httpClient.newCall(request).execute();
+        String responseBody = response.body() != null ? response.body().string() : "";
+        if (!response.isSuccessful()) {
+            throw new RuntimeException("获取飞书用户信息失败: HTTP " + response.code());
+        }
+
+        JSONObject result = JSON.parseObject(responseBody);
+        assertFeishuApiSuccess(result, "获取用户信息");
+        return result.getJSONObject("data");
+    }
+
     public JSONObject exchangeMiniprogramLoginCode(String code) throws IOException {
         String appToken = getAppAccessToken();
 

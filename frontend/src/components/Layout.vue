@@ -354,6 +354,10 @@ onMounted(async () => {
 })
 
 onUnmounted(() => {
+  countryPopoverVisible.value = false
+  langPopoverVisible.value = false
+  notificationDrawerOpen.value = false
+  exportDrawerOpen.value = false
   stopSummaryPolling()
   if (unreadPollTimer) {
     clearInterval(unreadPollTimer)

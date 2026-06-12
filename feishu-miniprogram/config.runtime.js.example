@@ -1,0 +1,8 @@
+/**
+ * 示例：由 scripts/render-deploy-config.mjs 根据 production.yaml 生成 config.runtime.js
+ */
+module.exports = {
+  RUNTIME_MODE: 'local',
+  USE_PUBLIC_API: false,
+  LOCAL_BASE_URL: 'http://localhost:8080/attendance/api',
+}

@@ -57,30 +57,9 @@
                     AND 1=0
                 </when>
                 <otherwise>
-                    AND (
-                        1=1
-                        <if test="scope.ownerUserIds != null and scope.ownerUserIds.size() > 0">
-                            AND tr.user_id IN
-                            <foreach collection="scope.ownerUserIds" item="uid" open="(" separator="," close=")">
-                                #{uid}
-                            </foreach>
-                        </if>
-                        <if test="scope.countries != null and scope.countries.size() > 0">
-                            AND tr.country_key IN
-                            <foreach collection="scope.countries" item="cv" open="(" separator="," close=")">#{cv}</foreach>
-                        </if>
-                        <if test="scope.warehouses != null and scope.warehouses.size() > 0">
-                            AND tr.warehouse_key IN
-                            <foreach collection="scope.warehouses" item="wv" open="(" separator="," close=")">#{wv}</foreach>
-                        </if>
-                        <if test="scope.agencies != null and scope.agencies.size() > 0">
-                            AND tr.agency_key IN
-                            <foreach collection="scope.agencies" item="av" open="(" separator="," close=")">#{av}</foreach>
-                        </if>
-                        <if test="scope.viewerUserId != null and scope.viewerUserId != ''">
-                            OR tr.user_id = #{scope.viewerUserId}
-                        </if>
-                    )
+                    <include refid="com.attendance.mapper.ScopeFragments.RecordRowScopeGroup">
+                        <property name="tableAlias" value="tr"/>
+                    </include>
                 </otherwise>
             </choose>
         </if>
@@ -314,12 +293,16 @@
         </if>
     </delete>
 
-    <select id="selectRecordPage" resultMap="TaskRecordMap">
+    <sql id="RecordPagedSelect">
         SELECT <include refid="RecordSelectColumns"/>
         <include refid="RecordFromJoin"/>
         <include refid="RecordScopeWhere"/>
         <include refid="RecordSearchConditions"/>
         ORDER BY tr.task_created_at DESC, tr.record_index ASC
+    </sql>
+
+    <select id="selectRecordPage" resultMap="TaskRecordMap">
+        <include refid="RecordPagedSelect"/>
         LIMIT #{offset}, #{size}
     </select>
 
@@ -331,11 +314,7 @@
     </select>
 
     <select id="selectForExport" resultMap="TaskRecordMap">
-        SELECT <include refid="RecordSelectColumns"/>
-        <include refid="RecordFromJoin"/>
-        <include refid="RecordScopeWhere"/>
-        <include refid="RecordSearchConditions"/>
-        ORDER BY tr.task_created_at DESC, tr.record_index ASC
+        <include refid="RecordPagedSelect"/>
         LIMIT #{offset}, #{size}
     </select>
 

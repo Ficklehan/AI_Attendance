@@ -9,6 +9,12 @@
     "render:deploy:check": "node scripts/render-deploy-config.mjs --env production --check",
     "start:dev": "bash scripts/use-local-dev.sh",
     "start:prod": "bash scripts/start-backend-prod.sh",
-    "restart:prod": "bash scripts/restart-backend-prod.sh"
+    "restart:prod": "bash scripts/restart-backend-prod.sh",
+    "apply:site": "bash scripts/apply-site-config.sh",
+    "build:locales": "node scripts/build-locales.mjs",
+    "sync:miniprogram-shared": "node scripts/sync-miniprogram-shared.mjs",
+    "check:locale": "cd frontend && npm run check:locale",
+    "check:locale:common": "cd frontend && npm run check:locale:common",
+    "check:locale:generated": "node scripts/check-locale-generated.mjs"
   }
 }

@@ -1,5 +1,6 @@
 const { isApiSuccess, getApiData } = require('./response')
 const { mapTaskListItem } = require('./task')
+const { apiCall } = require('./request')
 
 const EMPTY_SUMMARY = {
   processing: 0,
@@ -37,26 +38,18 @@ function toStatusSummary(summary) {
 }
 
 function fetchTaskSummary() {
-  const app = getApp()
-  const base = app.globalData.baseUrl
-  const token = app.globalData.token
-  if (!base || !token) {
+  const { getAuthToken } = require('./request')
+  if (!getAuthToken()) {
     return Promise.resolve({ ...EMPTY_SUMMARY })
   }
-  return new Promise((resolve) => {
-    tt.request({
-      url: `${base}/tasks/summary`,
-      header: { Authorization: `Bearer ${token}` },
-      success: (res) => {
-        if (!isApiSuccess(res.data)) {
-          resolve({ ...EMPTY_SUMMARY })
-          return
-        }
-        resolve(normalizeSummary(getApiData(res.data)))
-      },
-      fail: () => resolve({ ...EMPTY_SUMMARY })
+  return apiCall({ url: '/tasks/summary' })
+    .then((res) => {
+      if (!isApiSuccess(res.data)) {
+        return { ...EMPTY_SUMMARY }
+      }
+      return normalizeSummary(getApiData(res.data))
     })
-  })
+    .catch(() => ({ ...EMPTY_SUMMARY }))
 }
 
 function markTaskDataDirty() {
@@ -83,30 +76,23 @@ function shouldReloadTaskData(pageInstance) {
 }
 
 function fetchFirstReviewTask() {
-  const app = getApp()
-  const base = app.globalData.baseUrl
-  const token = app.globalData.token
-  if (!base || !token) {
+  const { getAuthToken } = require('./request')
+  if (!getAuthToken()) {
     return Promise.resolve(null)
   }
-  return new Promise((resolve) => {
-    tt.request({
-      url: `${base}/tasks`,
-      data: { current: 1, size: 1, status: 'processed' },
-      header: { Authorization: `Bearer ${token}` },
-      success: (res) => {
-        if (!isApiSuccess(res.data)) {
-          resolve(null)
-          return
-        }
-        const page = getApiData(res.data) || {}
-        const records = page.records || []
-        const first = records.length > 0 ? mapTaskListItem(records[0]) : null
-        resolve(first)
-      },
-      fail: () => resolve(null)
-    })
+  return apiCall({
+    url: '/tasks',
+    data: { current: 1, size: 1, status: 'processed' }
   })
+    .then((res) => {
+      if (!isApiSuccess(res.data)) {
+        return null
+      }
+      const page = getApiData(res.data) || {}
+      const records = page.records || []
+      return records.length > 0 ? mapTaskListItem(records[0]) : null
+    })
+    .catch(() => null)
 }
 
 function tabCountFromSummary(tab, summary) {

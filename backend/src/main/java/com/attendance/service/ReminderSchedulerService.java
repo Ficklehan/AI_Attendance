@@ -151,15 +151,7 @@ public class ReminderSchedulerService {
             }
         }
 
-        Map<String, String> operatorLocales = ReminderLocaleSupport.parseTemplateMap(rule.getMessageTemplateLocalesJson());
-        Map<String, String> supervisorLocales = ReminderLocaleSupport.parseTemplateMap(
-                rule.getMessageTemplateSupervisorLocalesJson());
-        if (operatorLocales.isEmpty() && rule.getMessageTemplate() != null) {
-            operatorLocales.put(ReminderLocaleSupport.DEFAULT_LOCALE, rule.getMessageTemplate());
-        }
-        if (supervisorLocales.isEmpty() && rule.getMessageTemplateSupervisor() != null) {
-            supervisorLocales.put(ReminderLocaleSupport.DEFAULT_LOCALE, rule.getMessageTemplateSupervisor());
-        }
+        ReminderMessageBuilder.LocaleTemplates localeTemplates = ReminderMessageBuilder.resolveLocaleTemplates(rule);
 
         for (Map.Entry<String, Map<String, List<Task>>> entry : userTaskAgg.entrySet()) {
             String recipientId = entry.getKey();
@@ -186,27 +178,22 @@ public class ReminderSchedulerService {
                 boolean recipientIsOperator = userTasks.stream()
                         .allMatch(t -> recipientId.equals(t.getUserId()));
                 List<String> creatorNameList = collectCreatorNames(userTasks, userCache);
-                String creatorNames = joinCreatorNames(creatorNameList, locale);
-                Map<String, String> vars = ReminderSupport.baseVars(
+                String creatorNames = ReminderMessageBuilder.joinCreatorNames(creatorNameList, locale);
+                String template = ReminderMessageBuilder.pickTemplate(
+                        localeTemplates, rule, locale, recipientIsOperator);
+                String body = ReminderMessageBuilder.renderBody(
                         userTasks.size(),
                         rule.getIntervalValue(),
                         rule.getIntervalUnit(),
                         statusLabel,
                         latest.getTaskId(),
                         latestTime,
-                        displayName(recipient),
-                        creator != null ? displayName(creator) : "",
+                        ReminderMessageBuilder.displayName(recipient),
+                        creator != null ? ReminderMessageBuilder.displayName(creator) : "",
                         creatorNames,
+                        template,
                         locale);
-                String template = ReminderLocaleSupport.pickLocalizedTemplate(
-                        operatorLocales,
-                        supervisorLocales,
-                        rule.getMessageTemplate(),
-                        rule.getMessageTemplateSupervisor(),
-                        locale,
-                        recipientIsOperator);
-                String body = ReminderSupport.renderTemplate(template, vars);
-                String title = ReminderLocaleSupport.notificationTitlePrefix(locale) + rule.getName();
+                String title = ReminderMessageBuilder.notificationTitle(rule, locale);
                 String siteLink = ReminderSupport.buildPcTaskLink(
                         feishuProperties.getFrontendLoginUrl(), latest.getTaskId());
                 String feishuLink = ReminderSupport.buildMiniprogramTaskApplink(
@@ -217,8 +204,8 @@ public class ReminderSchedulerService {
                         statusLabel,
                         latest,
                         latestTime,
-                        displayName(recipient),
-                        creator != null ? displayName(creator) : "",
+                        ReminderMessageBuilder.displayName(recipient),
+                        creator != null ? ReminderMessageBuilder.displayName(creator) : "",
                         creatorNameList,
                         recipientIsOperator);
                 SiteNotificationReplaceResult replaced = userNotificationService.replaceSiteNotification(
@@ -356,29 +343,15 @@ public class ReminderSchedulerService {
         return cache.computeIfAbsent(userId, id -> userMapper.selectUserById(id));
     }
 
-    private static String displayName(User user) {
-        if (user.getRealName() != null && !user.getRealName().trim().isEmpty()) {
-            return user.getRealName().trim();
-        }
-        return user.getUsername();
-    }
-
     private List<String> collectCreatorNames(List<Task> tasks, Map<String, User> userCache) {
         LinkedHashSet<String> names = new LinkedHashSet<>();
         for (Task task : tasks) {
             User creator = getUser(task.getUserId(), userCache);
             if (creator != null) {
-                names.add(displayName(creator));
+                names.add(ReminderMessageBuilder.displayName(creator));
             }
         }
         return new ArrayList<>(names);
-    }
-
-    private static String joinCreatorNames(List<String> names, String locale) {
-        if (names == null || names.isEmpty()) {
-            return "-";
-        }
-        return String.join(ReminderLocaleSupport.nameSeparator(locale), names);
     }
 
     private static NotificationContentVars buildContentVars(int pendingCount,

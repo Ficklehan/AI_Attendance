@@ -74,7 +74,7 @@ flowchart TB
 | `DB_HOST` / `DB_PORT` / `DB_NAME` / `DB_USER` / `DB_PASSWORD` | MySQL 连接 |
 | `JWT_SECRET` | JWT 签名（生产必须修改） |
 | `FEISHU_APP_ID` / `FEISHU_APP_SECRET` | 飞书应用 |
-| **公网域名 / 飞书回调 / CORS** | **`deploy/environments/production.yaml`** → `node scripts/render-deploy-config.mjs` → `deploy/rendered/*.env` | [deploy/README.md](../deploy/README.md) |
+| **公网域名 / 环境模式 / 飞书回调** | **`deploy/environments/production.yaml`** → `./start.sh apply` → `deploy/rendered/*.env` + 小程序 `config.*.js` | [运维手册 §5.2](运维手册.md#52-域名与环境地址切换统一入口) |
 | `FEISHU_REDIRECT_URI` 等（本地 dev） | OAuth 回调，默认 `http://localhost:8080/attendance/api/feishu-auth/callback` |
 | `MIMO_API_KEY` / `MIMO_MODEL` | 识图 API |
 | `BITABLE_APP_TOKEN` / `BITABLE_TABLE_ID` | 可选全局默认（多国以 `feishu.md` 为准） |
@@ -126,17 +126,9 @@ flowchart TB
 3. 配置 `backend/.env`（参考 `backend/.env.example`）。
 4. 按需编辑 `base-config/feishu.md`、`permissions.json`。
 5. 启动：`./start.sh all` 或 `start.bat`（Windows）。
-6. 小程序：`feishu-miniprogram/config.js` → `USE_PUBLIC_API=false`。
-7. 使用 `admin` / `admin123` 登录（**仅 dev**）。
+6. 使用 `admin` / `admin123` 登录（**仅 dev**）。
 
-**公网 / 生产 / 手机测试**
-
-1. 编辑 `deploy/environments/production.yaml` 的 `public.host`（唯一域名来源）。
-2. `npm run render:deploy:all` 或 `./start.sh render-deploy`。
-3. 服务器：`source deploy/rendered/production.env` + secrets（见 [deploy/README.md](../deploy/README.md)）。
-4. 启动后端：`SPRING_PROFILES_ACTIVE=prod`（或 `uat`）。
-5. 飞书开放平台配置重定向 URL 与 request 合法域名（与 rendered env 一致）。
-6. 小程序：`USE_PUBLIC_API=true`，上传飞书开发者工具。
+**公网 / 生产 / 手机测试、域名与环境切换** → [运维手册 §5.2](运维手册.md#52-域名与环境地址切换统一入口)（唯一说明）。
 
 ### 3.2 应用启动自举（Java）
 

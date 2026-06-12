@@ -227,9 +227,6 @@ public class PermissionService {
     }
 
     private static String normalizeRole(String role) {
-        if (role == null || role.trim().isEmpty()) {
-            return "user";
-        }
-        return role.trim().toLowerCase();
+        return SystemRoleService.normalizeRoleKey(role);
     }
 }

@@ -1,0 +1,99 @@
+{
+  "language": {
+    "title": "Language",
+    "select": "Select Language",
+    "zhCN": "简体中文",
+    "enUS": "English",
+    "frFR": "Français",
+    "nlNL": "Nederlands",
+    "csCZ": "Čeština",
+    "plPL": "Polski",
+    "deDE": "Deutsch",
+    "esES": "Español",
+    "itIT": "Italiano"
+  },
+  "recognition": {
+    "marks": {
+      "normal": "Normal",
+      "handwriting": "Handwritten",
+      "blurred": "Blurry",
+      "nightShift": "Night shift",
+      "absent": "Absent",
+      "deleted": "Deleted",
+      "unsigned": "Unsigned",
+      "signedConfirmed": "Signed (confirmed)",
+      "unsignedConfirmed": "Unsigned (confirmed)",
+      "signed": "Signed"
+    },
+    "missing": {
+      "NO": "Worker ID not recognized",
+      "Date": "Date not recognized",
+      "ARRIVEE": "Arrival time not recognized",
+      "DEPAR": "Departure time not recognized",
+      "PAUSE": "Break time not recognized"
+    },
+    "deletedRecord": "Record marked as deleted"
+  },
+  "country": {
+    "default": "Global default",
+    "CN": "China",
+    "FR": "France",
+    "DE": "Germany",
+    "US": "United States",
+    "PL": "Poland",
+    "NL": "Netherlands",
+    "IT": "Italy",
+    "ES": "Spain",
+    "CZ": "Czech Republic"
+  },
+  "errors": {
+    "loginRequired": "Please login first",
+    "accessDenied": "Permission denied",
+    "userNotFound": "User not found",
+    "userDisabled": "User account is disabled",
+    "userAlreadyExists": "Username already exists",
+    "emailAlreadyExists": "Email is already in use",
+    "recognitionConcurrentLimit": "Too many recognition jobs in progress. Please try again shortly.",
+    "taskNotFound": "Task not found",
+    "taskStatusCannotConfirm": "Task status does not allow confirmation",
+    "confirmRequiredFieldsMissing": "Some records are missing required fields (including name). Please complete them before submitting.",
+    "taskAccessDenied": "You do not have access to this task",
+    "fileAccessDenied": "You do not have access to this file",
+    "noExportData": "No data available to export",
+    "fileNotFound": "File not found",
+    "fileNotFoundWithKey": "File not found: {fileKey}",
+    "imageInvalid": "Invalid image file",
+    "invalidFilePath": "Invalid file path",
+    "uploadImageTooSmall": "Uploaded image is invalid or too small ({size} bytes). Please retake or choose a clearer photo",
+    "imagesOnly": "Only image or PDF files are supported",
+    "unrecognizedImageFormat": "Unrecognized file format. Please use JPG, PNG, or PDF",
+    "mimoNotConfigured": "MIMO API Key is not configured. Set MIMO_API_KEY in backend/.env and restart the backend",
+    "aiPromptNotFound": "Recognition prompt not found. Check base-config/prompts.md",
+    "aiContinuePromptNotFound": "Continue prompt not found. Check base-config/prompts.md",
+    "aiHeaderEcho": "The model returned column headers (e.g. name/supplier) as data instead of real rows. Check the working country and upload a clearer photo",
+    "aiInvalidJson": "The model returned JSON lines that could not be parsed. Try a clearer image.",
+    "aiNoParseableRecords": "The model did not return parsable attendance JSON rows. Try a clearer image.",
+    "aiFabricated": "Results contain multiple prompt example rows, not real sheet data. Upload a clearer, complete attendance sheet",
+    "aiUnreadableTimes": "Many names/IDs are unreadable but times look filled in uniformly — likely guessed. Upload a clearer photo",
+    "validationFailed": "Validation failed: {detail}",
+    "missingParameter": "Missing request parameter: {name}",
+    "fileSizeExceeded": "File size exceeds the 10MB limit",
+    "apiNotFound": "API endpoint not found",
+    "methodNotAllowed": "HTTP method not allowed",
+    "systemError": "System error, please try again later",
+    "requestFailed": "Request failed",
+    "networkError": "Network error, please check your connection"
+  },
+  "common": {
+    "cancel": "Cancel",
+    "save": "Save",
+    "loading": "Loading...",
+    "search": "Search"
+  },
+  "validation": {
+    "required": "{field} is required",
+    "invalidFormat": "{field} format is invalid",
+    "minLength": "{field} must be at least {min} characters",
+    "maxLength": "{field} must be at most {max} characters"
+  }
+}

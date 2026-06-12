@@ -246,6 +246,8 @@
             </a-form-item>
           </a-form>
         </a-card>
+
+        <NightShiftSettingsCard style="margin-top: 20px" />
       </div>
       </a-tab-pane>
 
@@ -621,6 +623,7 @@ import {
 import request from '@/api/index'
 import { parseFeishuBitableUrl } from '@/utils/feishu'
 import PageShell from '@/components/PageShell.vue'
+import NightShiftSettingsCard from '@/components/NightShiftSettingsCard.vue'
 import { useCountryStore } from '@/stores/country'
 import { setCachedWorkingCountry } from '@/utils/countryHeader'
 import { formatCountryLabel, translateCountryName, buildCountrySelectOption } from '@/utils/countryLabels'
@@ -859,8 +862,8 @@ const COMPRESSED_PROMPT_CORE = `【数据】只输出真实行；看不清用???
 【SIGNATURE·11】读员工签名列单元格笔迹：可辨→转写，有笔迹看不清→???，空白→""；禁表头字面量
 · ???/模糊=已签字；""=未签字；签字横线划掉或整行删除线→isDeleted=true；勿写入标记列
 
-【标记·13】手写|模糊|正常|夜班|未出勤(\`;\`连接)
-· 夜班：到≥20:00或离≤06:00/跨午夜；未出勤：到离皆空或???
+【标记·13】手写|模糊|正常|未出勤(\`;\`连接)
+· 夜班由系统自动计算，勿写入标记列；未出勤：到离皆空或???
 · 仅NO+姓名均非手写且非模糊/未出勤可「正常」；NO或姓名任一手写必含「手写」(它列手写不计)
 
 【其他】已删除：删线=true否则false；PAGE_NUM：页眉/页脚/底边页码(1,Page 1,1/5,P.1等)，有总页写当前/总，同页相同，无→""
@@ -886,7 +889,7 @@ ${COMPRESSED_PROMPT_CORE}`,
 【SIGNATURE·11】读员工签名列单元格笔迹：可辨→转写，有笔迹看不清→???，空白→""；禁表头字面量
 · ???/模糊=已签字；""=未签字；签字横线划掉或整行删除线→isDeleted=true；勿写入标记列
 
-【标记·13】手写|模糊|正常|夜班|未出勤(\`;\`)；夜班到≥20或离≤06/跨夜；未出勤到离空；仅NO+姓名均非手写可正常，任一手写必含手写
+【标记·13】手写|模糊|正常|未出勤(\`;\`)；夜班由系统计算勿写入；未出勤到离空；仅NO+姓名均非手写可正常，任一手写必含手写
 
 【其他】已删除：删线=true；PAGE_NUM：页眉页脚页码，同页相同，无→""
 

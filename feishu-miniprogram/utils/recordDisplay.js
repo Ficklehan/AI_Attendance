@@ -15,7 +15,9 @@ const {
   normalizeLegacySignature,
   calculateRecordStats,
   stripSignatureMarksFromSmartMark,
-  translateSignatureMark
+  translateSignatureMark,
+  refreshNightShiftInSmartMark,
+  getRawSmartMark
 } = require('./recognitionLabels')
 
 function pickField(record, ...keys) {
@@ -108,15 +110,7 @@ function hasHandwrittenIdentity(record) {
 }
 
 function getEffectiveSmartMark(record) {
-  const sourceMarks = [
-    record && record.SmartMark,
-    record && record.Mark,
-    record && record.mark,
-    record && record.smartMark
-  ].map((v) => String(v || '').trim()).filter(Boolean)
-  const raw = stripSignatureMarksFromSmartMark(
-    [...new Set(sourceMarks.join(';').split(/[;；,，]/).map((v) => v.trim()).filter(Boolean))].join(';')
-  )
+  const raw = refreshNightShiftInSmartMark(getRawSmartMark(record), record)
   const hasHandwritten = hasHandwrittenIdentity(record) || markContains(raw, 'handwriting')
   if (!hasHandwritten || markContains(raw, 'deleted') || markContains(raw, 'absent')) {
     return raw
@@ -127,8 +121,9 @@ function getEffectiveSmartMark(record) {
 }
 
 function isAbsentRow(record) {
+  if (!record || record._restored || record.isDeleted) return false
   const mark = getEffectiveSmartMark(record)
-  if (markContains(mark, 'absent')) return true
+  if (mark.indexOf('未出勤') !== -1 || markContains(mark, 'absent')) return true
   const arrive = pickField(record, 'ARRIVEE', 'ArriveTime')
   const depart = pickField(record, 'DEPAR', 'DepartTime')
   return !arrive && !depart

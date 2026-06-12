@@ -3,6 +3,7 @@ const { isApiSuccess, getApiData, getApiMessage } = require('../../utils/respons
 const { t } = require('../../utils/i18n')
 const { isCountryConfigured, syncCountryConfig } = require('../../utils/preferences')
 const { refreshApiBase, probeBackend, describeNetworkFailure } = require('../../utils/apiBase')
+const { apiCall } = require('../../utils/request')
 const { ensureFeishuLogin } = require('../../utils/feishuLogin')
 const { consumePendingReturn, buildResultPath, setPendingReturn } = require('../../utils/deepLink')
 
@@ -100,13 +101,13 @@ Page({
     const loginUrl = apiBase + '/feishu-auth/miniprogram/login'
     console.log('请求登录接口:', loginUrl)
 
-    tt.request({
-      url: loginUrl,
+    apiCall({
+      url: '/feishu-auth/miniprogram/login',
       method: 'POST',
-      header: { 'Content-Type': 'application/json' },
       data: { code: authCode },
-      timeout: 15000,
-      success: (res) => {
+      timeout: 15000
+    })
+      .then((res) => {
         const body = res.data
         console.log('登录接口返回:', res.statusCode, '业务code:', body && body.code, 'message:', body && body.message)
         if (isApiSuccess(body)) {
@@ -123,8 +124,8 @@ Page({
           this.setData({ loading: false })
           tt.showToast({ title: getApiMessage(body, t('login.loginFail')), icon: 'none' })
         }
-      },
-      fail: (err) => {
+      })
+      .catch((err) => {
         console.error('登录请求失败:', err, 'URL:', loginUrl)
         this.setData({ loading: false })
         const hint = describeNetworkFailure(apiBase, { ok: false, err })
@@ -133,8 +134,7 @@ Page({
           content: hint,
           showCancel: false
         })
-      }
-    })
+      })
   },
 
   afterLogin: function () {

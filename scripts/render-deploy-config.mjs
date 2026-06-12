@@ -2,7 +2,8 @@
 /**
  * Read deploy/environments/<env>.yaml and render:
  *   - deploy/rendered/<env>.env          (server / CI env fragment)
- *   - feishu-miniprogram/config.prod.js  (miniprogram public API; shared for prod/uat)
+ *   - feishu-miniprogram/config.prod.js    (miniprogram public API; shared for prod/uat)
+ *   - feishu-miniprogram/config.runtime.js (USE_PUBLIC_API / LOCAL_BASE_URL from runtime.mode)
  *   - deploy/rendered/<env>.snapshot.json (audit)
  *
  * Usage:
@@ -146,13 +147,30 @@ function deriveUrls(manifest) {
   }
 }
 
-function renderEnvFile(urls, manifest) {
+function deriveRuntime(manifest) {
+  const rawMode = (manifest.runtime && manifest.runtime.mode) || 'public'
+  const mode = String(rawMode).trim().toLowerCase() === 'local' ? 'local' : 'public'
+  const localApi =
+    (manifest.runtime && manifest.runtime.local_api_base) ||
+    'http://localhost:8080/attendance/api'
+  return {
+    RUNTIME_MODE: mode,
+    MINIPROGRAM_USE_PUBLIC_API: mode === 'public' ? 'true' : 'false',
+    LOCAL_API_BASE_URL: String(localApi).replace(/\/+$/, ''),
+  }
+}
+
+function renderEnvFile(urls, manifest, runtime) {
   const lines = [
     '# AUTO-GENERATED — do not edit. Source: deploy/environments/' + manifest._sourceFile,
     '# Regenerate: node scripts/render-deploy-config.mjs --env ' + manifest._envName,
     '',
     `DEPLOY_MANIFEST=${manifest._sourceFile}`,
     `DEPLOY_ENV=${manifest._envName}`,
+    `RUNTIME_MODE=${runtime.RUNTIME_MODE}`,
+    `MINIPROGRAM_USE_PUBLIC_API=${runtime.MINIPROGRAM_USE_PUBLIC_API}`,
+    `LOCAL_API_BASE_URL=${runtime.LOCAL_API_BASE_URL}`,
+    '',
     `PUBLIC_HOST=${urls.PUBLIC_HOST}`,
     `PUBLIC_SCHEME=${urls.PUBLIC_SCHEME}`,
     `PUBLIC_ORIGIN=${urls.PUBLIC_ORIGIN}`,
@@ -174,7 +192,7 @@ function renderMiniprogramConfig(urls, manifest) {
   return `/**
  * AUTO-GENERATED — do not edit.
  * Source: deploy/environments/${manifest._sourceFile}
- * Regenerate: node scripts/render-deploy-config.mjs --env ${manifest._envName}
+ * Regenerate: ./start.sh apply  或  npm run apply:site
  */
 module.exports = {
   PUBLIC_HOST: '${urls.PUBLIC_HOST}',
@@ -182,6 +200,21 @@ module.exports = {
   PUBLIC_BASE_URL: '${urls.PUBLIC_BASE_URL}',
   DEPLOY_ENV: '${manifest._envName}',
   SPRING_PROFILE: '${urls.SPRING_PROFILES_ACTIVE}'
+}
+`
+}
+
+function renderMiniprogramRuntime(runtime, manifest) {
+  const usePublic = runtime.MINIPROGRAM_USE_PUBLIC_API === 'true'
+  return `/**
+ * AUTO-GENERATED — do not edit.
+ * Source: deploy/environments/${manifest._sourceFile} → runtime.mode
+ * Regenerate: ./start.sh apply  或  npm run apply:site
+ */
+module.exports = {
+  RUNTIME_MODE: '${runtime.RUNTIME_MODE}',
+  USE_PUBLIC_API: ${usePublic},
+  LOCAL_BASE_URL: '${runtime.LOCAL_API_BASE_URL}',
 }
 `
 }
@@ -233,25 +266,36 @@ function main() {
   const { env, check } = parseArgs(process.argv)
   const manifest = readManifest(env)
   const urls = deriveUrls(manifest)
+  const runtime = deriveRuntime(manifest)
 
   const renderedDir = path.join(ROOT, 'deploy', 'rendered')
   const envFile = path.join(renderedDir, `${env}.env`)
   const snapshotFile = path.join(renderedDir, `${env}.snapshot.json`)
   const miniprogramFile = path.join(ROOT, 'feishu-miniprogram', 'config.prod.js')
+  const miniprogramRuntimeFile = path.join(ROOT, 'feishu-miniprogram', 'config.runtime.js')
 
-  const envContent = renderEnvFile(urls, manifest)
+  const envContent = renderEnvFile(urls, manifest, runtime)
   const miniprogramContent = renderMiniprogramConfig(urls, manifest)
+  const miniprogramRuntimeContent = renderMiniprogramRuntime(runtime, manifest)
   const snapshot = {
     generatedAt: new Date().toISOString(),
     manifest: manifest._sourceFile,
     env,
-    urls
+    urls,
+    runtime,
   }
 
   if (check) {
     const existingEnv = fs.existsSync(envFile) ? fs.readFileSync(envFile, 'utf8') : ''
     const existingMp = fs.existsSync(miniprogramFile) ? fs.readFileSync(miniprogramFile, 'utf8') : ''
-    if (existingEnv !== envContent || existingMp !== miniprogramContent) {
+    const existingRuntime = fs.existsSync(miniprogramRuntimeFile)
+      ? fs.readFileSync(miniprogramRuntimeFile, 'utf8')
+      : ''
+    if (
+      existingEnv !== envContent
+      || existingMp !== miniprogramContent
+      || existingRuntime !== miniprogramRuntimeContent
+    ) {
       console.error('Rendered config is out of date. Run: node scripts/render-deploy-config.mjs --env', env)
       process.exit(1)
     }
@@ -266,18 +310,22 @@ function main() {
   console.log('  env file:      ', path.relative(ROOT, envFile))
   console.log('  snapshot:      ', path.relative(ROOT, snapshotFile))
 
-  // 小程序公网配置以 production 清单为准（uat 与 prod 同域时避免被覆盖）
+  // 小程序配置以 production 清单为准（uat 与 prod 同域时避免被覆盖）
   if (env === 'production') {
     fs.writeFileSync(miniprogramFile, miniprogramContent, 'utf8')
+    fs.writeFileSync(miniprogramRuntimeFile, miniprogramRuntimeContent, 'utf8')
     console.log('  miniprogram:   ', path.relative(ROOT, miniprogramFile))
+    console.log('  mp runtime:    ', path.relative(ROOT, miniprogramRuntimeFile))
   }
   console.log('')
+  console.log('Runtime mode:   ', runtime.RUNTIME_MODE)
   console.log('Public API base:', urls.PUBLIC_BASE_URL)
   console.log('Spring profile: ', urls.SPRING_PROFILES_ACTIVE)
+  console.log('Miniprogram:    ', runtime.MINIPROGRAM_USE_PUBLIC_API === 'true' ? 'public API' : 'localhost')
   console.log('')
-  console.log('Server restart (after domain change):')
-  console.log('  ./start.sh restart-prod')
-  console.log('  # or: npm run restart:prod')
+  console.log('Apply config + restart backend:')
+  console.log('  ./start.sh apply')
+  console.log('  # or: npm run apply:site')
 }
 
 main()

@@ -56,6 +56,7 @@ pnpm-debug.log*
 feishu-miniprogram/node_modules/
 miniprogram_npm/
 feishu-miniprogram/config.prod.js
+feishu-miniprogram/config.runtime.js
 
 deploy/secrets.env
 

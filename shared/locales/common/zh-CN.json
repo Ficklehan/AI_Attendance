@@ -1,0 +1,99 @@
+{
+  "language": {
+    "title": "语言",
+    "select": "选择语言",
+    "zhCN": "简体中文",
+    "enUS": "English",
+    "frFR": "Français",
+    "nlNL": "Nederlands",
+    "csCZ": "Čeština",
+    "plPL": "Polski",
+    "deDE": "Deutsch",
+    "esES": "Español",
+    "itIT": "Italiano"
+  },
+  "recognition": {
+    "marks": {
+      "normal": "正常",
+      "handwriting": "手写",
+      "blurred": "模糊",
+      "nightShift": "夜班",
+      "absent": "未出勤",
+      "deleted": "已删除",
+      "unsigned": "未签字",
+      "signedConfirmed": "已签字确认",
+      "unsignedConfirmed": "未签字确认",
+      "signed": "已签字"
+    },
+    "missing": {
+      "NO": "工号未识别",
+      "Date": "日期未识别",
+      "ARRIVEE": "到达时间未识别",
+      "DEPAR": "离开时间未识别",
+      "PAUSE": "休息时间未识别"
+    },
+    "deletedRecord": "记录已删除"
+  },
+  "country": {
+    "default": "全局默认",
+    "CN": "中国",
+    "FR": "法国",
+    "DE": "德国",
+    "US": "美国",
+    "PL": "波兰",
+    "NL": "荷兰",
+    "IT": "意大利",
+    "ES": "西班牙",
+    "CZ": "捷克"
+  },
+  "errors": {
+    "loginRequired": "请先登录",
+    "accessDenied": "无权限访问",
+    "userNotFound": "用户不存在",
+    "userDisabled": "用户已被禁用",
+    "userAlreadyExists": "用户名已存在",
+    "emailAlreadyExists": "邮箱已被使用",
+    "recognitionConcurrentLimit": "识别任务过多，请稍后再试",
+    "taskNotFound": "任务不存在",
+    "taskStatusCannotConfirm": "任务状态不允许确认",
+    "confirmRequiredFieldsMissing": "存在必填字段未填写的记录（含姓名），请补充后再提交",
+    "taskAccessDenied": "无权限访问该任务",
+    "fileAccessDenied": "无权限访问该文件",
+    "noExportData": "没有可导出的数据",
+    "fileNotFound": "文件不存在",
+    "fileNotFoundWithKey": "文件不存在: {fileKey}",
+    "imageInvalid": "图片文件无效",
+    "invalidFilePath": "非法文件路径",
+    "uploadImageTooSmall": "上传的图片无效或过小（{size} bytes），请重新拍照或换一张更清晰的图片",
+    "imagesOnly": "只支持图片或 PDF 文件",
+    "unrecognizedImageFormat": "无法识别文件格式，请使用 JPG/PNG 或 PDF",
+    "mimoNotConfigured": "未配置 MIMO API Key，无法调用真实 AI。请在 backend/.env 填写 MIMO_API_KEY 后重启后端",
+    "aiPromptNotFound": "未找到识别提示词，请检查 base-config/prompts.md",
+    "aiContinuePromptNotFound": "未找到继续输出提示词，请检查 base-config/prompts.md",
+    "aiHeaderEcho": "模型把表头文字当成了数据（如「姓名」「供应商名称」），未能识别真实考勤行。请确认工作国家与表格匹配，并换更清晰的照片重试",
+    "aiInvalidJson": "模型返回了无法解析的 JSON 行，请换更清晰图片重试。",
+    "aiNoParseableRecords": "模型未返回可解析的考勤 JSON 行，请换更清晰图片重试。",
+    "aiFabricated": "识别结果含多条提示词示例行（非图中真实数据），请换更清晰、完整的考勤表照片重试",
+    "aiUnreadableTimes": "表格大量工号/姓名为 ??? 或无法辨认，但到达/离开时间却被整齐填写，疑似模型臆测。请换更清晰照片重试",
+    "validationFailed": "参数校验失败: {detail}",
+    "missingParameter": "缺少请求参数: {name}",
+    "fileSizeExceeded": "文件大小超出限制，最大支持 10MB",
+    "apiNotFound": "接口不存在",
+    "methodNotAllowed": "请求方法不支持",
+    "systemError": "系统异常，请稍后重试",
+    "requestFailed": "请求失败",
+    "networkError": "网络错误，请检查网络连接"
+  },
+  "common": {
+    "cancel": "取消",
+    "save": "保存",
+    "loading": "加载中...",
+    "search": "搜索"
+  },
+  "validation": {
+    "required": "{field} 必填",
+    "invalidFormat": "{field} 格式不正确",
+    "minLength": "{field} 最少 {min} 个字符",
+    "maxLength": "{field} 最多 {max} 个字符"
+  }
+}

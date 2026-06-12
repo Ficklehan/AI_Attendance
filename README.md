@@ -89,18 +89,16 @@ start.bat
 - PC 前端: http://localhost:5175/attendance/（登录页 `/attendance/login`）
 - 后端 API: http://localhost:8080/attendance/api（例：`POST .../attendance/api/auth/login`）
 - 默认账号: admin / admin123（**仅 dev**；生产请改密并关闭 bootstrap）
-- 小程序本地调试: `feishu-miniprogram/config.js` → `USE_PUBLIC_API=false`
+- 域名与环境切换（PC / 后端 / 小程序）：见 **[docs/运维手册.md §5.2](docs/运维手册.md#52-域名与环境地址切换统一入口)**
 
 ### 5. 公网 / 生产
 
 ```bash
-vim deploy/environments/production.yaml   # 改 public.host
-./start.sh restart-prod                   # 自动 render + 重启，无需手跑 render 命令
+vim deploy/environments/production.yaml   # runtime.mode + public.host
+./start.sh apply                          # render 各端配置 + 重启后端
 ```
 
-服务器密钥：`cp deploy/secrets.example deploy/secrets.env`。详见 [deploy/README.md](deploy/README.md)。
-
-小程序改域名后需重新上传飞书开发者工具（`USE_PUBLIC_API=true`）。
+服务器密钥：`cp deploy/secrets.example deploy/secrets.env`。部署目录：[deploy/README.md](deploy/README.md)。**完整说明**：[docs/运维手册.md §5.2](docs/运维手册.md#52-域名与环境地址切换统一入口)。
 
 ## 项目结构
 

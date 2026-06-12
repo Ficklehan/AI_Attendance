@@ -7,6 +7,7 @@ import com.attendance.entity.Task;
 import com.attendance.entity.TaskRecord;
 import com.attendance.mapper.TaskMapper;
 import com.attendance.mapper.TaskRecordMapper;
+import com.attendance.util.RecordJsonSupport;
 import com.attendance.util.SignatureMarkResolver;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -53,10 +54,10 @@ public class TaskRecordSyncService {
             return;
         }
         String payload = task.getConfirmedData();
-        if (isBlank(payload)) {
+        if (RecordJsonSupport.isBlank(payload)) {
             payload = task.getRawData();
         }
-        if (isBlank(payload)) {
+        if (RecordJsonSupport.isBlank(payload)) {
             taskRecordMapper.deleteByTaskId(task.getTaskId());
             return;
         }
@@ -104,8 +105,8 @@ public class TaskRecordSyncService {
         TaskRecord tr = new TaskRecord();
         tr.setTaskId(task.getTaskId());
         tr.setUserId(task.getUserId());
-        String rowKey = pickJson(row, "_rowKey");
-        if (isBlank(rowKey)) {
+        String rowKey = RecordJsonSupport.pickJson(row, "_rowKey");
+        if (RecordJsonSupport.isBlank(rowKey)) {
             rowKey = task.getTaskId() + "_" + index;
         }
         tr.setRowKey(rowKey);
@@ -114,36 +115,36 @@ public class TaskRecordSyncService {
         tr.setTaskStatus(task.getStatus());
         tr.setFileKey(task.getFileKey());
         tr.setImageUrls(task.getImageUrls());
-        String name = pickJson(row, "NOM_PRENOM", "NOM", "NAME");
-        tr.setEmpNo(pickJson(row, "NO", "No", "no"));
+        String name = RecordJsonSupport.pickJson(row, "NOM_PRENOM", "NOM", "NAME");
+        tr.setEmpNo(RecordJsonSupport.pickJson(row, "NO", "No", "no"));
         tr.setEmpName(name);
-        tr.setBaseName(stripSerialSuffix(name).toUpperCase(Locale.ROOT));
-        String country = pickJson(row, "Pays", "Country", "PAYS");
+        tr.setBaseName(RecordJsonSupport.stripSerialSuffix(name).toUpperCase(Locale.ROOT));
+        String country = RecordJsonSupport.pickJson(row, "Pays", "Country", "PAYS");
         tr.setCountry(country);
-        tr.setCountryKey(upper(country));
-        String warehouse = pickJson(row, "Entrepot", "Entrepôt", "Warehouse");
+        tr.setCountryKey(RecordJsonSupport.upper(country));
+        String warehouse = RecordJsonSupport.pickJson(row, "Entrepot", "Entrepôt", "Warehouse");
         tr.setWarehouse(warehouse);
-        tr.setWarehouseKey(upper(warehouse));
-        String workDate = pickJson(row, "Date", "DATE");
+        tr.setWarehouseKey(RecordJsonSupport.upper(warehouse));
+        String workDate = RecordJsonSupport.pickJson(row, "Date", "DATE");
         tr.setWorkDate(workDate);
-        String agency = pickJson(row, "AGENCE_INTERIMAIRE", "AGENCE", "Agency");
+        String agency = RecordJsonSupport.pickJson(row, "AGENCE_INTERIMAIRE", "AGENCE", "Agency");
         tr.setAgency(agency);
-        tr.setAgencyKey(upper(agency));
-        tr.setShift(pickJson(row, "HORAIRES_DU_TRAVAIL", "SHIFT", "Shift"));
-        tr.setArrival(pickJson(row, "ARRIVEE", "ARRIVE", "ARRIVAL"));
-        tr.setDeparture(pickJson(row, "DEPAR", "DEPART", "DEPARTURE"));
-        tr.setPauseMinutes(pickJson(row, "PAUSE", "PAUS", "Break"));
-        String rawAiSignature = pickJson(row, "SIGNATURE_RAW", "SIGNATURE", "CHECKER", "Signature");
-        tr.setObservations(pickJson(row, "Observations", "OBSERVATIONS", "Remarks"));
-        tr.setPageNum(pickJson(row, "PAGE_NUM", "PageNum", "pageNum", "页码"));
-        tr.setSmartMark(pickJson(row, "SmartMark", "Mark", "smartMark", "标记"));
+        tr.setAgencyKey(RecordJsonSupport.upper(agency));
+        tr.setShift(RecordJsonSupport.pickJson(row, "HORAIRES_DU_TRAVAIL", "SHIFT", "Shift"));
+        tr.setArrival(RecordJsonSupport.pickJson(row, "ARRIVEE", "ARRIVE", "ARRIVAL"));
+        tr.setDeparture(RecordJsonSupport.pickJson(row, "DEPAR", "DEPART", "DEPARTURE"));
+        tr.setPauseMinutes(RecordJsonSupport.pickJson(row, "PAUSE", "PAUS", "Break"));
+        String rawAiSignature = RecordJsonSupport.pickJson(row, "SIGNATURE_RAW", "SIGNATURE", "CHECKER", "Signature");
+        tr.setObservations(RecordJsonSupport.pickJson(row, "Observations", "OBSERVATIONS", "Remarks"));
+        tr.setPageNum(RecordJsonSupport.pickJson(row, "PAGE_NUM", "PageNum", "pageNum", "页码"));
+        tr.setSmartMark(RecordJsonSupport.pickJson(row, "SmartMark", "Mark", "smartMark", "标记"));
         tr.setSignature(SignatureMarkResolver.resolveFromAiOutput(
                 rawAiSignature,
                 tr.isDeleted(),
                 tr.getSmartMark(),
-                pickJson(row, "ARRIVEE", "ARRIVE", "ARRIVAL"),
-                pickJson(row, "DEPAR", "DEPART", "DEPARTURE"),
-                pickJson(row, "Mark", "mark")));
+                RecordJsonSupport.pickJson(row, "ARRIVEE", "ARRIVE", "ARRIVAL"),
+                RecordJsonSupport.pickJson(row, "DEPAR", "DEPART", "DEPARTURE"),
+                RecordJsonSupport.pickJson(row, "Mark", "mark")));
         tr.setTaskCreatedAt(taskCreatedAt);
         return tr;
     }
@@ -156,36 +157,7 @@ public class TaskRecordSyncService {
             return true;
         }
         return SignatureMarkResolver.isRowDeletedForSignature(
-                false, pickJson(row, "SmartMark", "Mark", "smartMark", "标记"));
+                false, RecordJsonSupport.pickJson(row, "SmartMark", "Mark", "smartMark", "标记"));
     }
 
-    private static String pickJson(JSONObject row, String... keys) {
-        for (String key : keys) {
-            if (row.containsKey(key)) {
-                Object v = row.get(key);
-                if (v != null) {
-                    String s = String.valueOf(v).trim();
-                    if (!s.isEmpty()) {
-                        return s;
-                    }
-                }
-            }
-        }
-        return "";
-    }
-
-    private static String upper(String v) {
-        return v == null ? "" : v.toUpperCase(Locale.ROOT);
-    }
-
-    private static boolean isBlank(String v) {
-        return v == null || v.trim().isEmpty();
-    }
-
-    private static String stripSerialSuffix(String name) {
-        if (name == null) {
-            return "";
-        }
-        return name.trim().replaceAll("\\s\\d{2}$", "").trim();
-    }
 }

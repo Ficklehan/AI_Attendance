@@ -2,6 +2,7 @@ const { isApiSuccess, getApiData, getApiMessage } = require('./response')
 const { t } = require('./i18n')
 const { syncCountryConfig } = require('./preferences')
 const { refreshApiBase, probeBackend } = require('./apiBase')
+const { apiCall } = require('./request')
 
 function getAppSafe() {
   try {
@@ -53,27 +54,18 @@ function verifyToken(app) {
   if (!token || !apiBase) {
     return Promise.reject(new Error('missing token'))
   }
-  return new Promise((resolve, reject) => {
-    tt.request({
-      url: `${apiBase}/auth/profile`,
-      method: 'GET',
-      header: { Authorization: `Bearer ${token}` },
-      timeout: 10000,
-      success: (res) => {
-        if (isApiSuccess(res.data)) {
-          const user = getApiData(res.data)
-          if (user) {
-            app.globalData.userInfo = user
-            tt.setStorageSync('userInfo', user)
-          }
-          resolve(token)
-          return
+  return apiCall({ url: '/auth/profile', timeout: 10000 })
+    .then((res) => {
+      if (isApiSuccess(res.data)) {
+        const user = getApiData(res.data)
+        if (user) {
+          app.globalData.userInfo = user
+          tt.setStorageSync('userInfo', user)
         }
-        reject(new Error('invalid token'))
-      },
-      fail: (err) => reject(err)
+        return token
+      }
+      throw new Error('invalid token')
     })
-  })
 }
 
 function performFeishuLogin(app, silent) {
@@ -89,13 +81,13 @@ function performFeishuLogin(app, silent) {
           reject(new Error('missing auth code'))
           return
         }
-        tt.request({
-          url: `${apiBase}/feishu-auth/miniprogram/login`,
+        apiCall({
+          url: '/feishu-auth/miniprogram/login',
           method: 'POST',
-          header: { 'Content-Type': 'application/json' },
           data: { code: res.code },
-          timeout: 15000,
-          success: (loginRes) => {
+          timeout: 15000
+        })
+          .then((loginRes) => {
             const body = loginRes.data
             if (!isApiSuccess(body)) {
               reject(new Error(getApiMessage(body, t('login.loginFail'))))
@@ -111,9 +103,8 @@ function performFeishuLogin(app, silent) {
               tt.showToast({ title: t('login.loginSuccess'), icon: 'success' })
             }
             resolve(payload.token)
-          },
-          fail: (err) => reject(err)
-        })
+          })
+          .catch((err) => reject(err))
       },
       fail: (err) => reject(err)
     })

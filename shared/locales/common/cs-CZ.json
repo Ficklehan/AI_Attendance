@@ -1,0 +1,97 @@
+{
+  "language": {
+    "title": "Jazyk",
+    "select": "Vyberte jazyk",
+    "zhCN": "简体中文",
+    "enUS": "English",
+    "frFR": "Français",
+    "nlNL": "Nederlands",
+    "csCZ": "Čeština",
+    "plPL": "Polski",
+    "deDE": "Deutsch",
+    "esES": "Español",
+    "itIT": "Italiano"
+  },
+  "recognition": {
+    "marks": {
+      "normal": "Normální",
+      "handwriting": "Ručně psané",
+      "blurred": "Rozmazané",
+      "nightShift": "Noční směna",
+      "absent": "Nepřítomen",
+      "deleted": "Smazané",
+      "signedConfirmed": "Podepsáno (potvrzeno)",
+      "unsignedConfirmed": "Nepodepsáno (potvrzeno)",
+      "signed": "Podepsáno"
+    },
+    "missing": {
+      "NO": "Ne rozpoznáno číslo",
+      "Date": "Ne rozpoznáno datum",
+      "ARRIVEE": "Ne rozpoznán čas příchodu",
+      "DEPAR": "Ne rozpoznán čas odchodu",
+      "PAUSE": "Ne rozpoznána pauza"
+    },
+    "deletedRecord": "Záznam označen jako smazaný"
+  },
+  "country": {
+    "default": "Globální výchozí",
+    "CN": "Čína",
+    "FR": "Francie",
+    "DE": "Německo",
+    "US": "Spojené státy",
+    "PL": "Polsko",
+    "NL": "Nizozemsko",
+    "IT": "Itálie",
+    "ES": "Španělsko",
+    "CZ": "Česko"
+  },
+  "errors": {
+    "loginRequired": "Nejprve se přihlaste",
+    "accessDenied": "Přístup odepřen",
+    "userNotFound": "Uživatel nenalezen",
+    "userDisabled": "Účet uživatele deaktivován",
+    "userAlreadyExists": "Uživatelské jméno již existuje",
+    "emailAlreadyExists": "E-mail je již používán",
+    "recognitionConcurrentLimit": "Příliš mnoho úloh rozpoznávání. Zkuste to prosím později.",
+    "taskNotFound": "Úkol nenalezen",
+    "taskStatusCannotConfirm": "Stav úkolu neumožňuje potvrzení",
+    "confirmRequiredFieldsMissing": "Některé záznamy mají nevyplněná povinná pole (včetně jména). Vyplňte je před odesláním.",
+    "taskAccessDenied": "Nemáte přístup k tomuto úkolu",
+    "fileAccessDenied": "Nemáte přístup k tomuto souboru",
+    "noExportData": "Žádná data k exportu",
+    "fileNotFound": "Soubor nenalezen",
+    "fileNotFoundWithKey": "Soubor nenalezen: {fileKey}",
+    "imageInvalid": "Neplatný soubor obrázku",
+    "invalidFilePath": "Neplatná cesta k souboru",
+    "uploadImageTooSmall": "Obrázek neplatný nebo příliš malý ({size} bajtů)",
+    "imagesOnly": "Podporovány jsou pouze obrázky",
+    "unrecognizedImageFormat": "Neznámý formát obrázku. Použijte JPG nebo PNG",
+    "mimoNotConfigured": "MIMO API Key není nakonfigurován",
+    "aiPromptNotFound": "Prompt rozpoznávání nenalezen",
+    "aiContinuePromptNotFound": "Pokračovací prompt nenalezen",
+    "aiHeaderEcho": "Model vrátil záhlaví sloupců jako data",
+    "aiInvalidJson": "Neplatný JSON od modelu. Shrnutí: {preview}",
+    "aiNoParseableRecords": "Model nevrátil analyzovatelné JSON řádky. Shrnutí: {preview}",
+    "aiFabricated": "Výsledky vypadají vymyšleně",
+    "aiUnreadableTimes": "Mnoho ??? u jmen, ale časy vyplněny",
+    "validationFailed": "Validace selhala: {detail}",
+    "missingParameter": "Chybí parametr: {name}",
+    "fileSizeExceeded": "Soubor přesahuje 10 MB",
+    "apiNotFound": "API endpoint nenalezen",
+    "methodNotAllowed": "HTTP metoda není povolena",
+    "systemError": "Systémová chyba, zkuste to později",
+    "requestFailed": "Požadavek selhal",
+    "networkError": "Chyba sítě, zkontrolujte připojení"
+  },
+  "common": {
+    "cancel": "Zrušit",
+    "save": "Uložit",
+    "loading": "Načítání..."
+  },
+  "validation": {
+    "required": "{field} je povinné",
+    "invalidFormat": "Formát {field} je neplatný",
+    "minLength": "{field} musí mít alespoň {min} znaků",
+    "maxLength": "{field} může mít maximálně {max} znaků"
+  }
+}

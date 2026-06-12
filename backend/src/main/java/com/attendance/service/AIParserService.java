@@ -12,6 +12,7 @@ import com.attendance.service.MarkdownConfigService;
 import com.attendance.util.PageNumberNormalizer;
 import com.attendance.util.RecordCountryDefaults;
 import com.attendance.util.RecognizedFieldSanitizer;
+import com.attendance.util.NightShiftMarkSupport;
 import com.attendance.util.SignatureMarkResolver;
 import okhttp3.*;
 import org.slf4j.Logger;
@@ -45,6 +46,9 @@ public class AIParserService {
 
     @Autowired
     private FileStorage fileStorage;
+
+    @Autowired
+    private NightShiftConfigService nightShiftConfigService;
 
     @Autowired
     private RecognitionCoordinator recognitionCoordinator;
@@ -1154,18 +1158,19 @@ public class AIParserService {
         return result;
     }
 
-    private String detectShiftType(String arriveTime, String departTime) {
+    private String detectShiftType(String arriveTime, String departTime, String shiftSchedule) {
+        if (NightShiftMarkSupport.shouldMarkNightShift(
+                arriveTime, departTime, shiftSchedule, nightShiftConfigService.getConfig())) {
+            return "夜班";
+        }
         String normalizedArrive = normalizeTime(arriveTime);
         String normalizedDepart = normalizeTime(departTime);
-        if (normalizedArrive == null || normalizedDepart == null) return null;
-
+        if (normalizedArrive == null || normalizedDepart == null) {
+            return null;
+        }
         try {
             int arriveHour = Integer.parseInt(normalizedArrive.split(":")[0]);
             int departHour = Integer.parseInt(normalizedDepart.split(":")[0]);
-
-            if (arriveHour >= 20 || departHour < 6) {
-                return "夜班";
-            }
             if (arriveHour >= 6 && arriveHour < 12 && departHour >= 12 && departHour < 18) {
                 return "早班";
             }
@@ -1246,7 +1251,9 @@ public class AIParserService {
         if (!existingMark.isEmpty()) {
             for (String part : existingMark.split("[;；,，]")) {
                 String mark = part == null ? "" : part.trim();
-                if (mark.isEmpty() || SignatureMarkResolver.isSignatureMarkToken(mark)) {
+                if (mark.isEmpty()
+                        || SignatureMarkResolver.isSignatureMarkToken(mark)
+                        || NightShiftMarkSupport.isNightShiftMarkToken(mark)) {
                     continue;
                 }
                 if (!marks.contains(mark)) {
@@ -1267,13 +1274,17 @@ public class AIParserService {
             } else {
                 marks.add("正常");
             }
-            String shiftType = detectShiftType(arriveTime, departTime);
-            if ("夜班".equals(shiftType) && !marks.contains("夜班")) {
-                marks.add("夜班");
-            }
         } else {
             if (quality.getBooleanValue("isHandwritten") && !marks.contains("手写")) {
                 marks.add("手写");
+            }
+        }
+
+        String shiftSchedule = record.getString("HORAIRES_DU_TRAVAIL");
+        if (!isAbsent) {
+            String shiftType = detectShiftType(arriveTime, departTime, shiftSchedule);
+            if ("夜班".equals(shiftType) && !marks.contains("夜班")) {
+                marks.add("夜班");
             }
         }
 

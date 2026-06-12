@@ -2,8 +2,8 @@ const App = getApp()
 const { markTaskDataDirty } = require('../../utils/taskSummary')
 const { isApiSuccess, getApiData, getApiMessage } = require('../../utils/response')
 const { t } = require('../../utils/i18n')
-const { getCountry } = require('../../utils/preferences')
 const { taskApi } = require('../../utils/api')
+const { apiCall } = require('../../utils/request')
 const {
   parseRecords,
   buildDisplayRecords,
@@ -22,6 +22,8 @@ const {
 } = require('../../utils/duplicateCheck')
 const { ensureFeishuLogin } = require('../../utils/feishuLogin')
 const { setPendingReturn, buildResultPath } = require('../../utils/deepLink')
+const { refreshRecordNightShiftMark } = require('../../utils/recognitionLabels')
+const { loadNightShiftRules } = require('../../utils/nightShiftRules')
 
 const PAGE_SIZE = 20
 const { startAdaptivePoll } = require('../../utils/adaptivePoll')
@@ -90,6 +92,7 @@ Page({
 
   onLoad: function (options) {
     this.refreshPageTexts()
+    loadNightShiftRules().catch(() => {})
     if (options && options.id) {
       this.setData({ taskId: options.id })
       this.bootstrapTaskPage()
@@ -181,7 +184,9 @@ Page({
     if (!rowKey || !draft) return
     const records = (this.data.records || []).map((r) => {
       if (r._rowKey !== rowKey) return r
-      return { ...r, ...draft }
+      const updated = { ...r, ...draft }
+      refreshRecordNightShiftMark(updated)
+      return updated
     })
     this.setData({ records }, () => {
       this.refreshStats()
@@ -222,12 +227,8 @@ Page({
   },
 
   refreshUserPermissions: function () {
-    tt.request({
-      url: `${App.globalData.baseUrl}/auth/profile`,
-      header: {
-        Authorization: App.globalData.token ? `Bearer ${App.globalData.token}` : ''
-      },
-      success: (res) => {
+    apiCall({ url: '/auth/profile' })
+      .then((res) => {
         if (isApiSuccess(res.data)) {
           const user = getApiData(res.data) || {}
           App.globalData.userInfo = user
@@ -237,8 +238,8 @@ Page({
             this.setData({ canCalibrate })
           }
         }
-      }
-    })
+      })
+      .catch(() => {})
   },
 
   onReachBottom: function () {
@@ -325,12 +326,8 @@ Page({
     if (!silent) {
       this.setData({ loading: true, visibleCount: PAGE_SIZE })
     }
-    tt.request({
-      url: `${App.globalData.baseUrl}/tasks/${this.data.taskId}`,
-      header: {
-        Authorization: App.globalData.token ? `Bearer ${App.globalData.token}` : ''
-      },
-      success: (res) => {
+    apiCall({ url: `/tasks/${this.data.taskId}` })
+      .then((res) => {
         if (isApiSuccess(res.data)) {
           const task = getApiData(res.data) || {}
           const payload = task.status === 'confirmed' && task.confirmedData
@@ -374,19 +371,18 @@ Page({
             tt.showToast({ title: getApiMessage(res.data, t('result.loadFail')), icon: 'none' })
           }
         }
-      },
-      fail: (error) => {
+      })
+      .catch((error) => {
         console.error('加载任务失败:', error)
         if (!silent) {
           tt.showToast({ title: t('result.loadFail'), icon: 'none' })
         }
-      },
-      complete: () => {
+      })
+      .then(() => {
         if (!silent) {
           this.setData({ loading: false })
         }
-      }
-    })
+      })
   },
 
   refreshDuplicateHints: function () {
@@ -670,18 +666,18 @@ Page({
 
     this.setData({ isSubmitting: true })
 
-    tt.request({
-      url: `${App.globalData.baseUrl}/tasks/${this.data.taskId}/confirm`,
+    const records = (this.data.records || []).map((r) => {
+      const copy = { ...r }
+      refreshRecordNightShiftMark(copy)
+      return copy
+    })
+
+    apiCall({
+      url: `/tasks/${this.data.taskId}/confirm`,
       method: 'POST',
-      header: {
-        'Content-Type': 'application/json',
-        Authorization: App.globalData.token ? `Bearer ${App.globalData.token}` : '',
-        'X-Country': getCountry()
-      },
-      data: {
-        data: this.data.records
-      },
-      success: (res) => {
+      data: { data: records }
+    })
+      .then((res) => {
         if (isApiSuccess(res.data)) {
           markTaskDataDirty()
           this.setData({
@@ -698,15 +694,14 @@ Page({
         } else {
           tt.showToast({ title: getApiMessage(res.data, t('result.submitFail')), icon: 'none' })
         }
-      },
-      fail: (error) => {
+      })
+      .catch((error) => {
         console.error('提交失败:', error)
         tt.showToast({ title: t('result.submitFail'), icon: 'none' })
-      },
-      complete: () => {
+      })
+      .then(() => {
         this.setData({ isSubmitting: false })
-      }
-    })
+      })
   },
 
   retrySync: function () {

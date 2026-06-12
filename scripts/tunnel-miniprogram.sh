@@ -19,7 +19,7 @@ fi
 
 echo "启动 cloudflared 隧道 → localhost:${PORT}"
 echo "隧道就绪后，将 HTTPS 地址写入 deploy/environments/production.yaml 的 public.host"
-echo "然后运行: node scripts/render-deploy-config.mjs --env production"
+echo "然后: 写入 production.yaml 的 public.host，执行 ./start.sh apply"
 echo "或在开发者工具 Console 执行:"
 echo "  tt.setStorageSync('apiBaseUrlOverride', 'https://YOUR-TUNNEL${CONTEXT}')"
 echo

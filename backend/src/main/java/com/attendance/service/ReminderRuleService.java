@@ -190,14 +190,6 @@ public class ReminderRuleService {
         return cleaned.isEmpty() ? null : JSON.toJSONString(cleaned);
     }
 
-    private List<String> parseScopeList(String json) {
-        if (json == null || json.trim().isEmpty()) {
-            return new ArrayList<>();
-        }
-        List<String> list = JSON.parseArray(json, String.class);
-        return list != null ? list : new ArrayList<>();
-    }
-
     private void saveRecipients(String ruleId, List<String> userIds) {
         Set<String> seen = new HashSet<>();
         for (String uid : userIds) {
@@ -286,8 +278,8 @@ public class ReminderRuleService {
         dto.setDescription(rule.getDescription());
         List<String> statuses = JSON.parseArray(rule.getTaskStatusesJson(), String.class);
         dto.setTaskStatuses(statuses != null ? statuses : new ArrayList<>());
-        dto.setScopeCountries(parseScopeList(rule.getScopeCountriesJson()));
-        dto.setScopeRoles(parseScopeList(rule.getScopeRolesJson()));
+        dto.setScopeCountries(ReminderSupport.parseScopeList(rule.getScopeCountriesJson()));
+        dto.setScopeRoles(ReminderSupport.parseScopeList(rule.getScopeRolesJson()));
         dto.setIntervalValue(rule.getIntervalValue());
         dto.setIntervalUnit(rule.getIntervalUnit());
         dto.setMessageTemplate(rule.getMessageTemplate());

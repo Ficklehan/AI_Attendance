@@ -74,9 +74,9 @@ echo ======================================
 echo.
 echo 后端: http://localhost:8080/attendance/api
 echo 前端: http://localhost:5175/attendance/
-echo 小程序本地: feishu-miniprogram\config.js USE_PUBLIC_API=false
+echo 环境切换: production.yaml + Git Bash 执行 ./start.sh apply
 echo.
-echo 公网部署: start.bat render-deploy  详见 deploy\README.md
+echo 仅渲染配置: start.bat render-deploy  详见 deploy\README.md
 echo.
 echo 按任意键退出...
 pause > nul
@@ -95,7 +95,7 @@ echo 渲染部署配置...
 node "%PROJECT_DIR%scripts\render-deploy-config.mjs" --env production
 node "%PROJECT_DIR%scripts\render-deploy-config.mjs" --env uat
 echo.
-echo 已生成 deploy\rendered\*.env 与 feishu-miniprogram\config.prod.js
+echo 已生成 deploy\rendered\*.env、config.prod.js、config.runtime.js
 pause
 exit /b 0
 
@@ -107,7 +107,7 @@ echo   (无参数)        启动后端 dev + 前端
 echo   render-deploy   渲染公网配置 (production + uat)
 echo   help            显示帮助
 echo.
-echo   生产重启请用 Git Bash: ./start.sh restart-prod
+echo   改配置并重启请用 Git Bash: ./start.sh apply
 echo   本地仅后端: bash scripts/use-local-dev.sh
 echo.
 echo 公网部署详见 deploy\README.md

@@ -1,5 +1,59 @@
 /** 识别结果展示翻译：存储层可保留中文/模型原文，UI 按当前语言渲染 */
 
+import * as markCoreMod from '@shared/recognitionMarkCore.cjs'
+import markTokens from '../../../shared/locales/mark-tokens.json'
+import { importSharedCjs } from './importSharedCjs'
+import { getNightShiftRules, shouldMarkNightShift } from './nightShiftRules'
+
+const markCore = importSharedCjs(markCoreMod)
+const {
+  splitSmartMarkParts,
+  isSignatureResultMark,
+  markContains,
+  markHasKind,
+  stripSignatureMarksFromSmartMark,
+} = markCore
+
+function stripNightShiftMarkParts(mark) {
+  return splitSmartMarkParts(mark).filter((part) => !markContains(part, 'nightShift'))
+}
+
+/** 按当前到离/排班重算夜班标记（可增可删） */
+export function refreshNightShiftInSmartMark(mark, record) {
+  if (!record || record.isDeleted) {
+    return stripNightShiftMarkParts(mark || '').join(';')
+  }
+  const markSources = [mark, record.SmartMark, record.Mark, record.mark, record.smartMark]
+    .filter(Boolean)
+    .join(';')
+  if (markContains(markSources, 'absent') || markContains(markSources, 'deleted')) {
+    return stripNightShiftMarkParts(mark || record.SmartMark || '').join(';')
+  }
+  let parts = stripNightShiftMarkParts(mark || record.SmartMark || record.Mark || '')
+  if (!parts.length) {
+    parts = ['正常']
+  }
+  if (shouldMarkNightShift(record, getNightShiftRules())) {
+    parts = [...parts, '夜班']
+  }
+  return [...new Set(parts)].join(';')
+}
+
+/** 展示层按规则重算夜班标记 */
+export function withInferredNightShiftMark(mark, record) {
+  return refreshNightShiftInSmartMark(mark, record)
+}
+
+const MARK_TOKEN_KEYS = markTokens
+
+export {
+  splitSmartMarkParts,
+  isSignatureResultMark,
+  markContains,
+  markHasKind,
+  stripSignatureMarksFromSmartMark,
+}
+
 const LEGACY_ANOMALY_KEYS = {
   工号未识别: 'recognition.missing.NO',
   日期未识别: 'recognition.missing.Date',
@@ -12,21 +66,6 @@ const LEGACY_ANOMALY_KEYS = {
   未出勤: 'taskEdit.absentReason',
   必填字段缺失: 'taskEdit.requiredFieldMissingShort',
 }
-
-const MARK_TOKEN_KEYS = {
-  正常: 'recognition.marks.normal',
-  手写: 'recognition.marks.handwriting',
-  模糊: 'recognition.marks.blurred',
-  夜班: 'recognition.marks.nightShift',
-  未出勤: 'recognition.marks.absent',
-  已删除: 'recognition.marks.deleted',
-  已签字确认: 'recognition.marks.signed',
-  未签字确认: 'recognition.marks.unsigned',
-  已签字: 'recognition.marks.signed',
-  未签字: 'recognition.marks.unsigned',
-}
-
-const SIGNATURE_RESULT_MARKS = new Set(['已签字', '未签字', '已签字确认', '未签字确认'])
 
 const BLANK_SIGNATURE_TOKENS = new Set([
   '', 'n/a', 'na', 'none', 'null',
@@ -104,15 +143,6 @@ export function sanitizeAiSignature(value) {
   return trimmed
 }
 
-const MARK_DETECT = {
-  absent: ['未出勤', 'absent', 'ausente', 'abwesend', 'afwezig', 'nieobecny', 'nepřítom'],
-  blurred: ['模糊', 'blur', 'borroso', 'unscharf', 'wazig', 'rozmazan', 'nieostry'],
-  handwriting: ['手写', 'handwritten', 'manuscrit', 'manuscrito', 'handschrift', 'handgeschreven'],
-  nightShift: ['夜班', 'night', 'noche', 'nuit', 'notte', 'nacht', 'noc', 'nocka'],
-  deleted: ['已删除', 'deleted', 'eliminado', 'supprimé', 'gelöscht', 'verwijderd'],
-  normal: ['正常', 'normal', 'normale', 'normaal'],
-}
-
 export function translateAnomalyReason(reason, t) {
   if (reason == null || reason === '') return ''
   const text = String(reason).trim()
@@ -140,15 +170,6 @@ export function translateAnomalyReason(reason, t) {
 
 export function translateAnomalyReasons(reasons, t) {
   return (reasons || []).map((r) => translateAnomalyReason(r, t)).filter(Boolean)
-}
-
-export function splitSmartMarkParts(mark) {
-  if (mark == null || mark === '' || mark === '-') return []
-  return [...new Set(String(mark).split(/[;；,，]/).map((p) => p.trim()).filter(Boolean))]
-}
-
-export function isSignatureResultMark(value) {
-  return SIGNATURE_RESULT_MARKS.has(String(value || '').trim())
 }
 
 export function isBlankSignature(value) {
@@ -206,12 +227,6 @@ export function normalizeLegacySignature(signature, recordOrDeleted = false) {
 export function getDisplaySignature(signature, record = null) {
   if (record) return computeSignatureMark(record)
   return normalizeLegacySignature(signature, false)
-}
-
-/** 标记列不展示签字结果（签字结果仅在 SIGNATURE 列） */
-export function stripSignatureMarksFromSmartMark(mark) {
-  const parts = splitSmartMarkParts(mark).filter((part) => !isSignatureResultMark(part))
-  return parts.length ? parts.join(';') : ''
 }
 
 /** 原始 SmartMark（合并多字段、去掉签字标记，不做手写等展示推断） */
@@ -300,18 +315,6 @@ export function buildRecordMarkTags(record, { getDisplayMark, isAbsentRow, t, ha
     })
   }
   return tags
-}
-
-export function markContains(mark, kind) {
-  if (!mark) return false
-  const text = String(mark).toLowerCase()
-  const patterns = MARK_DETECT[kind] || []
-  return patterns.some((p) => text.includes(p.toLowerCase()))
-}
-
-/** 多值标记（; 分隔）中是否含某类标记 */
-export function markHasKind(mark, kind) {
-  return splitSmartMarkParts(mark).some((part) => markContains(part, kind))
 }
 
 /**

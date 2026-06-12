@@ -13,12 +13,7 @@ import com.attendance.service.ReminderSupport;
 import com.attendance.service.UserService;
 import com.attendance.security.LoginExchangeService;
 import com.attendance.security.OAuthStateService;
-import com.alibaba.fastjson.JSON;
 import com.alibaba.fastjson.JSONObject;
-import okhttp3.MediaType;
-import okhttp3.OkHttpClient;
-import okhttp3.Request;
-import okhttp3.Response;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -63,9 +58,6 @@ public class FeishuAuthController {
     @Autowired
     private FeishuCredentialsStartupValidator feishuCredentialsStartupValidator;
 
-    @Autowired
-    private OkHttpClient httpClient;
-
     @GetMapping("/readiness")
     public Result<Map<String, Object>> readiness() {
         Map<String, Object> body = new HashMap<>();
@@ -101,8 +93,8 @@ public class FeishuAuthController {
             oauthStateService.validateState(state);
             String postLoginRedirect = ReminderSupport.sanitizePostLoginRedirect(
                     oauthStateService.extractRedirect(state));
-            String token = getAccessToken(code);
-            JSONObject userInfo = getUserInfo(token);
+            String token = feishuService.exchangeWebOAuthCode(code);
+            JSONObject userInfo = feishuService.fetchAuthenUserInfo(token);
             
             log.debug("飞书返回的用户信息: open_id={}", userInfo.getString("open_id"));
             
@@ -244,52 +236,6 @@ public class FeishuAuthController {
                "</html>";
     }
 
-    private String getAccessToken(String code) throws IOException {
-        JSONObject body = new JSONObject();
-        body.put("app_id", feishuProperties.getAppId());
-        body.put("app_secret", feishuProperties.getAppSecret());
-        body.put("code", code);
-        body.put("grant_type", "authorization_code");
-
-        Request request = new Request.Builder()
-                .url("https://open.feishu.cn/open-apis/authen/v1/access_token")
-                .header("Content-Type", "application/json")
-                .post(okhttp3.RequestBody.create(body.toJSONString(), MediaType.parse("application/json")))
-                .build();
-
-        Response response = httpClient.newCall(request).execute();
-        if (!response.isSuccessful()) {
-            throw new RuntimeException("获取飞书access_token失败: " + response.code());
-        }
-
-        JSONObject result = JSON.parseObject(response.body().string());
-        if (result.getInteger("code") != 0) {
-            throw new RuntimeException("获取access_token失败: " + result.getString("msg"));
-        }
-
-        return result.getJSONObject("data").getString("access_token");
-    }
-
-    private JSONObject getUserInfo(String accessToken) throws IOException {
-        Request request = new Request.Builder()
-                .url("https://open.feishu.cn/open-apis/authen/v1/user_info")
-                .header("Authorization", "Bearer " + accessToken)
-                .get()
-                .build();
-
-        Response response = httpClient.newCall(request).execute();
-        if (!response.isSuccessful()) {
-            throw new RuntimeException("获取飞书用户信息失败: " + response.code());
-        }
-
-        JSONObject result = JSON.parseObject(response.body().string());
-        if (result.getInteger("code") != 0) {
-            throw new RuntimeException("获取用户信息失败: " + result.getString("msg"));
-        }
-
-        return result.getJSONObject("data");
-    }
-
     @PostMapping("/miniprogram/login")
     public Result<LoginResponse> miniprogramLogin(@Valid @RequestBody FeishuMiniprogramLoginRequest request) {
         String code = request.getCode();
@@ -308,7 +254,7 @@ public class FeishuAuthController {
             String userId = tokenData.getString("user_id");
             String employeeId = tokenData.getString("employee_id");
             
-            JSONObject userInfo = getMiniprogramUserInfo(accessToken);
+            JSONObject userInfo = feishuService.fetchAuthenUserInfo(accessToken);
             log.debug("飞书小程序用户信息: open_id={}", userInfo.getString("open_id"));
 
             String feishuUserId = openId;
@@ -357,25 +303,5 @@ public class FeishuAuthController {
             log.error("飞书小程序登录失败", e);
             return Result.error("登录失败: " + e.getMessage());
         }
-    }
-    
-    private JSONObject getMiniprogramUserInfo(String accessToken) throws IOException {
-        Request request = new Request.Builder()
-                .url("https://open.feishu.cn/open-apis/authen/v1/user_info")
-                .header("Authorization", "Bearer " + accessToken)
-                .get()
-                .build();
-
-        Response response = httpClient.newCall(request).execute();
-        if (!response.isSuccessful()) {
-            throw new RuntimeException("获取飞书用户信息失败: " + response.code());
-        }
-
-        JSONObject result = JSON.parseObject(response.body().string());
-        if (result.getInteger("code") != 0) {
-            throw new RuntimeException("获取用户信息失败: " + result.getString("msg"));
-        }
-
-        return result.getJSONObject("data");
     }
 }

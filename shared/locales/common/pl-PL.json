@@ -1,0 +1,97 @@
+{
+  "language": {
+    "title": "Język",
+    "select": "Wybierz język",
+    "zhCN": "简体中文",
+    "enUS": "English",
+    "frFR": "Français",
+    "nlNL": "Nederlands",
+    "csCZ": "Čeština",
+    "plPL": "Polski",
+    "deDE": "Deutsch",
+    "esES": "Español",
+    "itIT": "Italiano"
+  },
+  "recognition": {
+    "marks": {
+      "normal": "Normalny",
+      "handwriting": "Odręczny",
+      "blurred": "Rozmazany",
+      "nightShift": "Zmiana nocna",
+      "absent": "Nieobecny",
+      "deleted": "Usunięty",
+      "signedConfirmed": "Podpisane (potwierdzone)",
+      "unsignedConfirmed": "Brak podpisu (potwierdzone)",
+      "signed": "Podpisane"
+    },
+    "missing": {
+      "NO": "Nie rozpoznano numeru",
+      "Date": "Nie rozpoznano daty",
+      "ARRIVEE": "Nie rozpoznano godziny przyjścia",
+      "DEPAR": "Nie rozpoznano godziny wyjścia",
+      "PAUSE": "Nie rozpoznano przerwy"
+    },
+    "deletedRecord": "Rekord oznaczony jako usunięty"
+  },
+  "country": {
+    "default": "Domyślne globalne",
+    "CN": "Chiny",
+    "FR": "Francja",
+    "DE": "Niemcy",
+    "US": "Stany Zjednoczone",
+    "PL": "Polska",
+    "NL": "Holandia",
+    "IT": "Włochy",
+    "ES": "Hiszpania",
+    "CZ": "Czechy"
+  },
+  "errors": {
+    "loginRequired": "Najpierw się zaloguj",
+    "accessDenied": "Odmowa dostępu",
+    "userNotFound": "Użytkownik nie znaleziony",
+    "userDisabled": "Konto użytkownika wyłączone",
+    "userAlreadyExists": "Nazwa użytkownika już istnieje",
+    "emailAlreadyExists": "E-mail jest już używany",
+    "recognitionConcurrentLimit": "Zbyt wiele zadań rozpoznawania. Spróbuj ponownie później.",
+    "taskNotFound": "Zadanie nie znalezione",
+    "taskStatusCannotConfirm": "Status zadania nie pozwala na potwierdzenie",
+    "confirmRequiredFieldsMissing": "Niektóre rekordy mają nieuzupełnione pola wymagane (w tym imię). Uzupełnij je przed wysłaniem.",
+    "taskAccessDenied": "Brak dostępu do tego zadania",
+    "fileAccessDenied": "Brak dostępu do tego pliku",
+    "noExportData": "Brak danych do eksportu",
+    "fileNotFound": "Plik nie znaleziony",
+    "fileNotFoundWithKey": "Plik nie znaleziony: {fileKey}",
+    "imageInvalid": "Nieprawidłowy plik obrazu",
+    "invalidFilePath": "Nieprawidłowa ścieżka pliku",
+    "uploadImageTooSmall": "Obraz nieprawidłowy lub za mały ({size} bajtów)",
+    "imagesOnly": "Obsługiwane są tylko pliki obrazów",
+    "unrecognizedImageFormat": "Nierozpoznany format obrazu. Użyj JPG lub PNG",
+    "mimoNotConfigured": "Nie skonfigurowano MIMO API Key",
+    "aiPromptNotFound": "Nie znaleziono promptu rozpoznawania",
+    "aiContinuePromptNotFound": "Nie znaleziono promptu kontynuacji",
+    "aiHeaderEcho": "Model zwrócił nagłówki kolumn jako dane. Sprawdź kraj roboczy i prześlij wyraźniejsze zdjęcie",
+    "aiInvalidJson": "Model zwrócił nieprawidłowy JSON. Podsumowanie: {preview}",
+    "aiNoParseableRecords": "Model nie zwrócił analizowalnych wierszy JSON. Podsumowanie: {preview}",
+    "aiFabricated": "Wyniki wyglądają na wymyślone",
+    "aiUnreadableTimes": "Wiele ??? w nazwach, ale czasy wypełnione — prawdopodobnie zgadywane",
+    "validationFailed": "Błąd walidacji: {detail}",
+    "missingParameter": "Brak parametru: {name}",
+    "fileSizeExceeded": "Plik przekracza limit 10 MB",
+    "apiNotFound": "Endpoint API nie znaleziony",
+    "methodNotAllowed": "Metoda HTTP niedozwolona",
+    "systemError": "Błąd systemu, spróbuj ponownie później",
+    "requestFailed": "Żądanie nie powiodło się",
+    "networkError": "Błąd sieci, sprawdź połączenie"
+  },
+  "common": {
+    "cancel": "Anuluj",
+    "save": "Zapisz",
+    "loading": "Ładowanie..."
+  },
+  "validation": {
+    "required": "{field} jest wymagane",
+    "invalidFormat": "Format {field} jest nieprawidłowy",
+    "minLength": "{field} musi mieć co najmniej {min} znaków",
+    "maxLength": "{field} może mieć maksymalnie {max} znaków"
+  }
+}

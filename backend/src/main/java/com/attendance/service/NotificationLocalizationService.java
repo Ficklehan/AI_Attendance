@@ -9,14 +9,8 @@ import org.springframework.stereotype.Service;
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
-import java.time.format.DateTimeFormatter;
-import java.util.List;
-import java.util.Map;
-
 @Service
 public class NotificationLocalizationService {
-
-    private static final DateTimeFormatter ISO_LOCAL = DateTimeFormatter.ISO_LOCAL_DATE_TIME;
 
     @Autowired
     private ReminderRuleMapper reminderRuleMapper;
@@ -42,25 +36,24 @@ public class NotificationLocalizationService {
             vars = legacyNotificationVarsRebuilder.rebuild(source, rule);
         }
         if (vars == null) {
-            dto.setTitle(ReminderLocaleSupport.notificationTitlePrefix(locale) + rule.getName());
+            dto.setTitle(ReminderMessageBuilder.notificationTitle(rule, locale));
             return;
         }
 
-        Map<String, String> operatorLocales = ReminderLocaleSupport.parseTemplateMap(rule.getMessageTemplateLocalesJson());
-        Map<String, String> supervisorLocales = ReminderLocaleSupport.parseTemplateMap(
-                rule.getMessageTemplateSupervisorLocalesJson());
-
+        ReminderMessageBuilder.LocaleTemplates templates = ReminderMessageBuilder.resolveLocaleTemplates(rule);
         String template = ReminderLocaleSupport.pickTemplateForDisplay(
-                vars.isRecipientIsOperator() ? operatorLocales : supervisorLocales,
+                vars.isRecipientIsOperator() ? templates.operatorLocales : templates.supervisorLocales,
                 locale,
                 vars.isRecipientIsOperator());
-        LocalDateTime latestTime = parseLatestTime(vars.getLatestTaskTime());
-        BigDecimal intervalValue = parseIntervalValue(vars.getIntervalValue(), rule.getIntervalValue());
+        LocalDateTime latestTime = ReminderMessageBuilder.parseLatestTime(vars.getLatestTaskTime());
+        BigDecimal intervalValue = ReminderMessageBuilder.parseIntervalValue(
+                vars.getIntervalValue(), rule.getIntervalValue());
         String intervalUnit = vars.getIntervalUnit() != null && !vars.getIntervalUnit().trim().isEmpty()
                 ? vars.getIntervalUnit().trim()
                 : rule.getIntervalUnit();
-        String creatorNames = formatCreatorNames(vars.getCreatorNames(), locale);
-        Map<String, String> renderVars = ReminderSupport.baseVars(
+        String creatorNames = ReminderMessageBuilder.joinCreatorNames(vars.getCreatorNames(), locale);
+        dto.setTitle(ReminderMessageBuilder.notificationTitle(rule, locale));
+        dto.setBody(ReminderMessageBuilder.renderBody(
                 vars.getPendingCount(),
                 intervalValue,
                 intervalUnit,
@@ -70,39 +63,8 @@ public class NotificationLocalizationService {
                 vars.getRecipientName(),
                 vars.getTaskCreatorName(),
                 creatorNames,
-                locale);
-        dto.setTitle(ReminderLocaleSupport.notificationTitlePrefix(locale) + rule.getName());
-        dto.setBody(ReminderSupport.renderTemplate(template, renderVars));
-    }
-
-    private static LocalDateTime parseLatestTime(String value) {
-        if (value == null || value.trim().isEmpty()) {
-            return null;
-        }
-        try {
-            return LocalDateTime.parse(value.trim(), ISO_LOCAL);
-        } catch (Exception e) {
-            return null;
-        }
-    }
-
-    private static BigDecimal parseIntervalValue(String fromVars, BigDecimal ruleValue) {
-        if (fromVars != null && !fromVars.trim().isEmpty()) {
-            try {
-                return new BigDecimal(fromVars.trim());
-            } catch (Exception ignored) {
-                // fall through
-            }
-        }
-        return ruleValue;
-    }
-
-    private static String formatCreatorNames(List<String> names, String locale) {
-        if (names == null || names.isEmpty()) {
-            return "-";
-        }
-        String separator = ReminderLocaleSupport.nameSeparator(locale);
-        return String.join(separator, names);
+                template,
+                locale));
     }
 
     /** Mutable title/body holder for localization without extra DTO type. */

@@ -1,51 +1,18 @@
 const { taskApi } = require('./api')
 const { isApiSuccess, getApiData } = require('./response')
 const { isAbsentRow } = require('./recordDisplay')
+const core = require('../shared-js/duplicateCheckCore')
 
-function stripSerialSuffix(name) {
-  return String(name || '').trim().replace(/\s\d{2}$/, '').trim()
-}
-
-function duplicateGroupKey(record) {
-  return [
-    String(record.Pays || '').trim().toUpperCase(),
-    String(record.Entrepot || '').trim().toUpperCase(),
-    String(record.Date || '').trim(),
-    String(record.AGENCE_INTERIMAIRE || '').trim().toUpperCase(),
-    String(record._baseName || '').trim().toUpperCase()
-  ].join('|')
-}
+const {
+  stripSerialSuffix,
+  duplicateGroupKey,
+  isEligibleForDuplicate: coreIsEligible,
+  buildDuplicatePayload,
+  ensureRecordRowKeys,
+} = core
 
 function isEligibleForDuplicate(record) {
-  if (!record || record.isDeleted || isAbsentRow(record) || record._duplicateConfirmedUnique) {
-    return false
-  }
-  return !!(String(record.Date || '').trim() && String(record._baseName || '').trim())
-}
-
-function ensureRecordRowKeys(records, taskId) {
-  ;(records || []).forEach((record, index) => {
-    if (!record._rowKey) {
-      record._rowKey = `${taskId}-r${index}`
-    }
-    if (!record._baseName) {
-      record._baseName = stripSerialSuffix(record.NOM_PRENOM)
-    }
-  })
-}
-
-function buildDuplicatePayload(records) {
-  return (records || []).map((r) => ({
-    _rowKey: r._rowKey,
-    NO: r.NO,
-    Pays: r.Pays,
-    Entrepot: r.Entrepot,
-    Date: r.Date,
-    NOM_PRENOM: r.NOM_PRENOM,
-    AGENCE_INTERIMAIRE: r.AGENCE_INTERIMAIRE,
-    isDeleted: r.isDeleted,
-    SmartMark: r.SmartMark
-  }))
+  return coreIsEligible(record, isAbsentRow)
 }
 
 function buildRemoteMetaFromApi(duplicates, payload, taskId) {

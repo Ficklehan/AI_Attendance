@@ -1,20 +1,19 @@
 # AttendanceAgent 部署配置（D+ 方案）
 
-公网域名**只维护** `deploy/environments/production.yaml`。
+**唯一运维配置**：`deploy/environments/production.yaml`（`runtime.mode` + `public.host`）。
 
-## 改域名后重启（推荐）
+改完后执行 **`./start.sh apply`** 或 **`npm run apply:site`** — 自动 render 并重启后端。详见 [运维手册 §5.2](../docs/运维手册.md#52-域名与环境地址切换统一入口)。
 
-```bash
-# 1. 改域名
-vim deploy/environments/production.yaml   # public.host
-
-# 2. 重启（自动 render + 加载 env + 启动后端）
-./start.sh restart-prod
-# 或
-npm run restart:prod
+```yaml
+runtime:
+  mode: local    # local | public
+public:
+  host: your.domain.com
 ```
 
-**无需**再手跑 `npm run render:deploy` 或 `source deploy/rendered/*.env`。
+```bash
+./start.sh apply
+```
 
 ## 服务器密钥
 
@@ -47,24 +46,26 @@ scripts/
 
 | 输出 | 用途 |
 |------|------|
-| `deploy/rendered/production.env` | 域名、飞书回调、CORS、SPRING_PROFILES_ACTIVE |
+| `deploy/rendered/production.env` | 域名、飞书回调、CORS、`RUNTIME_MODE` |
 | `feishu-miniprogram/config.prod.js` | 小程序公网 API |
+| `feishu-miniprogram/config.runtime.js` | 小程序 `USE_PUBLIC_API`（由 `runtime.mode` 生成） |
 
 ## 启动命令
 
 | 场景 | 命令 |
 |------|------|
-| 本地 dev | `./start.sh all` |
-| 生产首次启动 | `./start.sh prod` |
-| **改域名后** | `./start.sh restart-prod` |
-| UAT profile | `ATTENDANCE_DEPLOY_ENV=uat ./scripts/restart-backend-prod.sh` |
+| **改 yaml 后生效** | `./start.sh apply` |
+| 本地 dev（前后端） | `./start.sh all` |
+| 生产首次启动 | `./start.sh prod`（公网；等价 apply + public） |
+| 兼容旧命令 | `./start.sh restart-prod`（同 apply） |
+| UAT profile | `ATTENDANCE_DEPLOY_ENV=uat ./start.sh apply` |
 
 ## systemd 示例
 
 ```ini
 [Service]
 WorkingDirectory=/opt/AttendanceAgent
-ExecStart=/opt/AttendanceAgent/scripts/start-backend-prod.sh
+ExecStart=/opt/AttendanceAgent/scripts/apply-site-config.sh
 Environment=ATTENDANCE_DEPLOY_ENV=production
 Restart=on-failure
 ```
@@ -83,9 +84,9 @@ curl -s "https://$(grep PUBLIC_HOST deploy/rendered/production.env | cut -d= -f2
 
 简要三步：
 
-1. `config.js` → `USE_PUBLIC_API = true`
-2. `./start.sh restart-prod`（或 `node scripts/render-deploy-config.mjs --env production`）
-3. 飞书开放平台配合法域名 + 开发者工具上传发布
+1. `production.yaml` → `runtime.mode: public`，执行 `./start.sh apply`
+2. 飞书开放平台配合法域名 + 重定向 URL
+3. 开发者工具重新上传发布（`config.runtime.js` / `config.prod.js` 已自动生成）
 
 ## 飞书开放平台
 
@@ -104,7 +105,7 @@ curl -s "https://$(grep PUBLIC_HOST deploy/rendered/production.env | cut -d= -f2
 |------|------|
 | 升级已有库 | 重启后端即可（或执行 `backend/config/migration/007_task_records.sql`） |
 | 全新 `init.sql` | 已包含 `task_records` 与 `tasks` 组合索引 |
-| 列表为空 | 等待日志 `task_records 历史回填完成`，或再执行 `./start.sh restart-prod` |
+| 列表为空 | 等待日志 `task_records 历史回填完成`，或再执行 `./start.sh apply` |
 
 配置项（`backend/src/main/resources/application.yml`）：
 

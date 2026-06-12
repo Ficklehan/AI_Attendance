@@ -1,6 +1,7 @@
 package com.attendance.service;
 
 import com.attendance.dto.ConfirmValidationConfigDTO;
+import com.attendance.dto.NightShiftConfigDTO;
 import com.attendance.dto.request.SystemConfigRequest;
 import com.attendance.dto.response.SystemConfigDTO;
 import com.attendance.mapper.PluginConfigMapper;
@@ -16,6 +17,9 @@ public class PluginConfigService {
     @Autowired
     private ConfirmValidationService confirmValidationService;
 
+    @Autowired
+    private NightShiftConfigService nightShiftConfigService;
+
     public boolean isNotificationEnabled() {
         String value = pluginConfigMapper.selectValue(ReminderSupport.NOTIFICATION_CONFIG_KEY);
         if (value == null || value.trim().isEmpty()) {
@@ -28,6 +32,7 @@ public class PluginConfigService {
         SystemConfigDTO dto = new SystemConfigDTO();
         dto.setNotificationEnabled(isNotificationEnabled());
         dto.setConfirmValidation(confirmValidationService.getConfig());
+        dto.setNightShift(nightShiftConfigService.getConfig());
         return dto;
     }
 
@@ -44,6 +49,9 @@ public class PluginConfigService {
         }
         if (request.getConfirmValidation() != null) {
             confirmValidationService.saveConfig(request.getConfirmValidation());
+        }
+        if (request.getNightShift() != null) {
+            nightShiftConfigService.saveConfig(request.getNightShift());
         }
     }
 

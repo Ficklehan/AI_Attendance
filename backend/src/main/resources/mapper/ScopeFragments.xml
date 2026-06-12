@@ -1,0 +1,74 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+    "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<!--
+  数据范围 SQL 片段：TaskMapper（任务维度 EXISTS）与 TaskRecordMapper（记录行直接过滤）共用。
+  tableAlias 通过 include property 传入，仅允许 t / tr / tr_ds 等固定别名。
+-->
+<mapper namespace="com.attendance.mapper.ScopeFragments">
+
+    <sql id="OwnerUserIdsIn">
+        <if test="scope.ownerUserIds != null and scope.ownerUserIds.size() > 0">
+            AND ${tableAlias}.user_id IN
+            <foreach collection="scope.ownerUserIds" item="uid" open="(" separator="," close=")">
+                #{uid}
+            </foreach>
+        </if>
+    </sql>
+
+    <sql id="RecordDimensionKeysIn">
+        <if test="scope.countries != null and scope.countries.size() > 0">
+            AND ${tableAlias}.country_key IN
+            <foreach collection="scope.countries" item="cv" open="(" separator="," close=")">#{cv}</foreach>
+        </if>
+        <if test="scope.warehouses != null and scope.warehouses.size() > 0">
+            AND ${tableAlias}.warehouse_key IN
+            <foreach collection="scope.warehouses" item="wv" open="(" separator="," close=")">#{wv}</foreach>
+        </if>
+        <if test="scope.agencies != null and scope.agencies.size() > 0">
+            AND ${tableAlias}.agency_key IN
+            <foreach collection="scope.agencies" item="av" open="(" separator="," close=")">#{av}</foreach>
+        </if>
+    </sql>
+
+    <sql id="ViewerUserIdOr">
+        <if test="scope.viewerUserId != null and scope.viewerUserId != ''">
+            OR ${tableAlias}.user_id = #{scope.viewerUserId}
+        </if>
+    </sql>
+
+    <!-- 任务列表：任一子记录命中维度即可见该任务 -->
+    <sql id="TaskDimensionScopeExists">
+        <if test="scope.recordDimensionFilter">
+            AND (
+                EXISTS (
+                    SELECT 1 FROM task_records tr_ds
+                    WHERE tr_ds.task_id = ${taskTableAlias}.task_id AND tr_ds.deleted = 0
+                    <include refid="com.attendance.mapper.ScopeFragments.RecordDimensionKeysIn">
+                        <property name="tableAlias" value="tr_ds"/>
+                    </include>
+                )
+                <if test="scope.viewerUserId != null and scope.viewerUserId != ''">
+                    OR ${taskTableAlias}.user_id = #{scope.viewerUserId}
+                </if>
+            )
+        </if>
+    </sql>
+
+    <!-- 记录列表：当前行须命中 owner / 维度，或为本人的记录 -->
+    <sql id="RecordRowScopeGroup">
+        AND (
+            1=1
+            <include refid="com.attendance.mapper.ScopeFragments.OwnerUserIdsIn">
+                <property name="tableAlias" value="${tableAlias}"/>
+            </include>
+            <include refid="com.attendance.mapper.ScopeFragments.RecordDimensionKeysIn">
+                <property name="tableAlias" value="${tableAlias}"/>
+            </include>
+            <include refid="com.attendance.mapper.ScopeFragments.ViewerUserIdOr">
+                <property name="tableAlias" value="${tableAlias}"/>
+            </include>
+        )
+    </sql>
+
+</mapper>

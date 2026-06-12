@@ -249,16 +249,10 @@ Page({
 
     this.setData({ loading: true })
 
-    tt.request({
-      url: `${App.globalData.baseUrl}/tasks`,
-      method: 'GET',
-      data: this.buildListParams(),
-      header: {
-        Authorization: App.globalData.token ? `Bearer ${App.globalData.token}` : ''
-      },
-      success: (res) => {
-        if (isApiSuccess(res.data)) {
-          const page = getApiData(res.data) || {}
+    taskApi.getTaskList(this.buildListParams())
+      .then((body) => {
+        if (isApiSuccess(body)) {
+          const page = getApiData(body) || {}
           let list = mapTaskList(page.records || [])
           list = filterTasksByTab(list, this.data.currentTab)
           const preserveSelect = this.data.selectionMode
@@ -282,12 +276,11 @@ Page({
         } else {
           this.setData({ loading: false, loadError: true })
         }
-      },
-      fail: (error) => {
+      })
+      .catch((error) => {
         console.error('加载任务失败:', error)
         this.setData({ loading: false, loadError: true })
-      }
-    })
+      })
   },
 
   loadMore: function () {

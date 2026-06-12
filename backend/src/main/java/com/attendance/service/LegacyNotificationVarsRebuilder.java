@@ -183,9 +183,6 @@ public class LegacyNotificationVarsRebuilder {
     }
 
     private static String displayName(User user) {
-        if (user.getRealName() != null && !user.getRealName().trim().isEmpty()) {
-            return user.getRealName().trim();
-        }
-        return user.getUsername();
+        return ReminderMessageBuilder.displayName(user);
     }
 }
