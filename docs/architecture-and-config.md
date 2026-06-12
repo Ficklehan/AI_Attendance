@@ -205,6 +205,7 @@ AttendanceAgent/
 
 ## 7. 相关文档
 
+- [requirements/task-reminder.md](./requirements/task-reminder.md) — 任务提醒功能需求（已确认）
 - [backend/config/README.md](../backend/config/README.md) — SQL 初始化与迁移
 - [base-config/README.md](../base-config/README.md) — 各配置文件说明
 - [data-consistency.md](./data-consistency.md) — 任务状态与多端统计约定
