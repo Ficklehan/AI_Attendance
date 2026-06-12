@@ -205,7 +205,9 @@ export default {
   },
   settings: {
     title: 'Einstellungen',
-    menu: { ai: 'KI-Erkennung', feishu: 'Feishu', users: 'Benutzer', roles: 'Rollen & Zugriff', audit: 'Audit-Protokoll' },
+    menu: { ai: 'KI-Erkennung', feishu: 'Feishu', users: 'Benutzer', roles: 'Rollen & Zugriff', systemReminders: 'System & Erinnerungen', audit: 'Audit-Protokoll' },
+    hub: { title: 'System & Erinnerungen', subtitle: 'Erinnerungsregeln, Benachrichtigungen und Bestätigungsvalidierung', tabReminders: 'Erinnerungsregeln', tabSystem: 'Benachrichtigung & Validierung' },
+    system: { confirmValidationTitle: 'Pflichtfelder bei Bestätigung', confirmValidationDesc: 'Pflichtfelder bei Aufgabenbestätigung. Nur für Zeilen mit Marke Normal.', confirmValidationScopeHint: 'Gelöschte und abwesende Zeilen werden übersprungen.', confirmValidationFields: 'Pflichtfelder', confirmValidationFieldsRequired: 'Mindestens ein Feld auswählen', resetDefaults: 'Standard wiederherstellen' },
     users: {
       title: 'Benutzerverwaltung',
       subtitle: 'Konten erstellen, Rollen zuweisen und Status verwalten',

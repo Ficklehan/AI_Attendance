@@ -298,25 +298,29 @@
                   </a-tag>
                 </template>
                 <template v-if="column.key === 'action'">
-                  <a-tooltip :title="record.isDeleted ? $t('common.undo') : $t('common.delete')">
-                    <a-button
-                      type="text"
-                      :danger="!record.isDeleted"
-                      shape="circle"
-                      size="small"
-                      @click="deleteRecord(record)"
-                    >
-                      <svg v-if="!record.isDeleted" width="14" height="14" viewBox="0 0 24 24" fill="none">
-                        <path d="M3 6H21" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
-                        <path d="M8 6V4C8 3.44772 8.44772 3 9 3H15C15.5523 3 16 3.44772 16 4V6" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
-                        <path d="M5 6L6 20C6 20.5523 6.44772 21 7 21H17C17.5523 21 18 20.5523 18 20L19 6" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
-                      </svg>
-                      <svg v-else width="14" height="14" viewBox="0 0 24 24" fill="none">
-                        <path d="M1 4V10H7" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
-                        <path d="M3.51 15C4.15839 16.8404 5.38734 18.4202 7.01166 19.5014C8.63598 20.5826 10.5677 21.1066 12.5157 20.9945C14.4637 20.8824 16.3226 20.1402 17.8121 18.8798C19.3017 17.6193 20.3413 15.9074 20.7742 14.0064C21.2072 12.1053 21.0101 10.1158 20.2126 8.33953C19.4152 6.56328 18.0605 5.09319 16.3528 4.15275C14.6451 3.21231 12.6769 2.8519 10.7447 3.12488C8.81245 3.39786 7.02091 4.28915 5.64 5.66L1 10" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
-                      </svg>
-                    </a-button>
-                  </a-tooltip>
+                  <div class="table-action-cell table-action-cell--icons table-action-cell--icons-1">
+                    <span class="table-action-cell__slot">
+                      <a-tooltip :title="record.isDeleted ? $t('common.undo') : $t('common.delete')">
+                        <a-button
+                          type="text"
+                          :danger="!record.isDeleted"
+                          shape="circle"
+                          size="small"
+                          @click="deleteRecord(record)"
+                        >
+                          <svg v-if="!record.isDeleted" width="14" height="14" viewBox="0 0 24 24" fill="none">
+                            <path d="M3 6H21" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+                            <path d="M8 6V4C8 3.44772 8.44772 3 9 3H15C15.5523 3 16 3.44772 16 4V6" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                            <path d="M5 6L6 20C6 20.5523 6.44772 21 7 21H17C17.5523 21 18 20.5523 18 20L19 6" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                          </svg>
+                          <svg v-else width="14" height="14" viewBox="0 0 24 24" fill="none">
+                            <path d="M1 4V10H7" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                            <path d="M3.51 15C4.15839 16.8404 5.38734 18.4202 7.01166 19.5014C8.63598 20.5826 10.5677 21.1066 12.5157 20.9945C14.4637 20.8824 16.3226 20.1402 17.8121 18.8798C19.3017 17.6193 20.3413 15.9074 20.7742 14.0064C21.2072 12.1053 21.0101 10.1158 20.2126 8.33953C19.4152 6.56328 18.0605 5.09319 16.3528 4.15275C14.6451 3.21231 12.6769 2.8519 10.7447 3.12488C8.81245 3.39786 7.02091 4.28915 5.64 5.66L1 10" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                          </svg>
+                        </a-button>
+                      </a-tooltip>
+                    </span>
+                  </div>
                 </template>
               </template>
             </a-table>

@@ -1,6 +1,7 @@
 /** 确认提交必填字段：未出勤、已删除行不校验 */
 
 const { markContains } = require('./recognitionLabels')
+const { isPlaceholderValue } = require('./fieldPlaceholder')
 
 const REQUIRED_SUBMIT_FIELD_KEYS = ['NOM_PRENOM', 'Date']
 
@@ -8,8 +9,6 @@ const FIELD_ALIASES = {
   NOM_PRENOM: ['NOM_PRENOM', 'Name'],
   Date: ['Date', 'WorkDate']
 }
-
-const PLACEHOLDER_VALUES = { '???': true, '??': true, illegible: true }
 
 function pickField(record, ...keys) {
   if (!record) return ''
@@ -23,11 +22,7 @@ function pickField(record, ...keys) {
 }
 
 function hasFilledText(value) {
-  const s = value === null || value === undefined ? '' : String(value).trim()
-  if (!s) return false
-  const lower = s.toLowerCase()
-  if (PLACEHOLDER_VALUES[s] || PLACEHOLDER_VALUES[lower]) return false
-  return true
+  return !isPlaceholderValue(value)
 }
 
 function getRecordMark(record) {

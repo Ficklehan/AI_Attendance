@@ -38,6 +38,8 @@ public interface TaskMapper {
 
     String selectLastTaskId();
 
+    List<Task> selectTasksByStatuses(@Param("statuses") List<String> statuses);
+
     int insertTask(Task task);
 
     int updateTask(Task task);

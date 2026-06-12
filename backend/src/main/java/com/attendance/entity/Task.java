@@ -22,6 +22,9 @@ public class Task {
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;
 
+    /** 非持久化：当前用户是否可确认/修改该任务（督办只读时为 false） */
+    private Boolean canConfirm;
+
     public String getTaskId() {
         return taskId;
     }
@@ -164,5 +167,13 @@ public class Task {
 
     public void setUpdatedAt(LocalDateTime updatedAt) {
         this.updatedAt = updatedAt;
+    }
+
+    public Boolean getCanConfirm() {
+        return canConfirm;
+    }
+
+    public void setCanConfirm(Boolean canConfirm) {
+        this.canConfirm = canConfirm;
     }
 }

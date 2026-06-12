@@ -45,8 +45,13 @@ onMounted(async () => {
 
     message.success('飞书登录成功')
 
+    const redirect = urlParams.get('redirect')
+    const target = redirect && redirect.startsWith('/') && !redirect.startsWith('//')
+      ? redirect
+      : '/'
+
     setTimeout(() => {
-      router.replace('/')
+      router.replace(target)
     }, 500)
   } catch (error) {
     console.error('飞书登录失败:', error)

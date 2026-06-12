@@ -205,7 +205,9 @@ export default {
   },
   settings: {
     title: 'Instellingen',
-    menu: { ai: 'AI-herkenning', feishu: 'Feishu', users: 'Gebruikers', roles: 'Rollen & toegang', audit: 'Auditlogboek' },
+    menu: { ai: 'AI-herkenning', feishu: 'Feishu', users: 'Gebruikers', roles: 'Rollen & toegang', systemReminders: 'Systeem & herinneringen', audit: 'Auditlogboek' },
+    hub: { title: 'Systeem & herinneringen', subtitle: 'Herinneringsregels, meldingen en bevestigingsvalidatie', tabReminders: 'Herinneringsregels', tabSystem: 'Meldingen & validatie' },
+    system: { confirmValidationTitle: 'Verplichte velden bij bevestigen', confirmValidationDesc: 'Verplichte velden bij taakbevestiging. Alleen rijen met markering Normal.', confirmValidationScopeHint: 'Verwijderde en afwezige rijen worden overgeslagen.', confirmValidationFields: 'Verplichte velden', confirmValidationFieldsRequired: 'Selecteer minstens één veld', resetDefaults: 'Standaard herstellen' },
     users: {
       title: 'Gebruikersbeheer',
       subtitle: 'Accounts maken, rollen toewijzen en status beheren',

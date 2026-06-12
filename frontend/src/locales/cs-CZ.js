@@ -248,7 +248,9 @@ export default {
   },
   settings: {
     title: 'Nastavení',
-    menu: { ai: 'AI rozpoznávání', feishu: 'Feishu', users: 'Uživatelé', roles: 'Role a přístup', audit: 'Audit' },
+    menu: { ai: 'AI rozpoznávání', feishu: 'Feishu', users: 'Uživatelé', roles: 'Role a přístup', systemReminders: 'Systém a připomínky', audit: 'Audit' },
+    hub: { title: 'Systém a připomínky', subtitle: 'Pravidla připomínek, oznámení a validace potvrzení', tabReminders: 'Pravidla připomínek', tabSystem: 'Oznámení a validace' },
+    system: { confirmValidationTitle: 'Povinná pole při potvrzení', confirmValidationDesc: 'Povinná pole při potvrzení úkolu. Platí jen pro řádky se značkou Normal.', confirmValidationScopeHint: 'Smazané a nepřítomné řádky se přeskočí.', confirmValidationFields: 'Povinná pole', confirmValidationFieldsRequired: 'Vyberte alespoň jedno pole', resetDefaults: 'Obnovit výchozí' },
     users: {
       title: 'Správa uživatelů',
       subtitle: 'Vytvářejte účty, přiřazujte role a spravujte stav',

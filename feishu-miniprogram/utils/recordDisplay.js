@@ -1,5 +1,6 @@
 /** 与 PC 端 Home.vue / TaskEdit.vue 一致的记录展示逻辑 */
 
+const { displayFieldValue, isPlaceholderValue } = require('./fieldPlaceholder')
 const { t } = require('./i18n')
 const { hasManualCalibration, buildCalibrationHistoryUi } = require('./calibrationHistory')
 const {
@@ -68,7 +69,7 @@ function normalizePauseMinutes(pause) {
     .replace(',', '.')
     .replace(/\s+/g, '')
     .replace(/minutes?|mins?|mn/g, 'min')
-  if (!normalized || normalized === '???' || normalized === '??' || normalized === 'illegible') return ''
+  if (isPlaceholderValue(normalized)) return ''
 
   const hourMatch = normalized.match(/^(\d+(?:\.\d+)?)h(\d+(?:\.\d+)?)?(?:min|m)?$/)
   if (hourMatch) {
@@ -310,12 +311,7 @@ function buildReasonBadges(reasons, maxCount) {
 }
 
 function isEmptyFieldValue(value) {
-  if (value === undefined || value === null) return true
-  const trimmed = String(value).trim()
-  if (!trimmed || trimmed === '-' || trimmed === '—') return true
-  if (trimmed === '???' || trimmed === '??') return true
-  const lower = trimmed.toLowerCase()
-  return ['illegible', 'n/a', 'na', 'null', 'none'].includes(lower)
+  return isPlaceholderValue(value)
 }
 
 function buildRecordFieldRows(record, ctx) {
@@ -375,10 +371,13 @@ function enrichRecord(record, index) {
   const anomalyReasons = collectAnomalyReasons(record)
   const anomalyReasonPreview = buildReasonBadges(anomalyReasons, 2)
   const anomalyReasonMore = Math.max(0, anomalyReasons.length - anomalyReasonPreview.length)
-  const displayName = cleanPersonName(NOM_PRENOM) || '-'
-  const displayNo = cleanWorkerNo(NO) || '-'
-  const dateText = Date || '-'
-  const timeRangeText = buildTimeRange(ARRIVEE, DEPAR)
+  const displayName = displayFieldValue(cleanPersonName(NOM_PRENOM))
+  const displayNo = displayFieldValue(cleanWorkerNo(NO))
+  const dateText = displayFieldValue(Date)
+  const timeRangeText = buildTimeRange(
+    isPlaceholderValue(ARRIVEE) ? '' : ARRIVEE,
+    isPlaceholderValue(DEPAR) ? '' : DEPAR
+  )
   const normalizedPause = normalizePauseMinutes(PAUSE)
   const pauseText = formatPauseText(normalizedPause)
   const workHoursText = workHours || '-'
@@ -429,7 +428,7 @@ function enrichRecord(record, index) {
     workHoursText,
     timeLine: `${dateText}  ${timeRangeText}`,
     metricsLine: `${t('result.fieldBreak')}:${pauseText}  ${t('result.fieldWorkHours')}:${workHoursText}`,
-    pageNumText: PAGE_NUM || '-',
+    pageNumText: displayFieldValue(PAGE_NUM),
     fieldRows: buildRecordFieldRows(record, {
       PAGE_NUM,
       NO,
@@ -445,7 +444,7 @@ function enrichRecord(record, index) {
       SIGNATURE,
       Observations,
       dateText,
-      pageNumText: PAGE_NUM || '-',
+      pageNumText: displayFieldValue(PAGE_NUM),
       pauseText,
       workHours,
       workHoursText
@@ -501,5 +500,6 @@ module.exports = {
   buildDisplayRecords,
   calculateRecordStats: calculateRecordStatsForDisplay,
   buildAnomalyAlerts,
-  getMarkTag
+  getMarkTag,
+  normalizePauseMinutes
 }

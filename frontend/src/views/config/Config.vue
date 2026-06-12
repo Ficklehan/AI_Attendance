@@ -422,9 +422,13 @@
                 <a-input v-model:value="record.description" placeholder="描述" />
               </template>
               <template v-else-if="column.key === 'action'">
-                <a-button type="text" danger size="small" @click="removeMapping(record)">
-                  <DeleteOutlined />
-                </a-button>
+                <div class="table-action-cell table-action-cell--icons table-action-cell--icons-1">
+                  <span class="table-action-cell__slot">
+                    <a-button type="text" danger size="small" @click="removeMapping(record)">
+                      <DeleteOutlined />
+                    </a-button>
+                  </span>
+                </div>
               </template>
             </template>
           </a-table>
@@ -807,7 +811,7 @@ const baseMappingColumns = computed(() => withTableSorters([
   { title: t('config.mappingConfig.fieldType'), dataIndex: 'type', key: 'type', width: 120 },
   { title: t('config.mappingConfig.required'), dataIndex: 'required', key: 'required', width: 100 },
   { title: t('config.mappingConfig.description'), dataIndex: 'description', key: 'description' },
-  { title: t('config.mappingConfig.action'), key: 'action', width: 80, fixed: 'right' },
+  { title: t('config.mappingConfig.action'), key: 'action', width: 80, align: 'center', fixed: 'right' },
 ]))
 const {
   frozenColumns: mappingColumns,
@@ -1100,7 +1104,30 @@ const saveMappingConfig = async () => {
 }
 
 const saveSystemConfig = async () => {
-  message.info('系统设置已保存')
+  saving.value = true
+  try {
+    await request({
+      url: '/config/system',
+      method: 'put',
+      data: { notificationEnabled: configs.notificationEnabled },
+    })
+    message.success(t('config.saveSuccess'))
+  } catch (error) {
+    console.error('保存系统设置失败:', error)
+  } finally {
+    saving.value = false
+  }
+}
+
+const loadSystemConfig = async () => {
+  try {
+    const res = await request({ url: '/config/system', method: 'get' })
+    if (res.data && typeof res.data.notificationEnabled === 'boolean') {
+      configs.notificationEnabled = res.data.notificationEnabled
+    }
+  } catch (error) {
+    console.error('加载系统设置失败:', error)
+  }
 }
 
 const handleFeishuUrlChange = () => {
@@ -1262,8 +1289,15 @@ const completeWizard = async () => {
   }
 }
 
+watch(activeModule, (m) => {
+  if (m === 'system') loadSystemConfig()
+})
+
 onMounted(async () => {
   await reloadConfigs(true)
+  if (activeModule.value === 'system') {
+    await loadSystemConfig()
+  }
 })
 </script>
 

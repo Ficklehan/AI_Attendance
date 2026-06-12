@@ -514,7 +514,22 @@ export default {
       feishu: 'Feishu',
       users: 'Usuarios',
       roles: 'Roles y acceso',
+      systemReminders: 'Sistema y recordatorios',
       audit: 'Registros de auditoría',
+    },
+    hub: {
+      title: 'Sistema y recordatorios',
+      subtitle: 'Reglas de recordatorio, notificaciones y validación al confirmar',
+      tabReminders: 'Reglas de recordatorio',
+      tabSystem: 'Notificaciones y validación',
+    },
+    system: {
+      confirmValidationTitle: 'Campos obligatorios al confirmar',
+      confirmValidationDesc: 'Campos requeridos al confirmar la tarea. Solo filas cuya marca incluye Normal.',
+      confirmValidationScopeHint: 'Se omiten filas eliminadas o ausentes.',
+      confirmValidationFields: 'Campos obligatorios',
+      confirmValidationFieldsRequired: 'Seleccione al menos un campo',
+      resetDefaults: 'Restaurar valores predeterminados',
     },
     users: {
       title: 'Gestión de usuarios',

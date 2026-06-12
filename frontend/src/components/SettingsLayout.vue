@@ -29,6 +29,7 @@ import {
   TeamOutlined,
   SafetyCertificateOutlined,
   FileSearchOutlined,
+  BellOutlined,
 } from '@ant-design/icons-vue'
 
 const route = useRoute()
@@ -38,6 +39,7 @@ const navItems = [
   { path: '/settings/feishu', labelKey: 'settings.menu.feishu', icon: ApiOutlined },
   { path: '/settings/users', labelKey: 'settings.menu.users', icon: TeamOutlined },
   { path: '/settings/roles', labelKey: 'settings.menu.roles', icon: SafetyCertificateOutlined },
+  { path: '/settings/reminders', labelKey: 'settings.menu.systemReminders', icon: BellOutlined },
   { path: '/settings/audit', labelKey: 'settings.menu.audit', icon: FileSearchOutlined },
 ]
 

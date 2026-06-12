@@ -235,7 +235,22 @@ export default {
       feishu: 'Feishu',
       users: 'Utilisateurs',
       roles: 'Rôles et accès',
+      systemReminders: 'Système et rappels',
       audit: "Journal d'audit",
+    },
+    hub: {
+      title: 'Système et rappels',
+      subtitle: 'Règles de rappel, notifications et validation à la confirmation',
+      tabReminders: 'Règles de rappel',
+      tabSystem: 'Notifications et validation',
+    },
+    system: {
+      confirmValidationTitle: 'Champs obligatoires à la confirmation',
+      confirmValidationDesc: 'Champs requis lors de la confirmation. S\'applique aux lignes dont la marque contient Normal.',
+      confirmValidationScopeHint: 'Les lignes supprimées ou absentes sont ignorées.',
+      confirmValidationFields: 'Champs obligatoires',
+      confirmValidationFieldsRequired: 'Sélectionnez au moins un champ',
+      resetDefaults: 'Réinitialiser',
     },
     users: {
       title: 'Gestion des utilisateurs',

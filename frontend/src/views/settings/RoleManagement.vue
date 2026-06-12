@@ -205,6 +205,7 @@ const PERM_DEFS = [
   { key: 'users', nameKey: 'settings.roles.capUsers' },
   { key: 'audit', nameKey: 'settings.roles.capAudit' },
   { key: 'recordCalibrate', nameKey: 'settings.roles.capRecordCalibrate' },
+  { key: 'reminderConfig', nameKey: 'settings.roles.capReminderConfig' },
 ]
 
 const systemRoles = ref([])

@@ -38,4 +38,6 @@ public interface UserMapper {
     int existsByFeishuUserId(@Param("feishuUserId") String feishuUserId);
 
     long countActiveByRole(@Param("role") String role);
+
+    List<User> selectActiveUsers();
 }

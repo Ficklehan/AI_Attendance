@@ -3,6 +3,8 @@ const { isApiSuccess, getApiData, getApiMessage } = require('../../utils/respons
 const { t } = require('../../utils/i18n')
 const { isCountryConfigured, syncCountryConfig } = require('../../utils/preferences')
 const { refreshApiBase, probeBackend, describeNetworkFailure } = require('../../utils/apiBase')
+const { ensureFeishuLogin } = require('../../utils/feishuLogin')
+const { consumePendingReturn, buildResultPath, setPendingReturn } = require('../../utils/deepLink')
 
 Page({
   data: {
@@ -10,8 +12,16 @@ Page({
     texts: {}
   },
 
-  onLoad: function () {
+  onLoad: function (options) {
     this.refreshTexts()
+    const taskId = options && options.taskId
+    if (taskId) {
+      setPendingReturn(buildResultPath(taskId))
+    }
+    const auto = options && (options.auto === '1' || options.auto === 'true')
+    if (auto || taskId) {
+      this.tryAutoLogin()
+    }
   },
 
   refreshTexts: function () {
@@ -27,6 +37,23 @@ Page({
         tip3: t('login.tip3')
       }
     })
+  },
+
+  tryAutoLogin: function () {
+    if (this._autoLoginStarted) {
+      return
+    }
+    this._autoLoginStarted = true
+    this.setData({ loading: true })
+    ensureFeishuLogin({ silent: true, force: true })
+      .then(() => {
+        this.setData({ loading: false })
+        this.afterLogin()
+      })
+      .catch(() => {
+        this.setData({ loading: false })
+        this._autoLoginStarted = false
+      })
   },
 
   handleFeishuLogin: function () {
@@ -111,13 +138,22 @@ Page({
   },
 
   afterLogin: function () {
+    const pendingReturn = consumePendingReturn()
     syncCountryConfig().then(() => {
+      if (pendingReturn) {
+        tt.redirectTo({ url: pendingReturn })
+        return
+      }
       if (!isCountryConfigured()) {
         tt.redirectTo({ url: '/pages/settings/index?setup=1' })
         return
       }
       tt.switchTab({ url: '/pages/index/index' })
     }).catch(() => {
+      if (pendingReturn) {
+        tt.redirectTo({ url: pendingReturn })
+        return
+      }
       tt.redirectTo({ url: '/pages/settings/index?setup=1' })
     })
   }

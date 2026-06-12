@@ -82,12 +82,7 @@ public final class RecordConfirmValidator {
     }
 
     private static boolean hasFilledText(Object value) {
-        String s = stringValue(value);
-        if (s.isEmpty()) {
-            return false;
-        }
-        String lower = s.toLowerCase(Locale.ROOT);
-        return !"???".equals(s) && !"??".equals(s) && !"illegible".equals(lower);
+        return !RecognizedFieldSanitizer.isUnrecognized(stringValue(value));
     }
 
     private static String stringValue(Object value) {

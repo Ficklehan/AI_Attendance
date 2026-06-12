@@ -251,7 +251,9 @@ export default {
   },
   settings: {
     title: 'Ustawienia',
-    menu: { ai: 'Rozpoznawanie AI', feishu: 'Feishu', users: 'Użytkownicy', roles: 'Role i dostęp', audit: 'Dziennik audytu' },
+    menu: { ai: 'Rozpoznawanie AI', feishu: 'Feishu', users: 'Użytkownicy', roles: 'Role i dostęp', systemReminders: 'System i przypomnienia', audit: 'Dziennik audytu' },
+    hub: { title: 'System i przypomnienia', subtitle: 'Reguły przypomnień, powiadomienia i walidacja potwierdzenia', tabReminders: 'Reguły przypomnień', tabSystem: 'Powiadomienia i walidacja' },
+    system: { confirmValidationTitle: 'Wymagane pola przy potwierdzeniu', confirmValidationDesc: 'Wymagane pola przy potwierdzaniu zadania. Dotyczy tylko wierszy ze znacznikiem Normal.', confirmValidationScopeHint: 'Usunięte i nieobecne wiersze są pomijane.', confirmValidationFields: 'Wymagane pola', confirmValidationFieldsRequired: 'Wybierz co najmniej jedno pole', resetDefaults: 'Przywróć domyślne' },
     users: {
       title: 'Zarządzanie użytkownikami',
       subtitle: 'Twórz konta, przypisuj role i zarządzaj statusem',

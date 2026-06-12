@@ -85,6 +85,12 @@ const routes = [
           { path: 'permissions', redirect: '/settings/roles' },
           { path: 'data-scope', redirect: '/settings/roles' },
           {
+            path: 'reminders',
+            name: 'SettingsReminders',
+            component: () => import('@/views/settings/SystemRemindersHub.vue'),
+            meta: { titleKey: 'settings.menu.systemReminders' },
+          },
+          {
             path: 'audit',
             name: 'SettingsAudit',
             component: () => import('@/views/audit/AuditLog.vue'),

@@ -8,7 +8,7 @@
         <view class="field-input-shell">
           <input
             class="field-input"
-            type="text"
+            type="{{item.inputType || 'text'}}"
             value="{{item.value}}"
             data-key="{{item.key}}"
             bindinput="onFieldInput"

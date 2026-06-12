@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+    "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.attendance.mapper.PluginConfigMapper">
+
+    <select id="selectValue" resultType="string">
+        SELECT config_value FROM plugin_config WHERE config_key = #{configKey} LIMIT 1
+    </select>
+
+    <insert id="upsertValue">
+        INSERT INTO plugin_config (config_key, config_value, config_type, description)
+        VALUES (#{configKey}, #{configValue}, #{configType}, #{description})
+        ON DUPLICATE KEY UPDATE config_value = #{configValue}
+    </insert>
+</mapper>

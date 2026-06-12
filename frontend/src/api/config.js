@@ -21,3 +21,15 @@ export const deleteConfig = (configKey) => {
     method: 'delete',
   })
 }
+
+export const getSystemConfig = () => {
+  return request({ url: '/config/system', method: 'get' })
+}
+
+export const updateSystemConfig = (data) => {
+  return request({ url: '/config/system', method: 'put', data })
+}
+
+export const getConfirmValidationConfig = () => {
+  return request({ url: '/config/confirm-validation', method: 'get' })
+}

@@ -8,6 +8,7 @@ const {
   FIELD_LABEL_KEYS,
   normalizeCalibValue
 } = require('../../utils/calibratableFields')
+const { normalizePauseMinutes } = require('../../utils/recordDisplay')
 
 Page({
   data: {
@@ -105,6 +106,11 @@ Page({
     const draft = {}
     CALIBRATABLE_FIELDS.forEach((key) => {
       const v = record[key]
+      if (key === 'PAUSE') {
+        const minutes = normalizePauseMinutes(v)
+        draft[key] = minutes === '' ? '' : String(minutes)
+        return
+      }
       draft[key] = v === undefined || v === null ? '' : v
     })
     this.setData({ draft }, () => this.rebuildForm())
@@ -116,14 +122,18 @@ Page({
       label: t(FIELD_LABEL_KEYS[key] || key),
       value: this.data.draft[key] === undefined || this.data.draft[key] === null
         ? ''
-        : String(this.data.draft[key])
+        : String(this.data.draft[key]),
+      inputType: key === 'PAUSE' ? 'number' : 'text'
     }))
     this.setData({ fields })
   },
 
   onFieldInput: function (e) {
     const key = e.currentTarget.dataset.key
-    const value = e.detail.value
+    let value = e.detail.value
+    if (key === 'PAUSE') {
+      value = String(value || '').replace(/[^\d]/g, '')
+    }
     const draft = { ...this.data.draft, [key]: value }
     this.setData({ draft }, () => this.rebuildForm())
   },

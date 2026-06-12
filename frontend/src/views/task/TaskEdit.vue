@@ -248,19 +248,19 @@
                   size="small"
                   :bordered="false"
                 />
-                <span v-else class="cell-text">{{ record.PAGE_NUM || record.pageNum || '-' }}</span>
+                <span v-else class="cell-text">{{ displayFieldValue(record.PAGE_NUM || record.pageNum) }}</span>
               </template>
               <template v-if="column.key === 'NO'">
                 <a-input v-if="isRecordEditable(record)" v-model:value="record.NO" size="small" :bordered="false" />
-                <span v-else class="cell-text">{{ record.NO }}</span>
+                <span v-else class="cell-text">{{ displayFieldValue(record.NO) }}</span>
               </template>
               <template v-if="column.key === 'Pays'">
-                <a-input v-if="isRecordEditable(record)" v-model:value="record.Pays" size="small" :bordered="false" />
-                <span v-else class="cell-text">{{ record.Pays }}</span>
+                <a-input v-if="isRecordEditable(record)" v-model:value="record.Pays" size="small" :class="requiredInputClass(record, 'Pays')" :bordered="false" />
+                <span v-else :class="requiredTextClass(record, 'Pays')">{{ displayFieldValue(record.Pays) }}</span>
               </template>
               <template v-if="column.key === 'Entrepot'">
-                <a-input v-if="isRecordEditable(record)" v-model:value="record.Entrepot" size="small" :bordered="false" />
-                <span v-else class="cell-text">{{ record.Entrepot }}</span>
+                <a-input v-if="isRecordEditable(record)" v-model:value="record.Entrepot" size="small" :class="requiredInputClass(record, 'Entrepot')" :bordered="false" />
+                <span v-else :class="requiredTextClass(record, 'Entrepot')">{{ displayFieldValue(record.Entrepot) }}</span>
               </template>
               <template v-if="column.key === 'NOM_PRENOM'">
                 <div class="name-cell">
@@ -268,11 +268,11 @@
                     v-if="isRecordEditable(record)"
                     v-model:value="record.NOM_PRENOM"
                     size="small"
-                    :class="{ 'required-empty': isRequiredFieldEmpty(record, 'NOM_PRENOM') }"
+                    :class="requiredInputClass(record, 'NOM_PRENOM')"
                     :bordered="false"
                     @change="markNameManuallyEdited(record)"
                   />
-                  <span v-else class="cell-text">{{ record.NOM_PRENOM }}</span>
+                  <span v-else :class="requiredTextClass(record, 'NOM_PRENOM')">{{ displayFieldValue(record.NOM_PRENOM) }}</span>
                   <div v-if="getDuplicateMeta(record)" class="duplicate-tools">
                     <a-tag color="gold" size="small">{{ $t('taskEdit.duplicateTag') }}</a-tag>
                     <a-button type="link" size="small" class="duplicate-link" @click="toggleDuplicateExpand(record)">
@@ -291,28 +291,28 @@
                 </div>
               </template>
               <template v-if="column.key === 'AGENCE_INTERIMAIRE'">
-                <a-input v-if="isRecordEditable(record)" v-model:value="record.AGENCE_INTERIMAIRE" size="small" :bordered="false" />
-                <span v-else class="cell-text">{{ record.AGENCE_INTERIMAIRE }}</span>
+                <a-input v-if="isRecordEditable(record)" v-model:value="record.AGENCE_INTERIMAIRE" size="small" :class="requiredInputClass(record, 'AGENCE_INTERIMAIRE')" :bordered="false" />
+                <span v-else :class="requiredTextClass(record, 'AGENCE_INTERIMAIRE')">{{ displayFieldValue(record.AGENCE_INTERIMAIRE) }}</span>
               </template>
               <template v-if="column.key === 'HORAIRES_DU_TRAVAIL'">
-                <a-input v-if="isRecordEditable(record)" v-model:value="record.HORAIRES_DU_TRAVAIL" size="small" :bordered="false" />
-                <span v-else class="cell-text">{{ record.HORAIRES_DU_TRAVAIL }}</span>
+                <a-input v-if="isRecordEditable(record)" v-model:value="record.HORAIRES_DU_TRAVAIL" size="small" :class="requiredInputClass(record, 'HORAIRES_DU_TRAVAIL')" :bordered="false" />
+                <span v-else :class="requiredTextClass(record, 'HORAIRES_DU_TRAVAIL')">{{ displayFieldValue(record.HORAIRES_DU_TRAVAIL) }}</span>
               </template>
               <template v-if="column.key === 'Date'">
-                <a-input v-if="isRecordEditable(record)" v-model:value="record.Date" size="small" :class="{ 'required-empty': isRequiredFieldEmpty(record, 'Date') }" :bordered="false" />
-                <span v-else class="cell-text">{{ record.Date }}</span>
+                <a-input v-if="isRecordEditable(record)" v-model:value="record.Date" size="small" :class="requiredInputClass(record, 'Date')" :bordered="false" />
+                <span v-else :class="requiredTextClass(record, 'Date')">{{ displayFieldValue(record.Date) }}</span>
               </template>
               <template v-if="column.key === 'ARRIVEE'">
-                <a-input v-if="isRecordEditable(record)" v-model:value="record.ARRIVEE" size="small" :bordered="false" />
-                <span v-else class="cell-text">{{ record.ARRIVEE }}</span>
+                <a-input v-if="isRecordEditable(record)" v-model:value="record.ARRIVEE" size="small" :class="requiredInputClass(record, 'ARRIVEE')" :bordered="false" />
+                <span v-else :class="requiredTextClass(record, 'ARRIVEE')">{{ displayFieldValue(record.ARRIVEE) }}</span>
               </template>
               <template v-if="column.key === 'DEPAR'">
-                <a-input v-if="isRecordEditable(record)" v-model:value="record.DEPAR" size="small" :bordered="false" />
-                <span v-else class="cell-text">{{ record.DEPAR }}</span>
+                <a-input v-if="isRecordEditable(record)" v-model:value="record.DEPAR" size="small" :class="requiredInputClass(record, 'DEPAR')" :bordered="false" />
+                <span v-else :class="requiredTextClass(record, 'DEPAR')">{{ displayFieldValue(record.DEPAR) }}</span>
               </template>
               <template v-if="column.key === 'PAUSE'">
-                <a-input-number v-if="isRecordEditable(record)" v-model:value="record.PAUSE" size="small" :bordered="false" :controls="false" :formatter="formatPauseInput" :parser="parsePauseInput" style="width: 100%" />
-                <span v-else class="cell-text">{{ formatPauseDisplay(record.PAUSE) }}</span>
+                <a-input-number v-if="isRecordEditable(record)" v-model:value="record.PAUSE" size="small" :class="requiredInputClass(record, 'PAUSE')" :bordered="false" :controls="false" :min="0" :precision="0" style="width: 100%" @blur="() => normalizeRecordPauseOnBlur(record)" />
+                <span v-else :class="requiredTextClass(record, 'PAUSE')">{{ formatPauseDisplay(record.PAUSE) }}</span>
               </template>
               <template v-if="column.key === 'SIGNATURE'">
                 <a-select
@@ -337,7 +337,7 @@
               </template>
               <template v-if="column.key === 'Observations'">
                 <a-input v-if="isRecordEditable(record)" v-model:value="record.Observations" size="small" :bordered="false" />
-                <span v-else class="cell-text">{{ record.Observations }}</span>
+                <span v-else class="cell-text">{{ displayFieldValue(record.Observations) }}</span>
               </template>
               <template v-if="column.key === 'SmartMark'">
                 <div class="mark-tags-cell">
@@ -384,34 +384,44 @@
                 <span class="work-hours">{{ calculateWorkHours(record) }}</span>
               </template>
               <template v-if="column.key === 'action'">
-                <a-space v-if="isConfirmedTask && canCalibrateRecord && !record.isDeleted" size="small">
-                  <a-button type="link" size="small" @click="openCalibration(record)">
-                    {{ $t('calibration.action') }}
-                  </a-button>
-                </a-space>
-                <template v-else>
-                  <a-tooltip :title="(record?.isDeleted || isAbsentRow(record)) ? $t('taskEdit.restore') : $t('common.delete')">
-                    <a-button 
-                      v-if="record?.isDeleted || isAbsentRow(record)"
+                <div class="table-action-cell table-action-cell--icons-mixed">
+                  <span class="table-action-cell__slot">
+                    <a-button
+                      v-if="isConfirmedTask && canCalibrateRecord && !record.isDeleted"
                       type="link"
                       size="small"
-                      @click="toggleDelete(record, index)"
-                      class="action-btn restore-btn"
+                      @click="openCalibration(record)"
                     >
-                      <template #icon><UndoOutlined /></template>
+                      {{ $t('calibration.action') }}
                     </a-button>
-                    <a-button 
-                      v-else
-                      type="link"
-                      size="small"
-                      danger
-                      @click="toggleDelete(record, index)"
-                      class="action-btn delete-btn"
+                  </span>
+                  <span class="table-action-cell__slot">
+                    <a-tooltip
+                      v-if="!(isConfirmedTask && canCalibrateRecord && !record.isDeleted)"
+                      :title="(record?.isDeleted || isAbsentRow(record)) ? $t('taskEdit.restore') : $t('common.delete')"
                     >
-                      <template #icon><DeleteOutlined /></template>
-                    </a-button>
-                  </a-tooltip>
-                </template>
+                      <a-button
+                        v-if="record?.isDeleted || isAbsentRow(record)"
+                        type="link"
+                        size="small"
+                        @click="toggleDelete(record, index)"
+                        class="action-btn restore-btn"
+                      >
+                        <template #icon><UndoOutlined /></template>
+                      </a-button>
+                      <a-button
+                        v-else
+                        type="link"
+                        size="small"
+                        danger
+                        @click="toggleDelete(record, index)"
+                        class="action-btn delete-btn"
+                      >
+                        <template #icon><DeleteOutlined /></template>
+                      </a-button>
+                    </a-tooltip>
+                  </span>
+                </div>
               </template>
             </template>
           </a-table>
@@ -504,7 +514,14 @@ import {
   hasRequiredMissing,
   getMissingRequiredFieldKeys,
   REQUIRED_FIELD_I18N_KEYS,
+  collectConfirmValidationIssues,
+  setConfirmValidationConfig,
+  getConfirmValidationConfig,
+  isConfiguredRequiredField,
+  DEFAULT_CONFIRM_VALIDATION,
 } from '@/utils/requiredRecordFields'
+import { getConfirmValidationConfig as fetchConfirmValidationConfig } from '@/api/config'
+import { displayFieldValue, isPlaceholderValue, sanitizeFieldValue, sanitizeRecordPlaceholders } from '@/utils/fieldPlaceholder'
 import { startAdaptivePoll } from '@/utils/adaptivePoll'
 
 const { t } = useI18n()
@@ -520,6 +537,7 @@ const retryingSync = ref(false)
 const deleting = ref(false)
 let stopSyncPoll = null
 const records = ref([])
+const confirmRequiredFields = ref([...DEFAULT_CONFIRM_VALIDATION.requiredFields])
 const rawData = ref('')
 const showAnomalyDetail = ref(true)
 const previewVisible = ref(false)
@@ -612,8 +630,9 @@ const cellStyle = (record, index, column) => {
       },
     }, column)
   }
-  if (hasRequiredMissing(record)) {
-    return mergeCellProps({ style: { backgroundColor: '#FFF9EC' } }, column)
+  const fieldKey = column?.key
+  if (fieldKey && isConfiguredRequiredField(fieldKey) && isRequiredFieldEmpty(record, fieldKey)) {
+    return mergeCellProps({ class: 'required-field-cell' }, column)
   }
   if ((record?.SmartMark || '').includes('模糊')) {
     return mergeCellProps({ style: { backgroundColor: '#FFF9EC' } }, column)
@@ -622,11 +641,12 @@ const cellStyle = (record, index, column) => {
 }
 
 const baseColumns = computed(() => buildRecognitionTableColumns(t, {
+  requiredFieldKeys: confirmRequiredFields.value,
   cellStyle,
   includeWorkHours: true,
   searchFields: true,
   fixedAction: true,
-  actionColumnWidth: isConfirmedTask.value && canCalibrateRecord.value ? 88 : 50,
+  actionColumnWidth: 88,
 }))
 const { columns: sortedColumns, onSorterToggle, sortRows } = useTableColumnSort(baseColumns, { customHeader: true })
 
@@ -810,14 +830,14 @@ const loadTask = async (silent = false) => {
     if (dataPayload) {
       const parsedRecords = JSON.parse(dataPayload)
       records.value = parsedRecords.map((record, idx) => {
-        const normalized = normalizeRecordPause({
+        const normalized = sanitizeRecordPlaceholders(normalizeRecordPause({
           ...record,
           isDeleted: record.isDeleted || false,
           _rowKey: record._rowKey || `${taskId.value}-${idx}-${Date.now()}`,
-          _baseName: String(record.NOM_PRENOM || '').trim(),
+          _baseName: String(sanitizeFieldValue(record.NOM_PRENOM) || '').trim(),
           _nameAutoNumbered: false,
           _duplicateConfirmedUnique: false
-        })
+        }))
         const signatureMark = computeSignatureMark(normalized)
         normalized.SIGNATURE = signatureMark
         normalized.CHECKER = signatureMark
@@ -830,6 +850,12 @@ const loadTask = async (silent = false) => {
     
     previewImagesList.value = await resolveTaskImageUrls(task.value.imageUrls, task.value.fileKey)
   } catch (error) {
+    const msg = String(error?.message || '')
+    if (msg.includes(t('errors.taskNotFound')) || /任务不存在|任务已删除|Task not found/i.test(msg)) {
+      message.warning(t('notification.taskDeleted'))
+      router.replace('/tasks')
+      return
+    }
     message.error(t('taskEdit.loadingFailed'))
     console.error(error)
   } finally {
@@ -1082,7 +1108,24 @@ const getEffectiveAnomalies = (record) => {
   return anomalies.filter(reason => reason && !String(reason).includes(t('home.statsNight')) && !String(reason).includes('夜班'))
 }
 
-const isRequiredFieldEmpty = (record, fieldKey) => getMissingRequiredFieldKeys(record).includes(fieldKey)
+const isRequiredFieldEmpty = (record, fieldKey) => {
+  if (!isConfiguredRequiredField(fieldKey)) return false
+  return getMissingRequiredFieldKeys(record).includes(fieldKey)
+}
+
+const requiredInputClass = (record, fieldKey) => ({
+  'required-empty': isRequiredFieldEmpty(record, fieldKey),
+})
+
+const requiredTextClass = (record, fieldKey) => ({
+  'cell-text': true,
+  'required-empty-display': isRequiredFieldEmpty(record, fieldKey),
+})
+
+const applyConfirmValidationConfig = (config) => {
+  setConfirmValidationConfig(config)
+  confirmRequiredFields.value = [...getConfirmValidationConfig().requiredFields]
+}
 
 const getRowKey = (record) => record?._rowKey || `${record?.NO || 'row'}-${record?.Date || ''}-${record?.NOM_PRENOM || ''}`
 
@@ -1309,7 +1352,7 @@ const normalizePauseMinutes = (value) => {
     .replace(',', '.')
     .replace(/\s+/g, '')
     .replace(/minutes?|mins?|mn/g, 'min')
-  if (!normalized || normalized === '???' || normalized === '??' || normalized === 'illegible') return ''
+  if (isPlaceholderValue(normalized)) return ''
 
   const hourMatch = normalized.match(/^(\d+(?:\.\d+)?)h(\d+(?:\.\d+)?)?(?:min|m)?$/)
   if (hourMatch) {
@@ -1339,21 +1382,16 @@ const formatPauseDisplay = (value) => {
 }
 
 const formatDuplicateCell = (value, type = 'text') => {
-  if (value === null || value === undefined || value === '') return '-'
   if (type === 'pause') {
     return formatPauseDisplay(value)
   }
-  return String(value)
+  return displayFieldValue(value)
 }
 
-const formatPauseInput = (value) => {
-  const minutes = normalizePauseMinutes(value)
-  return minutes === '' ? '' : `${minutes} min`
-}
-
-const parsePauseInput = (value) => {
-  const minutes = normalizePauseMinutes(value)
-  return minutes === '' ? '' : minutes
+const normalizeRecordPauseOnBlur = (record) => {
+  if (!record) return
+  const minutes = normalizePauseMinutes(record.PAUSE)
+  record.PAUSE = minutes === '' ? null : Number(minutes)
 }
 
 const getRecordAnomalyReasons = (record) => {
@@ -1374,7 +1412,6 @@ const getRecordAnomalyReasons = (record) => {
 const getRowClassName = (record, index) => {
   if (!record) return ''
   if (record?.isDeleted) return 'deleted-row'
-  if (hasRequiredMissing(record)) return 'incomplete-row'
   const mark = getDisplaySmartMark(record)
   if (markContains(mark, 'absent')) return 'absent-row'
   if (markContains(mark, 'blurred')) return 'blurred-row'
@@ -1449,21 +1486,36 @@ const anomalyAlerts = computed(() => {
     .filter(Boolean)
 })
 
+const formatValidationIssueLine = (issue) => {
+  const fieldLabels = (issue.fields || [])
+    .map((key) => t(REQUIRED_FIELD_I18N_KEYS[key] || key))
+    .join(t('taskEdit.confirmValidationFieldSep'))
+  return t('taskEdit.confirmValidationLine', {
+    line: issue.line,
+    fields: fieldLabels,
+  })
+}
+
+const showConfirmValidationModal = (issues) => {
+  const lines = issues.map((issue) => formatValidationIssueLine(issue))
+  aModal.error({
+    title: t('taskEdit.confirmValidationTitle'),
+    content: `${t('taskEdit.confirmValidationSummary', { count: issues.length })}\n\n${lines.join('\n')}`,
+    width: 560,
+    okText: t('common.confirm'),
+  })
+}
+
 const handleSubmit = async () => {
-  const nonDeletedRecords = records.value.filter(r => !r.isDeleted).map(normalizeRecordPause)
-  
-  const incompleteRecords = nonDeletedRecords.filter((r) => hasRequiredMissing(r))
-  
-  if (incompleteRecords.length > 0) {
-    const details = incompleteRecords.map((r) => {
-      const missing = getMissingRequiredFieldKeys(r).map((key) => t(REQUIRED_FIELD_I18N_KEYS[key]))
-      return `${t('taskEdit.missingField', { line: records.value.indexOf(r) + 1, id: r.NO || '?' })}: ${missing.join(', ')}`
-    })
-    message.error(t('taskEdit.requiredFieldsMissing', { count: incompleteRecords.length }))
-    console.warn('Missing fields details:', details)
+  const preparedRecords = records.value.map((record) => sanitizeRecordPlaceholders(normalizeRecordPause(record)))
+  const issues = collectConfirmValidationIssues(preparedRecords)
+  if (issues.length > 0) {
+    showConfirmValidationModal(issues)
     return
   }
-  
+
+  const nonDeletedRecords = preparedRecords.filter(r => !r.isDeleted)
+
   if (nonDeletedRecords.length === 0) {
     message.warning(t('taskEdit.noValidRecords'))
     return
@@ -1520,6 +1572,12 @@ onMounted(async () => {
     } catch {
       /* ignore */
     }
+  }
+  try {
+    const res = await fetchConfirmValidationConfig()
+    applyConfirmValidationConfig(res.data)
+  } catch (e) {
+    console.error('加载确认校验配置失败:', e)
   }
   loadTask()
 })
@@ -1859,18 +1917,51 @@ watch(records, () => {
     padding: 4px 8px;
   }
 
-  :deep(.required-empty) {
-    background: $bg-surface !important;
-    border-color: $danger !important;
-    border-radius: $radius-sm;
+  $required-empty-surface: $warning-light;
+  $required-empty-border: rgba($warning, 0.45);
 
-    &:hover {
-      border-color: $danger !important;
+  :deep(.required-field-cell) {
+    background: $required-empty-surface !important;
+    box-shadow: inset 0 0 0 1px $required-empty-border;
+  }
+
+  :deep(th.col-required-header) {
+    .ant-table-column-title {
+      color: $text-primary;
+      font-weight: 600;
+    }
+  }
+
+  :deep(.required-empty) {
+    background: #fffdf5 !important;
+    border: 1px solid $required-empty-border !important;
+    border-radius: $radius-sm;
+    box-shadow: none;
+
+    &:hover,
+    &:focus,
+    &.ant-input-number-focused {
+      background: $required-empty-surface !important;
+      border-color: rgba($warning, 0.62) !important;
+      box-shadow: 0 0 0 2px $warning-ring;
     }
 
     input {
       border-color: transparent !important;
+      color: $text-primary;
     }
+  }
+
+  .required-empty-display {
+    color: $text-secondary;
+    font-weight: 600;
+    background: $required-empty-surface;
+    box-shadow: inset 0 0 0 1px $required-empty-border;
+    border-radius: $radius-sm;
+    padding: 2px 6px;
+    display: inline-block;
+    min-width: 1.2em;
+    text-align: center;
   }
 
   .task-image-files {
@@ -2042,16 +2133,6 @@ watch(records, () => {
     .ant-table-tbody > tr.deleted-row:hover > td,
     .ant-table-tbody > tr.absent-row:hover > td {
       background-color: $danger-light !important;
-    }
-    
-    .ant-table-tbody > tr.incomplete-row {
-      td {
-        background-color: $warning-light;
-      }
-    }
-    
-    .ant-table-tbody > tr.incomplete-row:hover > td {
-      background-color: $warning-light !important;
     }
     
     .ant-table-tbody > tr.blurred-row {

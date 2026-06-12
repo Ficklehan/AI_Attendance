@@ -120,6 +120,15 @@
           </a-tooltip>
         </a-popover>
 
+        <!-- Notifications -->
+        <a-tooltip :title="$t('notification.title')">
+          <button class="header-btn header-btn--notify" type="button" @click="notificationDrawerOpen = true">
+            <a-badge :count="unreadCount" :overflow-count="99" :offset="[-2, 2]" :show-zero="false">
+              <BellOutlined />
+            </a-badge>
+          </button>
+        </a-tooltip>
+
         <!-- Export center -->
         <a-tooltip :title="$t('export.centerTitle')">
           <button class="header-btn header-btn--export" type="button" @click="openExportCenter">
@@ -155,6 +164,7 @@
     </a-layout-content>
 
     <ExportJobDrawer v-model:open="exportDrawerOpen" />
+    <NotificationDrawer v-model:open="notificationDrawerOpen" @read="refreshUnreadCount" />
     <ChangePasswordModal v-model:open="changePasswordOpen" />
   </a-layout>
 </template>
@@ -176,13 +186,16 @@ import {
   UserOutlined,
   ApartmentOutlined,
   CloudDownloadOutlined,
+  BellOutlined,
   DownOutlined,
   GlobalOutlined,
   CheckOutlined
 } from '@ant-design/icons-vue'
 import ExportJobDrawer from '@/components/ExportJobDrawer.vue'
+import NotificationDrawer from '@/components/NotificationDrawer.vue'
 import ChangePasswordModal from '@/components/ChangePasswordModal.vue'
 import { useExportCenter, startSummaryPolling, stopSummaryPolling } from '@/composables/useExportCenter'
+import { getUnreadCount } from '@/api/notification'
 
 const route = useRoute()
 const router = useRouter()
@@ -197,6 +210,18 @@ const countryPopoverVisible = ref(false)
 const countryDraft = ref('default')
 const countrySaving = ref(false)
 const changePasswordOpen = ref(false)
+const notificationDrawerOpen = ref(false)
+const unreadCount = ref(0)
+let unreadPollTimer = null
+
+const refreshUnreadCount = async () => {
+  try {
+    const res = await getUnreadCount()
+    unreadCount.value = Number(res.data?.count || 0)
+  } catch (e) {
+    // ignore when logged out
+  }
+}
 
 watch(
   () => countryStore.workingCountry,
@@ -318,11 +343,17 @@ onMounted(async () => {
       console.error('加载工作国家失败:', error)
     }
     startSummaryPolling()
+    refreshUnreadCount()
+    unreadPollTimer = window.setInterval(refreshUnreadCount, 60_000)
   }
 })
 
 onUnmounted(() => {
   stopSummaryPolling()
+  if (unreadPollTimer) {
+    clearInterval(unreadPollTimer)
+    unreadPollTimer = null
+  }
 })
 
 watch(
@@ -330,6 +361,7 @@ watch(
   (ok) => {
     if (ok) {
       startSummaryPolling()
+      refreshUnreadCount()
       refreshExportSummary()
     } else {
       stopSummaryPolling()

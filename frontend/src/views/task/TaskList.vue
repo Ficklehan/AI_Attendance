@@ -191,20 +191,24 @@
             </div>
           </template>
           <template v-if="column.key === 'action'">
-            <div class="action-buttons">
-              <a-button type="text" size="small" @click="handleView(record)" class="view-btn">
-                <EyeOutlined />
-              </a-button>
-              <a-button
-                v-if="record.status !== 'confirmed'"
-                type="text"
-                danger
-                size="small"
-                @click="handleDelete(record)"
-                class="delete-btn"
-              >
-                <DeleteOutlined />
-              </a-button>
+            <div class="table-action-cell table-action-cell--icons table-action-cell--icons-2">
+              <span class="table-action-cell__slot">
+                <a-button type="text" size="small" @click="handleView(record)" class="view-btn">
+                  <EyeOutlined />
+                </a-button>
+              </span>
+              <span class="table-action-cell__slot">
+                <a-button
+                  v-if="record.status !== 'confirmed'"
+                  type="text"
+                  danger
+                  size="small"
+                  @click="handleDelete(record)"
+                  class="delete-btn"
+                >
+                  <DeleteOutlined />
+                </a-button>
+              </span>
             </div>
           </template>
         </template>
@@ -860,9 +864,7 @@ watch(() => route.path, (newPath, oldPath) => {
         margin: 0;
       }
       
-      .action-buttons {
-        gap: 8px;
-
+      .table-action-cell {
         .view-btn {
           color: $primary;
           

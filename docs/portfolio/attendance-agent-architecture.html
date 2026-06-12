@@ -1,0 +1,806 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>AttendanceAgent · 产品架构与处理逻辑</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,400;0,9..40,500;0,9..40,600;0,9..40,700;1,9..40,400&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet" />
+  <style>
+    :root {
+      --bg: #0a0c10;
+      --bg-elevated: #12151c;
+      --bg-card: #181c26;
+      --border: rgba(255, 255, 255, 0.08);
+      --text: #e8eaef;
+      --text-muted: #8b93a7;
+      --accent: #5b8def;
+      --accent-soft: rgba(91, 141, 239, 0.15);
+      --accent-2: #34d399;
+      --accent-3: #f59e0b;
+      --accent-4: #a78bfa;
+      --gradient-hero: linear-gradient(135deg, #1a2332 0%, #0a0c10 50%, #0f1a24 100%);
+      --gradient-accent: linear-gradient(135deg, #5b8def, #34d399);
+      --shadow: 0 24px 80px rgba(0, 0, 0, 0.45);
+      --radius: 16px;
+      --radius-sm: 10px;
+      --font: 'DM Sans', system-ui, sans-serif;
+      --mono: 'JetBrains Mono', monospace;
+    }
+
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    html { scroll-behavior: smooth; }
+    body {
+      font-family: var(--font);
+      background: var(--bg);
+      color: var(--text);
+      line-height: 1.65;
+      font-size: 16px;
+      -webkit-font-smoothing: antialiased;
+    }
+
+    /* ── Nav ── */
+    .nav {
+      position: fixed; top: 0; left: 0; right: 0; z-index: 100;
+      backdrop-filter: blur(16px);
+      background: rgba(10, 12, 16, 0.75);
+      border-bottom: 1px solid var(--border);
+    }
+    .nav-inner {
+      max-width: 1200px; margin: 0 auto; padding: 0 24px;
+      height: 60px; display: flex; align-items: center; justify-content: space-between;
+    }
+    .nav-brand {
+      font-weight: 700; font-size: 0.95rem; letter-spacing: -0.02em;
+      background: var(--gradient-accent); -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+    }
+    .nav-links { display: flex; gap: 8px; flex-wrap: wrap; }
+    .nav-links a {
+      color: var(--text-muted); text-decoration: none; font-size: 0.82rem; font-weight: 500;
+      padding: 6px 12px; border-radius: 8px; transition: color 0.2s, background 0.2s;
+    }
+    .nav-links a:hover { color: var(--text); background: var(--accent-soft); }
+
+    /* ── Hero ── */
+    .hero {
+      min-height: 92vh; display: flex; align-items: center;
+      background: var(--gradient-hero);
+      padding: 100px 24px 80px;
+      position: relative; overflow: hidden;
+    }
+    .hero::before {
+      content: ''; position: absolute; inset: 0;
+      background: radial-gradient(ellipse 80% 60% at 70% 20%, rgba(91, 141, 239, 0.12), transparent),
+                  radial-gradient(ellipse 50% 40% at 10% 80%, rgba(52, 211, 153, 0.08), transparent);
+      pointer-events: none;
+    }
+    .hero-grid {
+      max-width: 1200px; margin: 0 auto; width: 100%;
+      display: grid; grid-template-columns: 1.1fr 0.9fr; gap: 64px; align-items: center;
+      position: relative;
+    }
+    @media (max-width: 900px) { .hero-grid { grid-template-columns: 1fr; gap: 40px; } }
+    .hero-badge {
+      display: inline-flex; align-items: center; gap: 8px;
+      padding: 6px 14px; border-radius: 999px;
+      background: var(--accent-soft); border: 1px solid rgba(91, 141, 239, 0.3);
+      font-size: 0.78rem; font-weight: 600; color: var(--accent); margin-bottom: 20px;
+    }
+    .hero-badge::before { content: ''; width: 6px; height: 6px; border-radius: 50%; background: var(--accent-2); animation: pulse 2s infinite; }
+    @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.4; } }
+    .hero h1 {
+      font-size: clamp(2.2rem, 5vw, 3.4rem); font-weight: 700;
+      letter-spacing: -0.03em; line-height: 1.15; margin-bottom: 20px;
+    }
+    .hero h1 span { background: var(--gradient-accent); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
+    .hero-desc { font-size: 1.1rem; color: var(--text-muted); max-width: 520px; margin-bottom: 32px; }
+    .hero-stats { display: flex; gap: 32px; flex-wrap: wrap; }
+    .stat-num { font-size: 1.75rem; font-weight: 700; letter-spacing: -0.02em; }
+    .stat-label { font-size: 0.8rem; color: var(--text-muted); margin-top: 2px; }
+    .hero-visual {
+      background: var(--bg-card); border: 1px solid var(--border); border-radius: var(--radius);
+      padding: 28px; box-shadow: var(--shadow);
+    }
+    .flow-mini { display: flex; flex-direction: column; gap: 12px; }
+    .flow-step {
+      display: flex; align-items: center; gap: 14px;
+      padding: 14px 16px; border-radius: var(--radius-sm);
+      background: var(--bg-elevated); border: 1px solid var(--border);
+      font-size: 0.88rem; font-weight: 500;
+      opacity: 0; animation: slideIn 0.6s ease forwards;
+    }
+    .flow-step:nth-child(1) { animation-delay: 0.1s; }
+    .flow-step:nth-child(2) { animation-delay: 0.2s; }
+    .flow-step:nth-child(3) { animation-delay: 0.3s; }
+    .flow-step:nth-child(4) { animation-delay: 0.4s; }
+    .flow-step:nth-child(5) { animation-delay: 0.5s; }
+    @keyframes slideIn { from { opacity: 0; transform: translateX(20px); } to { opacity: 1; transform: none; } }
+    .flow-icon {
+      width: 36px; height: 36px; border-radius: 10px; flex-shrink: 0;
+      display: flex; align-items: center; justify-content: center; font-size: 1rem;
+    }
+    .flow-icon.blue { background: rgba(91, 141, 239, 0.2); }
+    .flow-icon.green { background: rgba(52, 211, 153, 0.2); }
+    .flow-icon.amber { background: rgba(245, 158, 11, 0.2); }
+    .flow-icon.purple { background: rgba(167, 139, 250, 0.2); }
+    .flow-arrow { text-align: center; color: var(--text-muted); font-size: 0.75rem; opacity: 0.5; }
+
+    /* ── Layout ── */
+    .container { max-width: 1200px; margin: 0 auto; padding: 0 24px; }
+    section { padding: 88px 0; }
+    section.alt { background: var(--bg-elevated); border-top: 1px solid var(--border); border-bottom: 1px solid var(--border); }
+    .section-label {
+      font-size: 0.72rem; font-weight: 600; letter-spacing: 0.12em; text-transform: uppercase;
+      color: var(--accent); margin-bottom: 12px;
+    }
+    .section-title { font-size: clamp(1.6rem, 3vw, 2.2rem); font-weight: 700; letter-spacing: -0.02em; margin-bottom: 12px; }
+    .section-desc { color: var(--text-muted); max-width: 640px; margin-bottom: 48px; font-size: 1.02rem; }
+
+    /* ── Cards ── */
+    .card-grid { display: grid; gap: 20px; }
+    .card-grid-3 { grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); }
+    .card-grid-2 { grid-template-columns: repeat(auto-fit, minmax(340px, 1fr)); }
+    .card {
+      background: var(--bg-card); border: 1px solid var(--border); border-radius: var(--radius);
+      padding: 28px; transition: border-color 0.25s, transform 0.25s;
+    }
+    .card:hover { border-color: rgba(91, 141, 239, 0.35); transform: translateY(-2px); }
+    .card-icon {
+      width: 44px; height: 44px; border-radius: 12px; margin-bottom: 16px;
+      display: flex; align-items: center; justify-content: center; font-size: 1.25rem;
+    }
+    .card h3 { font-size: 1.05rem; font-weight: 600; margin-bottom: 8px; }
+    .card p { font-size: 0.9rem; color: var(--text-muted); }
+    .card ul { margin-top: 12px; padding-left: 18px; font-size: 0.88rem; color: var(--text-muted); }
+    .card li { margin-bottom: 4px; }
+
+    /* ── Architecture diagram ── */
+    .arch-diagram {
+      background: var(--bg-card); border: 1px solid var(--border); border-radius: var(--radius);
+      padding: 40px 32px; overflow-x: auto;
+    }
+    .arch-layers { display: flex; flex-direction: column; gap: 20px; min-width: 700px; }
+    .arch-layer {
+      display: grid; grid-template-columns: 140px 1fr; gap: 20px; align-items: start;
+    }
+    .arch-layer-label {
+      font-size: 0.75rem; font-weight: 600; letter-spacing: 0.06em; text-transform: uppercase;
+      color: var(--text-muted); padding-top: 12px;
+    }
+    .arch-nodes { display: flex; flex-wrap: wrap; gap: 10px; }
+    .arch-node {
+      padding: 12px 18px; border-radius: var(--radius-sm);
+      font-size: 0.85rem; font-weight: 500; border: 1px solid var(--border);
+      background: var(--bg-elevated);
+    }
+    .arch-node.primary { border-color: rgba(91, 141, 239, 0.4); background: var(--accent-soft); color: #b8d0ff; }
+    .arch-node.success { border-color: rgba(52, 211, 153, 0.35); background: rgba(52, 211, 153, 0.1); color: #6ee7b7; }
+    .arch-node.warn { border-color: rgba(245, 158, 11, 0.35); background: rgba(245, 158, 11, 0.1); color: #fcd34d; }
+    .arch-connector {
+      margin-left: 140px; height: 24px; border-left: 2px dashed rgba(255,255,255,0.12);
+      margin-bottom: -8px;
+    }
+
+    /* ── State machine ── */
+    .state-flow {
+      display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin: 32px 0;
+    }
+    .state-pill {
+      padding: 10px 18px; border-radius: 999px; font-size: 0.82rem; font-weight: 600;
+      border: 1px solid var(--border); background: var(--bg-elevated);
+    }
+    .state-pill.active { border-color: var(--accent); background: var(--accent-soft); color: #b8d0ff; }
+    .state-pill.done { border-color: rgba(52, 211, 153, 0.4); background: rgba(52, 211, 153, 0.12); color: #6ee7b7; }
+    .state-pill.fail { border-color: rgba(239, 68, 68, 0.4); background: rgba(239, 68, 68, 0.1); color: #fca5a5; }
+    .state-arrow { color: var(--text-muted); font-size: 1.1rem; }
+
+    /* ── Pipeline steps ── */
+    .pipeline { position: relative; }
+    .pipeline::before {
+      content: ''; position: absolute; left: 23px; top: 24px; bottom: 24px; width: 2px;
+      background: linear-gradient(180deg, var(--accent), var(--accent-2));
+      opacity: 0.35;
+    }
+    .pipeline-item {
+      display: grid; grid-template-columns: 48px 1fr; gap: 24px;
+      padding-bottom: 40px; position: relative;
+    }
+    .pipeline-item:last-child { padding-bottom: 0; }
+    .pipeline-num {
+      width: 48px; height: 48px; border-radius: 14px;
+      background: var(--bg-card); border: 2px solid var(--accent);
+      display: flex; align-items: center; justify-content: center;
+      font-weight: 700; font-size: 0.9rem; color: var(--accent); z-index: 1;
+    }
+    .pipeline-body h4 { font-size: 1.05rem; font-weight: 600; margin-bottom: 8px; }
+    .pipeline-body p { font-size: 0.9rem; color: var(--text-muted); margin-bottom: 12px; }
+    .code-block {
+      font-family: var(--mono); font-size: 0.78rem; line-height: 1.6;
+      background: #0d1117; border: 1px solid var(--border); border-radius: var(--radius-sm);
+      padding: 16px 18px; overflow-x: auto; color: #c9d1d9;
+    }
+    .code-block .kw { color: #ff7b72; }
+    .code-block .fn { color: #d2a8ff; }
+    .code-block .str { color: #a5d6ff; }
+    .code-block .cm { color: #8b949e; }
+
+    /* ── Table ── */
+    .data-table-wrap { overflow-x: auto; border-radius: var(--radius); border: 1px solid var(--border); }
+    table { width: 100%; border-collapse: collapse; font-size: 0.88rem; }
+    th, td { padding: 14px 18px; text-align: left; border-bottom: 1px solid var(--border); }
+    th { background: var(--bg-elevated); font-weight: 600; font-size: 0.78rem; text-transform: uppercase; letter-spacing: 0.05em; color: var(--text-muted); }
+    tr:last-child td { border-bottom: none; }
+    tr:hover td { background: rgba(255,255,255,0.02); }
+    .tag {
+      display: inline-block; padding: 3px 10px; border-radius: 6px;
+      font-size: 0.75rem; font-weight: 600; font-family: var(--mono);
+    }
+    .tag-blue { background: var(--accent-soft); color: #93c5fd; }
+    .tag-green { background: rgba(52, 211, 153, 0.15); color: #6ee7b7; }
+    .tag-amber { background: rgba(245, 158, 11, 0.15); color: #fcd34d; }
+
+    /* ── Config stack ── */
+    .config-stack { display: flex; flex-direction: column; gap: 4px; }
+    .config-layer {
+      padding: 20px 24px; border-radius: var(--radius-sm);
+      border: 1px solid var(--border); display: flex; justify-content: space-between; align-items: center;
+      flex-wrap: wrap; gap: 12px;
+    }
+    .config-layer:nth-child(1) { background: rgba(239, 68, 68, 0.06); border-color: rgba(239, 68, 68, 0.2); }
+    .config-layer:nth-child(2) { background: rgba(245, 158, 11, 0.06); border-color: rgba(245, 158, 11, 0.2); }
+    .config-layer:nth-child(3) { background: rgba(91, 141, 239, 0.08); border-color: rgba(91, 141, 239, 0.25); }
+    .config-layer:nth-child(4) { background: rgba(52, 211, 153, 0.08); border-color: rgba(52, 211, 153, 0.25); }
+    .config-layer strong { font-size: 0.95rem; }
+    .config-layer span { font-size: 0.85rem; color: var(--text-muted); }
+
+    /* ── Tabs ── */
+    .tabs { display: flex; gap: 8px; margin-bottom: 28px; flex-wrap: wrap; }
+    .tab-btn {
+      padding: 10px 20px; border-radius: 999px; border: 1px solid var(--border);
+      background: transparent; color: var(--text-muted); font-family: var(--font);
+      font-size: 0.88rem; font-weight: 500; cursor: pointer; transition: all 0.2s;
+    }
+    .tab-btn.active { background: var(--accent-soft); border-color: var(--accent); color: var(--text); }
+    .tab-panel { display: none; }
+    .tab-panel.active { display: block; animation: fadeIn 0.35s ease; }
+    @keyframes fadeIn { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: none; } }
+
+    /* ── Footer ── */
+    footer {
+      padding: 48px 24px; text-align: center; border-top: 1px solid var(--border);
+      color: var(--text-muted); font-size: 0.85rem;
+    }
+    footer a { color: var(--accent); text-decoration: none; }
+
+    @media print {
+      .nav { display: none; }
+      .hero { min-height: auto; padding-top: 40px; }
+      body { background: #fff; color: #111; }
+      .card, .arch-diagram { break-inside: avoid; }
+    }
+  </style>
+</head>
+<body>
+
+<nav class="nav">
+  <div class="nav-inner">
+    <div class="nav-brand">AttendanceAgent</div>
+    <div class="nav-links">
+      <a href="#overview">概览</a>
+      <a href="#architecture">架构</a>
+      <a href="#pipeline">处理逻辑</a>
+      <a href="#recognition">AI 识别</a>
+      <a href="#data">数据模型</a>
+      <a href="#security">安全</a>
+      <a href="#deploy">部署</a>
+    </div>
+  </div>
+</nav>
+
+<header class="hero" id="overview">
+  <div class="hero-grid">
+    <div>
+      <div class="hero-badge">Portfolio · Product Architecture</div>
+      <h1>AI 考勤助手<br /><span>端到端识别与同步平台</span></h1>
+      <p class="hero-desc">
+        将纸质/电子考勤表（拍照、图片、PDF）经视觉大模型解析为结构化员工记录，
+        经人工核对后写入飞书多维表格，覆盖 PC Web、飞书小程序与异步导出全链路。
+      </p>
+      <div class="hero-stats">
+        <div>
+          <div class="stat-num">3</div>
+          <div class="stat-label">客户端形态</div>
+        </div>
+        <div>
+          <div class="stat-num">8+</div>
+          <div class="stat-label">国家提示词配置</div>
+        </div>
+        <div>
+          <div class="stat-num">5</div>
+          <div class="stat-label">任务状态阶段</div>
+        </div>
+      </div>
+    </div>
+    <div class="hero-visual">
+      <div class="flow-mini">
+        <div class="flow-step"><div class="flow-icon blue">📷</div>上传图片 / PDF</div>
+        <div class="flow-arrow">↓</div>
+        <div class="flow-step"><div class="flow-icon purple">🧠</div>MiMo 视觉模型流式识别</div>
+        <div class="flow-arrow">↓</div>
+        <div class="flow-step"><div class="flow-icon amber">✏️</div>待核对 · 编辑 / 校准</div>
+        <div class="flow-arrow">↓</div>
+        <div class="flow-step"><div class="flow-icon green">✓</div>确认 → 飞书 Bitable 同步</div>
+        <div class="flow-arrow">↓</div>
+        <div class="flow-step"><div class="flow-icon blue">📊</div>导出 Excel · 审计追溯</div>
+      </div>
+    </div>
+  </div>
+</header>
+
+<section id="architecture">
+  <div class="container">
+    <div class="section-label">System Architecture</div>
+    <h2 class="section-title">系统总体架构</h2>
+    <p class="section-desc">
+      前后端分离、配置分层、任务状态机驱动。所有客户端共享同一套 REST API 与数据一致性约定。
+    </p>
+
+    <div class="arch-diagram">
+      <div class="arch-layers">
+        <div class="arch-layer">
+          <div class="arch-layer-label">客户端层</div>
+          <div class="arch-nodes">
+            <div class="arch-node primary">PC Web · Vue 3 + Vite :5175</div>
+            <div class="arch-node primary">飞书小程序 · TTML</div>
+            <div class="arch-node">移动端 H5（可选）</div>
+          </div>
+        </div>
+        <div class="arch-connector"></div>
+        <div class="arch-layer">
+          <div class="arch-layer-label">网关 / API</div>
+          <div class="arch-nodes">
+            <div class="arch-node primary">Spring Boot 2.7 · :8080</div>
+            <div class="arch-node">Context Path /attendance/api</div>
+            <div class="arch-node">JWT 认证 · SSE 流式上传</div>
+          </div>
+        </div>
+        <div class="arch-connector"></div>
+        <div class="arch-layer">
+          <div class="arch-layer-label">业务服务层</div>
+          <div class="arch-nodes">
+            <div class="arch-node success">TaskService</div>
+            <div class="arch-node success">RecognitionRunner</div>
+            <div class="arch-node success">AIParserService</div>
+            <div class="arch-node success">FeishuSyncService</div>
+            <div class="arch-node success">ExportJobService</div>
+            <div class="arch-node success">PermissionService</div>
+          </div>
+        </div>
+        <div class="arch-connector"></div>
+        <div class="arch-layer">
+          <div class="arch-layer-label">数据与配置</div>
+          <div class="arch-nodes">
+            <div class="arch-node warn">MySQL · attendance_assistant</div>
+            <div class="arch-node warn">base-config/*.md</div>
+            <div class="arch-node warn">uploads/ · exports/</div>
+            <div class="arch-node warn">recognition_prompt 表</div>
+          </div>
+        </div>
+        <div class="arch-connector"></div>
+        <div class="arch-layer">
+          <div class="arch-layer-label">外部服务</div>
+          <div class="arch-nodes">
+            <div class="arch-node">MiMo Vision API · mimo-v2.5</div>
+            <div class="arch-node">飞书 Open API · 多维表格</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="card-grid card-grid-3" style="margin-top: 40px;">
+      <div class="card">
+        <div class="card-icon" style="background: var(--accent-soft);">🖥</div>
+        <h3>PC Web 前端</h3>
+        <p>任务编辑、批量上传、后台轮询识别、配置中心、权限与用户管理、异步导出中心。</p>
+        <ul>
+          <li>Vue 3 + Element Plus + i18n 多语言</li>
+          <li>后台识别 + localStorage 断点续看</li>
+          <li>人工校准 · SmartMark 多标签</li>
+        </ul>
+      </div>
+      <div class="card">
+        <div class="card-icon" style="background: rgba(52, 211, 153, 0.15);">📱</div>
+        <h3>飞书小程序</h3>
+        <p>现场拍照上传、待核对编辑、记录校准、任务搜索与状态轮询。</p>
+        <ul>
+          <li>飞书 OAuth 登录绑定</li>
+          <li>异步 upload-async + 轮询</li>
+          <li>多图合并识别 recognize 接口</li>
+        </ul>
+      </div>
+      <div class="card">
+        <div class="card-icon" style="background: rgba(167, 139, 250, 0.15);">⚙️</div>
+        <h3>Spring Boot 后端</h3>
+        <p>REST + SSE、MyBatis 持久化、识别线程池、启动自举与质量守卫。</p>
+        <ul>
+          <li>RecognitionExecutor 独立线程池</li>
+          <li>PDF → JPEG 分页渲染（PDFBox）</li>
+          <li>RecognitionQualityGuard 防编造</li>
+        </ul>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section class="alt" id="pipeline">
+  <div class="container">
+    <div class="section-label">Processing Logic</div>
+    <h2 class="section-title">核心处理逻辑分解</h2>
+    <p class="section-desc">从文件上传到飞书落库，按阶段拆解关键组件、API 与数据落点。</p>
+
+    <h3 style="margin-bottom: 20px; font-size: 1.1rem;">任务状态机</h3>
+    <div class="state-flow">
+      <span class="state-pill">processing 识别中</span>
+      <span class="state-arrow">→</span>
+      <span class="state-pill active">processed 待核对</span>
+      <span class="state-arrow">→</span>
+      <span class="state-pill done">confirmed 已确认</span>
+      <span class="state-arrow">→</span>
+      <span class="state-pill done">synced 已同步飞书</span>
+    </div>
+    <div class="state-flow" style="margin-top: -16px;">
+      <span class="state-pill fail">failed 识别失败</span>
+      <span style="margin: 0 12px; color: var(--text-muted);">·</span>
+      <span class="state-pill fail">cancelled 已作废</span>
+      <span style="margin: 0 12px; color: var(--text-muted);">·</span>
+      <span class="state-pill fail">sync_failed 同步失败可重试</span>
+    </div>
+
+    <div class="tabs" role="tablist">
+      <button class="tab-btn active" data-tab="tab-upload">① 上传</button>
+      <button class="tab-btn" data-tab="tab-ai">② AI 识别</button>
+      <button class="tab-btn" data-tab="tab-review">③ 核对确认</button>
+      <button class="tab-btn" data-tab="tab-sync">④ 飞书同步</button>
+    </div>
+
+    <div id="tab-upload" class="tab-panel active">
+      <div class="pipeline">
+        <div class="pipeline-item">
+          <div class="pipeline-num">1</div>
+          <div class="pipeline-body">
+            <h4>客户端选择文件</h4>
+            <p>支持 JPG / PNG / PDF。PC 端图片自动压缩；PDF 原文件上传，服务端按页转 JPEG（最高 30 页，200 DPI）。</p>
+            <div class="code-block"><span class="cm">// PC 多图：首张 deferRecognition，其余 append，最后触发 recognize</span>
+<span class="fn">submitBackgroundRecognition</span>(files) → <span class="str">POST /local/upload-async</span>
+<span class="fn">startTaskRecognition</span>(taskId) → <span class="str">POST /local/tasks/{id}/recognize</span></div>
+          </div>
+        </div>
+        <div class="pipeline-item">
+          <div class="pipeline-num">2</div>
+          <div class="pipeline-body">
+            <h4>校验与归一化</h4>
+            <p><code>ImageUploadValidator</code> 校验文件头；<code>UploadMediaSupport</code> 将 PDF 展开为多页 <code>ImagePage</code>；保存至 <code>uploads/</code> 并写入 <code>tasks.image_urls</code>。</p>
+          </div>
+        </div>
+        <div class="pipeline-item">
+          <div class="pipeline-num">3</div>
+          <div class="pipeline-body">
+            <h4>创建任务</h4>
+            <p><code>TaskService.createTask</code> 生成 <code>task_id</code>（日期流水），状态 <code>processing</code>，快照 <code>prompt_country</code> 供后续识别与飞书映射。</p>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div id="tab-ai" class="tab-panel">
+      <div class="pipeline">
+        <div class="pipeline-item">
+          <div class="pipeline-num">1</div>
+          <div class="pipeline-body">
+            <h4>识别编排 RecognitionRunner</h4>
+            <p>按国家加载提示词（<code>recognition_prompt</code> 表优先）；多页 PDF/多图依次识别，合并 <code>raw_data</code> JSON 数组；识别进度周期性刷入 DB 供轮询。</p>
+          </div>
+        </div>
+        <div class="pipeline-item">
+          <div class="pipeline-num">2</div>
+          <div class="pipeline-body">
+            <h4>MiMo 流式调用 AIParserService</h4>
+            <p>构造 vision message（text prompt + image_url base64）；流式解析 JSON Lines 员工记录；<code>length</code> 截断时自动续写（最多 5 轮）。</p>
+            <div class="code-block"><span class="cm">// 质量守卫</span>
+RecognitionPromptGuard · RecognitionQualityGuard
+<span class="cm">// 拒绝表头 echo、编造数据、不可读时间</span></div>
+          </div>
+        </div>
+        <div class="pipeline-item">
+          <div class="pipeline-num">3</div>
+          <div class="pipeline-body">
+            <h4>识别完成</h4>
+            <p>写入 <code>tasks.raw_data</code>，状态 → <code>processed</code>；<code>anomaly_summary</code> 记录风险与跟踪链；引擎标记如 <code>mimo:FR</code>。</p>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div id="tab-review" class="tab-panel">
+      <div class="pipeline">
+        <div class="pipeline-item">
+          <div class="pipeline-num">1</div>
+          <div class="pipeline-body">
+            <h4>待核对（processed）</h4>
+            <p>PC / 小程序可编辑字段、删除行、标记异常。小程序「修改」在确认前写回内存草稿，与 <code>confirm</code> 一并提交。</p>
+          </div>
+        </div>
+        <div class="pipeline-item">
+          <div class="pipeline-num">2</div>
+          <div class="pipeline-body">
+            <h4>确认提交 POST /tasks/{id}/confirm</h4>
+            <p><code>RecordConfirmValidator</code> 校验必填字段；写入 <code>confirmed_data</code>；附加 <code>TASK_ID</code>、<code>UPLOADED_BY</code>；状态 → <code>confirmed</code>。</p>
+          </div>
+        </div>
+        <div class="pipeline-item">
+          <div class="pipeline-num">3</div>
+          <div class="pipeline-body">
+            <h4>已确认后校准（recordCalibrate）</h4>
+            <p>仅 <code>confirmed</code> 状态；写回 <code>_calibrationHistory</code>、<code>_manualCalibrated</code>；SmartMark 展示「人工校准」标签；异步触发单条飞书更新。</p>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div id="tab-sync" class="tab-panel">
+      <div class="pipeline">
+        <div class="pipeline-item">
+          <div class="pipeline-num">1</div>
+          <div class="pipeline-body">
+            <h4>FeishuSyncService 异步同步</h4>
+            <p>按 <code>prompt_country</code> 读取 <code>base-config/feishu.md</code> 字段映射；<code>BitableService.batchWriteRecordsReturningIds</code> 批量写入。</p>
+          </div>
+        </div>
+        <div class="pipeline-item">
+          <div class="pipeline-num">2</div>
+          <div class="pipeline-body">
+            <h4>回写飞书记录 ID</h4>
+            <p>合并 <code>_feishuRecordId</code> 至 <code>confirmed_data</code>；<code>sync_status</code> → <code>synced</code> 或 <code>sync_failed</code>（可重试）。</p>
+          </div>
+        </div>
+        <div class="pipeline-item">
+          <div class="pipeline-num">3</div>
+          <div class="pipeline-body">
+            <h4>导出与审计</h4>
+            <p><code>ExportJobService</code> 异步生成 Excel；<code>audit_logs</code> 记录登录、配置变更与敏感操作。</p>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section id="recognition">
+  <div class="container">
+    <div class="section-label">AI Recognition</div>
+    <h2 class="section-title">识别引擎与多端策略</h2>
+    <p class="section-desc">PC 与小程序采用不同上传模式，共享同一识别内核与任务状态。</p>
+
+    <div class="card-grid card-grid-2">
+      <div class="card">
+        <h3>PC · 后台识别 + 轮询</h3>
+        <ul>
+          <li>单图：<code>upload-async</code> 后立即异步识别</li>
+          <li>多图：批量上传后 <code>/tasks/{id}/recognize</code> 合并</li>
+          <li>前端 <code>pollRecognitionUntilDone</code> 拉取 partial raw_data</li>
+          <li>离开页面后可通过 localStorage 恢复进度</li>
+        </ul>
+      </div>
+      <div class="card">
+        <h3>小程序 · 异步上传 + 轮询</h3>
+        <ul>
+          <li><code>recognitionUpload.js</code> 封装全流程</li>
+          <li>多图任务同样走 recognize 合并接口</li>
+          <li><code>RecognitionTrace</code> 全链路日志供排查</li>
+          <li>识别页独立展示引擎与国家配置</li>
+        </ul>
+      </div>
+      <div class="card">
+        <h3>提示词按国家</h3>
+        <ul>
+          <li>运行时数据源：<code>recognition_prompt</code> 表</li>
+          <li>编辑源：<code>base-config/prompts.md</code></li>
+          <li>启动播种：<code>PromptDatabaseBootstrap</code></li>
+          <li>内置 canonical 模板 + seed_version 版本控制</li>
+        </ul>
+      </div>
+      <div class="card">
+        <h3>识别记录字段（示例）</h3>
+        <ul>
+          <li>NO · Pays · Entrepot · Date · NOM_PRENOM</li>
+          <li>ARRIVEE · DEPAR · PAUSE · SmartMark</li>
+          <li>Observations · SIGNATURE · AGENCE_INTERIMAIRE</li>
+        </ul>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section class="alt" id="data">
+  <div class="container">
+    <div class="section-label">Data Model</div>
+    <h2 class="section-title">数据模型与一致性</h2>
+    <p class="section-desc">任务统计的单一事实来源为 <code>GET /tasks/summary</code>，禁止用分页列表长度代替全库计数。</p>
+
+    <div class="data-table-wrap" style="margin-bottom: 40px;">
+      <table>
+        <thead>
+          <tr><th>表 / 存储</th><th>核心字段</th><th>说明</th></tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td><span class="tag tag-blue">tasks</span></td>
+            <td>task_id, status, raw_data, confirmed_data, image_urls, sync_status, prompt_country</td>
+            <td>识别任务主表；JSON 存员工行数组</td>
+          </tr>
+          <tr>
+            <td><span class="tag tag-green">users</span></td>
+            <td>username, feishu_user_id, role</td>
+            <td>PC 密码登录 + 飞书绑定共享任务</td>
+          </tr>
+          <tr>
+            <td><span class="tag tag-amber">recognition_prompt</span></td>
+            <td>country_code, ai_prompt, continue_prompt, user_modified</td>
+            <td>各国 AI 提示词运行时配置</td>
+          </tr>
+          <tr>
+            <td><span class="tag tag-blue">export_jobs</span></td>
+            <td>export_type, status, file_path, dismissed_at</td>
+            <td>异步导出任务与下载文件</td>
+          </tr>
+          <tr>
+            <td><span class="tag tag-green">audit_logs</span></td>
+            <td>action, target_type, details</td>
+            <td>操作审计追溯</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+    <div class="card-grid card-grid-2">
+      <div class="card">
+        <h3>summary 接口字段</h3>
+        <ul>
+          <li><code>processing</code> — 识别中</li>
+          <li><code>review</code> — 待核对（processed）</li>
+          <li><code>confirmed</code> — 已完成</li>
+          <li><code>allUsersScope</code> — 管理员全员视图</li>
+        </ul>
+      </div>
+      <div class="card">
+        <h3>数据范围</h3>
+        <ul>
+          <li>普通用户：仅本人 <code>user_id</code> 任务</li>
+          <li>管理员：全部用户任务 + 导出同范围</li>
+          <li><code>TaskAccessService</code> 统一鉴权</li>
+        </ul>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section id="security">
+  <div class="container">
+    <div class="section-label">Security & Config</div>
+    <h2 class="section-title">安全、权限与配置分层</h2>
+    <p class="section-desc">敏感配置与环境分离；功能权限由 JSON 驱动，管理员保留校准等特权。</p>
+
+    <div class="config-stack" style="margin-bottom: 48px;">
+      <div class="config-layer">
+        <strong>Layer 1 · 环境变量 / .env</strong>
+        <span>DB_* · JWT_SECRET · FEISHU_* · MIMO_API_KEY</span>
+      </div>
+      <div class="config-layer">
+        <strong>Layer 2 · application.yml</strong>
+        <span>attendance.prompt.* · export.* · 框架开关</span>
+      </div>
+      <div class="config-layer">
+        <strong>Layer 3 · base-config/</strong>
+        <span>feishu.md · prompts.md · permissions.json</span>
+      </div>
+      <div class="config-layer">
+        <strong>Layer 4 · MySQL 运行时态</strong>
+        <span>tasks · recognition_prompt · export_jobs</span>
+      </div>
+    </div>
+
+    <div class="data-table-wrap">
+      <table>
+        <thead>
+          <tr><th>权限键</th><th>能力</th></tr>
+        </thead>
+        <tbody>
+          <tr><td><code>tasks</code></td><td>任务列表与编辑</td></tr>
+          <tr><td><code>country</code></td><td>切换工作国家</td></tr>
+          <tr><td><code>aiConfig</code></td><td>AI 提示词配置</td></tr>
+          <tr><td><code>feishuConfig</code></td><td>飞书多维表配置</td></tr>
+          <tr><td><code>recordCalibrate</code></td><td>已确认记录人工校准</td></tr>
+          <tr><td><code>users</code> / <code>audit</code></td><td>用户管理 · 审计日志（管理员）</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+</section>
+
+<section class="alt" id="deploy">
+  <div class="container">
+    <div class="section-label">Deployment</div>
+    <h2 class="section-title">部署与启动</h2>
+    <p class="section-desc">本地开发与公网部署双轨；启动自举确保表结构与提示词就绪。</p>
+
+    <div class="card-grid card-grid-2">
+      <div class="card">
+        <h3>本地开发</h3>
+        <ul>
+          <li><code>mysql &lt; backend/config/init.sql</code></li>
+          <li><code>./start.sh all</code> → 后端 :8080 + 前端 :5175</li>
+          <li>API 基址 <code>/attendance/api</code></li>
+          <li>默认账号 admin / admin123（仅 dev）</li>
+        </ul>
+      </div>
+      <div class="card">
+        <h3>启动自举（Java）</h3>
+        <ul>
+          <li><code>ExportJobDatabaseBootstrap</code> @Order(15)</li>
+          <li><code>PromptDatabaseBootstrap</code> @Order(20)</li>
+          <li><code>DefaultAdminBootstrap</code>（dev profile）</li>
+        </ul>
+      </div>
+      <div class="card">
+        <h3>公网 / 生产</h3>
+        <ul>
+          <li><code>deploy/environments/production.yaml</code></li>
+          <li><code>npm run render:deploy:all</code> 渲染 env</li>
+          <li>飞书开放平台配置回调与合法域名</li>
+          <li>小程序 <code>USE_PUBLIC_API=true</code></li>
+        </ul>
+      </div>
+      <div class="card">
+        <h3>仓库结构</h3>
+        <ul>
+          <li><code>backend/</code> Spring Boot + MyBatis</li>
+          <li><code>frontend/</code> Vue 3 PC</li>
+          <li><code>feishu-miniprogram/</code> 小程序</li>
+          <li><code>base-config/</code> · <code>docs/</code> · <code>deploy/</code></li>
+        </ul>
+      </div>
+    </div>
+  </div>
+</section>
+
+<footer>
+  <p><strong>AttendanceAgent</strong> · AI 考勤智能助手 · 产品架构文档</p>
+  <p style="margin-top: 8px;">技术栈：Vue 3 · Spring Boot · MyBatis · MySQL · MiMo Vision · 飞书 Bitable</p>
+  <p style="margin-top: 16px; font-size: 0.78rem;">本文档基于项目源码与 docs/architecture-and-config.md 整理，适用于作品集展示。</p>
+</footer>
+
+<script>
+  document.querySelectorAll('.tab-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const id = btn.dataset.tab;
+      document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+      document.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('active'));
+      btn.classList.add('active');
+      document.getElementById(id)?.classList.add('active');
+    });
+  });
+
+  const observer = new IntersectionObserver(entries => {
+    entries.forEach(e => {
+      if (e.isIntersecting) e.target.style.opacity = '1';
+    });
+  }, { threshold: 0.1 });
+  document.querySelectorAll('.card').forEach(el => {
+    el.style.opacity = '0.85';
+    el.style.transition = 'opacity 0.5s ease';
+    observer.observe(el);
+  });
+</script>
+</body>
+</html>

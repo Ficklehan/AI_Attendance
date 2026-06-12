@@ -2,9 +2,14 @@ package com.attendance.controller;
 
 import com.attendance.common.Result;
 import com.attendance.config.CountryCatalog;
+import com.attendance.dto.ConfirmValidationConfigDTO;
 import com.attendance.dto.CountryConfigBundle;
+import com.attendance.dto.request.SystemConfigRequest;
+import com.attendance.dto.response.SystemConfigDTO;
 import com.attendance.service.ConfigService;
+import com.attendance.service.ConfirmValidationService;
 import com.attendance.service.MarkdownConfigService;
+import com.attendance.service.PluginConfigService;
 import com.attendance.service.RecognitionPromptGuard;
 import com.attendance.service.RecognitionPromptService;
 import com.attendance.service.RecognitionQualityGuard;
@@ -43,6 +48,12 @@ public class ConfigController {
 
     @Autowired
     private AdminAuthService adminAuthService;
+
+    @Autowired
+    private PluginConfigService pluginConfigService;
+
+    @Autowired
+    private ConfirmValidationService confirmValidationService;
 
     private void requireAdmin() {
         adminAuthService.requireAdmin();
@@ -287,5 +298,26 @@ public class ConfigController {
             log.error("重置提示词失败", e);
             return Result.error(500, "重置提示词失败: " + e.getMessage());
         }
+    }
+
+    @GetMapping("/system")
+    public Result<SystemConfigDTO> getSystemConfig() {
+        requireAdmin();
+        return Result.success(pluginConfigService.getSystemConfig());
+    }
+
+    /**
+     * 确认任务必填校验配置（任务编辑/确认页只读，任意登录用户可拉取）。
+     */
+    @GetMapping("/confirm-validation")
+    public Result<ConfirmValidationConfigDTO> getConfirmValidationConfig() {
+        return Result.success(confirmValidationService.getConfig());
+    }
+
+    @PutMapping("/system")
+    public Result<SystemConfigDTO> updateSystemConfig(@Validated @RequestBody SystemConfigRequest request) {
+        requireAdmin();
+        pluginConfigService.updateSystemConfig(request);
+        return Result.success(pluginConfigService.getSystemConfig());
     }
 }

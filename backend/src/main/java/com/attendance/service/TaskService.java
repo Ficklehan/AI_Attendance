@@ -20,7 +20,7 @@ import com.attendance.util.ExcelExportHelper;
 import com.attendance.util.ExcelExportHelper.ExcelSheetWriter;
 import com.attendance.mapper.UserMapper;
 import com.attendance.security.TaskAccessService;
-import com.attendance.util.RecordConfirmValidator;
+import com.attendance.util.RecognizedFieldSanitizer;
 import com.attendance.util.RecordNoGenerator;
 import com.attendance.storage.FileStorage;
 import com.attendance.util.UploadPathSecurity;
@@ -82,6 +82,12 @@ public class TaskService {
 
     @Autowired
     private FileStorage fileStorage;
+
+    @Autowired
+    private ConfirmValidationService confirmValidationService;
+
+    @Autowired
+    private UserNotificationService userNotificationService;
 
     private static final String[] CALIBRATABLE_FIELDS = {
             "NO", "Pays", "Entrepot", "NOM_PRENOM", "AGENCE_INTERIMAIRE", "HORAIRES_DU_TRAVAIL",
@@ -194,7 +200,10 @@ public class TaskService {
     }
 
     public Task getTaskForCurrentUser(String taskId) {
-        return taskAccessService.requireOwnedTask(taskId);
+        Task task = taskAccessService.requireViewableTask(taskId);
+        String userId = com.attendance.security.SecurityUtils.getCurrentUserId();
+        task.setCanConfirm(taskAccessService.canConfirmTask(userId, task));
+        return task;
     }
 
     public Task getTaskByIdInternal(String taskId) {
@@ -378,7 +387,12 @@ public class TaskService {
             throw new BusinessException(ErrorCode.TASK_STATUS_ERROR, ErrorKeys.TASK_STATUS_CANNOT_CONFIRM);
         }
 
-        RecordConfirmValidator.validateConfirmRecords(data);
+        if (data != null) {
+            for (Map<String, Object> record : data) {
+                RecognizedFieldSanitizer.sanitizeRecordPlaceholders(record);
+            }
+        }
+        confirmValidationService.validateConfirmRecords(data);
 
         String currentUserId = taskAccessService.requireCurrentUserId();
         log.info("当前用户: userId={}", currentUserId);
@@ -606,6 +620,7 @@ public class TaskService {
         }
         deleteTaskUploadFiles(task);
         taskRecordSyncService.deleteByTaskId(taskId);
+        userNotificationService.deleteByTaskId(taskId);
         taskMapper.deleteTaskByTaskId(taskId);
         log.info("删除任务: taskId={}", taskId);
     }

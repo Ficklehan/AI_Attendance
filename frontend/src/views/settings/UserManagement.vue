@@ -42,51 +42,57 @@
             </a-tag>
           </template>
           <template v-else-if="column.key === 'action'">
-            <a-space :size="4">
-              <a-button type="link" size="small" @click="openEdit(record)">{{ $t('common.edit') }}</a-button>
-              <a-popconfirm
-                v-if="record.status === 'active'"
-                :title="$t('settings.users.disableConfirm', { name: displayName(record) })"
-                :ok-text="$t('settings.users.disable')"
-                :cancel-text="$t('common.cancel')"
-                :disabled="isCurrentUser(record)"
-                @confirm="toggleUserStatus(record, 'disabled')"
-              >
-                <a-button
-                  type="link"
-                  size="small"
-                  danger
+            <div class="table-action-cell table-action-cell--links table-action-cell--links-3">
+              <span class="table-action-cell__slot">
+                <a-button type="link" size="small" @click="openEdit(record)">{{ $t('common.edit') }}</a-button>
+              </span>
+              <span class="table-action-cell__slot">
+                <a-popconfirm
+                  v-if="record.status === 'active'"
+                  :title="$t('settings.users.disableConfirm', { name: displayName(record) })"
+                  :ok-text="$t('settings.users.disable')"
+                  :cancel-text="$t('common.cancel')"
                   :disabled="isCurrentUser(record)"
+                  @confirm="toggleUserStatus(record, 'disabled')"
                 >
-                  {{ $t('settings.users.disable') }}
-                </a-button>
-              </a-popconfirm>
-              <a-popconfirm
-                v-else
-                :title="$t('settings.users.enableConfirm', { name: displayName(record) })"
-                :ok-text="$t('settings.users.enable')"
-                :cancel-text="$t('common.cancel')"
-                @confirm="toggleUserStatus(record, 'active')"
-              >
-                <a-button type="link" size="small">{{ $t('settings.users.enable') }}</a-button>
-              </a-popconfirm>
-              <a-popconfirm
-                :title="$t('settings.users.deleteConfirm', { name: displayName(record) })"
-                :ok-text="$t('common.delete')"
-                :cancel-text="$t('common.cancel')"
-                :disabled="isCurrentUser(record)"
-                @confirm="handleDeleteUser(record)"
-              >
-                <a-button
-                  type="link"
-                  size="small"
-                  danger
+                  <a-button
+                    type="link"
+                    size="small"
+                    danger
+                    :disabled="isCurrentUser(record)"
+                  >
+                    {{ $t('settings.users.disable') }}
+                  </a-button>
+                </a-popconfirm>
+                <a-popconfirm
+                  v-else
+                  :title="$t('settings.users.enableConfirm', { name: displayName(record) })"
+                  :ok-text="$t('settings.users.enable')"
+                  :cancel-text="$t('common.cancel')"
+                  @confirm="toggleUserStatus(record, 'active')"
+                >
+                  <a-button type="link" size="small">{{ $t('settings.users.enable') }}</a-button>
+                </a-popconfirm>
+              </span>
+              <span class="table-action-cell__slot">
+                <a-popconfirm
+                  :title="$t('settings.users.deleteConfirm', { name: displayName(record) })"
+                  :ok-text="$t('common.delete')"
+                  :cancel-text="$t('common.cancel')"
                   :disabled="isCurrentUser(record)"
+                  @confirm="handleDeleteUser(record)"
                 >
-                  {{ $t('common.delete') }}
-                </a-button>
-              </a-popconfirm>
-            </a-space>
+                  <a-button
+                    type="link"
+                    size="small"
+                    danger
+                    :disabled="isCurrentUser(record)"
+                  >
+                    {{ $t('common.delete') }}
+                  </a-button>
+                </a-popconfirm>
+              </span>
+            </div>
           </template>
         </template>
       </a-table>
@@ -203,7 +209,7 @@ const baseColumns = computed(() => withTableSorters([
   { title: t('settings.users.feishuUserId'), dataIndex: 'feishuUserId', key: 'feishuUserId', ellipsis: true, width: 140 },
   { title: t('settings.users.role'), key: 'role', width: 100, sorter: keyFieldSorter('role') },
   { title: t('common.status'), key: 'status', width: 100, sorter: keyFieldSorter('status') },
-  { title: t('common.operation'), key: 'action', width: 220, fixed: 'right' },
+  { title: t('common.operation'), key: 'action', width: 220, align: 'center', fixed: 'right' },
 ]))
 const {
   frozenColumns: columns,

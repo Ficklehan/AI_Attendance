@@ -111,4 +111,11 @@
         WHERE role = #{role} AND status = 'active'
     </select>
 
+    <select id="selectActiveUsers" resultMap="BaseResultMap">
+        SELECT <include refid="Base_Column_List"/>
+        FROM users
+        WHERE status = 'active'
+        ORDER BY real_name ASC, username ASC
+    </select>
+
 </mapper>

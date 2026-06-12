@@ -102,7 +102,7 @@ $icon-gap: 4px;
   position: absolute;
   top: 50%;
   transform: translateY(-50%);
-  z-index: 2;
+  z-index: 1;
   display: flex;
   align-items: center;
 }

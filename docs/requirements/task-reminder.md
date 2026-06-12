@@ -1,6 +1,6 @@
 # 任务提醒功能需求说明
 
-> 状态：**已确认，待开发**  
+> 状态：**开发中**（`feature/task-reminder`）  
 > 分支：`feature/task-reminder`  
 > 关联：`docs/data-consistency.md`（任务状态）、`FeishuService`（飞书消息）
 
@@ -187,13 +187,13 @@ user_notifications (
 
 ### MVP（`feature/task-reminder`）
 
-- [ ] 数据库迁移与实体  
-- [ ] 规则 CRUD API + PC 设置页  
-- [ ] 调度器 + 方案 A 逻辑 + 投递去重  
-- [ ] 站内消息 API + PC 铃铛与列表  
-- [ ] 飞书卡片消息（有 `feishu_user_id` 时）  
-- [ ] `reminderConfig` 权限  
-- [ ] 默认文案与中英文 i18n（配置页与消息标题）
+- [x] 数据库迁移与实体  
+- [x] 规则 CRUD API + PC 设置页  
+- [x] 调度器 + 方案 A 逻辑 + 投递去重  
+- [x] 站内消息 API + PC 铃铛与列表  
+- [x] 飞书卡片消息（有 `feishu_user_id` 时）  
+- [x] `reminderConfig` 权限  
+- [x] 默认文案与中英文 i18n（配置页与消息标题）
 
 ### 二期（后续）
 

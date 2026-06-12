@@ -1,7 +1,7 @@
 {
   "miniprogramRoot": "./",
   "projectname": "考勤工作台",
-  "appid": "cli_aaab8088e639dcd2",
+  "appid": "cli_a96dfac04b789cbb",
   "compileType": "miniprogram",
   "setting": {
     "es6": true,

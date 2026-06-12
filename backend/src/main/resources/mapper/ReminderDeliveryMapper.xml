@@ -1,0 +1,28 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+    "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.attendance.mapper.ReminderDeliveryMapper">
+
+    <select id="existsDelivery" resultType="int">
+        SELECT COUNT(1) FROM reminder_deliveries
+        WHERE rule_id = #{ruleId}
+          AND task_id = #{taskId}
+          AND user_id = #{userId}
+          AND period_bucket = #{periodBucket}
+    </select>
+
+    <select id="countByUserAndTask" resultType="int">
+        SELECT COUNT(1) FROM reminder_deliveries
+        WHERE user_id = #{userId} AND task_id = #{taskId}
+    </select>
+
+    <insert id="insertDelivery">
+        INSERT INTO reminder_deliveries (
+            id, rule_id, task_id, user_id, period_bucket,
+            channel_site, channel_feishu, feishu_status
+        ) VALUES (
+            #{id}, #{ruleId}, #{taskId}, #{userId}, #{periodBucket},
+            #{channelSite}, #{channelFeishu}, #{feishuStatus}
+        )
+    </insert>
+</mapper>

@@ -28,25 +28,18 @@ export function defaultPaysLabel(countryCode) {
   return PAYS_LABELS[code] || LOCAL_NAMES[code] || code
 }
 
+import { isPlaceholderValue, sanitizeFieldValue } from './fieldPlaceholder'
+
 export function isMissingPays(value) {
-  if (value == null) return true
-  const trimmed = String(value).trim()
-  if (!trimmed || trimmed === '-' || trimmed === '—') return true
-  if (trimmed === '???' || trimmed === '??') return true
-  return ['illegible', 'n/a', 'null'].includes(trimmed.toLowerCase())
+  return isPlaceholderValue(value)
 }
 
 export function isUnrecognizedField(value) {
-  if (value == null) return true
-  const trimmed = String(value).trim()
-  if (!trimmed || trimmed === '-' || trimmed === '—') return true
-  if (trimmed === '???' || trimmed === '??') return true
-  const lower = trimmed.toLowerCase()
-  return ['illegible', 'n/a', 'na', 'null', 'none'].includes(lower)
+  return isPlaceholderValue(value)
 }
 
 export function sanitizeEntrepot(value) {
-  return isUnrecognizedField(value) ? '' : String(value).trim()
+  return sanitizeFieldValue(value)
 }
 
 export function applyMissingPays(record, workingCountryCode) {

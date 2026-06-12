@@ -1,0 +1,69 @@
+package com.attendance.controller;
+
+import com.attendance.common.Result;
+import com.attendance.dto.request.ReminderRuleRequest;
+import com.attendance.dto.response.ReminderRuleDTO;
+import com.attendance.service.ReminderRuleService;
+import com.attendance.service.ReminderSupport;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.validation.annotation.Validated;
+import org.springframework.web.bind.annotation.*;
+
+import javax.validation.Valid;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+
+@RestController
+@RequestMapping("/reminder-rules")
+@Validated
+public class ReminderRuleController {
+
+    @Autowired
+    private ReminderRuleService reminderRuleService;
+
+    @GetMapping
+    public Result<List<ReminderRuleDTO>> list() {
+        return Result.success(reminderRuleService.listRules());
+    }
+
+    @GetMapping("/{id}")
+    public Result<ReminderRuleDTO> get(@PathVariable String id) {
+        return Result.success(reminderRuleService.getRule(id));
+    }
+
+    @PostMapping
+    public Result<ReminderRuleDTO> create(@Valid @RequestBody ReminderRuleRequest request) {
+        return Result.success(reminderRuleService.createRule(request));
+    }
+
+    @PutMapping("/{id}")
+    public Result<ReminderRuleDTO> update(@PathVariable String id,
+                                          @Valid @RequestBody ReminderRuleRequest request) {
+        return Result.success(reminderRuleService.updateRule(id, request));
+    }
+
+    @PatchMapping("/{id}/enabled")
+    public Result<Void> setEnabled(@PathVariable String id, @RequestBody Map<String, Boolean> body) {
+        Boolean enabled = body != null ? body.get("enabled") : null;
+        if (enabled == null) {
+            enabled = body != null ? body.get("value") : null;
+        }
+        reminderRuleService.setEnabled(id, Boolean.TRUE.equals(enabled));
+        return Result.success(null);
+    }
+
+    @DeleteMapping("/{id}")
+    public Result<Void> delete(@PathVariable String id) {
+        reminderRuleService.deleteRule(id);
+        return Result.success(null);
+    }
+
+    @GetMapping("/default-template")
+    public Result<Map<String, String>> defaultTemplate() {
+        Map<String, String> body = new HashMap<>();
+        body.put("template", ReminderSupport.DEFAULT_TEMPLATE_OPERATOR);
+        body.put("supervisorTemplate", ReminderSupport.DEFAULT_TEMPLATE_SUPERVISOR);
+        return Result.success(body);
+    }
+}

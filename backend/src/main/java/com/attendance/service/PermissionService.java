@@ -30,6 +30,7 @@ public class PermissionService {
     private static final Logger log = LoggerFactory.getLogger(PermissionService.class);
     private static final String PERMISSIONS_FILE = "permissions.json";
     public static final String RECORD_CALIBRATE = "recordCalibrate";
+    public static final String REMINDER_CONFIG = "reminderConfig";
 
     @Autowired
     private ConfigPathResolver configPathResolver;
@@ -170,6 +171,7 @@ public class PermissionService {
                     map.put("feishuConfig", true);
                     map.put("users", true);
                     map.put("audit", true);
+                    map.put(REMINDER_CONFIG, true);
                 }
                 result.put(role, map);
             }
@@ -210,6 +212,7 @@ public class PermissionService {
             m.put("users", true);
             m.put("audit", true);
             m.put(RECORD_CALIBRATE, true);
+            m.put(REMINDER_CONFIG, true);
         } else {
             m.put("tasks", true);
             m.put("country", true);
@@ -218,6 +221,7 @@ public class PermissionService {
             m.put("users", false);
             m.put("audit", false);
             m.put(RECORD_CALIBRATE, false);
+            m.put(REMINDER_CONFIG, false);
         }
         return m;
     }

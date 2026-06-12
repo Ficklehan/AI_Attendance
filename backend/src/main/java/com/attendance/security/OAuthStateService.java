@@ -20,11 +20,32 @@ public class OAuthStateService {
     private JwtProperties jwtProperties;
 
     public String createState() {
+        return createState(null);
+    }
+
+    public String createState(String redirectPath) {
         String nonce = UUID.randomUUID().toString();
-        return nonce + "." + sign(nonce);
+        String payload = nonce;
+        if (redirectPath != null && !redirectPath.trim().isEmpty()) {
+            payload = nonce + "|" + redirectPath.trim();
+        }
+        return payload + "." + sign(payload);
     }
 
     public void validateState(String state) {
+        payloadFromState(state);
+    }
+
+    public String extractRedirect(String state) {
+        String payload = payloadFromState(state);
+        int pipe = payload.indexOf('|');
+        if (pipe > 0 && pipe < payload.length() - 1) {
+            return payload.substring(pipe + 1);
+        }
+        return null;
+    }
+
+    private String payloadFromState(String state) {
         if (state == null || state.trim().isEmpty()) {
             throw new IllegalArgumentException("缺少 OAuth state");
         }
@@ -32,12 +53,13 @@ public class OAuthStateService {
         if (dot <= 0 || dot >= state.length() - 1) {
             throw new IllegalArgumentException("OAuth state 格式无效");
         }
-        String nonce = state.substring(0, dot);
+        String payload = state.substring(0, dot);
         String signature = state.substring(dot + 1);
-        String expected = sign(nonce);
+        String expected = sign(payload);
         if (!expected.equals(signature)) {
             throw new IllegalArgumentException("OAuth state 校验失败");
         }
+        return payload;
     }
 
     private String sign(String nonce) {

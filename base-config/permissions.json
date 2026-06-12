@@ -6,15 +6,17 @@
 		"feishuConfig":true,
 		"users":true,
 		"audit":true,
-		"recordCalibrate":true
+		"recordCalibrate":true,
+		"reminderConfig":true
 	},
 	"user":{
 		"tasks":true,
 		"country":true,
-		"aiConfig":false,
-		"feishuConfig":false,
-		"users":false,
-		"audit":false,
-		"recordCalibrate":false
+		"aiConfig":true,
+		"feishuConfig":true,
+		"users":true,
+		"audit":true,
+		"recordCalibrate":true,
+		"reminderConfig":true
 	}
 }

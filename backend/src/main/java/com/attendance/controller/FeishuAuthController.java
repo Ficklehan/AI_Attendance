@@ -9,6 +9,7 @@ import com.attendance.dto.response.LoginResponse;
 import com.attendance.entity.User;
 import com.attendance.service.AuditLogService;
 import com.attendance.service.FeishuService;
+import com.attendance.service.ReminderSupport;
 import com.attendance.service.UserService;
 import com.attendance.security.LoginExchangeService;
 import com.attendance.security.OAuthStateService;
@@ -76,8 +77,10 @@ public class FeishuAuthController {
     }
 
     @GetMapping("/login")
-    public void login(HttpServletResponse response) throws IOException {
-        String state = oauthStateService.createState();
+    public void login(@RequestParam(value = "redirect", required = false) String redirect,
+                      HttpServletResponse response) throws IOException {
+        String safeRedirect = ReminderSupport.sanitizePostLoginRedirect(redirect);
+        String state = oauthStateService.createState(safeRedirect);
         String redirectUri = URLEncoder.encode(feishuProperties.getRedirectUri(), "UTF-8");
         
         String url = String.format(
@@ -96,6 +99,8 @@ public class FeishuAuthController {
 
         try {
             oauthStateService.validateState(state);
+            String postLoginRedirect = ReminderSupport.sanitizePostLoginRedirect(
+                    oauthStateService.extractRedirect(state));
             String token = getAccessToken(code);
             JSONObject userInfo = getUserInfo(token);
             
@@ -130,7 +135,7 @@ public class FeishuAuthController {
             auditLogService.log("USER_LOGIN", "user", loginResponse.getUserInfo().getId(), "飞书登录");
 
             String exchangeCode = loginExchangeService.issue(loginResponse);
-            String html = generateLoginSuccessHtml(exchangeCode);
+            String html = generateLoginSuccessHtml(exchangeCode, postLoginRedirect);
 
             response.setContentType("text/html;charset=UTF-8");
             response.getWriter().write(html);
@@ -172,9 +177,14 @@ public class FeishuAuthController {
         return Result.success(loginResponse);
     }
 
-    private String generateLoginSuccessHtml(String exchangeCode) throws java.io.UnsupportedEncodingException {
+    private String generateLoginSuccessHtml(String exchangeCode, String redirectPath)
+            throws java.io.UnsupportedEncodingException {
         String callbackUrl = feishuProperties.getFrontendCallbackUrl();
         String encodedCode = URLEncoder.encode(exchangeCode, "UTF-8");
+        String redirectQuery = "";
+        if (redirectPath != null && !redirectPath.isEmpty()) {
+            redirectQuery = "&redirect=" + URLEncoder.encode(redirectPath, "UTF-8");
+        }
         return "<!DOCTYPE html>\n" +
                "<html lang=\"zh-CN\">\n" +
                "<head>\n" +
@@ -199,7 +209,7 @@ public class FeishuAuthController {
                "        <div class=\"spinner\"></div>\n" +
                "    </div>\n" +
                "    <script>\n" +
-               "        window.location.href = '" + callbackUrl + "?exchange=" + encodedCode + "';\n" +
+               "        window.location.href = '" + callbackUrl + "?exchange=" + encodedCode + redirectQuery + "';\n" +
                "    </script>\n" +
                "</body>\n" +
                "</html>";

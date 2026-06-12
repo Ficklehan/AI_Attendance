@@ -57,7 +57,39 @@ $table-cell-padding-x: 10px;
     align-items: center;
     width: 100%;
     min-height: 34px;
+    overflow: hidden;
+  }
+
+  /* 横向滚动：非固定列裁剪溢出，固定列提高层级并铺实底，避免与滚动列重叠 */
+  .ant-table-thead > tr > th:not(.ant-table-cell-fix-left):not(.ant-table-cell-fix-right) {
+    overflow: hidden;
+  }
+
+  .ant-table-thead > tr > th.ant-table-cell-fix-left,
+  .ant-table-thead > tr > th.ant-table-cell-fix-right {
+    z-index: 4 !important;
     overflow: visible;
+    background: linear-gradient(180deg, #fafbfc 0%, #f2f4f7 100%) !important;
+  }
+
+  .ant-table-thead > tr > th.ant-table-cell-fix-left-last,
+  .ant-table-thead > tr > th.ant-table-cell-fix-right-first {
+    z-index: 5 !important;
+  }
+
+  .ant-table-tbody > tr > td.ant-table-cell-fix-left,
+  .ant-table-tbody > tr > td.ant-table-cell-fix-right {
+    z-index: 2 !important;
+  }
+
+  .ant-table-tbody > tr > td.ant-table-cell-fix-left-last,
+  .ant-table-tbody > tr > td.ant-table-cell-fix-right-first {
+    z-index: 3 !important;
+  }
+
+  .ant-table-tbody > tr:hover > td.ant-table-cell-fix-left,
+  .ant-table-tbody > tr:hover > td.ant-table-cell-fix-right {
+    background: #f9fafb !important;
   }
 
   /* 自定义表头内已渲染排序按钮 */
@@ -104,19 +136,97 @@ $table-cell-padding-x: 10px;
     text-align: inherit;
   }
 
-  .action-buttons {
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    gap: 2px;
-    width: 100%;
-  }
-
   .status-cell {
     display: inline-flex;
     flex-wrap: wrap;
     align-items: center;
     gap: 4px;
     max-width: 100%;
+  }
+}
+
+/** 操作列固定槽位：行内按钮数量不同时仍保持纵向对齐 */
+$table-action-icon-slot: 32px;
+$table-action-icon-gap: 4px;
+
+.table-action-cell {
+  display: inline-flex;
+  align-items: center;
+  justify-content: flex-start;
+  vertical-align: middle;
+  max-width: 100%;
+}
+
+.table-action-cell--icons {
+  gap: $table-action-icon-gap;
+
+  &.table-action-cell--icons-1 {
+    width: $table-action-icon-slot;
+  }
+
+  &.table-action-cell--icons-2 {
+    width: $table-action-icon-slot * 2 + $table-action-icon-gap;
+  }
+}
+
+.table-action-cell--icons-mixed {
+  gap: $table-action-icon-gap;
+  width: 88px;
+
+  .table-action-cell__slot:first-child {
+    flex: 1 1 auto;
+    width: auto;
+    min-width: 0;
+    justify-content: flex-start;
+    overflow: hidden;
+
+    .ant-btn-link {
+      padding: 0 4px;
+    }
+  }
+
+  .table-action-cell__slot:last-child {
+    flex: 0 0 $table-action-icon-slot;
+    width: $table-action-icon-slot;
+  }
+}
+
+.table-action-cell__slot {
+  flex: 0 0 $table-action-icon-slot;
+  width: $table-action-icon-slot;
+  height: $table-action-icon-slot;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+
+  > .ant-btn {
+    margin: 0;
+  }
+}
+
+.table-action-cell--links {
+  gap: 0;
+
+  .table-action-cell__slot {
+    flex: 0 0 auto;
+    width: auto;
+    height: auto;
+    min-height: $table-action-icon-slot;
+    padding: 0 6px;
+    justify-content: center;
+  }
+}
+
+.table-action-cell--links-2 {
+  width: 120px;
+}
+
+.table-action-cell--links-3 {
+  width: 200px;
+
+  .table-action-cell__slot {
+    flex: 1 1 0;
+    min-width: 0;
+    padding: 0 4px;
   }
 }

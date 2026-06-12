@@ -2,6 +2,8 @@ package com.attendance.util;
 
 import com.alibaba.fastjson.JSONObject;
 
+import java.util.Map;
+
 /**
  * 识别结果可选字段清洗：未识别到的占位符统一为空，不做默认回填。
  */
@@ -22,10 +24,34 @@ public final class RecognizedFieldSanitizer {
             return true;
         }
         return "illegible".equalsIgnoreCase(trimmed)
+                || "unknown".equalsIgnoreCase(trimmed)
                 || "n/a".equalsIgnoreCase(trimmed)
                 || "na".equalsIgnoreCase(trimmed)
                 || "null".equalsIgnoreCase(trimmed)
                 || "none".equalsIgnoreCase(trimmed);
+    }
+
+    private static final String[] RECORD_TEXT_KEYS = {
+            "Pays", "Entrepot", "Date", "WorkDate", "NOM_PRENOM", "Name", "NO",
+            "AGENCE_INTERIMAIRE", "HORAIRES_DU_TRAVAIL", "ARRIVEE", "DEPAR", "DEPART",
+            "Observations", "PAGE_NUM", "pageNum"
+    };
+
+    /** 确认提交前将占位符归一为空字符串（不含 PAUSE、签名列）。 */
+    public static void sanitizeRecordPlaceholders(Map<String, Object> record) {
+        if (record == null) {
+            return;
+        }
+        for (String key : RECORD_TEXT_KEYS) {
+            if (!record.containsKey(key)) {
+                continue;
+            }
+            Object value = record.get(key);
+            if (value == null) {
+                continue;
+            }
+            record.put(key, sanitizeOptionalText(String.valueOf(value)));
+        }
     }
 
     public static String sanitizeOptionalText(String value) {

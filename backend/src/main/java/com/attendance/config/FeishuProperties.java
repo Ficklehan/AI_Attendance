@@ -50,6 +50,19 @@ public class FeishuProperties {
         return redirectUri;
     }
 
+    /** 从 OAuth 回调地址推导 API 根路径，如 http://host/attendance/api */
+    public String getApiBaseUrl() {
+        if (redirectUri == null || redirectUri.trim().isEmpty()) {
+            return "http://localhost:8080/attendance/api";
+        }
+        String uri = redirectUri.trim();
+        int idx = uri.indexOf("/feishu-auth/");
+        if (idx > 0) {
+            return uri.substring(0, idx);
+        }
+        return uri.replaceAll("/+$", "");
+    }
+
     public void setRedirectUri(String redirectUri) {
         this.redirectUri = redirectUri;
     }

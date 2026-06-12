@@ -168,46 +168,86 @@ public class FeishuService {
         return result.getJSONObject("data").getString("url");
     }
 
-    public void sendTextMessage(String userId, String text) throws IOException {
+    /**
+     * 库中 feishu_user_id 来自飞书登录 open_id（ou_ 前缀），须与 receive_id_type 一致。
+     */
+    static String resolveReceiveIdType(String receiveId) {
+        if (receiveId == null || receiveId.isEmpty()) {
+            return "open_id";
+        }
+        if (receiveId.startsWith("ou_")) {
+            return "open_id";
+        }
+        if (receiveId.startsWith("on_")) {
+            return "union_id";
+        }
+        return "user_id";
+    }
+
+    private String sendImMessage(String receiveId, String msgType, String contentJson) throws IOException {
         String token = getAccessToken();
-        
+        String receiveIdType = resolveReceiveIdType(receiveId);
+
         JSONObject body = new JSONObject();
-        body.put("receive_id", userId);
-        body.put("msg_type", "text");
-        body.put("content", JSONObject.toJSONString(Collections.singletonMap("text", text)));
+        body.put("receive_id", receiveId);
+        body.put("msg_type", msgType);
+        body.put("content", contentJson);
 
         Request request = new Request.Builder()
-                .url("https://open.feishu.cn/open-apis/im/v1/messages?receive_id_type=user_id")
+                .url("https://open.feishu.cn/open-apis/im/v1/messages?receive_id_type=" + receiveIdType)
                 .header("Authorization", "Bearer " + token)
                 .header("Content-Type", "application/json")
                 .post(RequestBody.create(body.toJSONString(), MediaType.parse("application/json")))
                 .build();
 
         Response response = httpClient.newCall(request).execute();
+        String responseBody = response.body() != null ? response.body().string() : "";
         if (!response.isSuccessful()) {
-            log.warn("发送消息失败: {}", response.code());
+            log.warn("发送飞书消息失败: HTTP {} receive_id_type={} receive_id={} body={}",
+                    response.code(), receiveIdType, receiveId, responseBody);
+            throw new IOException("飞书消息发送失败 HTTP " + response.code() + ": " + responseBody);
+        }
+        JSONObject result = JSON.parseObject(responseBody);
+        assertFeishuApiSuccess(result, "发送飞书消息");
+        JSONObject data = result.getJSONObject("data");
+        return data != null ? data.getString("message_id") : null;
+    }
+
+    public void sendTextMessage(String userId, String text) throws IOException {
+        sendImMessage(userId, "text", JSONObject.toJSONString(Collections.singletonMap("text", text)));
+    }
+
+    public String sendCardMessage(String userId, JSONObject card) throws IOException {
+        return sendImMessage(userId, "interactive", card.toJSONString());
+    }
+
+    public void recallMessage(String messageId) throws IOException {
+        if (messageId == null || messageId.trim().isEmpty()) {
+            return;
+        }
+        String token = getAccessToken();
+        Request request = new Request.Builder()
+                .url("https://open.feishu.cn/open-apis/im/v1/messages/" + messageId.trim())
+                .delete()
+                .header("Authorization", "Bearer " + token)
+                .build();
+
+        Response response = httpClient.newCall(request).execute();
+        String responseBody = response.body() != null ? response.body().string() : "";
+        if (!response.isSuccessful()) {
+            log.warn("撤回飞书消息失败: HTTP {} message_id={} body={}",
+                    response.code(), messageId, responseBody);
+            throw new IOException("飞书消息撤回失败 HTTP " + response.code() + ": " + responseBody);
+        }
+        JSONObject result = JSON.parseObject(responseBody);
+        if (result != null && result.getInteger("code") != null && result.getInteger("code") != 0) {
+            log.warn("撤回飞书消息失败: message_id={} body={}", messageId, responseBody);
+            throw new IOException("飞书消息撤回失败: " + result.getString("msg"));
         }
     }
 
-    public void sendCardMessage(String userId, JSONObject card) throws IOException {
-        String token = getAccessToken();
-        
-        JSONObject body = new JSONObject();
-        body.put("receive_id", userId);
-        body.put("msg_type", "interactive");
-        body.put("content", card.toJSONString());
-
-        Request request = new Request.Builder()
-                .url("https://open.feishu.cn/open-apis/im/v1/messages?receive_id_type=user_id")
-                .header("Authorization", "Bearer " + token)
-                .header("Content-Type", "application/json")
-                .post(RequestBody.create(body.toJSONString(), MediaType.parse("application/json")))
-                .build();
-
-        Response response = httpClient.newCall(request).execute();
-        if (!response.isSuccessful()) {
-            log.warn("发送卡片消息失败: {}", response.code());
-        }
+    public void deleteMessage(String messageId) throws IOException {
+        recallMessage(messageId);
     }
 
     public void sendSuccessNotification(String userId, int recordCount) throws IOException {

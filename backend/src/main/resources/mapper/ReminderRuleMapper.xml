@@ -1,0 +1,108 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+    "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.attendance.mapper.ReminderRuleMapper">
+
+    <resultMap id="BaseResultMap" type="com.attendance.entity.ReminderRule">
+        <id column="id" property="id"/>
+        <result column="name" property="name"/>
+        <result column="description" property="description"/>
+        <result column="task_statuses" property="taskStatusesJson"/>
+        <result column="scope_countries" property="scopeCountriesJson"/>
+        <result column="scope_roles" property="scopeRolesJson"/>
+        <result column="interval_value" property="intervalValue"/>
+        <result column="interval_unit" property="intervalUnit"/>
+        <result column="message_template" property="messageTemplate"/>
+        <result column="message_template_supervisor" property="messageTemplateSupervisor"/>
+        <result column="include_task_creator" property="includeTaskCreator"/>
+        <result column="enabled" property="enabled"/>
+        <result column="last_run_at" property="lastRunAt"/>
+        <result column="last_hit_count" property="lastHitCount"/>
+        <result column="last_sent_count" property="lastSentCount"/>
+        <result column="created_by" property="createdBy"/>
+        <result column="created_at" property="createdAt"/>
+        <result column="updated_at" property="updatedAt"/>
+    </resultMap>
+
+    <sql id="Base_Column_List">
+        id, name, description, task_statuses, scope_countries, scope_roles,
+        interval_value, interval_unit,
+        message_template, message_template_supervisor, include_task_creator, enabled, last_run_at,
+        last_hit_count, last_sent_count, created_by, created_at, updated_at
+    </sql>
+
+    <select id="selectAll" resultMap="BaseResultMap">
+        SELECT <include refid="Base_Column_List"/>
+        FROM reminder_rules
+        ORDER BY created_at DESC
+    </select>
+
+    <select id="selectEnabled" resultMap="BaseResultMap">
+        SELECT <include refid="Base_Column_List"/>
+        FROM reminder_rules
+        WHERE enabled = 1
+        ORDER BY created_at ASC
+    </select>
+
+    <select id="selectById" resultMap="BaseResultMap">
+        SELECT <include refid="Base_Column_List"/>
+        FROM reminder_rules
+        WHERE id = #{id}
+    </select>
+
+    <insert id="insertRule">
+        INSERT INTO reminder_rules (
+            id, name, description, task_statuses, scope_countries, scope_roles,
+            interval_value, interval_unit,
+            message_template, message_template_supervisor, include_task_creator, enabled, created_by
+        ) VALUES (
+            #{id}, #{name}, #{description}, #{taskStatusesJson}, #{scopeCountriesJson}, #{scopeRolesJson},
+            #{intervalValue}, #{intervalUnit},
+            #{messageTemplate}, #{messageTemplateSupervisor}, #{includeTaskCreator}, #{enabled}, #{createdBy}
+        )
+    </insert>
+
+    <update id="updateRule">
+        UPDATE reminder_rules SET
+            name = #{name},
+            description = #{description},
+            task_statuses = #{taskStatusesJson},
+            scope_countries = #{scopeCountriesJson},
+            scope_roles = #{scopeRolesJson},
+            interval_value = #{intervalValue},
+            interval_unit = #{intervalUnit},
+            message_template = #{messageTemplate},
+            message_template_supervisor = #{messageTemplateSupervisor},
+            include_task_creator = #{includeTaskCreator},
+            enabled = #{enabled}
+        WHERE id = #{id}
+    </update>
+
+    <update id="updateEnabled">
+        UPDATE reminder_rules SET enabled = #{enabled} WHERE id = #{id}
+    </update>
+
+    <update id="updateLastRun">
+        UPDATE reminder_rules SET
+            last_run_at = NOW(),
+            last_hit_count = #{hitCount},
+            last_sent_count = #{sentCount}
+        WHERE id = #{id}
+    </update>
+
+    <delete id="deleteById">
+        DELETE FROM reminder_rules WHERE id = #{id}
+    </delete>
+
+    <select id="selectRecipientUserIds" resultType="string">
+        SELECT user_id FROM reminder_rule_users WHERE rule_id = #{ruleId}
+    </select>
+
+    <delete id="deleteRecipients">
+        DELETE FROM reminder_rule_users WHERE rule_id = #{ruleId}
+    </delete>
+
+    <insert id="insertRecipient">
+        INSERT INTO reminder_rule_users (rule_id, user_id) VALUES (#{ruleId}, #{userId})
+    </insert>
+</mapper>

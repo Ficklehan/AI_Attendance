@@ -390,6 +390,15 @@
         ORDER BY created_at DESC
     </select>
 
+    <select id="selectTasksByStatuses" resultMap="BaseResultMap">
+        SELECT <include refid="Base_Column_List"/>
+        FROM tasks
+        WHERE status IN
+        <foreach collection="statuses" item="st" open="(" separator="," close=")">
+            #{st}
+        </foreach>
+    </select>
+
     <delete id="deleteTaskByTaskId">
         DELETE FROM tasks WHERE task_id = #{taskId}
     </delete>

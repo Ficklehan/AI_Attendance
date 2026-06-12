@@ -20,6 +20,8 @@ const {
   fetchAndApplyDuplicates,
   confirmRecordNotDuplicate
 } = require('../../utils/duplicateCheck')
+const { ensureFeishuLogin } = require('../../utils/feishuLogin')
+const { setPendingReturn, buildResultPath } = require('../../utils/deepLink')
 
 const PAGE_SIZE = 20
 const { startAdaptivePoll } = require('../../utils/adaptivePoll')
@@ -88,10 +90,9 @@ Page({
 
   onLoad: function (options) {
     this.refreshPageTexts()
-    this.refreshUserPermissions()
     if (options && options.id) {
       this.setData({ taskId: options.id })
-      this.loadTaskResult()
+      this.bootstrapTaskPage()
     } else {
       this.setData({ loading: false })
       tt.showToast({ title: t('result.missingTaskId'), icon: 'none' })
@@ -201,6 +202,25 @@ Page({
     })
   },
 
+  bootstrapTaskPage: function (forceLogin, silent) {
+    ensureFeishuLogin({ silent: true, force: Boolean(forceLogin) })
+      .then(() => {
+        this.refreshUserPermissions()
+        return this.loadTaskResult(Boolean(silent))
+      })
+      .catch(() => {
+        const taskId = this.data.taskId
+        if (taskId) {
+          setPendingReturn(buildResultPath(taskId))
+        }
+        tt.redirectTo({
+          url: taskId
+            ? `/pages/login/index?taskId=${encodeURIComponent(taskId)}&auto=1`
+            : '/pages/login/index?auto=1'
+        })
+      })
+  },
+
   refreshUserPermissions: function () {
     tt.request({
       url: `${App.globalData.baseUrl}/auth/profile`,
@@ -274,10 +294,11 @@ Page({
       }
     }
 
-    const canSubmit = taskStatus === 'processed'
-    const canRetrySync = taskStatus === 'confirmed' && syncStatus === 'sync_failed'
+    const canConfirm = task.canConfirm !== false
+    const canSubmit = taskStatus === 'processed' && canConfirm
+    const canRetrySync = taskStatus === 'confirmed' && syncStatus === 'sync_failed' && canConfirm
     const perms = (App.globalData.userInfo && App.globalData.userInfo.permissions) || {}
-    const canCalibrate = taskStatus === 'confirmed' && perms.recordCalibrate === true
+    const canCalibrate = taskStatus === 'confirmed' && perms.recordCalibrate === true && canConfirm
 
     this.setData({
       taskStatus,
@@ -342,8 +363,16 @@ Page({
             }
           })
           return
-        } else if (!silent) {
-          tt.showToast({ title: getApiMessage(res.data, t('result.loadFail')), icon: 'none' })
+        } else {
+          const code = res.data && Number(res.data.code)
+          if ((code === 401 || code === 1004) && !this._authRetried) {
+            this._authRetried = true
+            this.bootstrapTaskPage(true, silent)
+            return
+          }
+          if (!silent) {
+            tt.showToast({ title: getApiMessage(res.data, t('result.loadFail')), icon: 'none' })
+          }
         }
       },
       fail: (error) => {
