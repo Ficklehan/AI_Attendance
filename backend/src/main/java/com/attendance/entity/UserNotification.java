@@ -10,6 +10,7 @@ public class UserNotification {
     private String title;
     private String body;
     private String link;
+    private String contentVarsJson;
     private String feishuMessageId;
     private LocalDateTime readAt;
     private LocalDateTime createdAt;
@@ -69,6 +70,14 @@ public class UserNotification {
 
     public void setLink(String link) {
         this.link = link;
+    }
+
+    public String getContentVarsJson() {
+        return contentVarsJson;
+    }
+
+    public void setContentVarsJson(String contentVarsJson) {
+        this.contentVarsJson = contentVarsJson;
     }
 
     public String getFeishuMessageId() {

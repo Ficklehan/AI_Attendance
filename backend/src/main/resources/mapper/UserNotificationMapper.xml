@@ -11,6 +11,7 @@
         <result column="title" property="title"/>
         <result column="body" property="body"/>
         <result column="link" property="link"/>
+        <result column="content_vars" property="contentVarsJson"/>
         <result column="feishu_message_id" property="feishuMessageId"/>
         <result column="read_at" property="readAt"/>
         <result column="created_at" property="createdAt"/>
@@ -18,7 +19,7 @@
     </resultMap>
 
     <sql id="BaseColumns">
-        id, user_id, rule_id, period_bucket, title, body, link, feishu_message_id, read_at, created_at, updated_at
+        id, user_id, rule_id, period_bucket, title, body, link, content_vars, feishu_message_id, read_at, created_at, updated_at
     </sql>
 
     <select id="selectByUser" resultMap="BaseResultMap">
@@ -64,9 +65,9 @@
 
     <insert id="insertNotification">
         INSERT INTO user_notifications (
-            id, user_id, rule_id, period_bucket, title, body, link
+            id, user_id, rule_id, period_bucket, title, body, link, content_vars
         ) VALUES (
-            #{id}, #{userId}, #{ruleId}, #{periodBucket}, #{title}, #{body}, #{link}
+            #{id}, #{userId}, #{ruleId}, #{periodBucket}, #{title}, #{body}, #{link}, #{contentVarsJson}
         )
     </insert>
 

@@ -3,6 +3,7 @@ package com.attendance.service;
 import com.alibaba.fastjson.JSON;
 import com.alibaba.fastjson.JSONObject;
 import com.attendance.config.FeishuProperties;
+import com.attendance.dto.NotificationContentVars;
 import com.attendance.dto.SiteNotificationReplaceResult;
 import com.attendance.entity.ReminderDelivery;
 import com.attendance.entity.ReminderRule;
@@ -21,6 +22,7 @@ import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 
 import java.time.LocalDateTime;
+import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.HashMap;
@@ -36,6 +38,7 @@ import java.util.stream.Collectors;
 public class ReminderSchedulerService {
 
     private static final Logger log = LoggerFactory.getLogger(ReminderSchedulerService.class);
+    private static final DateTimeFormatter CONTENT_TIME = DateTimeFormatter.ISO_LOCAL_DATE_TIME;
 
     @Autowired
     private PluginConfigService pluginConfigService;
@@ -182,7 +185,8 @@ public class ReminderSchedulerService {
                 User creator = getUser(latest.getUserId(), userCache);
                 boolean recipientIsOperator = userTasks.stream()
                         .allMatch(t -> recipientId.equals(t.getUserId()));
-                String creatorNames = formatCreatorNames(userTasks, userCache, locale);
+                List<String> creatorNameList = collectCreatorNames(userTasks, userCache);
+                String creatorNames = joinCreatorNames(creatorNameList, locale);
                 Map<String, String> vars = ReminderSupport.baseVars(
                         userTasks.size(),
                         rule.getIntervalValue(),
@@ -207,8 +211,18 @@ public class ReminderSchedulerService {
                         feishuProperties.getFrontendLoginUrl(), latest.getTaskId());
                 String feishuLink = ReminderSupport.buildMiniprogramTaskApplink(
                         feishuProperties.getAppId(), latest.getTaskId());
+                NotificationContentVars contentVars = buildContentVars(
+                        userTasks.size(),
+                        rule,
+                        statusLabel,
+                        latest,
+                        latestTime,
+                        displayName(recipient),
+                        creator != null ? displayName(creator) : "",
+                        creatorNameList,
+                        recipientIsOperator);
                 SiteNotificationReplaceResult replaced = userNotificationService.replaceSiteNotification(
-                        recipientId, rule.getId(), periodBucket, title, body, siteLink);
+                        recipientId, rule.getId(), periodBucket, title, body, siteLink, contentVars.toJson());
                 String webLoginLink = ReminderSupport.buildFeishuWebLoginTaskLink(
                         feishuProperties.getApiBaseUrl(), latest.getTaskId());
                 String webApplink = ReminderSupport.buildFeishuWebApplink(webLoginLink);
@@ -349,7 +363,7 @@ public class ReminderSchedulerService {
         return user.getUsername();
     }
 
-    private String formatCreatorNames(List<Task> tasks, Map<String, User> userCache, String locale) {
+    private List<String> collectCreatorNames(List<Task> tasks, Map<String, User> userCache) {
         LinkedHashSet<String> names = new LinkedHashSet<>();
         for (Task task : tasks) {
             User creator = getUser(task.getUserId(), userCache);
@@ -357,7 +371,38 @@ public class ReminderSchedulerService {
                 names.add(displayName(creator));
             }
         }
-        String separator = ReminderLocaleSupport.nameSeparator(locale);
-        return names.isEmpty() ? "-" : String.join(separator, names);
+        return new ArrayList<>(names);
+    }
+
+    private static String joinCreatorNames(List<String> names, String locale) {
+        if (names == null || names.isEmpty()) {
+            return "-";
+        }
+        return String.join(ReminderLocaleSupport.nameSeparator(locale), names);
+    }
+
+    private static NotificationContentVars buildContentVars(int pendingCount,
+                                                            ReminderRule rule,
+                                                            String taskStatus,
+                                                            Task latest,
+                                                            LocalDateTime latestTime,
+                                                            String recipientName,
+                                                            String taskCreatorName,
+                                                            List<String> creatorNames,
+                                                            boolean recipientIsOperator) {
+        NotificationContentVars contentVars = new NotificationContentVars();
+        contentVars.setPendingCount(pendingCount);
+        contentVars.setIntervalValue(rule.getIntervalValue() != null
+                ? rule.getIntervalValue().toPlainString()
+                : "1");
+        contentVars.setIntervalUnit(rule.getIntervalUnit());
+        contentVars.setTaskStatus(taskStatus);
+        contentVars.setLatestTaskId(latest.getTaskId());
+        contentVars.setLatestTaskTime(latestTime != null ? latestTime.format(CONTENT_TIME) : null);
+        contentVars.setRecipientName(recipientName);
+        contentVars.setTaskCreatorName(taskCreatorName);
+        contentVars.setCreatorNames(creatorNames != null ? creatorNames : new ArrayList<>());
+        contentVars.setRecipientIsOperator(recipientIsOperator);
+        return contentVars;
     }
 }

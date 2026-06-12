@@ -28,12 +28,15 @@ public class UserNotificationService {
     @Autowired
     private TaskMapper taskMapper;
 
-    public PageResult<UserNotificationDTO> list(long current, long size) {
+    @Autowired
+    private NotificationLocalizationService notificationLocalizationService;
+
+    public PageResult<UserNotificationDTO> list(long current, long size, String locale) {
         String userId = SecurityUtils.getCurrentUserId();
         pruneStaleTaskNotifications(userId);
         long offset = (current - 1) * size;
         List<UserNotificationDTO> records = userNotificationMapper.selectByUser(userId, offset, size).stream()
-                .map(this::toDto)
+                .map(n -> toDto(n, locale))
                 .collect(Collectors.toList());
         long total = userNotificationMapper.countByUser(userId);
         return PageResult.of(records, total, current, size);
@@ -91,7 +94,8 @@ public class UserNotificationService {
                                                                  String periodBucket,
                                                                  String title,
                                                                  String body,
-                                                                 String link) {
+                                                                 String link,
+                                                                 String contentVarsJson) {
         String bucket = periodBucket != null && !periodBucket.trim().isEmpty()
                 ? periodBucket.trim()
                 : ReminderSupport.AGGREGATE_PERIOD_BUCKET;
@@ -107,6 +111,7 @@ public class UserNotificationService {
         n.setTitle(title);
         n.setBody(body);
         n.setLink(link);
+        n.setContentVarsJson(contentVarsJson);
         userNotificationMapper.insertNotification(n);
         return new SiteNotificationReplaceResult(notificationId, previousFeishuMessageId);
     }
@@ -136,7 +141,7 @@ public class UserNotificationService {
         return task != null;
     }
 
-    private UserNotificationDTO toDto(UserNotification n) {
+    private UserNotificationDTO toDto(UserNotification n, String locale) {
         UserNotificationDTO dto = new UserNotificationDTO();
         dto.setId(n.getId());
         dto.setRuleId(n.getRuleId());
@@ -146,6 +151,11 @@ public class UserNotificationService {
         dto.setRead(n.getReadAt() != null);
         dto.setReadAt(n.getReadAt());
         dto.setCreatedAt(n.getCreatedAt());
+        NotificationLocalizationService.UserNotificationDTOHolder holder =
+                new NotificationLocalizationService.UserNotificationDTOHolder(dto.getTitle(), dto.getBody());
+        notificationLocalizationService.applyLocale(holder, n, locale);
+        dto.setTitle(holder.getTitle());
+        dto.setBody(holder.getBody());
         return dto;
     }
 }

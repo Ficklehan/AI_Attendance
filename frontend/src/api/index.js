@@ -21,6 +21,10 @@ request.interceptors.request.use(
     if (country) {
       config.headers['X-Country'] = country
     }
+    const locale = localStorage.getItem('locale')
+    if (locale) {
+      config.headers['X-Locale'] = locale
+    }
     return config
   },
   (error) => {

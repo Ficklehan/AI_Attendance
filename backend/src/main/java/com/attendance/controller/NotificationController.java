@@ -23,8 +23,11 @@ public class NotificationController {
     @GetMapping
     public Result<PageResult<UserNotificationDTO>> list(
             @RequestParam(defaultValue = "1") Long current,
-            @RequestParam(defaultValue = "20") Long size) {
-        return Result.success(userNotificationService.list(current, size));
+            @RequestParam(defaultValue = "20") Long size,
+            @RequestParam(required = false) String locale,
+            @RequestHeader(value = "X-Locale", required = false) String localeHeader) {
+        String resolvedLocale = locale != null && !locale.trim().isEmpty() ? locale.trim() : localeHeader;
+        return Result.success(userNotificationService.list(current, size, resolvedLocale));
     }
 
     @GetMapping("/unread-count")

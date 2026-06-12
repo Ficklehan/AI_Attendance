@@ -122,7 +122,12 @@
 
         <!-- Notifications -->
         <a-tooltip :title="$t('notification.title')">
-          <button class="header-btn header-btn--notify" type="button" @click="notificationDrawerOpen = true">
+          <button
+            class="header-btn header-btn--notify"
+            :class="{ 'header-btn--notify-active': unreadCount > 0 }"
+            type="button"
+            @click="notificationDrawerOpen = true"
+          >
             <a-badge :count="unreadCount" :overflow-count="99" :offset="[-2, 2]" :show-zero="false">
               <BellOutlined />
             </a-badge>
@@ -519,6 +524,15 @@ watch(() => [route.meta.titleKey, locale.value], updateDocumentTitle, { immediat
   &:hover {
     background: $bg-hover;
     color: $text-strong;
+  }
+}
+
+.header-btn--notify-active {
+  color: $primary;
+
+  &:hover {
+    background: $primary-light;
+    color: $primary-dark;
   }
 }
 

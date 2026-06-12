@@ -1,7 +1,13 @@
 import request from './index'
+import i18n from '@/locales'
 
-export function listNotifications(params) {
-  return request({ url: '/notifications', method: 'get', params })
+export function listNotifications(params = {}) {
+  const locale = i18n.global.locale.value
+  return request({
+    url: '/notifications',
+    method: 'get',
+    params: { ...params, locale },
+  })
 }
 
 export function getUnreadCount() {

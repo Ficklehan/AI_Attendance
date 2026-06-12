@@ -148,6 +148,20 @@ public final class ReminderLocaleSupport {
         return sep != null && !sep.isEmpty() ? sep : "、";
     }
 
+    /**
+     * 按界面语言展示时使用：仅匹配目标 locale，否则用内置默认模板，避免回退到中文自定义文案。
+     */
+    public static String pickTemplateForDisplay(Map<String, String> templates, String locale, boolean operator) {
+        String resolved = normalizeLocale(locale);
+        if (templates != null && !templates.isEmpty()) {
+            String exact = templates.get(resolved);
+            if (exact != null && !exact.trim().isEmpty()) {
+                return exact.trim();
+            }
+        }
+        return operator ? defaultOperatorTemplate(resolved) : defaultSupervisorTemplate(resolved);
+    }
+
     public static String pickLocalizedTemplate(Map<String, String> operatorLocales,
                                                Map<String, String> supervisorLocales,
                                                String legacyOperator,
@@ -305,6 +319,10 @@ public final class ReminderLocaleSupport {
             return localized;
         }
         return root.getJSONObject(DEFAULT_LOCALE);
+    }
+
+    public static String normalizeLocale(String locale) {
+        return resolveLocaleKey(locale);
     }
 
     private static String resolveLocaleKey(String locale) {

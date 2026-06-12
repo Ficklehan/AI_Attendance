@@ -93,6 +93,7 @@ public class ReminderDatabaseBootstrap implements ApplicationRunner {
             ensureScopeColumns();
             ensureIntervalValueDecimal();
             ensureFeishuMessageIdColumn();
+            ensureNotificationContentVarsColumn();
             ensureTemplateLocaleColumns();
             ensureFeishuLocaleKeyColumn();
         } catch (Exception e) {
@@ -136,6 +137,15 @@ public class ReminderDatabaseBootstrap implements ApplicationRunner {
                     "VARCHAR(64) NULL COMMENT '飞书消息ID，用于同周期撤回重发' AFTER link");
         } catch (Exception e) {
             log.warn("检查/添加 user_notifications.feishu_message_id 列失败: {}", e.getMessage());
+        }
+    }
+
+    private void ensureNotificationContentVarsColumn() {
+        try {
+            addColumnIfMissingOnTable("user_notifications", "content_vars",
+                    "TEXT NULL COMMENT '提醒渲染变量 JSON' AFTER link");
+        } catch (Exception e) {
+            log.warn("检查/添加 user_notifications.content_vars 列失败: {}", e.getMessage());
         }
     }
 
