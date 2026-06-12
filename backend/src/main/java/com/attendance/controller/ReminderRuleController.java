@@ -4,6 +4,7 @@ import com.attendance.common.Result;
 import com.attendance.dto.request.ReminderRuleRequest;
 import com.attendance.dto.response.ReminderRuleDTO;
 import com.attendance.service.ReminderRuleService;
+import com.attendance.service.ReminderLocaleSupport;
 import com.attendance.service.ReminderSupport;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.validation.annotation.Validated;
@@ -60,10 +61,15 @@ public class ReminderRuleController {
     }
 
     @GetMapping("/default-template")
-    public Result<Map<String, String>> defaultTemplate() {
-        Map<String, String> body = new HashMap<>();
-        body.put("template", ReminderSupport.DEFAULT_TEMPLATE_OPERATOR);
-        body.put("supervisorTemplate", ReminderSupport.DEFAULT_TEMPLATE_SUPERVISOR);
+    public Result<Map<String, Object>> defaultTemplate() {
+        Map<String, Object> body = new HashMap<>();
+        body.put("template", ReminderLocaleSupport.defaultOperatorTemplate(ReminderLocaleSupport.DEFAULT_LOCALE));
+        body.put("supervisorTemplate",
+                ReminderLocaleSupport.defaultSupervisorTemplate(ReminderLocaleSupport.DEFAULT_LOCALE));
+        body.put("operatorTemplates", ReminderLocaleSupport.allDefaultOperatorTemplates());
+        body.put("supervisorTemplates", ReminderLocaleSupport.allDefaultSupervisorTemplates());
+        body.put("supportedLocales", ReminderLocaleSupport.supportedLocales());
+        body.put("countryLocale", ReminderLocaleSupport.countryLocaleMap());
         return Result.success(body);
     }
 }

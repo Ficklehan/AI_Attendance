@@ -21,7 +21,9 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.util.ArrayList;
 import java.util.HashSet;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
@@ -124,6 +126,9 @@ public class ReminderRuleService {
         if (request.getRecipientUserIds() == null || request.getRecipientUserIds().isEmpty()) {
             throw new BusinessException(400, ErrorKeys.VALIDATION_FAILED);
         }
+        if (!hasAnyOperatorTemplate(request)) {
+            throw new BusinessException(400, ErrorKeys.VALIDATION_FAILED);
+        }
         Set<String> activeIds = userMapper.selectActiveUsers().stream()
                 .map(User::getId)
                 .collect(Collectors.toSet());
@@ -202,7 +207,60 @@ public class ReminderRuleService {
         }
     }
 
+    private boolean hasAnyOperatorTemplate(ReminderRuleRequest request) {
+        Map<String, String> locales = normalizeTemplateLocales(request);
+        if (!locales.isEmpty()) {
+            return true;
+        }
+        return request.getMessageTemplate() != null && !request.getMessageTemplate().trim().isEmpty();
+    }
+
+    private Map<String, String> normalizeTemplateLocales(ReminderRuleRequest request) {
+        Map<String, String> operatorLocales = new LinkedHashMap<>();
+        if (request.getMessageTemplateLocales() != null) {
+            for (Map.Entry<String, String> entry : request.getMessageTemplateLocales().entrySet()) {
+                if (entry.getKey() == null || entry.getValue() == null) {
+                    continue;
+                }
+                String value = entry.getValue().trim();
+                if (!value.isEmpty()) {
+                    operatorLocales.put(entry.getKey().trim(), value);
+                }
+            }
+        }
+        if (operatorLocales.isEmpty()
+                && request.getMessageTemplate() != null
+                && !request.getMessageTemplate().trim().isEmpty()) {
+            operatorLocales.put(ReminderLocaleSupport.DEFAULT_LOCALE, request.getMessageTemplate().trim());
+        }
+        return operatorLocales;
+    }
+
+    private Map<String, String> normalizeSupervisorLocales(ReminderRuleRequest request) {
+        Map<String, String> supervisorLocales = new LinkedHashMap<>();
+        if (request.getMessageTemplateSupervisorLocales() != null) {
+            for (Map.Entry<String, String> entry : request.getMessageTemplateSupervisorLocales().entrySet()) {
+                if (entry.getKey() == null || entry.getValue() == null) {
+                    continue;
+                }
+                String value = entry.getValue().trim();
+                if (!value.isEmpty()) {
+                    supervisorLocales.put(entry.getKey().trim(), value);
+                }
+            }
+        }
+        if (supervisorLocales.isEmpty()) {
+            String legacy = trimToNull(request.getMessageTemplateSupervisor());
+            if (legacy != null) {
+                supervisorLocales.put(ReminderLocaleSupport.DEFAULT_LOCALE, legacy);
+            }
+        }
+        return supervisorLocales;
+    }
+
     private ReminderRule fromRequest(ReminderRuleRequest request) {
+        Map<String, String> operatorLocales = normalizeTemplateLocales(request);
+        Map<String, String> supervisorLocales = normalizeSupervisorLocales(request);
         ReminderRule rule = new ReminderRule();
         rule.setName(request.getName().trim());
         rule.setDescription(request.getDescription());
@@ -211,8 +269,11 @@ public class ReminderRuleService {
         rule.setScopeRolesJson(toScopeJson(request.getScopeRoles()));
         rule.setIntervalValue(ReminderSupport.normalizeIntervalValue(request.getIntervalValue()));
         rule.setIntervalUnit(ReminderSupport.normalizeIntervalUnit(request.getIntervalUnit()));
-        rule.setMessageTemplate(request.getMessageTemplate());
-        rule.setMessageTemplateSupervisor(trimToNull(request.getMessageTemplateSupervisor()));
+        rule.setMessageTemplateLocalesJson(ReminderLocaleSupport.toTemplateJson(operatorLocales));
+        rule.setMessageTemplateSupervisorLocalesJson(ReminderLocaleSupport.toTemplateJson(supervisorLocales));
+        rule.setMessageTemplate(ReminderLocaleSupport.primaryTemplateForStorage(operatorLocales));
+        rule.setMessageTemplateSupervisor(trimToNull(
+                ReminderLocaleSupport.primarySupervisorTemplateForStorage(supervisorLocales)));
         rule.setIncludeTaskCreator(Boolean.TRUE.equals(request.getIncludeTaskCreator()));
         rule.setEnabled(request.getEnabled() == null || request.getEnabled());
         return rule;
@@ -231,6 +292,16 @@ public class ReminderRuleService {
         dto.setIntervalUnit(rule.getIntervalUnit());
         dto.setMessageTemplate(rule.getMessageTemplate());
         dto.setMessageTemplateSupervisor(rule.getMessageTemplateSupervisor());
+        dto.setMessageTemplateLocales(ReminderLocaleSupport.parseTemplateMap(rule.getMessageTemplateLocalesJson()));
+        dto.setMessageTemplateSupervisorLocales(
+                ReminderLocaleSupport.parseTemplateMap(rule.getMessageTemplateSupervisorLocalesJson()));
+        if (dto.getMessageTemplateLocales().isEmpty() && rule.getMessageTemplate() != null) {
+            dto.getMessageTemplateLocales().put(ReminderLocaleSupport.DEFAULT_LOCALE, rule.getMessageTemplate());
+        }
+        if (dto.getMessageTemplateSupervisorLocales().isEmpty() && rule.getMessageTemplateSupervisor() != null) {
+            dto.getMessageTemplateSupervisorLocales().put(
+                    ReminderLocaleSupport.DEFAULT_LOCALE, rule.getMessageTemplateSupervisor());
+        }
         dto.setIncludeTaskCreator(rule.isIncludeTaskCreator());
         dto.setEnabled(rule.isEnabled());
         List<String> recipients = reminderRuleMapper.selectRecipientUserIds(rule.getId());

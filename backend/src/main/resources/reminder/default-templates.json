@@ -1,0 +1,84 @@
+{
+  "countryLocale": {
+    "default": "zh-CN",
+    "CN": "zh-CN",
+    "FR": "fr-FR",
+    "DE": "de-DE",
+    "US": "en-US",
+    "PL": "pl-PL",
+    "NL": "nl-NL",
+    "IT": "en-US",
+    "ES": "es-ES",
+    "CZ": "cs-CZ"
+  },
+  "operator": {
+    "zh-CN": "【考勤待核对提醒】\n\n您有 {pendingCount} 个任务处于「{taskStatus}」状态，已超过 {threshold} 未处理。\n\n最近任务：{latestTaskId}\n更新时间：{latestTaskTime}\n\n请登录系统及时完成核对。",
+    "en-US": "【Attendance Review Reminder】\n\nYou have {pendingCount} task(s) in \"{taskStatus}\" status, pending for over {threshold}.\n\nLatest task: {latestTaskId}\nUpdated at: {latestTaskTime}\n\nPlease log in and complete the review promptly.",
+    "fr-FR": "【Rappel de vérification】\n\nVous avez {pendingCount} tâche(s) en statut « {taskStatus} », en attente depuis plus de {threshold}.\n\nDernière tâche : {latestTaskId}\nMise à jour : {latestTaskTime}\n\nVeuillez vous connecter pour finaliser la vérification.",
+    "de-DE": "【Erinnerung zur Prüfung】\n\nSie haben {pendingCount} Aufgabe(n) im Status „{taskStatus}“, die seit über {threshold} unbearbeitet sind.\n\nLetzte Aufgabe: {latestTaskId}\nAktualisiert: {latestTaskTime}\n\nBitte melden Sie sich an und schließen Sie die Prüfung ab.",
+    "es-ES": "【Recordatorio de revisión】\n\nTiene {pendingCount} tarea(s) en estado «{taskStatus}» pendientes durante más de {threshold}.\n\nÚltima tarea: {latestTaskId}\nActualizado: {latestTaskTime}\n\nInicie sesión y complete la revisión.",
+    "nl-NL": "【Herinnering controle】\n\nU heeft {pendingCount} ta(a)k(en) met status «{taskStatus}» die langer dan {threshold} openstaan.\n\nLaatste taak: {latestTaskId}\nBijgewerkt: {latestTaskTime}\n\nLog in om de controle af te ronden.",
+    "pl-PL": "【Przypomnienie o weryfikacji】\n\nMasz {pendingCount} zadanie/zadań w statusie «{taskStatus}», oczekujących dłużej niż {threshold}.\n\nOstatnie zadanie: {latestTaskId}\nAktualizacja: {latestTaskTime}\n\nZaloguj się i dokończ weryfikację.",
+    "cs-CZ": "【Připomenutí ke kontrole】\n\nMáte {pendingCount} úkol(ů) ve stavu «{taskStatus}», nevyřízených déle než {threshold}.\n\nPoslední úkol: {latestTaskId}\nAktualizováno: {latestTaskTime}\n\nPřihlaste se a dokončete kontrolu."
+  },
+  "supervisor": {
+    "zh-CN": "【考勤待核对督办】\n\n{recipientName}，您好\n\n共有 {pendingCount} 个任务处于「{taskStatus}」状态，已超过 {threshold} 未处理。\n涉及操作者：{taskCreatorNames}\n\n最近任务：{latestTaskId}\n更新时间：{latestTaskTime}\n\n请关注并督促相关人员登录系统完成核对。",
+    "en-US": "【Attendance Review Follow-up】\n\nHello {recipientName},\n\nThere are {pendingCount} task(s) in \"{taskStatus}\" status pending for over {threshold}.\nOperators: {taskCreatorNames}\n\nLatest task: {latestTaskId}\nUpdated at: {latestTaskTime}\n\nPlease follow up and ensure the review is completed.",
+    "fr-FR": "【Suivi de vérification】\n\nBonjour {recipientName},\n\n{pendingCount} tâche(s) en statut « {taskStatus} » sont en attente depuis plus de {threshold}.\nOpérateurs : {taskCreatorNames}\n\nDernière tâche : {latestTaskId}\nMise à jour : {latestTaskTime}\n\nMerci de relancer les personnes concernées.",
+    "de-DE": "【Nachverfolgung Prüfung】\n\nGuten Tag {recipientName},\n\n{pendingCount} Aufgabe(n) im Status „{taskStatus}“ warten seit über {threshold}.\nBearbeiter: {taskCreatorNames}\n\nLetzte Aufgabe: {latestTaskId}\nAktualisiert: {latestTaskTime}\n\nBitte nachverfolgen und die Prüfung abschließen lassen.",
+    "es-ES": "【Seguimiento de revisión】\n\nHola {recipientName},\n\nHay {pendingCount} tarea(s) en estado «{taskStatus}» pendientes durante más de {threshold}.\nOperadores: {taskCreatorNames}\n\nÚltima tarea: {latestTaskId}\nActualizado: {latestTaskTime}\n\nPor favor, haga seguimiento para completar la revisión.",
+    "nl-NL": "【Opvolging controle】\n\nHallo {recipientName},\n\nEr zijn {pendingCount} ta(a)k(en) met status «{taskStatus}» langer dan {threshold} open.\nOperators: {taskCreatorNames}\n\nLaatste taak: {latestTaskId}\nBijgewerkt: {latestTaskTime}\n\nGraag opvolgen tot de controle is afgerond.",
+    "pl-PL": "【Nadzór weryfikacji】\n\nWitaj {recipientName},\n\n{pendingCount} zadanie/zadań w statusie «{taskStatus}» oczekuje dłużej niż {threshold}.\nOperatorzy: {taskCreatorNames}\n\nOstatnie zadanie: {latestTaskId}\nAktualizacja: {latestTaskTime}\n\nProsimy o nadzór i dokończenie weryfikacji.",
+    "cs-CZ": "【Dohled kontroly】\n\nDobrý den {recipientName},\n\n{pendingCount} úkol(ů) ve stavu «{taskStatus}» čeká déle než {threshold}.\nOperátoři: {taskCreatorNames}\n\nPoslední úkol: {latestTaskId}\nAktualizováno: {latestTaskTime}\n\nProsíme o dohled a dokončení kontroly."
+  },
+  "status": {
+    "zh-CN": { "processed": "待核对", "processing": "识别中", "confirmed": "已确认", "failed": "失败", "cancelled": "已取消" },
+    "en-US": { "processed": "Pending review", "processing": "Processing", "confirmed": "Confirmed", "failed": "Failed", "cancelled": "Cancelled" },
+    "fr-FR": { "processed": "À vérifier", "processing": "En cours", "confirmed": "Confirmé", "failed": "Échec", "cancelled": "Annulé" },
+    "de-DE": { "processed": "Zu prüfen", "processing": "In Bearbeitung", "confirmed": "Bestätigt", "failed": "Fehlgeschlagen", "cancelled": "Abgebrochen" },
+    "es-ES": { "processed": "Pendiente de revisión", "processing": "Procesando", "confirmed": "Confirmado", "failed": "Fallido", "cancelled": "Cancelado" },
+    "nl-NL": { "processed": "Te controleren", "processing": "Bezig", "confirmed": "Bevestigd", "failed": "Mislukt", "cancelled": "Geannuleerd" },
+    "pl-PL": { "processed": "Do weryfikacji", "processing": "Przetwarzanie", "confirmed": "Potwierdzone", "failed": "Niepowodzenie", "cancelled": "Anulowane" },
+    "cs-CZ": { "processed": "Ke kontrole", "processing": "Zpracování", "confirmed": "Potvrzeno", "failed": "Selhalo", "cancelled": "Zrušeno" }
+  },
+  "unit": {
+    "zh-CN": { "minute": "分钟", "hour": "小时", "day": "天", "week": "周" },
+    "en-US": { "minute": "minute(s)", "hour": "hour(s)", "day": "day(s)", "week": "week(s)" },
+    "fr-FR": { "minute": "minute(s)", "hour": "heure(s)", "day": "jour(s)", "week": "semaine(s)" },
+    "de-DE": { "minute": "Minute(n)", "hour": "Stunde(n)", "day": "Tag(e)", "week": "Woche(n)" },
+    "es-ES": { "minute": "minuto(s)", "hour": "hora(s)", "day": "día(s)", "week": "semana(s)" },
+    "nl-NL": { "minute": "minuut/minuten", "hour": "uur", "day": "dag(en)", "week": "week/weken" },
+    "pl-PL": { "minute": "min", "hour": "godz.", "day": "dzień/dni", "week": "tydz./tyg." },
+    "cs-CZ": { "minute": "min", "hour": "hod", "day": "den/dní", "week": "týd." }
+  },
+  "notificationTitlePrefix": {
+    "zh-CN": "【考勤提醒】",
+    "en-US": "【Attendance Reminder】",
+    "fr-FR": "【Rappel présence】",
+    "de-DE": "【Anwesenheitserinnerung】",
+    "es-ES": "【Recordatorio asistencia】",
+    "nl-NL": "【Aanwezigheidsherinnering】",
+    "pl-PL": "【Przypomnienie obecności】",
+    "cs-CZ": "【Připomenutí docházky】"
+  },
+  "viewTask": {
+    "zh-CN": "查看任务",
+    "en-US": "View task",
+    "fr-FR": "Voir la tâche",
+    "de-DE": "Aufgabe ansehen",
+    "es-ES": "Ver tarea",
+    "nl-NL": "Taak bekijken",
+    "pl-PL": "Zobacz zadanie",
+    "cs-CZ": "Zobrazit úkol"
+  },
+  "nameSeparator": {
+    "zh-CN": "、",
+    "en-US": ", ",
+    "fr-FR": ", ",
+    "de-DE": ", ",
+    "es-ES": ", ",
+    "nl-NL": ", ",
+    "pl-PL": ", ",
+    "cs-CZ": ", "
+  }
+}

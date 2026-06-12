@@ -60,7 +60,7 @@
     <a-modal
       v-model:open="modalOpen"
       :title="editingId ? $t('settings.reminders.editTitle') : $t('settings.reminders.createTitle')"
-      width="720px"
+      width="780px"
       :confirm-loading="saving"
       @ok="handleSave"
     >
@@ -137,43 +137,51 @@
         </a-form>
       </div>
 
-      <div v-show="step === 2" class="step-body">
-        <a-form layout="vertical">
-          <a-form-item :label="$t('settings.reminders.messageTemplateOperator')" required>
-            <p class="hint hint--inline">{{ $t('settings.reminders.messageTemplateOperatorHint') }}</p>
-            <a-textarea v-model:value="form.messageTemplate" :rows="6" />
-            <a-space wrap style="margin-top: 8px">
-              <a-button size="small" @click="insertVar('pendingCount', 'operator')">{pendingCount}</a-button>
-              <a-button size="small" @click="insertVar('threshold', 'operator')">{threshold}</a-button>
-              <a-button size="small" @click="insertVar('latestTaskId', 'operator')">{latestTaskId}</a-button>
-              <a-button size="small" @click="resetOperatorTemplate">{{ $t('settings.reminders.resetTemplate') }}</a-button>
-            </a-space>
-          </a-form-item>
-          <a-form-item :label="$t('settings.reminders.preview')">
-            <pre class="preview-box">{{ previewOperatorText }}</pre>
-          </a-form-item>
+      <div v-show="step === 2" class="step-body step-body--templates">
+        <p class="locale-hint">{{ $t('settings.reminders.localeHint') }}</p>
+        <a-tabs v-model:activeKey="activeTemplateLocale" class="locale-tabs">
+          <a-tab-pane v-for="loc in editorLocales" :key="loc">
+            <template #tab>
+              <span class="locale-tab" :class="{ 'locale-tab--scoped': isLocaleInRuleScope(loc) }">
+                {{ localeTabLabel(loc) }}
+                <span v-if="isLocaleInRuleScope(loc)" class="locale-tab__dot" />
+              </span>
+            </template>
+            <ReminderMessageTemplateBlock
+              v-model:model-value="form.messageTemplateLocales[loc]"
+              :title="$t('settings.reminders.messageTemplateOperator')"
+              :hint="$t('settings.reminders.messageTemplateOperatorHint')"
+              :preview-label="$t('settings.reminders.preview')"
+              :reset-label="$t('settings.reminders.resetTemplate')"
+              :placeholder="$t('settings.reminders.templatePlaceholder')"
+              :variables="operatorVariables"
+              :preview-text="previewOperatorText(loc)"
+              :highlight-values="operatorHighlightValues(loc)"
+              @insert="(key) => insertVar(key, 'operator', loc)"
+              @reset="() => resetOperatorTemplate(loc)"
+            />
 
-          <a-divider />
+            <ReminderMessageTemplateBlock
+              v-model:model-value="form.messageTemplateSupervisorLocales[loc]"
+              class="template-block-spacer"
+              :title="$t('settings.reminders.messageTemplateSupervisor')"
+              :hint="$t('settings.reminders.messageTemplateSupervisorHint')"
+              :preview-label="$t('settings.reminders.previewSupervisor')"
+              :reset-label="$t('settings.reminders.resetSupervisorTemplate')"
+              :placeholder="$t('settings.reminders.templatePlaceholderSupervisor')"
+              :variables="supervisorVariables"
+              :preview-text="previewSupervisorText(loc)"
+              :highlight-values="supervisorHighlightValues(loc)"
+              @insert="(key) => insertVar(key, 'supervisor', loc)"
+              @reset="() => resetSupervisorTemplate(loc)"
+            />
+          </a-tab-pane>
+        </a-tabs>
 
-          <a-form-item :label="$t('settings.reminders.messageTemplateSupervisor')">
-            <p class="hint hint--inline">{{ $t('settings.reminders.messageTemplateSupervisorHint') }}</p>
-            <a-textarea v-model:value="form.messageTemplateSupervisor" :rows="6" />
-            <a-space wrap style="margin-top: 8px">
-              <a-button size="small" @click="insertVar('pendingCount', 'supervisor')">{pendingCount}</a-button>
-              <a-button size="small" @click="insertVar('taskCreatorNames', 'supervisor')">{taskCreatorNames}</a-button>
-              <a-button size="small" @click="insertVar('recipientName', 'supervisor')">{recipientName}</a-button>
-              <a-button size="small" @click="resetSupervisorTemplate">{{ $t('settings.reminders.resetSupervisorTemplate') }}</a-button>
-            </a-space>
-          </a-form-item>
-          <a-form-item :label="$t('settings.reminders.previewSupervisor')">
-            <pre class="preview-box">{{ previewSupervisorText }}</pre>
-          </a-form-item>
-
-          <a-form-item>
-            <a-switch v-model:checked="form.enabled" />
-            <span class="switch-label">{{ $t('settings.reminders.enabled') }}</span>
-          </a-form-item>
-        </a-form>
+        <div class="enabled-row">
+          <a-switch v-model:checked="form.enabled" />
+          <span class="switch-label">{{ $t('settings.reminders.enabled') }}</span>
+        </div>
       </div>
 
       <template #footer>
@@ -203,6 +211,14 @@ import {
   getDefaultReminderTemplate,
 } from '@/api/reminder'
 import { formatIntervalValue, isValidIntervalValue, normalizeIntervalValue } from '@/utils/reminderInterval'
+import ReminderMessageTemplateBlock from '@/components/ReminderMessageTemplateBlock.vue'
+import {
+  SUPPORTED_REMINDER_LOCALES,
+  emptyTemplateMap,
+  localesForScopeCountries,
+  localeI18nKey,
+  mergeTemplateMaps,
+} from '@/utils/reminderLocales'
 
 const { t } = useI18n()
 const countryStore = useCountryStore()
@@ -220,8 +236,9 @@ const togglingId = ref(null)
 const usersLoading = ref(false)
 const userOptions = ref([])
 const roleOptions = ref([])
-const defaultTemplate = ref('')
-const defaultSupervisorTemplate = ref('')
+const defaultOperatorTemplates = ref({})
+const defaultSupervisorTemplates = ref({})
+const activeTemplateLocale = ref('zh-CN')
 
 const countryOptions = computed(() => countrySelectOptions.value || [])
 
@@ -236,8 +253,18 @@ const form = reactive({
   includeTaskCreator: true,
   messageTemplate: '',
   messageTemplateSupervisor: '',
+  messageTemplateLocales: emptyTemplateMap(),
+  messageTemplateSupervisorLocales: emptyTemplateMap(),
   enabled: true,
 })
+
+const editorLocales = computed(() => [...SUPPORTED_REMINDER_LOCALES])
+
+const scopedLocales = computed(() => new Set(localesForScopeCountries(form.scopeCountries)))
+
+const localeTabLabel = (locale) => t(localeI18nKey(locale))
+
+const isLocaleInRuleScope = (locale) => scopedLocales.value.has(locale)
 
 const statusOptions = [
   { value: 'processed', label: '待核对 (processed)' },
@@ -262,11 +289,11 @@ const columns = computed(() => [
   { title: t('settings.reminders.actions'), key: 'actions', width: 140, align: 'center' },
 ])
 
-const renderTemplatePreview = (template, options = {}) => {
+const renderTemplatePreview = (template, options = {}, locale = 'zh-CN') => {
   const {
-    recipientName = '张三',
-    taskCreatorName = '李四',
-    taskCreatorNames = '李四、王五',
+    recipientName = locale === 'zh-CN' ? '张三' : 'Alex',
+    taskCreatorName = locale === 'zh-CN' ? '李四' : 'John',
+    taskCreatorNames = locale === 'zh-CN' ? '李四、王五' : 'John, Mary',
   } = options
   return (template || '')
     .replace(/\{pendingCount\}/g, '3')
@@ -276,15 +303,67 @@ const renderTemplatePreview = (template, options = {}) => {
     .replace(/\{recipientName\}/g, recipientName)
     .replace(/\{taskCreatorName\}/g, taskCreatorName)
     .replace(/\{taskCreatorNames\}/g, taskCreatorNames)
-    .replace(/\{taskStatus\}/g, '待核对')
+    .replace(/\{taskStatus\}/g, statusPreviewLabel(locale))
 }
 
-const previewOperatorText = computed(() => renderTemplatePreview(form.messageTemplate))
+const previewOperatorText = (locale) => renderTemplatePreview(
+  form.messageTemplateLocales[locale] || '',
+  {},
+  locale,
+)
 
-const previewSupervisorText = computed(() => renderTemplatePreview(
-  form.messageTemplateSupervisor || defaultSupervisorTemplate.value,
-  { recipientName: '王主管', taskCreatorNames: '李四、王五' },
-))
+const previewSupervisorText = (locale) => renderTemplatePreview(
+  form.messageTemplateSupervisorLocales[locale]
+    || defaultSupervisorTemplates.value[locale]
+    || '',
+  { recipientName: locale === 'zh-CN' ? '王主管' : 'Alex', taskCreatorNames: locale === 'zh-CN' ? '李四、王五' : 'John, Mary' },
+  locale,
+)
+
+const operatorVariables = computed(() => [
+  { key: 'pendingCount', label: t('settings.reminders.vars.pendingCount') },
+  { key: 'threshold', label: t('settings.reminders.vars.threshold') },
+  { key: 'latestTaskId', label: t('settings.reminders.vars.latestTaskId') },
+  { key: 'latestTaskTime', label: t('settings.reminders.vars.latestTaskTime') },
+])
+
+const supervisorVariables = computed(() => [
+  { key: 'recipientName', label: t('settings.reminders.vars.recipientName') },
+  { key: 'pendingCount', label: t('settings.reminders.vars.pendingCount') },
+  { key: 'taskStatus', label: t('settings.reminders.vars.taskStatus') },
+  { key: 'threshold', label: t('settings.reminders.vars.threshold') },
+  { key: 'taskCreatorNames', label: t('settings.reminders.vars.taskCreatorNames') },
+  { key: 'latestTaskId', label: t('settings.reminders.vars.latestTaskId') },
+  { key: 'latestTaskTime', label: t('settings.reminders.vars.latestTaskTime') },
+])
+
+const operatorHighlightValues = (locale) => [
+  '3',
+  formatIntervalLabel(form.intervalValue, form.intervalUnit),
+  'T20260101001',
+  '2026-01-01 10:00',
+  statusPreviewLabel(locale),
+]
+
+const supervisorHighlightValues = (locale) => [
+  locale === 'zh-CN' ? '王主管' : 'Alex',
+  locale === 'zh-CN' ? '李四、王五' : 'John, Mary',
+  ...operatorHighlightValues(locale),
+]
+
+const statusPreviewLabel = (locale) => {
+  const map = {
+    'zh-CN': '待核对',
+    'en-US': 'Pending review',
+    'fr-FR': 'À vérifier',
+    'de-DE': 'Zu prüfen',
+    'es-ES': 'Pendiente de revisión',
+    'nl-NL': 'Te controleren',
+    'pl-PL': 'Do weryfikacji',
+    'cs-CZ': 'Ke kontrole',
+  }
+  return map[locale] || map['en-US']
+}
 
 const unitLabel = (unit) => {
   const map = {
@@ -380,12 +459,35 @@ const loadUsers = async () => {
 const loadDefaultTemplate = async () => {
   try {
     const res = await getDefaultReminderTemplate()
-    defaultTemplate.value = res.data?.template || ''
-    defaultSupervisorTemplate.value = res.data?.supervisorTemplate || ''
+    defaultOperatorTemplates.value = res.data?.operatorTemplates || {}
+    defaultSupervisorTemplates.value = res.data?.supervisorTemplates || {}
+    if (!Object.keys(defaultOperatorTemplates.value).length) {
+      defaultOperatorTemplates.value = { 'zh-CN': res.data?.template || '' }
+    }
+    if (!Object.keys(defaultSupervisorTemplates.value).length) {
+      defaultSupervisorTemplates.value = { 'zh-CN': res.data?.supervisorTemplate || '' }
+    }
   } catch (e) {
     console.error(e)
   }
 }
+
+const ensureLocaleTemplateKeys = () => {
+  form.messageTemplateLocales = mergeTemplateMaps(
+    form.messageTemplateLocales,
+    defaultOperatorTemplates.value,
+  )
+  form.messageTemplateSupervisorLocales = mergeTemplateMaps(
+    form.messageTemplateSupervisorLocales,
+    defaultSupervisorTemplates.value,
+  )
+  if (!editorLocales.value.includes(activeTemplateLocale.value)) {
+    activeTemplateLocale.value = editorLocales.value[0] || 'zh-CN'
+  }
+}
+
+const hasAnyOperatorTemplate = () => Object.values(form.messageTemplateLocales || {})
+  .some((value) => String(value || '').trim())
 
 const resetForm = () => {
   form.name = t('settings.reminders.defaultName')
@@ -396,8 +498,12 @@ const resetForm = () => {
   form.intervalUnit = 'day'
   form.recipientUserIds = []
   form.includeTaskCreator = true
-  form.messageTemplate = defaultTemplate.value
-  form.messageTemplateSupervisor = defaultSupervisorTemplate.value
+  form.messageTemplateLocales = { ...defaultOperatorTemplates.value }
+  form.messageTemplateSupervisorLocales = { ...defaultSupervisorTemplates.value }
+  form.messageTemplate = form.messageTemplateLocales['zh-CN'] || ''
+  form.messageTemplateSupervisor = form.messageTemplateSupervisorLocales['zh-CN'] || ''
+  activeTemplateLocale.value = 'zh-CN'
+  ensureLocaleTemplateKeys()
   form.enabled = true
   step.value = 0
 }
@@ -418,8 +524,20 @@ const openEdit = (record) => {
   form.intervalUnit = record.intervalUnit
   form.recipientUserIds = [...(record.recipientUserIds || [])]
   form.includeTaskCreator = record.includeTaskCreator !== false
-  form.messageTemplate = record.messageTemplate
-  form.messageTemplateSupervisor = record.messageTemplateSupervisor || defaultSupervisorTemplate.value
+  form.messageTemplateLocales = mergeTemplateMaps(
+    record.messageTemplateLocales || {},
+    { 'zh-CN': record.messageTemplate || '' },
+  )
+  form.messageTemplateSupervisorLocales = mergeTemplateMaps(
+    record.messageTemplateSupervisorLocales || {},
+    record.messageTemplateSupervisor ? { 'zh-CN': record.messageTemplateSupervisor } : {},
+  )
+  form.messageTemplate = record.messageTemplate || form.messageTemplateLocales['zh-CN'] || ''
+  form.messageTemplateSupervisor = record.messageTemplateSupervisor
+    || form.messageTemplateSupervisorLocales['zh-CN']
+    || ''
+  activeTemplateLocale.value = editorLocales.value[0] || 'zh-CN'
+  ensureLocaleTemplateKeys()
   form.enabled = record.enabled !== false
   step.value = 0
   modalOpen.value = true
@@ -436,16 +554,21 @@ const nextStep = () => {
     message.warning(t('settings.reminders.recipientsRequired'))
     return
   }
+  if (step.value === 1) {
+    ensureLocaleTemplateKeys()
+  }
   step.value += 1
 }
 
 const handleSave = async () => {
-  if (!form.messageTemplate?.trim()) {
+  ensureLocaleTemplateKeys()
+  if (!hasAnyOperatorTemplate()) {
     message.warning(t('settings.reminders.validationRequired'))
     return
   }
   saving.value = true
   try {
+    const primaryLocale = activeTemplateLocale.value || 'zh-CN'
     const payload = {
       name: form.name.trim(),
       taskStatuses: form.taskStatuses,
@@ -455,8 +578,14 @@ const handleSave = async () => {
       intervalUnit: form.intervalUnit,
       recipientUserIds: form.recipientUserIds,
       includeTaskCreator: form.includeTaskCreator,
-      messageTemplate: form.messageTemplate,
-      messageTemplateSupervisor: form.messageTemplateSupervisor?.trim() || null,
+      messageTemplate: form.messageTemplateLocales[primaryLocale]
+        || form.messageTemplateLocales['zh-CN']
+        || form.messageTemplate,
+      messageTemplateSupervisor: form.messageTemplateSupervisorLocales[primaryLocale]?.trim()
+        || form.messageTemplateSupervisorLocales['zh-CN']?.trim()
+        || null,
+      messageTemplateLocales: form.messageTemplateLocales,
+      messageTemplateSupervisorLocales: form.messageTemplateSupervisorLocales,
       enabled: form.enabled,
     }
     if (editingId.value) {
@@ -491,17 +620,22 @@ const removeRule = async (id) => {
   await fetchRules()
 }
 
-const insertVar = (name, target = 'operator') => {
-  const key = target === 'supervisor' ? 'messageTemplateSupervisor' : 'messageTemplate'
-  form[key] = (form[key] || '') + `{${name}}`
+const insertVar = (name, target = 'operator', locale = activeTemplateLocale.value) => {
+  const mapKey = target === 'supervisor' ? 'messageTemplateSupervisorLocales' : 'messageTemplateLocales'
+  const current = form[mapKey][locale] || ''
+  form[mapKey][locale] = `${current}{${name}}`
 }
 
-const resetOperatorTemplate = () => {
-  form.messageTemplate = defaultTemplate.value
+const resetOperatorTemplate = (locale = activeTemplateLocale.value) => {
+  form.messageTemplateLocales[locale] = defaultOperatorTemplates.value[locale]
+    || defaultOperatorTemplates.value['zh-CN']
+    || ''
 }
 
-const resetSupervisorTemplate = () => {
-  form.messageTemplateSupervisor = defaultSupervisorTemplate.value
+const resetSupervisorTemplate = (locale = activeTemplateLocale.value) => {
+  form.messageTemplateSupervisorLocales[locale] = defaultSupervisorTemplates.value[locale]
+    || defaultSupervisorTemplates.value['zh-CN']
+    || ''
 }
 
 onMounted(async () => {
@@ -524,6 +658,58 @@ onMounted(async () => {
   min-height: 280px;
 }
 
+.step-body--templates {
+  min-height: 360px;
+}
+
+.locale-hint {
+  margin: 0 0 12px;
+  padding: 8px 12px;
+  border-radius: $radius-md;
+  background: $primary-lighter;
+  border: 1px solid rgba($primary, 0.12);
+  font-size: $font-size-sm;
+  color: $text-secondary;
+  line-height: 1.5;
+}
+
+.locale-tabs {
+  :deep(.ant-tabs-nav) {
+    margin-bottom: 12px;
+  }
+}
+
+.locale-tab {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.locale-tab--scoped {
+  font-weight: $font-weight-semibold;
+}
+
+.locale-tab__dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: $primary;
+}
+
+.template-block-spacer {
+  margin-top: 16px;
+}
+
+.enabled-row {
+  display: flex;
+  align-items: center;
+  margin-top: 16px;
+  padding: 12px 14px;
+  border-radius: $radius-md;
+  background: $bg-muted;
+  border: 1px solid $border-light;
+}
+
 .hint {
   margin-top: 6px;
   font-size: 12px;
@@ -532,20 +718,6 @@ onMounted(async () => {
 
 .switch-label {
   margin-left: 8px;
-}
-
-.hint--inline {
-  margin-bottom: 8px;
-}
-
-.preview-box {
-  background: #fafafa;
-  border: 1px solid #f0f0f0;
-  border-radius: 8px;
-  padding: 12px;
-  white-space: pre-wrap;
-  font-size: 13px;
-  margin: 0;
 }
 
 .muted {

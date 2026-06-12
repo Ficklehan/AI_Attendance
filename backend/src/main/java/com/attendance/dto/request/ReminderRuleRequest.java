@@ -5,6 +5,7 @@ import javax.validation.constraints.NotEmpty;
 import javax.validation.constraints.NotNull;
 import java.math.BigDecimal;
 import java.util.List;
+import java.util.Map;
 
 public class ReminderRuleRequest {
 
@@ -28,11 +29,17 @@ public class ReminderRuleRequest {
     @NotBlank
     private String intervalUnit;
 
-    @NotBlank
+    /** 兼容字段：主语言（zh-CN）操作者文案 */
     private String messageTemplate;
 
     /** 非任务操作者（督办人）文案；空则使用系统默认督办模板 */
     private String messageTemplateSupervisor;
+
+    /** locale -> 操作者文案，如 zh-CN / fr-FR */
+    private Map<String, String> messageTemplateLocales;
+
+    /** locale -> 督办人文案 */
+    private Map<String, String> messageTemplateSupervisorLocales;
 
     @NotNull
     private Boolean includeTaskCreator;
@@ -113,6 +120,22 @@ public class ReminderRuleRequest {
 
     public void setMessageTemplateSupervisor(String messageTemplateSupervisor) {
         this.messageTemplateSupervisor = messageTemplateSupervisor;
+    }
+
+    public Map<String, String> getMessageTemplateLocales() {
+        return messageTemplateLocales;
+    }
+
+    public void setMessageTemplateLocales(Map<String, String> messageTemplateLocales) {
+        this.messageTemplateLocales = messageTemplateLocales;
+    }
+
+    public Map<String, String> getMessageTemplateSupervisorLocales() {
+        return messageTemplateSupervisorLocales;
+    }
+
+    public void setMessageTemplateSupervisorLocales(Map<String, String> messageTemplateSupervisorLocales) {
+        this.messageTemplateSupervisorLocales = messageTemplateSupervisorLocales;
     }
 
     public Boolean getIncludeTaskCreator() {

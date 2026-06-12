@@ -14,6 +14,8 @@
         <result column="interval_unit" property="intervalUnit"/>
         <result column="message_template" property="messageTemplate"/>
         <result column="message_template_supervisor" property="messageTemplateSupervisor"/>
+        <result column="message_template_locales" property="messageTemplateLocalesJson"/>
+        <result column="message_template_supervisor_locales" property="messageTemplateSupervisorLocalesJson"/>
         <result column="include_task_creator" property="includeTaskCreator"/>
         <result column="enabled" property="enabled"/>
         <result column="last_run_at" property="lastRunAt"/>
@@ -27,7 +29,8 @@
     <sql id="Base_Column_List">
         id, name, description, task_statuses, scope_countries, scope_roles,
         interval_value, interval_unit,
-        message_template, message_template_supervisor, include_task_creator, enabled, last_run_at,
+        message_template, message_template_supervisor, message_template_locales,
+        message_template_supervisor_locales, include_task_creator, enabled, last_run_at,
         last_hit_count, last_sent_count, created_by, created_at, updated_at
     </sql>
 
@@ -54,11 +57,13 @@
         INSERT INTO reminder_rules (
             id, name, description, task_statuses, scope_countries, scope_roles,
             interval_value, interval_unit,
-            message_template, message_template_supervisor, include_task_creator, enabled, created_by
+            message_template, message_template_supervisor, message_template_locales,
+            message_template_supervisor_locales, include_task_creator, enabled, created_by
         ) VALUES (
             #{id}, #{name}, #{description}, #{taskStatusesJson}, #{scopeCountriesJson}, #{scopeRolesJson},
             #{intervalValue}, #{intervalUnit},
-            #{messageTemplate}, #{messageTemplateSupervisor}, #{includeTaskCreator}, #{enabled}, #{createdBy}
+            #{messageTemplate}, #{messageTemplateSupervisor}, #{messageTemplateLocalesJson},
+            #{messageTemplateSupervisorLocalesJson}, #{includeTaskCreator}, #{enabled}, #{createdBy}
         )
     </insert>
 
@@ -73,6 +78,8 @@
             interval_unit = #{intervalUnit},
             message_template = #{messageTemplate},
             message_template_supervisor = #{messageTemplateSupervisor},
+            message_template_locales = #{messageTemplateLocalesJson},
+            message_template_supervisor_locales = #{messageTemplateSupervisorLocalesJson},
             include_task_creator = #{includeTaskCreator},
             enabled = #{enabled}
         WHERE id = #{id}

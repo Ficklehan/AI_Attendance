@@ -6,13 +6,13 @@
     <select id="selectMessageId" resultType="string">
         SELECT feishu_message_id
         FROM reminder_feishu_messages
-        WHERE user_id = #{userId} AND rule_id = #{ruleId}
+        WHERE user_id = #{userId} AND rule_id = #{ruleId} AND locale_key = #{localeKey}
         LIMIT 1
     </select>
 
     <insert id="upsertMessageId">
-        INSERT INTO reminder_feishu_messages (user_id, rule_id, feishu_message_id)
-        VALUES (#{userId}, #{ruleId}, #{feishuMessageId})
+        INSERT INTO reminder_feishu_messages (user_id, rule_id, locale_key, feishu_message_id)
+        VALUES (#{userId}, #{ruleId}, #{localeKey}, #{feishuMessageId})
         ON DUPLICATE KEY UPDATE
             feishu_message_id = VALUES(feishu_message_id),
             updated_at = CURRENT_TIMESTAMP
@@ -20,6 +20,6 @@
 
     <delete id="deleteMessageId">
         DELETE FROM reminder_feishu_messages
-        WHERE user_id = #{userId} AND rule_id = #{ruleId}
+        WHERE user_id = #{userId} AND rule_id = #{ruleId} AND locale_key = #{localeKey}
     </delete>
 </mapper>

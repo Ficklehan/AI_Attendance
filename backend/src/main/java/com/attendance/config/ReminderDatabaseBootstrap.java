@@ -93,6 +93,8 @@ public class ReminderDatabaseBootstrap implements ApplicationRunner {
             ensureScopeColumns();
             ensureIntervalValueDecimal();
             ensureFeishuMessageIdColumn();
+            ensureTemplateLocaleColumns();
+            ensureFeishuLocaleKeyColumn();
         } catch (Exception e) {
             log.error("创建 reminder 表失败，提醒功能不可用", e);
         }
@@ -134,6 +136,26 @@ public class ReminderDatabaseBootstrap implements ApplicationRunner {
                     "VARCHAR(64) NULL COMMENT '飞书消息ID，用于同周期撤回重发' AFTER link");
         } catch (Exception e) {
             log.warn("检查/添加 user_notifications.feishu_message_id 列失败: {}", e.getMessage());
+        }
+    }
+
+    private void ensureTemplateLocaleColumns() {
+        try {
+            addColumnIfMissing("message_template_locales",
+                    "TEXT NULL COMMENT '操作者多语言文案 JSON' AFTER message_template_supervisor");
+            addColumnIfMissing("message_template_supervisor_locales",
+                    "TEXT NULL COMMENT '督办人多语言文案 JSON' AFTER message_template_locales");
+        } catch (Exception e) {
+            log.warn("检查/添加 reminder_rules 多语言文案列失败: {}", e.getMessage());
+        }
+    }
+
+    private void ensureFeishuLocaleKeyColumn() {
+        try {
+            addColumnIfMissingOnTable("reminder_feishu_messages", "locale_key",
+                    "VARCHAR(16) NOT NULL DEFAULT 'zh-CN' COMMENT 'locale' AFTER rule_id");
+        } catch (Exception e) {
+            log.warn("检查/添加 reminder_feishu_messages.locale_key 列失败: {}", e.getMessage());
         }
     }
 

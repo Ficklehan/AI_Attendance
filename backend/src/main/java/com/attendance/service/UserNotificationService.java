@@ -88,18 +88,22 @@ public class UserNotificationService {
      */
     public SiteNotificationReplaceResult replaceSiteNotification(String userId,
                                                                  String ruleId,
+                                                                 String periodBucket,
                                                                  String title,
                                                                  String body,
                                                                  String link) {
-        UserNotification existing = userNotificationMapper.selectUnreadByUserAndRule(userId, ruleId);
+        String bucket = periodBucket != null && !periodBucket.trim().isEmpty()
+                ? periodBucket.trim()
+                : ReminderSupport.AGGREGATE_PERIOD_BUCKET;
+        UserNotification existing = userNotificationMapper.selectUnreadByUserAndRule(userId, ruleId, bucket);
         String previousFeishuMessageId = existing != null ? existing.getFeishuMessageId() : null;
-        userNotificationMapper.deleteUnreadByUserAndRule(userId, ruleId);
+        userNotificationMapper.deleteUnreadByUserAndRule(userId, ruleId, bucket);
         UserNotification n = new UserNotification();
         String notificationId = IdGenerator.generateId();
         n.setId(notificationId);
         n.setUserId(userId);
         n.setRuleId(ruleId);
-        n.setPeriodBucket(ReminderSupport.AGGREGATE_PERIOD_BUCKET);
+        n.setPeriodBucket(bucket);
         n.setTitle(title);
         n.setBody(body);
         n.setLink(link);

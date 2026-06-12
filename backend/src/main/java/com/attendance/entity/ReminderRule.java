@@ -15,6 +15,8 @@ public class ReminderRule {
     private String intervalUnit;
     private String messageTemplate;
     private String messageTemplateSupervisor;
+    private String messageTemplateLocalesJson;
+    private String messageTemplateSupervisorLocalesJson;
     private boolean includeTaskCreator;
     private boolean enabled;
     private LocalDateTime lastRunAt;
@@ -108,6 +110,22 @@ public class ReminderRule {
 
     public void setMessageTemplateSupervisor(String messageTemplateSupervisor) {
         this.messageTemplateSupervisor = messageTemplateSupervisor;
+    }
+
+    public String getMessageTemplateLocalesJson() {
+        return messageTemplateLocalesJson;
+    }
+
+    public void setMessageTemplateLocalesJson(String messageTemplateLocalesJson) {
+        this.messageTemplateLocalesJson = messageTemplateLocalesJson;
+    }
+
+    public String getMessageTemplateSupervisorLocalesJson() {
+        return messageTemplateSupervisorLocalesJson;
+    }
+
+    public void setMessageTemplateSupervisorLocalesJson(String messageTemplateSupervisorLocalesJson) {
+        this.messageTemplateSupervisorLocalesJson = messageTemplateSupervisorLocalesJson;
     }
 
     public boolean isIncludeTaskCreator() {

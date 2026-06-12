@@ -48,6 +48,7 @@
         FROM user_notifications
         WHERE user_id = #{userId}
           AND rule_id = #{ruleId}
+          AND period_bucket = #{periodBucket}
           AND read_at IS NULL
         ORDER BY created_at DESC
         LIMIT 1
@@ -57,6 +58,7 @@
         DELETE FROM user_notifications
         WHERE user_id = #{userId}
           AND rule_id = #{ruleId}
+          AND period_bucket = #{periodBucket}
           AND read_at IS NULL
     </delete>
 

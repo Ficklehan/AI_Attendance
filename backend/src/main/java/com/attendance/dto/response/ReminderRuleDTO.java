@@ -3,6 +3,7 @@ package com.attendance.dto.response;
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Map;
 
 public class ReminderRuleDTO {
     private String id;
@@ -15,6 +16,8 @@ public class ReminderRuleDTO {
     private String intervalUnit;
     private String messageTemplate;
     private String messageTemplateSupervisor;
+    private Map<String, String> messageTemplateLocales;
+    private Map<String, String> messageTemplateSupervisorLocales;
     private boolean includeTaskCreator;
     private boolean enabled;
     private List<String> recipientUserIds;
@@ -103,6 +106,22 @@ public class ReminderRuleDTO {
 
     public void setMessageTemplateSupervisor(String messageTemplateSupervisor) {
         this.messageTemplateSupervisor = messageTemplateSupervisor;
+    }
+
+    public Map<String, String> getMessageTemplateLocales() {
+        return messageTemplateLocales;
+    }
+
+    public void setMessageTemplateLocales(Map<String, String> messageTemplateLocales) {
+        this.messageTemplateLocales = messageTemplateLocales;
+    }
+
+    public Map<String, String> getMessageTemplateSupervisorLocales() {
+        return messageTemplateSupervisorLocales;
+    }
+
+    public void setMessageTemplateSupervisorLocales(Map<String, String> messageTemplateSupervisorLocales) {
+        this.messageTemplateSupervisorLocales = messageTemplateSupervisorLocales;
     }
 
     public boolean isIncludeTaskCreator() {

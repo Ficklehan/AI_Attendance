@@ -20,10 +20,12 @@ public interface UserNotificationMapper {
     UserNotification selectById(@Param("id") String id);
 
     UserNotification selectUnreadByUserAndRule(@Param("userId") String userId,
-                                             @Param("ruleId") String ruleId);
+                                             @Param("ruleId") String ruleId,
+                                             @Param("periodBucket") String periodBucket);
 
     int deleteUnreadByUserAndRule(@Param("userId") String userId,
-                                  @Param("ruleId") String ruleId);
+                                  @Param("ruleId") String ruleId,
+                                  @Param("periodBucket") String periodBucket);
 
     int insertNotification(UserNotification notification);
 

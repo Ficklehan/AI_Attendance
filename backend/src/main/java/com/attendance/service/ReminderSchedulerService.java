@@ -100,8 +100,8 @@ public class ReminderSchedulerService {
         int hitCount = 0;
         int sentCount = 0;
 
-        // userId -> tasks pending delivery in this run (for aggregated message)
-        Map<String, List<Task>> userTaskAgg = new LinkedHashMap<>();
+        // userId -> countryCode -> tasks pending delivery in this run (per locale message)
+        Map<String, Map<String, List<Task>>> userTaskAgg = new LinkedHashMap<>();
 
         for (Task task : tasks) {
             User creator = getUser(task.getUserId(), userCache);
@@ -137,60 +137,84 @@ public class ReminderSchedulerService {
                 taskHit = true;
                 recordDelivery(rule, task, recipientId, periodBucket, recipient);
                 sentCount++;
-                userTaskAgg.computeIfAbsent(recipientId, k -> new ArrayList<>()).add(task);
+                String countryKey = ReminderSupport.normalizeTaskCountry(task.getPromptCountry());
+                userTaskAgg
+                        .computeIfAbsent(recipientId, k -> new LinkedHashMap<>())
+                        .computeIfAbsent(countryKey, k -> new ArrayList<>())
+                        .add(task);
             }
             if (taskHit) {
                 hitCount++;
             }
         }
 
-        for (Map.Entry<String, List<Task>> entry : userTaskAgg.entrySet()) {
+        Map<String, String> operatorLocales = ReminderLocaleSupport.parseTemplateMap(rule.getMessageTemplateLocalesJson());
+        Map<String, String> supervisorLocales = ReminderLocaleSupport.parseTemplateMap(
+                rule.getMessageTemplateSupervisorLocalesJson());
+        if (operatorLocales.isEmpty() && rule.getMessageTemplate() != null) {
+            operatorLocales.put(ReminderLocaleSupport.DEFAULT_LOCALE, rule.getMessageTemplate());
+        }
+        if (supervisorLocales.isEmpty() && rule.getMessageTemplateSupervisor() != null) {
+            supervisorLocales.put(ReminderLocaleSupport.DEFAULT_LOCALE, rule.getMessageTemplateSupervisor());
+        }
+
+        for (Map.Entry<String, Map<String, List<Task>>> entry : userTaskAgg.entrySet()) {
             String recipientId = entry.getKey();
-            List<Task> userTasks = entry.getValue();
-            if (userTasks.isEmpty()) {
-                continue;
-            }
             User recipient = getUser(recipientId, userCache);
             if (recipient == null) {
                 continue;
             }
-            userTasks.sort(Comparator.comparing(
-                    t -> t.getUpdatedAt() != null ? t.getUpdatedAt() : t.getCreatedAt(),
-                    Comparator.nullsLast(Comparator.reverseOrder())));
-            Task latest = userTasks.get(0);
-            LocalDateTime latestTime = latest.getUpdatedAt() != null ? latest.getUpdatedAt() : latest.getCreatedAt();
-            String statusLabel = statuses.size() == 1 ? statuses.get(0) : "processed";
-            User creator = getUser(latest.getUserId(), userCache);
-            boolean recipientIsOperator = userTasks.stream()
-                    .allMatch(t -> recipientId.equals(t.getUserId()));
-            String creatorNames = formatCreatorNames(userTasks, userCache);
-            Map<String, String> vars = ReminderSupport.baseVars(
-                    userTasks.size(),
-                    rule.getIntervalValue(),
-                    rule.getIntervalUnit(),
-                    statusLabel,
-                    latest.getTaskId(),
-                    latestTime,
-                    displayName(recipient),
-                    creator != null ? displayName(creator) : "",
-                    creatorNames);
-            String template = ReminderSupport.resolveMessageTemplate(
-                    rule.getMessageTemplate(),
-                    rule.getMessageTemplateSupervisor(),
-                    recipientIsOperator);
-            String body = ReminderSupport.renderTemplate(template, vars);
-            String title = "【考勤提醒】" + rule.getName();
-            String siteLink = ReminderSupport.buildPcTaskLink(
-                    feishuProperties.getFrontendLoginUrl(), latest.getTaskId());
-            String feishuLink = ReminderSupport.buildMiniprogramTaskApplink(
-                    feishuProperties.getAppId(), latest.getTaskId());
-            SiteNotificationReplaceResult replaced = userNotificationService.replaceSiteNotification(
-                    recipientId, rule.getId(), title, body, siteLink);
-            String webLoginLink = ReminderSupport.buildFeishuWebLoginTaskLink(
-                    feishuProperties.getApiBaseUrl(), latest.getTaskId());
-            String webApplink = ReminderSupport.buildFeishuWebApplink(webLoginLink);
-            sendFeishuIfPossible(rule.getId(), recipient, title, body,
-                    webLoginLink, webApplink, feishuLink, replaced);
+            for (Map.Entry<String, List<Task>> countryEntry : entry.getValue().entrySet()) {
+                List<Task> userTasks = countryEntry.getValue();
+                if (userTasks == null || userTasks.isEmpty()) {
+                    continue;
+                }
+                String countryKey = countryEntry.getKey();
+                String locale = ReminderLocaleSupport.resolveLocale(countryKey);
+                String periodBucket = ReminderSupport.aggregatePeriodBucket(locale);
+
+                userTasks.sort(Comparator.comparing(
+                        t -> t.getUpdatedAt() != null ? t.getUpdatedAt() : t.getCreatedAt(),
+                        Comparator.nullsLast(Comparator.reverseOrder())));
+                Task latest = userTasks.get(0);
+                LocalDateTime latestTime = latest.getUpdatedAt() != null ? latest.getUpdatedAt() : latest.getCreatedAt();
+                String statusLabel = statuses.size() == 1 ? statuses.get(0) : "processed";
+                User creator = getUser(latest.getUserId(), userCache);
+                boolean recipientIsOperator = userTasks.stream()
+                        .allMatch(t -> recipientId.equals(t.getUserId()));
+                String creatorNames = formatCreatorNames(userTasks, userCache, locale);
+                Map<String, String> vars = ReminderSupport.baseVars(
+                        userTasks.size(),
+                        rule.getIntervalValue(),
+                        rule.getIntervalUnit(),
+                        statusLabel,
+                        latest.getTaskId(),
+                        latestTime,
+                        displayName(recipient),
+                        creator != null ? displayName(creator) : "",
+                        creatorNames,
+                        locale);
+                String template = ReminderLocaleSupport.pickLocalizedTemplate(
+                        operatorLocales,
+                        supervisorLocales,
+                        rule.getMessageTemplate(),
+                        rule.getMessageTemplateSupervisor(),
+                        locale,
+                        recipientIsOperator);
+                String body = ReminderSupport.renderTemplate(template, vars);
+                String title = ReminderLocaleSupport.notificationTitlePrefix(locale) + rule.getName();
+                String siteLink = ReminderSupport.buildPcTaskLink(
+                        feishuProperties.getFrontendLoginUrl(), latest.getTaskId());
+                String feishuLink = ReminderSupport.buildMiniprogramTaskApplink(
+                        feishuProperties.getAppId(), latest.getTaskId());
+                SiteNotificationReplaceResult replaced = userNotificationService.replaceSiteNotification(
+                        recipientId, rule.getId(), periodBucket, title, body, siteLink);
+                String webLoginLink = ReminderSupport.buildFeishuWebLoginTaskLink(
+                        feishuProperties.getApiBaseUrl(), latest.getTaskId());
+                String webApplink = ReminderSupport.buildFeishuWebApplink(webLoginLink);
+                sendFeishuIfPossible(rule.getId(), locale, recipient, title, body,
+                        webLoginLink, webApplink, feishuLink, replaced);
+            }
         }
 
         reminderRuleMapper.updateLastRun(rule.getId(), hitCount, sentCount);
@@ -211,6 +235,7 @@ public class ReminderSchedulerService {
     }
 
     private void sendFeishuIfPossible(String ruleId,
+                                      String locale,
                                       User recipient,
                                       String title,
                                       String body,
@@ -223,7 +248,11 @@ public class ReminderSchedulerService {
             log.debug("跳过飞书提醒：用户未绑定飞书 userId={}", recipient.getId());
             return;
         }
-        String previousMessageId = reminderFeishuMessageMapper.selectMessageId(recipient.getId(), ruleId);
+        String localeKey = locale != null && !locale.trim().isEmpty()
+                ? locale.trim()
+                : ReminderLocaleSupport.DEFAULT_LOCALE;
+        String previousMessageId = reminderFeishuMessageMapper.selectMessageId(
+                recipient.getId(), ruleId, localeKey);
         if (previousMessageId == null || previousMessageId.trim().isEmpty()) {
             previousMessageId = replaced != null ? replaced.getPreviousFeishuMessageId() : null;
         }
@@ -236,10 +265,10 @@ public class ReminderSchedulerService {
             }
         }
         try {
-            JSONObject card = buildFeishuCard(title, body, webLoginLink, webApplink, miniprogramLink);
+            JSONObject card = buildFeishuCard(title, body, webLoginLink, webApplink, miniprogramLink, localeKey);
             String messageId = feishuService.sendCardMessage(feishuUserId, card);
             if (messageId != null && !messageId.trim().isEmpty()) {
-                reminderFeishuMessageMapper.upsertMessageId(recipient.getId(), ruleId, messageId);
+                reminderFeishuMessageMapper.upsertMessageId(recipient.getId(), ruleId, localeKey, messageId);
                 if (replaced != null) {
                     userNotificationService.updateFeishuMessageId(
                             replaced.getNotificationId(), recipient.getId(), messageId);
@@ -257,7 +286,8 @@ public class ReminderSchedulerService {
                                        String body,
                                        String webLoginLink,
                                        String webApplink,
-                                       String miniprogramLink) {
+                                       String miniprogramLink,
+                                       String locale) {
         JSONObject card = new JSONObject();
         card.put("config", new JSONObject().fluentPut("wide_screen_mode", true));
         JSONObject header = new JSONObject();
@@ -279,7 +309,8 @@ public class ReminderSchedulerService {
             action.put("tag", "action");
             JSONObject button = new JSONObject();
             button.put("tag", "button");
-            button.put("text", new JSONObject().fluentPut("tag", "plain_text").fluentPut("content", "查看任务"));
+            String viewLabel = ReminderLocaleSupport.viewTaskLabel(locale);
+            button.put("text", new JSONObject().fluentPut("tag", "plain_text").fluentPut("content", viewLabel));
             button.put("type", "primary");
             JSONObject multiUrl = new JSONObject();
             if (defaultLink != null && !defaultLink.isEmpty()) {
@@ -318,7 +349,7 @@ public class ReminderSchedulerService {
         return user.getUsername();
     }
 
-    private String formatCreatorNames(List<Task> tasks, Map<String, User> userCache) {
+    private String formatCreatorNames(List<Task> tasks, Map<String, User> userCache, String locale) {
         LinkedHashSet<String> names = new LinkedHashSet<>();
         for (Task task : tasks) {
             User creator = getUser(task.getUserId(), userCache);
@@ -326,6 +357,7 @@ public class ReminderSchedulerService {
                 names.add(displayName(creator));
             }
         }
-        return names.isEmpty() ? "-" : String.join("、", names);
+        String separator = ReminderLocaleSupport.nameSeparator(locale);
+        return names.isEmpty() ? "-" : String.join(separator, names);
     }
 }

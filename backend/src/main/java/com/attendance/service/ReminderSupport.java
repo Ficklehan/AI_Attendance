@@ -25,24 +25,35 @@ public final class ReminderSupport {
     public static final String PERMISSION_KEY = "reminderConfig";
     public static final String NOTIFICATION_CONFIG_KEY = "notification_enabled";
 
-    /** 按用户汇总提醒时站内/飞书合并键（与任务 period_bucket 无关） */
+    /** 按用户汇总提醒时站内/飞书合并键前缀（后缀为 locale，如 summary:fr-FR） */
     public static final String AGGREGATE_PERIOD_BUCKET = "summary";
 
+    public static String aggregatePeriodBucket(String locale) {
+        String resolved = locale != null ? locale.trim() : "";
+        if (resolved.isEmpty()) {
+            resolved = ReminderLocaleSupport.DEFAULT_LOCALE;
+        }
+        return AGGREGATE_PERIOD_BUCKET + ":" + resolved;
+    }
+
     public static final String DEFAULT_TEMPLATE =
-            "【考勤待核对提醒】\n"
-                    + "您有 {pendingCount} 个任务处于「待核对」状态，已超过 {threshold} 未处理。\n"
-                    + "最近任务：{latestTaskId}（{latestTaskTime}）\n"
-                    + "请及时登录系统完成核对。";
+            "【考勤待核对提醒】\n\n"
+                    + "您有 {pendingCount} 个任务处于「待核对」状态，已超过 {threshold} 未处理。\n\n"
+                    + "最近任务：{latestTaskId}\n"
+                    + "更新时间：{latestTaskTime}\n\n"
+                    + "请登录系统及时完成核对。";
 
     /** 任务操作者本人（创建者）默认文案，与 {@link #DEFAULT_TEMPLATE} 相同 */
     public static final String DEFAULT_TEMPLATE_OPERATOR = DEFAULT_TEMPLATE;
 
     /** 非任务操作者（配置的督办提醒人）默认文案 */
     public static final String DEFAULT_TEMPLATE_SUPERVISOR =
-            "【考勤待核对督办】\n"
-                    + "{recipientName}，共有 {pendingCount} 个任务处于「{taskStatus}」状态，已超过 {threshold} 未处理。\n"
-                    + "涉及操作者：{taskCreatorNames}\n"
-                    + "最近任务：{latestTaskId}（{latestTaskTime}）\n"
+            "【考勤待核对督办】\n\n"
+                    + "{recipientName}，您好\n\n"
+                    + "共有 {pendingCount} 个任务处于「{taskStatus}」状态，已超过 {threshold} 未处理。\n"
+                    + "涉及操作者：{taskCreatorNames}\n\n"
+                    + "最近任务：{latestTaskId}\n"
+                    + "更新时间：{latestTaskTime}\n\n"
                     + "请关注并督促相关人员登录系统完成核对。";
 
     private static final DateTimeFormatter DISPLAY_TIME = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm");
@@ -273,10 +284,25 @@ public final class ReminderSupport {
                                                String recipientName,
                                                String taskCreatorName,
                                                String taskCreatorNames) {
+        return baseVars(pendingCount, intervalValue, intervalUnit, taskStatus, latestTaskId,
+                latestTaskTime, recipientName, taskCreatorName, taskCreatorNames,
+                ReminderLocaleSupport.DEFAULT_LOCALE);
+    }
+
+    public static Map<String, String> baseVars(int pendingCount,
+                                               BigDecimal intervalValue,
+                                               String intervalUnit,
+                                               String taskStatus,
+                                               String latestTaskId,
+                                               LocalDateTime latestTaskTime,
+                                               String recipientName,
+                                               String taskCreatorName,
+                                               String taskCreatorNames,
+                                               String locale) {
         Map<String, String> vars = new HashMap<>();
         vars.put("pendingCount", String.valueOf(pendingCount));
-        vars.put("threshold", formatThreshold(intervalValue, intervalUnit));
-        vars.put("taskStatus", formatStatusLabel(taskStatus));
+        vars.put("threshold", ReminderLocaleSupport.formatThreshold(intervalValue, intervalUnit, locale));
+        vars.put("taskStatus", ReminderLocaleSupport.formatStatusLabel(taskStatus, locale));
         vars.put("latestTaskId", latestTaskId != null ? latestTaskId : "-");
         vars.put("latestTaskTime", latestTaskTime != null ? latestTaskTime.format(DISPLAY_TIME) : "-");
         vars.put("recipientName", recipientName != null ? recipientName : "");
