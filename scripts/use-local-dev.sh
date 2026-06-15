@@ -7,9 +7,23 @@ cd "$PROJECT_DIR"
 
 echo ">>> 本地开发模式"
 echo "    推荐: production.yaml → runtime.mode: local  然后  ./start.sh apply"
-echo "    API:  http://localhost:8080/attendance/api"
-echo "    PC 前端: http://localhost:5175/attendance/"
 echo ""
+
+if command -v node &>/dev/null; then
+  echo ">>> 同步小程序 config.runtime.js（与 production.yaml 一致）..."
+  node "$PROJECT_DIR/scripts/render-deploy-config.mjs" --env production
+  if [ -f "$PROJECT_DIR/deploy/rendered/production.env" ]; then
+    # shellcheck source=/dev/null
+    source "$PROJECT_DIR/deploy/rendered/production.env"
+    if [ "${RUNTIME_MODE:-}" = "public" ]; then
+      echo "    警告: production.yaml 为 runtime.mode=public，小程序将走公网 API"
+      echo "    若需纯本地，请改 yaml 为 mode: local 后执行 ./start.sh apply"
+    fi
+    echo "    小程序 API: ${PUBLIC_BASE_URL:-${LOCAL_API_BASE_URL:-http://localhost:8080/attendance/api}}"
+  fi
+  echo "    PC 前端: http://localhost:5175/attendance/"
+  echo ""
+fi
 
 PIDS=$(lsof -ti :8080 2>/dev/null || true)
 if [ -n "$PIDS" ]; then

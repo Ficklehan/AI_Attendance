@@ -4,6 +4,7 @@
   "description": "AttendanceAgent monorepo tooling",
   "scripts": {
     "render:deploy": "node scripts/render-deploy-config.mjs --env production",
+    "render:site": "node scripts/render-deploy-config.mjs --env production",
     "render:deploy:uat": "node scripts/render-deploy-config.mjs --env uat",
     "render:deploy:all": "node scripts/render-deploy-config.mjs --env production && node scripts/render-deploy-config.mjs --env uat",
     "render:deploy:check": "node scripts/render-deploy-config.mjs --env production --check",

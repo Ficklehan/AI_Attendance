@@ -22,8 +22,17 @@ const USE_PUBLIC_API = !!runtime.USE_PUBLIC_API
 const STORAGE_KEY = 'apiBaseUrlOverride'
 
 let prodConfig = null
+
 function loadProdConfig() {
   if (prodConfig !== null) {
+    return prodConfig
+  }
+  if (USE_PUBLIC_API && runtime.PUBLIC_BASE_URL) {
+    prodConfig = {
+      PUBLIC_HOST: runtime.PUBLIC_HOST || '',
+      PUBLIC_ORIGIN: runtime.PUBLIC_ORIGIN || '',
+      PUBLIC_BASE_URL: runtime.PUBLIC_BASE_URL,
+    }
     return prodConfig
   }
   try {

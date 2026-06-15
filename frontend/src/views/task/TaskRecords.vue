@@ -51,6 +51,7 @@
         </div>
       </div>
 
+      <div ref="recordsTableAnchor" class="table-body-scroll-anchor">
       <a-table
         class="rich-table-header"
         :columns="columns"
@@ -58,7 +59,7 @@
         :loading="loading"
         :pagination="false"
         row-key="rowKey"
-        :scroll="{ x: scrollX }"
+        :scroll="tableScroll"
       >
         <template #headerCell="{ column }">
           <TableSortableHeader
@@ -129,6 +130,7 @@
           </template>
         </template>
       </a-table>
+      </div>
 
       <div class="pagination-wrapper">
         <a-pagination
@@ -154,7 +156,7 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted } from 'vue'
+import { ref, computed, onMounted, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import { useI18n } from 'vue-i18n'
 import { message } from 'ant-design-vue'
@@ -171,6 +173,7 @@ import TableSortableHeader from '@/components/TableSortableHeader.vue'
 import TableColumnSettings from '@/components/TableColumnSettings.vue'
 import { useTableColumnSort } from '@/composables/useTableColumnSort'
 import { useAutoSizedColumns } from '@/composables/useAutoSizedColumns'
+import { useTableBodyScrollY } from '@/composables/useTableBodyScrollY'
 import { useColumnFreeze } from '@/composables/useColumnFreeze'
 import {
   buildEmployeeRecordFieldDefs,
@@ -210,6 +213,7 @@ const pageSize = ref(20)
 const filterStatus = ref('')
 const quickKeyword = ref('')
 const showAdvancedSearch = ref(false)
+const recordsTableAnchor = ref(null)
 const activeHeaderFilterField = ref('')
 const headerFilterDraft = ref('')
 const fieldDefs = computed(() => buildEmployeeRecordFieldDefs(t))
@@ -254,6 +258,18 @@ const baseColumns = computed(() => [
 const { columns: sortedColumns, onSorterToggle, sortRows } = useTableColumnSort(baseColumns, { customHeader: true })
 const displayRecords = computed(() => sortRows(records.value))
 const { columns: sizedColumns, scrollX } = useAutoSizedColumns(sortedColumns, displayRecords, { defaultMax: 360 })
+const { tableScroll, measure: measureRecordsTableScroll } = useTableBodyScrollY(
+  recordsTableAnchor,
+  scrollX,
+  {
+    enabled: computed(() => displayRecords.value.length > 0),
+    reservedBottom: 56,
+  },
+)
+
+watch(showAdvancedSearch, () => {
+  measureRecordsTableScroll()
+})
 const {
   frozenColumns: columns,
   hiddenKeys,

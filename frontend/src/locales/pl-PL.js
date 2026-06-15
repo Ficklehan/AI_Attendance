@@ -631,6 +631,7 @@ export default {
       "title": "System i przypomnienia",
       "subtitle": "Reguły przypomnień, powiadomienia i walidacja potwierdzenia",
       "tabReminders": "Reguły przypomnień",
+      "tabNightShift": "Reguły zmiany nocnej",
       "tabSystem": "Powiadomienia i walidacja"
     },
     "system": {
@@ -639,7 +640,13 @@ export default {
       "confirmValidationScopeHint": "Usunięte i nieobecne wiersze są pomijane.",
       "confirmValidationFields": "Wymagane pola",
       "confirmValidationFieldsRequired": "Wybierz co najmniej jedno pole",
-      "resetDefaults": "Przywróć domyślne"
+      "resetDefaults": "Przywróć domyślne",
+      "nightShiftTitle": "Reguły zmiany nocnej",
+      "nightShiftDesc": "Ustaw, jak określać nocną zmianę",
+      "nightShiftStart": "Czas rozpoczęcia zmiany nocnej",
+      "nightShiftEnd": "Czas zakończenia zmiany nocnej",
+      "nightShiftCrossMidnight": "Przechodzi przez północ (koniec następnego dnia)",
+      "nightShiftUseSchedule": "Używaj też kolumny grafiku (HORAIRES_DU_TRAVAIL)"
     },
     "users": {
       "title": "Zarządzanie użytkownikami",

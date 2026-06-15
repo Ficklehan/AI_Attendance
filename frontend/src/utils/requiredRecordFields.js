@@ -19,6 +19,8 @@ export const getMissingRequiredFieldKeys = api.getMissingRequiredFieldKeys
 export const hasRequiredMissing = api.hasRequiredMissing
 export const collectConfirmValidationIssues = api.collectConfirmValidationIssues
 
+export { formatLineRanges, groupConfirmValidationIssues } from './confirmValidationGrouping'
+
 /** TaskEdit 提交错误详情：字段 key -> i18n key */
 export const REQUIRED_FIELD_I18N_KEYS = {
   Pays: 'taskEdit.countryField',

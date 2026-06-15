@@ -4,6 +4,11 @@
  * PC Web 与飞书小程序共用
  */
 
+const {
+  formatLineRanges,
+  groupConfirmValidationIssues,
+} = require('./confirmValidationGrouping.cjs')
+
 const CONFIRM_FIELD_KEYS = [
   'Pays',
   'Entrepot',
@@ -165,6 +170,8 @@ function createRequiredRecordFields(deps) {
     getMissingRequiredFieldKeys,
     hasRequiredMissing,
     collectConfirmValidationIssues,
+    formatLineRanges,
+    groupConfirmValidationIssues,
   }
 }
 
@@ -172,4 +179,6 @@ module.exports = {
   CONFIRM_FIELD_KEYS,
   DEFAULT_CONFIRM_VALIDATION,
   createRequiredRecordFields,
+  formatLineRanges,
+  groupConfirmValidationIssues,
 }

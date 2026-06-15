@@ -565,6 +565,7 @@ export default {
       "title": "Systeem & herinneringen",
       "subtitle": "Herinneringsregels, meldingen en bevestigingsvalidatie",
       "tabReminders": "Herinneringsregels",
+      "tabNightShift": "Nachtdienstregels",
       "tabSystem": "Meldingen & validatie"
     },
     "system": {
@@ -573,7 +574,13 @@ export default {
       "confirmValidationScopeHint": "Verwijderde en afwezige rijen worden overgeslagen.",
       "confirmValidationFields": "Verplichte velden",
       "confirmValidationFieldsRequired": "Selecteer minstens één veld",
-      "resetDefaults": "Standaard herstellen"
+      "resetDefaults": "Standaard herstellen",
+      "nightShiftTitle": "Nachtdienstregels",
+      "nightShiftDesc": "Stel in hoe nachtdienst wordt bepaald",
+      "nightShiftStart": "Starttijd nachtdienst",
+      "nightShiftEnd": "Eindtijd nachtdienst",
+      "nightShiftCrossMidnight": "Over middernacht (einde op volgende dag)",
+      "nightShiftUseSchedule": "Ook roosterkolom gebruiken (HORAIRES_DU_TRAVAIL)"
     },
     "users": {
       "title": "Gebruikersbeheer",

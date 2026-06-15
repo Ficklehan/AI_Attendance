@@ -175,6 +175,14 @@
         <view tt:if="{{duplicateBannerText}}" class="result-dup-banner-mini">
           <text>{{duplicateBannerText}}</text>
         </view>
+        <view
+          tt:if="{{requiredMissingCount > 0}}"
+          class="required-validation-banner"
+          bindtap="showRequiredValidationDetail"
+        >
+          <text class="required-validation-text">{{requiredValidationBannerText}}</text>
+          <text class="required-validation-link">{{texts.requiredValidationViewDetail}}</text>
+        </view>
       </view>
       <view tt:if="{{issueRecords.length > 0}}" class="issue-panel">
         <view class="issue-head">

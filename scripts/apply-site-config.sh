@@ -24,12 +24,24 @@ fi
 source "$RENDERED_ENV"
 
 RUNTIME_MODE="${RUNTIME_MODE:-public}"
+ACTIVE_API="${ACTIVE_API_BASE_URL:-${PUBLIC_BASE_URL:-}}"
+echo ""
+echo ">>> 已同步生成文件（改 yaml 后必须执行本脚本才会更新）"
+echo "    deploy/rendered/${DEPLOY_ENV}.env"
+echo "    feishu-miniprogram/config.runtime.js"
+echo "    feishu-miniprogram/config.prod.js  (公网参考地址，local 模式下不生效)"
 echo ""
 echo ">>> 当前模式: ${RUNTIME_MODE}"
-echo "    公网域名: ${PUBLIC_HOST:-?}"
-echo "    公网 API: ${PUBLIC_BASE_URL:-?}"
+echo "    生效 API: ${ACTIVE_API}"
+echo "    公网参考: ${PUBLIC_BASE_URL:-?}"
 echo "    小程序:   ${MINIPROGRAM_USE_PUBLIC_API:-?} (USE_PUBLIC_API)"
+echo "    后端:     ${ACTIVE_BACKEND_PROFILE:-?}"
 echo ""
+
+if ! grep -q "RUNTIME_MODE: '${RUNTIME_MODE}'" "$PROJECT_DIR/feishu-miniprogram/config.runtime.js" 2>/dev/null; then
+  echo "错误: config.runtime.js 未与 production.yaml 同步，请检查 render 是否成功" >&2
+  exit 1
+fi
 
 echo ">>> 停止占用 8080 的后端..."
 PIDS=$(lsof -ti :8080 2>/dev/null || true)

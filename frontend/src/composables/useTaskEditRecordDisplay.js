@@ -11,11 +11,59 @@ import {
 } from '@/utils/recognitionLabels'
 import { hasRequiredMissing } from '@/utils/requiredRecordFields'
 
+function buildRowCacheKey(record, duplicatePeers) {
+  if (!record?._rowKey) return ''
+  const anomalies = Array.isArray(record.anomalies) ? record.anomalies.join('|') : ''
+  return [
+    record._rowKey,
+    record.SmartMark,
+    record.Mark,
+    record.NOM_PRENOM,
+    record.NO,
+    record.PAUSE,
+    record.ARRIVEE,
+    record.DEPAR,
+    record.HORAIRES_DU_TRAVAIL,
+    record.SIGNATURE,
+    record.isDeleted ? '1' : '0',
+    record._duplicateConfirmedUnique ? '1' : '0',
+    anomalies,
+    duplicatePeers || '',
+  ].join('::')
+}
+
 /**
- * TaskEdit 记录行：标记展示、异常原因、行样式
+ * TaskEdit 记录行：标记展示、异常原因、行样式（带行级缓存）
  */
 export function useTaskEditRecordDisplay(records, getDuplicateMeta, { isAbsentRow, hasManualCalibration }) {
   const { t } = useI18n()
+  const rowCache = new Map()
+
+  const getDuplicatePeersKey = (record) => {
+    const meta = getDuplicateMeta(record)
+    return meta?.peers?.join('、') || ''
+  }
+
+  const readCache = (record) => {
+    const key = buildRowCacheKey(record, getDuplicatePeersKey(record))
+    if (!key) return null
+    return rowCache.get(key) || null
+  }
+
+  const writeCache = (record, payload) => {
+    const key = buildRowCacheKey(record, getDuplicatePeersKey(record))
+    if (!key) return payload
+    rowCache.set(key, payload)
+    if (rowCache.size > 800) {
+      const firstKey = rowCache.keys().next().value
+      rowCache.delete(firstKey)
+    }
+    return payload
+  }
+
+  const clearRowCache = () => {
+    rowCache.clear()
+  }
 
   const statItems = computed(() => [
     { key: 'normal', variant: 'normal', value: stats.value.normal, label: t('home.statsNormal') },
@@ -25,14 +73,6 @@ export function useTaskEditRecordDisplay(records, getDuplicateMeta, { isAbsentRo
     { key: 'absent', variant: 'absent', value: stats.value.absent, label: t('home.statsAbsent') },
     { key: 'deleted', variant: 'deleted', value: stats.value.deleted, label: t('home.statsDeleted') },
   ])
-
-  const getRecordMarkTags = (record) =>
-    buildRecordMarkTags(record, {
-      getDisplayMark: getDisplaySmartMark,
-      isAbsentRow,
-      t,
-      hasManualCalibration,
-    })
 
   const hasHandwrittenText = (value) => {
     const text = String(value || '').toLowerCase()
@@ -56,7 +96,7 @@ export function useTaskEditRecordDisplay(records, getDuplicateMeta, { isAbsentRo
       || hasHandwrittenText(anomalyText)
   }
 
-  const getDisplaySmartMark = (record) => {
+  const computeDisplaySmartMark = (record) => {
     let raw = refreshNightShiftInSmartMark(getRawSmartMark(record), record)
     const hasHandwritten = hasHandwrittenIdentity(record) || raw.includes('手写')
     if (!hasHandwritten || raw.includes('已删除') || raw.includes('未出勤')) {
@@ -65,6 +105,27 @@ export function useTaskEditRecordDisplay(records, getDuplicateMeta, { isAbsentRo
     if (!raw || raw === '-' || raw === '正常') return '手写'
     if (raw.includes('手写')) return raw
     return `${raw};手写`
+  }
+
+  const getDisplaySmartMark = (record) => {
+    const cached = readCache(record)
+    if (cached?.displayMark != null) return cached.displayMark
+    const displayMark = computeDisplaySmartMark(record)
+    writeCache(record, { ...(cached || {}), displayMark })
+    return displayMark
+  }
+
+  const getRecordMarkTags = (record) => {
+    const cached = readCache(record)
+    if (cached?.markTags) return cached.markTags
+    const markTags = buildRecordMarkTags(record, {
+      getDisplayMark: getDisplaySmartMark,
+      isAbsentRow,
+      t,
+      hasManualCalibration,
+    })
+    writeCache(record, { ...(readCache(record) || {}), markTags })
+    return markTags
   }
 
   const stats = computed(() => calculateRecordStats(records.value, { getDisplayMark: getDisplaySmartMark }))
@@ -85,7 +146,7 @@ export function useTaskEditRecordDisplay(records, getDuplicateMeta, { isAbsentRo
     )
   }
 
-  const getRecordAnomalyReasons = (record) => {
+  const computeRecordAnomalyReasons = (record) => {
     if (!record || record.isDeleted) return []
     const mark = getDisplaySmartMark(record)
     const reasons = getEffectiveAnomalies(record).map((r) => translateAnomalyReason(r, t))
@@ -100,13 +161,27 @@ export function useTaskEditRecordDisplay(records, getDuplicateMeta, { isAbsentRo
     return [...new Set(reasons)]
   }
 
+  const getRecordAnomalyReasons = (record) => {
+    const cached = readCache(record)
+    if (cached?.anomalyReasons) return cached.anomalyReasons
+    const anomalyReasons = computeRecordAnomalyReasons(record)
+    writeCache(record, { ...(readCache(record) || {}), anomalyReasons })
+    return anomalyReasons
+  }
+
   const getRowClassName = (record) => {
+    const cached = readCache(record)
+    if (cached?.rowClassName != null) return cached.rowClassName
     if (!record) return ''
-    if (record?.isDeleted) return 'deleted-row'
-    const mark = getDisplaySmartMark(record)
-    if (markContains(mark, 'absent')) return 'absent-row'
-    if (markContains(mark, 'blurred')) return 'blurred-row'
-    return ''
+    let rowClassName = ''
+    if (record?.isDeleted) rowClassName = 'deleted-row'
+    else {
+      const mark = getDisplaySmartMark(record)
+      if (markContains(mark, 'absent')) rowClassName = 'absent-row'
+      else if (markContains(mark, 'blurred')) rowClassName = 'blurred-row'
+    }
+    writeCache(record, { ...(readCache(record) || {}), rowClassName })
+    return rowClassName
   }
 
   const getMarkColor = (mark) => {
@@ -158,19 +233,43 @@ export function useTaskEditRecordDisplay(records, getDuplicateMeta, { isAbsentRo
     return 'tag-default'
   }
 
-  const anomalyAlerts = computed(() =>
-    records.value
-      .map((record) => {
-        if (record.isDeleted) return null
-        const reasons = getRecordAnomalyReasons(record)
-        if (reasons.length === 0) return null
-        return {
-          name: `${record.NO || '?'} - ${record.NOM_PRENOM || '?'}`,
-          reasons: [...new Set(reasons)],
-        }
+  /** 轻量判断：不组装完整原因列表，供收起态计数 */
+  const hasRecordAnomaly = (record) => {
+    if (!record || record.isDeleted) return false
+    if (getEffectiveAnomalies(record).length > 0) return true
+    const mark = getDisplaySmartMark(record)
+    if (markContains(mark, 'blurred')) return true
+    if (markContains(mark, 'handwriting')) return true
+    if (markContains(mark, 'absent')) return true
+    if (hasRequiredMissing(record)) return true
+    const duplicateMeta = getDuplicateMeta(record)
+    if (duplicateMeta?.peers?.length) return true
+    return false
+  }
+
+  const countAnomalyRecords = (list = records.value) => {
+    let count = 0
+    for (const record of list) {
+      if (hasRecordAnomaly(record)) count++
+    }
+    return count
+  }
+
+  /** 展开态按需构建明细，最多 limit 条后提前结束扫描 */
+  const buildAnomalyAlertsSlice = (list = records.value, limit = 20) => {
+    const alerts = []
+    for (const record of list) {
+      if (record.isDeleted) continue
+      const reasons = getRecordAnomalyReasons(record)
+      if (reasons.length === 0) continue
+      alerts.push({
+        name: `${record.NO || '?'} - ${record.NOM_PRENOM || '?'}`,
+        reasons: [...new Set(reasons)],
       })
-      .filter(Boolean),
-  )
+      if (alerts.length >= limit) break
+    }
+    return alerts
+  }
 
   return {
     stats,
@@ -186,6 +285,9 @@ export function useTaskEditRecordDisplay(records, getDuplicateMeta, { isAbsentRo
     getRowTypeDotClass,
     getAnomalyTagColor,
     getAnomalyTagClass,
-    anomalyAlerts,
+    hasRecordAnomaly,
+    countAnomalyRecords,
+    buildAnomalyAlertsSlice,
+    clearRowCache,
   }
 }

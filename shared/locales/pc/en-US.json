@@ -90,6 +90,7 @@
       "title": "System & reminders",
       "subtitle": "Reminder rules, notifications, and confirm validation",
       "tabReminders": "Reminder rules",
+      "tabNightShift": "Night shift rules",
       "tabSystem": "Notifications & validation"
     },
     "system": {
@@ -98,7 +99,13 @@
       "confirmValidationScopeHint": "Deleted and absent rows are skipped.",
       "confirmValidationFields": "Required fields",
       "confirmValidationFieldsRequired": "Select at least one required field",
-      "resetDefaults": "Reset to defaults"
+      "resetDefaults": "Reset to defaults",
+      "nightShiftTitle": "Night shift rules",
+      "nightShiftDesc": "Configure how night shifts are detected",
+      "nightShiftStart": "Night shift start time",
+      "nightShiftEnd": "Night shift end time",
+      "nightShiftCrossMidnight": "Cross midnight (end time is on the next day)",
+      "nightShiftUseSchedule": "Also use schedule column (HORAIRES_DU_TRAVAIL)"
     },
     "reminders": {
       "title": "Task reminder rules",
@@ -462,7 +469,14 @@
     "confirmValidationTitle": "Cannot confirm task",
     "confirmValidationSummary": "{count} row(s) have incomplete required fields. Please fix them before confirming:",
     "confirmValidationLine": "· Row {line}: missing {fields}",
+    "confirmValidationGroupHeader": "[{fields}] {count} row(s)",
+    "confirmValidationGroupLines": "Rows: {ranges}",
     "confirmValidationFieldSep": ", ",
+    "requiredValidationBanner": "{count} row(s) still have incomplete required fields",
+    "requiredValidationViewDetail": "View details",
+    "anomalyAlertMore": "{count} more not shown",
+    "scrollLoadMore": "Scroll down to load more ({loaded}/{total} shown)",
+    "scrollLoadingMore": "Loading…",
     "requiredFieldMissingShort": "Required fields missing",
     "anomalyReasons": "Anomaly reasons",
     "noValidRecords": "No valid records to submit",

@@ -507,6 +507,7 @@
       "title": "Sistema y recordatorios",
       "subtitle": "Reglas de recordatorio, notificaciones y validación al confirmar",
       "tabReminders": "Reglas de recordatorio",
+      "tabNightShift": "Reglas de turno nocturno",
       "tabSystem": "Notificaciones y validación"
     },
     "system": {
@@ -515,7 +516,13 @@
       "confirmValidationScopeHint": "Se omiten filas eliminadas o ausentes.",
       "confirmValidationFields": "Campos obligatorios",
       "confirmValidationFieldsRequired": "Seleccione al menos un campo",
-      "resetDefaults": "Restaurar valores predeterminados"
+      "resetDefaults": "Restaurar valores predeterminados",
+      "nightShiftTitle": "Reglas de turno nocturno",
+      "nightShiftDesc": "Configurar cómo se detecta el turno nocturno",
+      "nightShiftStart": "Hora de inicio del turno nocturno",
+      "nightShiftEnd": "Hora de fin del turno nocturno",
+      "nightShiftCrossMidnight": "Cruza medianoche (fin al día siguiente)",
+      "nightShiftUseSchedule": "Usar también la columna de horario (HORAIRES_DU_TRAVAIL)"
     },
     "users": {
       "title": "Gestión de usuarios",

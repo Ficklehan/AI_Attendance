@@ -631,6 +631,7 @@ export default {
       "title": "Systém a připomínky",
       "subtitle": "Pravidla připomínek, oznámení a validace potvrzení",
       "tabReminders": "Pravidla připomínek",
+      "tabNightShift": "Pravidla noční směny",
       "tabSystem": "Oznámení a validace"
     },
     "system": {
@@ -639,7 +640,13 @@ export default {
       "confirmValidationScopeHint": "Smazané a nepřítomné řádky se přeskočí.",
       "confirmValidationFields": "Povinná pole",
       "confirmValidationFieldsRequired": "Vyberte alespoň jedno pole",
-      "resetDefaults": "Obnovit výchozí"
+      "resetDefaults": "Obnovit výchozí",
+      "nightShiftTitle": "Pravidla noční směny",
+      "nightShiftDesc": "Nastavte, jak určit noční směnu",
+      "nightShiftStart": "Čas začátku noční směny",
+      "nightShiftEnd": "Čas konce noční směny",
+      "nightShiftCrossMidnight": "Přes půlnoc (konec následující den)",
+      "nightShiftUseSchedule": "Použít také sloupec rozvrhu (HORAIRES_DU_TRAVAIL)"
     },
     "users": {
       "title": "Správa uživatelů",

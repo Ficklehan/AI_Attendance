@@ -249,11 +249,12 @@
                 @clear-freeze="clearFrozenKeys"
               />
             </div>
+            <div ref="homeTableAnchor" class="table-body-scroll-anchor">
             <a-table
               :columns="columns"
               :data-source="tableRecords"
               :pagination="false"
-              :scroll="{ x: scrollX, y: 'calc(100vh - 420px)' }"
+              :scroll="tableScroll"
               :size="'small'"
               class="data-table rich-table-header"
               :row-class-name="getRowClassName"
@@ -324,6 +325,7 @@
                 </template>
               </template>
             </a-table>
+            </div>
           </div>
 
           <!-- Empty State -->
@@ -369,7 +371,7 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted, onBeforeUnmount } from 'vue'
+import { ref, computed, onMounted, onBeforeUnmount, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import { useI18n } from 'vue-i18n'
 import { message } from 'ant-design-vue'
@@ -404,6 +406,7 @@ import {
 import { buildRecognitionTableColumns } from '@/utils/recognitionTableColumns'
 import { useTableColumnSort } from '@/composables/useTableColumnSort'
 import { useAutoSizedColumns } from '@/composables/useAutoSizedColumns'
+import { useTableBodyScrollY } from '@/composables/useTableBodyScrollY'
 import { useColumnFreeze } from '@/composables/useColumnFreeze'
 import TableColumnSettings from '@/components/TableColumnSettings.vue'
 import TableSortableHeader from '@/components/TableSortableHeader.vue'
@@ -435,6 +438,8 @@ const showResult = ref(false)
 const previewVisible = ref(false)
 const previewImage = ref('')
 const previewTitle = ref('')
+const showAnomalyDetail = ref(true)
+const homeTableAnchor = ref(null)
 
 const stopPolling = ref(false)
 const progressRowCount = ref(0)
@@ -629,6 +634,15 @@ const baseColumns = computed(() => buildRecognitionTableColumns(t, { cellStyle }
 const { columns: sortedColumns, onSorterToggle, sortRows } = useTableColumnSort(baseColumns, { customHeader: true })
 const tableRecords = computed(() => sortRows(records.value))
 const { columns: sizedColumns, scrollX } = useAutoSizedColumns(sortedColumns, tableRecords, { actionWidth: 50 })
+const { tableScroll, measure: measureHomeTableScroll } = useTableBodyScrollY(
+  homeTableAnchor,
+  scrollX,
+  { enabled: computed(() => records.value.length > 0) },
+)
+
+watch(showAnomalyDetail, () => {
+  measureHomeTableScroll()
+})
 const {
   frozenColumns: columns,
   hiddenKeys,
@@ -857,8 +871,6 @@ const deleteRecord = (record) => {
     }
   }
 }
-
-const showAnomalyDetail = ref(true)
 
 const anomalyAlerts = computed(() => {
   return records.value

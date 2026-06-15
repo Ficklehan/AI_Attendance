@@ -565,6 +565,7 @@ export default {
       "title": "System & Erinnerungen",
       "subtitle": "Erinnerungsregeln, Benachrichtigungen und Bestätigungsvalidierung",
       "tabReminders": "Erinnerungsregeln",
+      "tabNightShift": "Nachtschichtregeln",
       "tabSystem": "Benachrichtigung & Validierung"
     },
     "system": {
@@ -573,7 +574,13 @@ export default {
       "confirmValidationScopeHint": "Gelöschte und abwesende Zeilen werden übersprungen.",
       "confirmValidationFields": "Pflichtfelder",
       "confirmValidationFieldsRequired": "Mindestens ein Feld auswählen",
-      "resetDefaults": "Standard wiederherstellen"
+      "resetDefaults": "Standard wiederherstellen",
+      "nightShiftTitle": "Nachtschichtregeln",
+      "nightShiftDesc": "Festlegen, wie Nachtschicht erkannt wird",
+      "nightShiftStart": "Startzeit der Nachtschicht",
+      "nightShiftEnd": "Endzeit der Nachtschicht",
+      "nightShiftCrossMidnight": "Über Mitternacht (Ende am nächsten Tag)",
+      "nightShiftUseSchedule": "Auch Spalte Arbeitszeiten (HORAIRES_DU_TRAVAIL) verwenden"
     },
     "users": {
       "title": "Benutzerverwaltung",

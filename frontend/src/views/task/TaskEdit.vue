@@ -1,5 +1,5 @@
 <template>
-  <div class="task-edit-container page-inner">
+  <div class="task-edit-container page-inner" :class="{ 'has-sticky-submit': canShowSubmitBar }">
     <PageShell :title="$t('taskEdit.title')" :subtitle="taskId">
       <template #extra>
         <a-space wrap>
@@ -108,16 +108,29 @@
               <a-radio-button value="confirmed_and_processing">{{ $t('taskEdit.duplicateScopeConfirmedAndProcessing') }}</a-radio-button>
             </a-radio-group>
           </div>
-          <div v-if="anomalyAlerts.length > 0" class="anomaly-hint">
+          <a-alert
+            v-if="requiredMissingCount > 0 && !isConfirmedTask"
+            type="warning"
+            show-icon
+            class="required-validation-banner"
+          >
+            <template #message>
+              <span>{{ $t('taskEdit.requiredValidationBanner', { count: requiredMissingCount }) }}</span>
+              <a-button type="link" size="small" class="required-validation-detail-btn" @click="showRequiredValidationDetail">
+                {{ $t('taskEdit.requiredValidationViewDetail') }}
+              </a-button>
+            </template>
+          </a-alert>
+          <div v-if="anomalyAlertCount > 0" class="anomaly-hint">
             <div class="anomaly-summary">
               <ExclamationCircleOutlined class="anomaly-icon" />
-              <span class="anomaly-text">{{ $t('home.anomalyAlert', { count: anomalyAlerts.length }) }}</span>
-              <a-button type="link" size="small" @click="showAnomalyDetail = !showAnomalyDetail" class="anomaly-toggle">
+              <span class="anomaly-text">{{ $t('home.anomalyAlert', { count: anomalyAlertCount }) }}</span>
+              <a-button type="link" size="small" @click="toggleAnomalyDetail" class="anomaly-toggle">
                 {{ showAnomalyDetail ? $t('home.collapse') : $t('home.expand') }}
               </a-button>
             </div>
             <div v-if="showAnomalyDetail" class="anomaly-detail-list">
-              <div v-for="(alert, idx) in anomalyAlerts" :key="idx" class="anomaly-item">
+              <div v-for="(alert, idx) in anomalyAlertsDetail" :key="idx" class="anomaly-item">
                 <span class="anomaly-name">{{ alert.name }}</span>
                 <span class="anomaly-reasons">
                   <TruncatedTag
@@ -129,12 +142,15 @@
                   />
                 </span>
               </div>
+              <div v-if="anomalyAlertsOverflow > 0" class="anomaly-more-hint">
+                {{ $t('taskEdit.anomalyAlertMore', { count: anomalyAlertsOverflow }) }}
+              </div>
             </div>
           </div>
 
           <a-table 
             :columns="columns" 
-            :data-source="tableRecords" 
+            :data-source="visibleTableRecords" 
             :pagination="false"
             :scroll="{ x: scrollX }"
             :row-key="getRowKey"
@@ -227,12 +243,12 @@
             </template>
             <template #bodyCell="{ column, record, index }">
               <template v-if="column.key === 'serialNo'">
-                <span class="cell-text cell-serial">{{ index + 1 }}</span>
+                <span class="cell-text cell-serial">{{ globalRowSerial(index) }}</span>
               </template>
               <template v-if="column.key === 'anomalyReasons'">
-                <div v-if="getRecordAnomalyReasons(record).length > 0" class="inline-anomaly-tags">
+                <div v-if="getRowAnomalyReasons(record).length > 0" class="inline-anomaly-tags">
                   <TruncatedTag
-                    v-for="(reason, reasonIdx) in getRecordAnomalyReasons(record)"
+                    v-for="(reason, reasonIdx) in getRowAnomalyReasons(record)"
                     :key="reasonIdx"
                     :text="reason"
                     :color="getAnomalyTagColor(reason)"
@@ -446,22 +462,36 @@
               </template>
             </template>
           </a-table>
-          
-          <div class="action-bar">
-            <a-button
-              v-if="task?.status === 'processed'"
-              type="primary"
-              :loading="submitting"
-              @click="handleSubmit"
-              size="large"
-            >
-              {{ $t('taskEdit.submitConfirm') }}
-            </a-button>
-            <a-button v-if="task?.status === 'processed'" @click="$router.back()" size="large">{{ $t('common.cancel') }}</a-button>
+
+          <div
+            v-if="hasMoreTableRows"
+            ref="tableLoadMoreSentinel"
+            class="table-scroll-load-more"
+          >
+            <a-spin v-if="loadingMoreTableRows" size="small" />
+            <span v-else class="table-scroll-load-more__text">
+              {{ $t('taskEdit.scrollLoadMore', { loaded: visibleTableRecords.length, total: tableRecords.length }) }}
+            </span>
           </div>
         </a-tab-pane>
       </a-tabs>
     </a-card>
+
+    <Teleport to="body">
+      <div v-if="canShowSubmitBar" class="task-edit-submit-bar">
+        <div class="task-edit-submit-bar__inner">
+          <a-button
+            type="primary"
+            :loading="submitting"
+            @click="handleSubmit"
+            size="large"
+          >
+            {{ $t('taskEdit.submitConfirm') }}
+          </a-button>
+          <a-button @click="$router.back()" size="large">{{ $t('common.cancel') }}</a-button>
+        </div>
+      </div>
+    </Teleport>
   </div>
   
   <ImagePreviewModal
@@ -479,7 +509,7 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted, onUnmounted, watch, h } from 'vue'
+import { ref, computed, shallowRef, onMounted, onUnmounted, watch, h, nextTick } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useI18n } from 'vue-i18n'
 import { message, Modal as aModal } from 'ant-design-vue'
@@ -542,6 +572,13 @@ const authStore = useAuthStore()
 
 const taskId = computed(() => route.params.taskId)
 const activeTab = ref('edit')
+const TABLE_SCROLL_BATCH = 50
+const visibleRowCount = ref(TABLE_SCROLL_BATCH)
+const loadingMoreTableRows = ref(false)
+const tableLoadMoreSentinel = ref(null)
+const columnsLocked = ref(false)
+const lockedSizedColumns = shallowRef([])
+let tableLoadMoreObserver = null
 const loading = ref(false)
 const submitting = ref(false)
 const retryingSync = ref(false)
@@ -575,6 +612,8 @@ const {
   requiredInputClass,
   requiredTextClass,
   validateBeforeConfirm,
+  collectConfirmValidationIssues,
+  showConfirmValidationModal,
 } = useTaskEditConfirmValidation()
 
 const {
@@ -589,17 +628,83 @@ const {
   getRowTypeDotClass,
   getAnomalyTagColor,
   getAnomalyTagClass,
-  anomalyAlerts,
+  countAnomalyRecords,
+  buildAnomalyAlertsSlice,
+  clearRowCache,
 } = useTaskEditRecordDisplay(records, getDuplicateMeta, { isAbsentRow, hasManualCalibration })
 
+const getRowAnomalyReasons = (record) => getRecordAnomalyReasons(record)
+
 const rawData = ref('')
-const showAnomalyDetail = ref(true)
+const showAnomalyDetail = ref(false)
+const ANOMALY_DETAIL_LIMIT = 20
+const VALIDATION_BANNER_DEBOUNCE_MS = 450
 const previewVisible = ref(false)
 const previewImagesList = ref([])
 const previewCurrentIndex = ref(0)
 const task = ref(null)
 const canDeleteTask = computed(() => task.value?.status !== 'confirmed')
 const isConfirmedTask = computed(() => task.value?.status === 'confirmed')
+const canShowSubmitBar = computed(() => task.value?.status === 'processed')
+
+const requiredMissingCount = ref(0)
+let requiredValidationDebounceTimer = null
+const scheduleRequiredMissingCountUpdate = (immediate = false) => {
+  if (requiredValidationDebounceTimer) {
+    window.clearTimeout(requiredValidationDebounceTimer)
+    requiredValidationDebounceTimer = null
+  }
+  if (immediate) {
+    requiredMissingCount.value = collectConfirmValidationIssues(records.value).length
+    return
+  }
+  requiredValidationDebounceTimer = window.setTimeout(() => {
+    requiredValidationDebounceTimer = null
+    requiredMissingCount.value = collectConfirmValidationIssues(records.value).length
+  }, VALIDATION_BANNER_DEBOUNCE_MS)
+}
+
+const anomalyAlertCount = ref(0)
+let anomalyCountDebounceTimer = null
+const scheduleAnomalyCountUpdate = (immediate = false) => {
+  if (anomalyCountDebounceTimer) {
+    window.clearTimeout(anomalyCountDebounceTimer)
+    anomalyCountDebounceTimer = null
+  }
+  if (immediate) {
+    anomalyAlertCount.value = countAnomalyRecords(records.value)
+    return
+  }
+  anomalyCountDebounceTimer = window.setTimeout(() => {
+    anomalyCountDebounceTimer = null
+    anomalyAlertCount.value = countAnomalyRecords(records.value)
+  }, VALIDATION_BANNER_DEBOUNCE_MS)
+}
+
+const anomalyAlertsDetail = computed(() => {
+  if (!showAnomalyDetail.value) return []
+  return buildAnomalyAlertsSlice(records.value, ANOMALY_DETAIL_LIMIT)
+})
+
+const anomalyAlertsOverflow = computed(() => {
+  if (!showAnomalyDetail.value) return 0
+  return Math.max(0, anomalyAlertCount.value - anomalyAlertsDetail.value.length)
+})
+
+const toggleAnomalyDetail = () => {
+  const next = !showAnomalyDetail.value
+  showAnomalyDetail.value = next
+  if (next) {
+    scheduleAnomalyCountUpdate(true)
+  }
+}
+
+const showRequiredValidationDetail = () => {
+  const issues = collectConfirmValidationIssues(records.value)
+  if (issues.length > 0) {
+    showConfirmValidationModal(issues)
+  }
+}
 const canCalibrateRecord = computed(
   () => authStore.userInfo?.permissions?.recordCalibrate === true
 )
@@ -705,6 +810,44 @@ const filteredRecords = computed(() => {
 })
 
 const tableRecords = computed(() => sortRows(filteredRecords.value))
+
+const visibleTableRecords = computed(() => tableRecords.value.slice(0, visibleRowCount.value))
+
+const hasMoreTableRows = computed(() => visibleRowCount.value < tableRecords.value.length)
+
+const resetVisibleTableRows = () => {
+  visibleRowCount.value = TABLE_SCROLL_BATCH
+}
+
+const loadMoreTableRows = () => {
+  if (!hasMoreTableRows.value || loadingMoreTableRows.value) return
+  loadingMoreTableRows.value = true
+  window.requestAnimationFrame(() => {
+    visibleRowCount.value = Math.min(
+      visibleRowCount.value + TABLE_SCROLL_BATCH,
+      tableRecords.value.length,
+    )
+    loadingMoreTableRows.value = false
+    nextTick(() => bindTableLoadMoreObserver())
+  })
+}
+
+const bindTableLoadMoreObserver = () => {
+  if (!tableLoadMoreObserver) return
+  tableLoadMoreObserver.disconnect()
+  const el = tableLoadMoreSentinel.value
+  if (el && hasMoreTableRows.value) {
+    tableLoadMoreObserver.observe(el)
+  }
+}
+
+const globalRowSerial = (index) => index + 1
+
+const resetTableColumnsLock = () => {
+  columnsLocked.value = false
+  lockedSizedColumns.value = []
+}
+
 const { columns: sizedColumns, scrollX } = useAutoSizedColumns(sortedColumns, tableRecords, {
   actionWidth: isConfirmedTask.value && canCalibrateRecord.value ? 88 : 50,
   getCellSample: (col, record) => {
@@ -714,6 +857,23 @@ const { columns: sizedColumns, scrollX } = useAutoSizedColumns(sortedColumns, ta
     return undefined
   },
 })
+
+watch(
+  () => sizedColumns.value,
+  (cols) => {
+    if (columnsLocked.value || !cols?.length || !records.value.length) return
+    lockedSizedColumns.value = cols.map((col) => ({ ...col }))
+    columnsLocked.value = true
+  },
+  { immediate: true },
+)
+
+const effectiveSizedColumns = computed(() => (
+  columnsLocked.value && lockedSizedColumns.value.length
+    ? lockedSizedColumns.value
+    : sizedColumns.value
+))
+
 const {
   frozenColumns: columns,
   hiddenKeys,
@@ -723,7 +883,7 @@ const {
   setFrozenKeys,
   showAllColumns,
   clearFrozenKeys,
-} = useColumnFreeze('task-edit', sizedColumns, { defaultFrozen: ['serialNo', 'PAGE_NUM', 'NO'] })
+} = useColumnFreeze('task-edit', effectiveSizedColumns, { defaultFrozen: ['serialNo', 'PAGE_NUM', 'NO'] })
 
 const isHeaderFilterActive = (field) => {
   const value = headerFilters.value[field]
@@ -851,6 +1011,10 @@ const loadTask = async (silent = false) => {
   try {
     const response = await getTaskDetail(taskId.value)
     task.value = response.data
+    resetVisibleTableRows()
+    resetTableColumnsLock()
+    clearRowCache()
+    showAnomalyDetail.value = false
 
     if (task.value?.syncStatus === 'pending') {
       startSyncPoll()
@@ -880,6 +1044,8 @@ const loadTask = async (silent = false) => {
       })
       refreshDuplicateDecorations()
       await fetchConfirmedDuplicateHints()
+      scheduleRequiredMissingCountUpdate(true)
+      scheduleAnomalyCountUpdate(true)
     }
     rawData.value = task.value.aiRawOutput || ''
     
@@ -1209,8 +1375,23 @@ const handleSubmit = async () => {
 
 let isComponentMounted = true
 
+watch([tableLoadMoreSentinel, hasMoreTableRows], () => {
+  nextTick(() => bindTableLoadMoreObserver())
+})
+
 onMounted(async () => {
   isComponentMounted = true
+  if (typeof IntersectionObserver !== 'undefined') {
+    tableLoadMoreObserver = new IntersectionObserver(
+      (entries) => {
+        if (entries.some((entry) => entry.isIntersecting)) {
+          loadMoreTableRows()
+        }
+      },
+      { root: null, rootMargin: '160px', threshold: 0 },
+    )
+    nextTick(() => bindTableLoadMoreObserver())
+  }
   if (!authStore.userInfo?.permissions) {
     try {
       await authStore.fetchUserInfo()
@@ -1230,25 +1411,47 @@ onMounted(async () => {
 onUnmounted(() => {
   isComponentMounted = false
   expandedDuplicateRowKeys.value = []
+  if (duplicateDebounceTimer) window.clearTimeout(duplicateDebounceTimer)
+  if (requiredValidationDebounceTimer) window.clearTimeout(requiredValidationDebounceTimer)
+  if (anomalyCountDebounceTimer) window.clearTimeout(anomalyCountDebounceTimer)
+  tableLoadMoreObserver?.disconnect()
+  tableLoadMoreObserver = null
   clearSyncPoll()
 })
 
 watch(taskId, () => {
   if (isComponentMounted) {
+    resetVisibleTableRows()
+    resetTableColumnsLock()
+    clearRowCache()
     loadTask()
   }
 })
 
+let duplicateDebounceTimer = null
 watch(records, () => {
-  if (!duplicateRefreshing.value) {
+  scheduleRequiredMissingCountUpdate()
+  scheduleAnomalyCountUpdate()
+  if (duplicateRefreshing.value) return
+  if (duplicateDebounceTimer) window.clearTimeout(duplicateDebounceTimer)
+  duplicateDebounceTimer = window.setTimeout(() => {
+    duplicateDebounceTimer = null
     refreshDuplicateDecorations()
-  }
+  }, 300)
+}, { deep: true })
+
+watch(headerFilters, () => {
+  resetVisibleTableRows()
 }, { deep: true })
 </script>
 
 <style lang="scss" scoped>
 .task-edit-container {
   padding: 0;
+
+  &.has-sticky-submit {
+    padding-bottom: calc(80px + env(safe-area-inset-bottom, 0px));
+  }
 
   .record-count {
     font-size: 13px;
@@ -1375,6 +1578,12 @@ watch(records, () => {
       padding-top: 14px;
       border-top: 1px solid rgba(60, 60, 67, 0.12);
 
+      .anomaly-more-hint {
+        padding-top: 8px;
+        font-size: 12px;
+        color: $text-secondary;
+      }
+
       .anomaly-item {
         display: flex;
         align-items: center;
@@ -1425,6 +1634,21 @@ watch(records, () => {
     font-size: $font-size-sm;
     color: $text-secondary;
     font-weight: $font-weight-semibold;
+  }
+
+  .table-scroll-load-more {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    min-height: 44px;
+    margin: 8px 0 4px;
+    color: $text-tertiary;
+    font-size: $font-size-sm;
+  }
+
+  .table-scroll-load-more__text {
+    color: $text-secondary;
   }
 
   .edit-table {
@@ -1575,6 +1799,16 @@ watch(records, () => {
     .ant-table-column-title {
       color: $text-primary;
       font-weight: 600;
+    }
+  }
+
+  .required-validation-banner {
+    margin-bottom: 12px;
+
+    .required-validation-detail-btn {
+      padding: 0 0 0 8px;
+      height: auto;
+      line-height: inherit;
     }
   }
 
@@ -1790,6 +2024,29 @@ watch(records, () => {
     .ant-table-tbody > tr.blurred-row:hover > td {
       background-color: $warning-light !important;
     }
+  }
+}
+
+.task-edit-submit-bar {
+  position: fixed;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 110;
+  padding: 14px 24px calc(14px + env(safe-area-inset-bottom, 0px));
+  background: rgba($bg-surface, 0.96);
+  backdrop-filter: blur(10px);
+  border-top: 1px solid $border;
+  box-shadow: 0 -8px 24px rgba(15, 23, 42, 0.08);
+  pointer-events: auto;
+
+  &__inner {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    gap: 20px;
+    max-width: 1200px;
+    margin: 0 auto;
   }
 }
 </style>

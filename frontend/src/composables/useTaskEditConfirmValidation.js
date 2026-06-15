@@ -1,6 +1,9 @@
-import { ref } from 'vue'
+import { ref, h } from 'vue'
 import { Modal as aModal } from 'ant-design-vue'
 import { useI18n } from 'vue-i18n'
+import {
+  groupConfirmValidationIssues,
+} from '@/utils/confirmValidationGrouping'
 import {
   getMissingRequiredFieldKeys,
   REQUIRED_FIELD_I18N_KEYS,
@@ -37,21 +40,38 @@ export function useTaskEditConfirmValidation() {
     'required-empty-display': isRequiredFieldEmpty(record, fieldKey),
   })
 
-  const formatValidationIssueLine = (issue) => {
-    const fieldLabels = (issue.fields || [])
+  const formatFieldLabels = (fieldKeys) =>
+    (fieldKeys || [])
       .map((key) => t(REQUIRED_FIELD_I18N_KEYS[key] || key))
       .join(t('taskEdit.confirmValidationFieldSep'))
-    return t('taskEdit.confirmValidationLine', {
-      line: issue.line,
-      fields: fieldLabels,
+
+  const formatConfirmValidationContent = (issues) => {
+    const groups = groupConfirmValidationIssues(issues)
+    const summary = t('taskEdit.confirmValidationSummary', { count: issues.length })
+    const groupLines = groups.map((group) => {
+      const header = t('taskEdit.confirmValidationGroupHeader', {
+        fields: formatFieldLabels(group.fields),
+        count: group.count,
+      })
+      const lines = t('taskEdit.confirmValidationGroupLines', { ranges: group.lineRanges })
+      return `${header}\n  ${lines}`
     })
+    return `${summary}\n\n${groupLines.join('\n\n')}`
   }
 
   const showConfirmValidationModal = (issues) => {
-    const lines = issues.map((issue) => formatValidationIssueLine(issue))
+    const content = formatConfirmValidationContent(issues)
     aModal.error({
       title: t('taskEdit.confirmValidationTitle'),
-      content: `${t('taskEdit.confirmValidationSummary', { count: issues.length })}\n\n${lines.join('\n')}`,
+      content: h('div', {
+        style: {
+          maxHeight: '360px',
+          overflowY: 'auto',
+          whiteSpace: 'pre-wrap',
+          lineHeight: '1.6',
+          fontSize: '13px',
+        },
+      }, content),
       width: 560,
       okText: t('common.confirm'),
     })
@@ -75,5 +95,7 @@ export function useTaskEditConfirmValidation() {
     requiredTextClass,
     validateBeforeConfirm,
     collectConfirmValidationIssues,
+    formatConfirmValidationContent,
+    showConfirmValidationModal,
   }
 }

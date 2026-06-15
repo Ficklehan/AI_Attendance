@@ -232,6 +232,34 @@
   line-height: 1.4;
 }
 
+.result-page .required-validation-banner {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12rpx;
+  margin-top: 8rpx;
+  padding: 10rpx 14rpx;
+  border-radius: var(--radius-sm);
+  background: rgba(247, 183, 49, 0.14);
+  box-shadow: inset 0 0 0 1rpx rgba(247, 183, 49, 0.28);
+}
+
+.result-page .required-validation-text {
+  flex: 1;
+  min-width: 0;
+  font-size: 20rpx;
+  color: #9a6b00;
+  line-height: 1.45;
+  font-weight: 600;
+}
+
+.result-page .required-validation-link {
+  flex-shrink: 0;
+  font-size: 20rpx;
+  color: var(--primary);
+  font-weight: 600;
+}
+
 .result-page .issue-panel {
   margin: 0 var(--sp-6) var(--sp-3);
   padding: var(--sp-3) var(--sp-4);

@@ -227,6 +227,7 @@
       "title": "Système et rappels",
       "subtitle": "Règles de rappel, notifications et validation à la confirmation",
       "tabReminders": "Règles de rappel",
+      "tabNightShift": "Règles de poste de nuit",
       "tabSystem": "Notifications et validation"
     },
     "system": {
@@ -235,7 +236,13 @@
       "confirmValidationScopeHint": "Les lignes supprimées ou absentes sont ignorées.",
       "confirmValidationFields": "Champs obligatoires",
       "confirmValidationFieldsRequired": "Sélectionnez au moins un champ",
-      "resetDefaults": "Réinitialiser"
+      "resetDefaults": "Réinitialiser",
+      "nightShiftTitle": "Règles de poste de nuit",
+      "nightShiftDesc": "Définir comment déterminer le poste de nuit",
+      "nightShiftStart": "Heure de début du poste de nuit",
+      "nightShiftEnd": "Heure de fin du poste de nuit",
+      "nightShiftCrossMidnight": "Franchit minuit (fin le lendemain)",
+      "nightShiftUseSchedule": "Utiliser aussi la colonne horaire (HORAIRES_DU_TRAVAIL)"
     },
     "users": {
       "title": "Gestion des utilisateurs",

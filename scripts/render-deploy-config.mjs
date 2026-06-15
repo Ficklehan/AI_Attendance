@@ -161,15 +161,24 @@ function deriveRuntime(manifest) {
 }
 
 function renderEnvFile(urls, manifest, runtime) {
+  const usePublic = runtime.RUNTIME_MODE === 'public'
+  const activeApi = usePublic ? urls.PUBLIC_BASE_URL : runtime.LOCAL_API_BASE_URL
+  const activeProfile = usePublic ? urls.SPRING_PROFILES_ACTIVE : 'dev'
+  const modeNote = usePublic
+    ? '# runtime.mode=public → 小程序走公网 API，后端 profile 见 SPRING_PROFILES_ACTIVE'
+    : '# runtime.mode=local → 小程序/本机后端走 ACTIVE_*；下方 PUBLIC_* 仅保留公网域名参考'
   const lines = [
     '# AUTO-GENERATED — do not edit. Source: deploy/environments/' + manifest._sourceFile,
-    '# Regenerate: node scripts/render-deploy-config.mjs --env ' + manifest._envName,
+    '# Regenerate: ./start.sh apply  或  npm run apply:site',
+    modeNote,
     '',
     `DEPLOY_MANIFEST=${manifest._sourceFile}`,
     `DEPLOY_ENV=${manifest._envName}`,
     `RUNTIME_MODE=${runtime.RUNTIME_MODE}`,
     `MINIPROGRAM_USE_PUBLIC_API=${runtime.MINIPROGRAM_USE_PUBLIC_API}`,
     `LOCAL_API_BASE_URL=${runtime.LOCAL_API_BASE_URL}`,
+    `ACTIVE_API_BASE_URL=${activeApi}`,
+    `ACTIVE_BACKEND_PROFILE=${activeProfile}`,
     '',
     `PUBLIC_HOST=${urls.PUBLIC_HOST}`,
     `PUBLIC_SCHEME=${urls.PUBLIC_SCHEME}`,
@@ -188,13 +197,17 @@ function renderEnvFile(urls, manifest, runtime) {
   return lines.join('\n')
 }
 
-function renderMiniprogramConfig(urls, manifest) {
+function renderMiniprogramConfig(urls, manifest, runtime) {
+  const dormant = runtime.RUNTIME_MODE === 'local'
+    ? '\n * 当前 runtime.mode=local，小程序实际 API 以 config.runtime.js 为准（本文件公网地址暂不生效）。'
+    : ''
   return `/**
  * AUTO-GENERATED — do not edit.
- * Source: deploy/environments/${manifest._sourceFile}
+ * Source: deploy/environments/${manifest._sourceFile}${dormant}
  * Regenerate: ./start.sh apply  或  npm run apply:site
  */
 module.exports = {
+  RUNTIME_MODE: '${runtime.RUNTIME_MODE}',
   PUBLIC_HOST: '${urls.PUBLIC_HOST}',
   PUBLIC_ORIGIN: '${urls.PUBLIC_ORIGIN}',
   PUBLIC_BASE_URL: '${urls.PUBLIC_BASE_URL}',
@@ -204,8 +217,15 @@ module.exports = {
 `
 }
 
-function renderMiniprogramRuntime(runtime, manifest) {
+function renderMiniprogramRuntime(runtime, urls, manifest) {
   const usePublic = runtime.MINIPROGRAM_USE_PUBLIC_API === 'true'
+  const activeApi = usePublic ? urls.PUBLIC_BASE_URL : runtime.LOCAL_API_BASE_URL
+  const publicBlock = usePublic
+    ? `
+  PUBLIC_HOST: '${urls.PUBLIC_HOST}',
+  PUBLIC_ORIGIN: '${urls.PUBLIC_ORIGIN}',
+  PUBLIC_BASE_URL: '${urls.PUBLIC_BASE_URL}',`
+    : ''
   return `/**
  * AUTO-GENERATED — do not edit.
  * Source: deploy/environments/${manifest._sourceFile} → runtime.mode
@@ -214,7 +234,8 @@ function renderMiniprogramRuntime(runtime, manifest) {
 module.exports = {
   RUNTIME_MODE: '${runtime.RUNTIME_MODE}',
   USE_PUBLIC_API: ${usePublic},
-  LOCAL_BASE_URL: '${runtime.LOCAL_API_BASE_URL}',
+  API_BASE_URL: '${activeApi}',
+  LOCAL_BASE_URL: '${runtime.LOCAL_API_BASE_URL}',${publicBlock}
 }
 `
 }
@@ -262,6 +283,17 @@ function writeFileEnsuringDir(filePath, content) {
   fs.writeFileSync(filePath, content, 'utf8')
 }
 
+function verifyRenderedRuntime(miniprogramRuntimeFile, runtime) {
+  const text = fs.readFileSync(miniprogramRuntimeFile, 'utf8')
+  const expectedMode = `RUNTIME_MODE: '${runtime.RUNTIME_MODE}'`
+  const expectedUsePublic = `USE_PUBLIC_API: ${runtime.MINIPROGRAM_USE_PUBLIC_API === 'true'}`
+  if (!text.includes(expectedMode) || !text.includes(expectedUsePublic)) {
+    throw new Error(
+      `config.runtime.js 与 production.yaml 不一致，期望 ${runtime.RUNTIME_MODE}。请重新执行 ./start.sh apply`,
+    )
+  }
+}
+
 function main() {
   const { env, check } = parseArgs(process.argv)
   const manifest = readManifest(env)
@@ -275,8 +307,8 @@ function main() {
   const miniprogramRuntimeFile = path.join(ROOT, 'feishu-miniprogram', 'config.runtime.js')
 
   const envContent = renderEnvFile(urls, manifest, runtime)
-  const miniprogramContent = renderMiniprogramConfig(urls, manifest)
-  const miniprogramRuntimeContent = renderMiniprogramRuntime(runtime, manifest)
+  const miniprogramContent = renderMiniprogramConfig(urls, manifest, runtime)
+  const miniprogramRuntimeContent = renderMiniprogramRuntime(runtime, urls, manifest)
   const snapshot = {
     generatedAt: new Date().toISOString(),
     manifest: manifest._sourceFile,
@@ -314,13 +346,17 @@ function main() {
   if (env === 'production') {
     fs.writeFileSync(miniprogramFile, miniprogramContent, 'utf8')
     fs.writeFileSync(miniprogramRuntimeFile, miniprogramRuntimeContent, 'utf8')
+    verifyRenderedRuntime(miniprogramRuntimeFile, runtime)
     console.log('  miniprogram:   ', path.relative(ROOT, miniprogramFile))
     console.log('  mp runtime:    ', path.relative(ROOT, miniprogramRuntimeFile))
   }
+  const activeApi =
+    runtime.RUNTIME_MODE === 'public' ? urls.PUBLIC_BASE_URL : runtime.LOCAL_API_BASE_URL
   console.log('')
   console.log('Runtime mode:   ', runtime.RUNTIME_MODE)
-  console.log('Public API base:', urls.PUBLIC_BASE_URL)
-  console.log('Spring profile: ', urls.SPRING_PROFILES_ACTIVE)
+  console.log('Active API:     ', activeApi)
+  console.log('Public API ref: ', urls.PUBLIC_BASE_URL, '(config.prod.js，local 模式下不生效)')
+  console.log('Backend profile:', runtime.RUNTIME_MODE === 'public' ? urls.SPRING_PROFILES_ACTIVE : 'dev')
   console.log('Miniprogram:    ', runtime.MINIPROGRAM_USE_PUBLIC_API === 'true' ? 'public API' : 'localhost')
   console.log('')
   console.log('Apply config + restart backend:')

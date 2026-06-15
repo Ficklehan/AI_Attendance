@@ -115,6 +115,10 @@ body {
   animation: fadeUp 0.4s $ease-out forwards;
 }
 
+.table-body-scroll-anchor {
+  min-width: 0;
+}
+
 // ── Buttons ──
 .btn-primary-gradient {
   background: $primary-gradient;

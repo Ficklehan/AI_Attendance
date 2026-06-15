@@ -9,7 +9,11 @@ const {
   buildDisplayRecords,
   mapTaskDetail
 } = require('../../utils/task')
-const { calculateRecordStats, hasRequiredMissing } = require('../../utils/recordDisplay')
+const { calculateRecordStats } = require('../../utils/recordDisplay')
+const {
+  countRequiredMissing,
+  showRequiredValidationModal,
+} = require('../../utils/confirmValidationDisplay')
 const { formatRecognitionEngine } = require('../../utils/engineLabel')
 const { getCountryLabel } = require('../../utils/preferences')
 const {
@@ -87,6 +91,8 @@ Page({
     expandedDuplicateKeys: [],
     expandedCalibrationKeys: [],
     duplicateRefreshing: false,
+    requiredMissingCount: 0,
+    requiredValidationBannerText: '',
     texts: {}
   },
 
@@ -153,6 +159,7 @@ Page({
         duplicateExpand: t('result.duplicateExpand'),
         duplicateCollapse: t('result.duplicateCollapse'),
         duplicateNotDuplicate: t('result.duplicateNotDuplicate'),
+        requiredValidationViewDetail: t('result.requiredValidationViewDetail'),
         duplicateDetailTitle: t('result.duplicateDetailTitle'),
         duplicateSourceTask: t('result.duplicateSourceTask'),
         duplicateColNo: t('result.duplicateColNo'),
@@ -468,6 +475,21 @@ Page({
     this.setData({ expandedCalibrationKeys: next }, () => this.refreshDisplayRecords())
   },
 
+  refreshRequiredValidation: function () {
+    const { records, canSubmit } = this.data
+    const requiredMissingCount = canSubmit ? countRequiredMissing(records) : 0
+    this.setData({
+      requiredMissingCount,
+      requiredValidationBannerText: requiredMissingCount > 0
+        ? t('result.requiredValidationBanner', { count: requiredMissingCount })
+        : '',
+    })
+  },
+
+  showRequiredValidationDetail: function () {
+    showRequiredValidationModal(this.data.records, t)
+  },
+
   refreshDisplayRecords: function () {
     const { records, visibleCount, recordsExpanded, canSubmit } = this.data
     const allBuilt = this.attachDuplicateUi(buildDisplayRecords(records, records.length))
@@ -478,9 +500,12 @@ Page({
     if (canSubmit && issueCount > 0) {
       submitCtaLabel = t('result.confirmSubmitWithIssues', { count: issueCount })
     }
+    const finish = (payload) => {
+      this.setData(payload, () => this.refreshRequiredValidation())
+    }
     if (recordsExpanded) {
       const displayRecords = this.attachDuplicateUi(buildDisplayRecords(records, visibleCount))
-      this.setData({
+      finish({
         displayRecords,
         issueRecords,
         issueCount,
@@ -490,7 +515,7 @@ Page({
       return
     }
     if (issueCount > 0) {
-      this.setData({
+      finish({
         displayRecords: [],
         issueRecords,
         issueCount,
@@ -500,7 +525,7 @@ Page({
       return
     }
     const preview = allBuilt.slice(0, Math.min(5, allBuilt.length))
-    this.setData({
+    finish({
       displayRecords: preview,
       issueRecords: [],
       issueCount: 0,
@@ -654,13 +679,7 @@ Page({
   },
 
   submitToFeishu: function () {
-    const incompleteCount = (this.data.records || []).filter(hasRequiredMissing).length
-    if (incompleteCount > 0) {
-      tt.showToast({
-        title: t('result.requiredFieldsMissing', { count: incompleteCount }),
-        icon: 'none',
-        duration: 3000
-      })
+    if (showRequiredValidationModal(this.data.records, t)) {
       return
     }
 
