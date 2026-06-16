@@ -15,6 +15,7 @@ import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
 
 import java.util.List;
+import java.util.Map;
 import java.util.concurrent.Executor;
 
 /**
@@ -174,7 +175,7 @@ public class RecognitionJobService {
             RecognitionRunner.RecognitionOutcome outcome = recognitionRunner.recognizeAllTaskImages(
                     taskId, configCountry, trace, systemRecovery);
             String rawData = JSON.toJSONString(outcome.getRecords());
-            taskService.updateTaskRawData(taskId, rawData, outcome.getEngine(), trace);
+            taskService.updateTaskRawData(taskId, rawData, outcome.getEngine(), trace, outcome.getImageQuality());
             taskService.clearRecognitionCheckpoint(taskId);
             log.info("任务识别完成: taskId={}, rows={}, source={}", taskId, outcome.getRecords().size(), job.getJobSource());
         } catch (Exception e) {
@@ -187,6 +188,10 @@ public class RecognitionJobService {
     private boolean shouldSkipDuplicateSubmission(String taskId, com.attendance.entity.Task task) {
         if (recognitionCoordinator.isTaskLocked(taskId)) {
             log.info("识别任务已在执行中，跳过重复提交: taskId={}", taskId);
+            return true;
+        }
+        if (recognitionProperties.getQueue().isEnabled() && recognitionQueueService.hasActiveJob(taskId)) {
+            log.info("识别任务已在队列中，跳过重复提交: taskId={}", taskId);
             return true;
         }
         int staleSeconds = recognitionProperties.getStaleHeartbeatSeconds();
@@ -212,14 +217,21 @@ public class RecognitionJobService {
 
     private void handleRecognitionFailure(String taskId, Exception e, RecognitionTrace trace) {
         log.error("识别失败: taskId={}", taskId, e);
-        String msg = e.getMessage() != null ? e.getMessage() : "识别失败";
+        String msg = com.attendance.util.RecognitionFailureMessages.toClientMessage(e);
+        Map<String, Object> errorArgs = null;
+        if (e instanceof com.attendance.common.BusinessException) {
+            com.attendance.common.BusinessException be = (com.attendance.common.BusinessException) e;
+            if (be.getMessageArgs() != null && !be.getMessageArgs().isEmpty()) {
+                errorArgs = be.getMessageArgs();
+            }
+        }
         if (trace != null) {
             trace.step("upload_failed", "message", msg);
         }
         RecognitionCheckpoint cp = taskService.loadRecognitionCheckpoint(taskId);
         cp.setLastError(msg);
         taskService.saveRecognitionCheckpoint(taskId, cp);
-        taskService.failTask(taskId, msg, trace);
+        taskService.failTask(taskId, msg, errorArgs, trace);
     }
 
     @Scheduled(fixedDelay = 60_000, initialDelay = 90_000)

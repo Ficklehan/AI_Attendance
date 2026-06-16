@@ -52,6 +52,7 @@
     "taskAccessDenied": "Accès refusé à cette tâche",
     "imageInvalid": "Fichier image invalide",
     "mimoNotConfigured": "Clé MIMO API non configurée. Définissez MIMO_API_KEY dans backend/.env et redémarrez",
+    "mimoUnavailable": "Reconnaissance IA temporairement indisponible (erreur API MiMo). Réessayez dans 1–2 minutes",
     "aiHeaderEcho": "Le modèle a renvoyé des en-têtes de colonnes comme données. Vérifiez le pays de travail et uploadez une photo plus claire",
     "aiInvalidJson": "Le modèle a renvoyé des lignes JSON non analysables. Réessayez avec une image plus claire.",
     "aiNoParseableRecords": "Aucune ligne JSON d'assiduité analysable. Réessayez avec une image plus claire.",

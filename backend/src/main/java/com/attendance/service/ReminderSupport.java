@@ -252,6 +252,53 @@ public final class ReminderSupport {
         }
     }
 
+    public static boolean supportsScheduleHour(String unit) {
+        String normalized = normalizeIntervalUnit(unit);
+        return "day".equals(normalized) || "week".equals(normalized);
+    }
+
+    public static Integer normalizeScheduleHour(Integer hour, String unit) {
+        if (!supportsScheduleHour(unit)) {
+            return null;
+        }
+        if (hour == null) {
+            return null;
+        }
+        int value = hour;
+        if (value < 0) {
+            value = 0;
+        }
+        if (value > 23) {
+            value = 23;
+        }
+        return value;
+    }
+
+    /**
+     * day/week 周期：达到滞后阈值后，仅在当天该小时及之后发送（调度每 15 分钟扫描）。
+     */
+    public static boolean isScheduleTimeReached(String unit, Integer scheduleHour, LocalDateTime now) {
+        if (!supportsScheduleHour(unit)) {
+            return true;
+        }
+        Integer hour = normalizeScheduleHour(scheduleHour, unit);
+        if (hour == null) {
+            return true;
+        }
+        if (now == null) {
+            return false;
+        }
+        return now.getHour() >= hour;
+    }
+
+    public static String formatScheduleHour(Integer hour) {
+        if (hour == null) {
+            return "";
+        }
+        int value = Math.max(0, Math.min(23, hour));
+        return String.format("%02d:00", value);
+    }
+
     public static long computePeriodIndex(LocalDateTime statusEnteredAt, LocalDateTime now, long intervalMs) {
         if (statusEnteredAt == null || intervalMs <= 0) {
             return 0;

@@ -98,6 +98,9 @@ public class ReminderSchedulerService {
         }
         Set<String> ruleRecipientSet = new HashSet<>(ruleRecipients);
         long intervalMs = ReminderSupport.intervalToMillis(rule.getIntervalValue(), rule.getIntervalUnit());
+        if (!ReminderSupport.isScheduleTimeReached(rule.getIntervalUnit(), rule.getScheduleHourOfDay(), now)) {
+            return;
+        }
 
         List<Task> tasks = taskMapper.selectTasksByStatuses(statuses);
         int hitCount = 0;

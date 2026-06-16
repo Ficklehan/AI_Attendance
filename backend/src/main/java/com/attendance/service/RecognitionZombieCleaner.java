@@ -26,11 +26,15 @@ public class RecognitionZombieCleaner {
     @Autowired
     private RecognitionProperties recognitionProperties;
 
+    @Autowired
+    private RecognitionQueueService recognitionQueueService;
+
     @Scheduled(fixedDelay = 300_000, initialDelay = 120_000)
     public void expireZombieTasks() {
         if (!recognitionCoordinator.tryAcquireLeaderLock("zombie")) {
             return;
         }
+        recognitionQueueService.reclaimStaleRunningJobs();
         int zombieMinutes = recognitionProperties.getZombieTimeoutMinutes();
         int batchSize = recognitionProperties.getRecoveryBatchSize();
         List<String> zombieIds = taskService.findZombieProcessingTaskIds(zombieMinutes, batchSize);

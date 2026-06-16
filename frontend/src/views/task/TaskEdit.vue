@@ -132,15 +132,15 @@
             <div v-if="showAnomalyDetail" class="anomaly-detail-list">
               <div v-for="(alert, idx) in anomalyAlertsDetail" :key="idx" class="anomaly-item">
                 <span class="anomaly-name">{{ alert.name }}</span>
-                <span class="anomaly-reasons">
+                <div class="anomaly-reasons">
                   <TruncatedTag
-                    v-for="(reason, rIdx) in alert.reasons"
-                    :key="rIdx"
-                    :text="reason"
-                    :color="getAnomalyTagColor(reason)"
+                    v-for="group in alert.groups"
+                    :key="group.category"
+                    :text="group.summary"
+                    :color="getAnomalyCategoryColor(group.category)"
                     size="small"
                   />
-                </span>
+                </div>
               </div>
               <div v-if="anomalyAlertsOverflow > 0" class="anomaly-more-hint">
                 {{ $t('taskEdit.anomalyAlertMore', { count: anomalyAlertsOverflow }) }}
@@ -246,12 +246,12 @@
                 <span class="cell-text cell-serial">{{ globalRowSerial(index) }}</span>
               </template>
               <template v-if="column.key === 'anomalyReasons'">
-                <div v-if="getRowAnomalyReasons(record).length > 0" class="inline-anomaly-tags">
+                <div v-if="getRecordAnomalyGroups(record).length > 0" class="inline-anomaly-tags">
                   <TruncatedTag
-                    v-for="(reason, reasonIdx) in getRowAnomalyReasons(record)"
-                    :key="reasonIdx"
-                    :text="reason"
-                    :color="getAnomalyTagColor(reason)"
+                    v-for="group in getRecordAnomalyGroups(record)"
+                    :key="group.category"
+                    :text="group.summary"
+                    :color="getAnomalyCategoryColor(group.category)"
                     size="small"
                   />
                 </div>
@@ -267,16 +267,16 @@
                 <span v-else class="cell-text">{{ displayFieldValue(record.PAGE_NUM || record.pageNum) }}</span>
               </template>
               <template v-if="column.key === 'NO'">
-                <a-input v-if="isRecordEditable(record)" v-model:value="record.NO" size="small" :bordered="false" />
-                <span v-else class="cell-text">{{ displayFieldValue(record.NO) }}</span>
+                <a-input v-if="isRecordEditable(record)" v-model:value="record.NO" size="small" :class="fieldInputClass(record, 'NO')" :bordered="false" :placeholder="fieldUnreadablePlaceholder(record, 'NO')" @change="onReadableFieldChange(record, 'NO')" />
+                <span v-else :class="fieldTextClass(record, 'NO')">{{ displayRecordField(record, 'NO') }}</span>
               </template>
               <template v-if="column.key === 'Pays'">
-                <a-input v-if="isRecordEditable(record)" v-model:value="record.Pays" size="small" :class="requiredInputClass(record, 'Pays')" :bordered="false" />
-                <span v-else :class="requiredTextClass(record, 'Pays')">{{ displayFieldValue(record.Pays) }}</span>
+                <a-input v-if="isRecordEditable(record)" v-model:value="record.Pays" size="small" :class="fieldInputClass(record, 'Pays')" :bordered="false" :placeholder="fieldUnreadablePlaceholder(record, 'Pays')" @change="onReadableFieldChange(record, 'Pays')" />
+                <span v-else :class="fieldTextClass(record, 'Pays')">{{ displayRecordField(record, 'Pays') }}</span>
               </template>
               <template v-if="column.key === 'Entrepot'">
-                <a-input v-if="isRecordEditable(record)" v-model:value="record.Entrepot" size="small" :class="requiredInputClass(record, 'Entrepot')" :bordered="false" />
-                <span v-else :class="requiredTextClass(record, 'Entrepot')">{{ displayFieldValue(record.Entrepot) }}</span>
+                <a-input v-if="isRecordEditable(record)" v-model:value="record.Entrepot" size="small" :class="fieldInputClass(record, 'Entrepot')" :bordered="false" :placeholder="fieldUnreadablePlaceholder(record, 'Entrepot')" @change="onReadableFieldChange(record, 'Entrepot')" />
+                <span v-else :class="fieldTextClass(record, 'Entrepot')">{{ displayRecordField(record, 'Entrepot') }}</span>
               </template>
               <template v-if="column.key === 'NOM_PRENOM'">
                 <div class="name-cell">
@@ -284,11 +284,12 @@
                     v-if="isRecordEditable(record)"
                     v-model:value="record.NOM_PRENOM"
                     size="small"
-                    :class="requiredInputClass(record, 'NOM_PRENOM')"
+                    :class="fieldInputClass(record, 'NOM_PRENOM')"
                     :bordered="false"
-                    @change="markNameManuallyEdited(record)"
+                    :placeholder="fieldUnreadablePlaceholder(record, 'NOM_PRENOM')"
+                    @change="onReadableFieldChange(record, 'NOM_PRENOM')"
                   />
-                  <span v-else :class="requiredTextClass(record, 'NOM_PRENOM')">{{ displayFieldValue(record.NOM_PRENOM) }}</span>
+                  <span v-else :class="fieldTextClass(record, 'NOM_PRENOM')">{{ displayRecordField(record, 'NOM_PRENOM') }}</span>
                   <div v-if="getDuplicateMeta(record)" class="duplicate-tools">
                     <a-tag color="gold" size="small">{{ $t('taskEdit.duplicateTag') }}</a-tag>
                     <a-button type="link" size="small" class="duplicate-link" @click="toggleDuplicateExpand(record)">
@@ -307,49 +308,52 @@
                 </div>
               </template>
               <template v-if="column.key === 'AGENCE_INTERIMAIRE'">
-                <a-input v-if="isRecordEditable(record)" v-model:value="record.AGENCE_INTERIMAIRE" size="small" :class="requiredInputClass(record, 'AGENCE_INTERIMAIRE')" :bordered="false" />
-                <span v-else :class="requiredTextClass(record, 'AGENCE_INTERIMAIRE')">{{ displayFieldValue(record.AGENCE_INTERIMAIRE) }}</span>
+                <a-input v-if="isRecordEditable(record)" v-model:value="record.AGENCE_INTERIMAIRE" size="small" :class="fieldInputClass(record, 'AGENCE_INTERIMAIRE')" :bordered="false" :placeholder="fieldUnreadablePlaceholder(record, 'AGENCE_INTERIMAIRE')" @change="onReadableFieldChange(record, 'AGENCE_INTERIMAIRE')" />
+                <span v-else :class="fieldTextClass(record, 'AGENCE_INTERIMAIRE')">{{ displayRecordField(record, 'AGENCE_INTERIMAIRE') }}</span>
               </template>
               <template v-if="column.key === 'HORAIRES_DU_TRAVAIL'">
                 <a-input
                   v-if="isRecordEditable(record)"
                   v-model:value="record.HORAIRES_DU_TRAVAIL"
                   size="small"
-                  :class="requiredInputClass(record, 'HORAIRES_DU_TRAVAIL')"
+                  :class="fieldInputClass(record, 'HORAIRES_DU_TRAVAIL')"
                   :bordered="false"
-                  @change="() => refreshRecordNightShiftMark(record)"
+                  :placeholder="fieldUnreadablePlaceholder(record, 'HORAIRES_DU_TRAVAIL')"
+                  @change="onReadableFieldChange(record, 'HORAIRES_DU_TRAVAIL')"
                 />
-                <span v-else :class="requiredTextClass(record, 'HORAIRES_DU_TRAVAIL')">{{ displayFieldValue(record.HORAIRES_DU_TRAVAIL) }}</span>
+                <span v-else :class="fieldTextClass(record, 'HORAIRES_DU_TRAVAIL')">{{ displayRecordField(record, 'HORAIRES_DU_TRAVAIL') }}</span>
               </template>
               <template v-if="column.key === 'Date'">
-                <a-input v-if="isRecordEditable(record)" v-model:value="record.Date" size="small" :class="requiredInputClass(record, 'Date')" :bordered="false" />
-                <span v-else :class="requiredTextClass(record, 'Date')">{{ displayFieldValue(record.Date) }}</span>
+                <a-input v-if="isRecordEditable(record)" v-model:value="record.Date" size="small" :class="fieldInputClass(record, 'Date')" :bordered="false" :placeholder="fieldUnreadablePlaceholder(record, 'Date')" @change="onReadableFieldChange(record, 'Date')" />
+                <span v-else :class="fieldTextClass(record, 'Date')">{{ displayRecordField(record, 'Date') }}</span>
               </template>
               <template v-if="column.key === 'ARRIVEE'">
                 <a-input
                   v-if="isRecordEditable(record)"
                   v-model:value="record.ARRIVEE"
                   size="small"
-                  :class="requiredInputClass(record, 'ARRIVEE')"
+                  :class="fieldInputClass(record, 'ARRIVEE')"
                   :bordered="false"
-                  @change="() => refreshRecordNightShiftMark(record)"
+                  :placeholder="fieldUnreadablePlaceholder(record, 'ARRIVEE')"
+                  @change="onReadableFieldChange(record, 'ARRIVEE')"
                 />
-                <span v-else :class="requiredTextClass(record, 'ARRIVEE')">{{ displayFieldValue(record.ARRIVEE) }}</span>
+                <span v-else :class="fieldTextClass(record, 'ARRIVEE')">{{ displayRecordField(record, 'ARRIVEE') }}</span>
               </template>
               <template v-if="column.key === 'DEPAR'">
                 <a-input
                   v-if="isRecordEditable(record)"
                   v-model:value="record.DEPAR"
                   size="small"
-                  :class="requiredInputClass(record, 'DEPAR')"
+                  :class="fieldInputClass(record, 'DEPAR')"
                   :bordered="false"
-                  @change="() => refreshRecordNightShiftMark(record)"
+                  :placeholder="fieldUnreadablePlaceholder(record, 'DEPAR')"
+                  @change="onReadableFieldChange(record, 'DEPAR')"
                 />
-                <span v-else :class="requiredTextClass(record, 'DEPAR')">{{ displayFieldValue(record.DEPAR) }}</span>
+                <span v-else :class="fieldTextClass(record, 'DEPAR')">{{ displayRecordField(record, 'DEPAR') }}</span>
               </template>
               <template v-if="column.key === 'PAUSE'">
-                <a-input-number v-if="isRecordEditable(record)" v-model:value="record.PAUSE" size="small" :class="requiredInputClass(record, 'PAUSE')" :bordered="false" :controls="false" :min="0" :precision="0" style="width: 100%" @blur="() => normalizeRecordPauseOnBlur(record)" />
-                <span v-else :class="requiredTextClass(record, 'PAUSE')">{{ formatPauseDisplay(record.PAUSE) }}</span>
+                <a-input-number v-if="isRecordEditable(record)" v-model:value="record.PAUSE" size="small" :class="fieldInputClass(record, 'PAUSE')" :bordered="false" :controls="false" :min="0" :precision="0" style="width: 100%" @blur="() => normalizeRecordPauseOnBlur(record)" />
+                <span v-else :class="fieldTextClass(record, 'PAUSE')">{{ formatPauseDisplay(record.PAUSE) }}</span>
               </template>
               <template v-if="column.key === 'SIGNATURE'">
                 <a-select
@@ -373,8 +377,8 @@
                 </a-tag>
               </template>
               <template v-if="column.key === 'Observations'">
-                <a-input v-if="isRecordEditable(record)" v-model:value="record.Observations" size="small" :bordered="false" />
-                <span v-else class="cell-text">{{ displayFieldValue(record.Observations) }}</span>
+                <a-input v-if="isRecordEditable(record)" v-model:value="record.Observations" size="small" :class="fieldInputClass(record, 'Observations')" :bordered="false" :placeholder="fieldUnreadablePlaceholder(record, 'Observations')" @change="onReadableFieldChange(record, 'Observations')" />
+                <span v-else :class="fieldTextClass(record, 'Observations')">{{ displayRecordField(record, 'Observations') }}</span>
               </template>
               <template v-if="column.key === 'SmartMark'">
                 <div class="mark-tags-cell">
@@ -558,7 +562,7 @@ import {
 import { FIELD_LABEL_KEYS } from '@/constants/calibratableFields'
 import { API_BASE_PATH } from '@/constants/apiBase'
 import { getConfirmValidationConfig as fetchConfirmValidationConfig } from '@/api/config'
-import { displayFieldValue, isPlaceholderValue, sanitizeFieldValue, sanitizeRecordPlaceholders } from '@/utils/fieldPlaceholder'
+import { displayFieldValue, isFieldUnreadable, clearFieldUnreadable, isPlaceholderValue, prepareRecordPlaceholders, sanitizeFieldValue, sanitizeRecordPlaceholders, stripRecordMetadata } from '@/utils/fieldPlaceholder'
 import { startAdaptivePoll } from '@/utils/adaptivePoll'
 import { isAbsentRow } from '@/utils/recordDisplay'
 import { useTaskEditDuplicates } from '@/composables/useTaskEditDuplicates'
@@ -622,16 +626,63 @@ const {
   getDisplaySmartMark,
   getSmartMarkDisplay,
   getRecordAnomalyReasons,
+  getRecordAnomalyGroups,
   getRowClassName,
   getMarkColor,
   getRowTypeLabel,
   getRowTypeDotClass,
   getAnomalyTagColor,
+  getAnomalyCategoryColor,
   getAnomalyTagClass,
   countAnomalyRecords,
   buildAnomalyAlertsSlice,
   clearRowCache,
 } = useTaskEditRecordDisplay(records, getDuplicateMeta, { isAbsentRow, hasManualCalibration })
+
+const fieldInputClass = (record, field) => {
+  const requiredEmpty = isRequiredFieldEmpty(record, field)
+  const unreadable = isFieldUnreadable(record, field) && !requiredEmpty
+  return {
+    ...requiredInputClass(record, field),
+    'field-unreadable-cell': unreadable,
+  }
+}
+
+const fieldTextClass = (record, field) => {
+  const requiredEmpty = isRequiredFieldEmpty(record, field)
+  if (requiredEmpty) {
+    return requiredTextClass(record, field)
+  }
+  if (isFieldUnreadable(record, field)) {
+    return { 'cell-text': true, 'field-unreadable-cell': true }
+  }
+  return { 'cell-text': true }
+}
+
+const displayRecordField = (record, field) => {
+  if (isRequiredFieldEmpty(record, field)) {
+    return displayFieldValue(record[field])
+  }
+  if (isFieldUnreadable(record, field) && !sanitizeFieldValue(record[field])) {
+    return t('taskEdit.fieldUnreadableShort')
+  }
+  return displayFieldValue(record[field])
+}
+
+const fieldUnreadablePlaceholder = (record, field) => (
+  isFieldUnreadable(record, field) && !isRequiredFieldEmpty(record, field)
+    ? t('taskEdit.fieldUnreadableShort')
+    : undefined
+)
+
+const onReadableFieldChange = (record, field) => {
+  clearFieldUnreadable(record, field)
+  if (field === 'NOM_PRENOM') markNameManuallyEdited(record)
+  if (field === 'ARRIVEE' || field === 'DEPAR' || field === 'HORAIRES_DU_TRAVAIL') {
+    refreshRecordNightShiftMark(record)
+  }
+  clearRowCache()
+}
 
 const getRowAnomalyReasons = (record) => getRecordAnomalyReasons(record)
 
@@ -646,7 +697,6 @@ const task = ref(null)
 const canDeleteTask = computed(() => task.value?.status !== 'confirmed')
 const isConfirmedTask = computed(() => task.value?.status === 'confirmed')
 const canShowSubmitBar = computed(() => task.value?.status === 'processed')
-
 const requiredMissingCount = ref(0)
 let requiredValidationDebounceTimer = null
 const scheduleRequiredMissingCountUpdate = (immediate = false) => {
@@ -753,35 +803,47 @@ const startSyncPoll = () => {
   )
 }
 
-const mergeCellProps = (props, column) => {
+const ROW_MUTED_EXEMPT_KEYS = new Set(['anomalyReasons', 'SmartMark'])
+const ROW_MUTED_BG = '#F5F3F7'
+const ROW_MUTED_COLOR = '#A8A5B2'
+const ROW_MUTED_STRIKE = '#C4C1CC'
+
+const isRowMuted = (record) => record?.isDeleted || isAbsentRow(record)
+
+const mergeCellProps = (props, columnKey) => {
   const wrapKeys = ['anomalyReasons']
-  const wrapClass = wrapKeys.includes(column?.key) ? 'cell-wrap' : ''
-  if (!wrapClass) return props
+  const wrapClass = wrapKeys.includes(columnKey) ? 'cell-wrap' : ''
+  if (!wrapClass && !props.class) return props
   const cls = [props.class, wrapClass].filter(Boolean).join(' ')
   return { ...props, class: cls || undefined }
 }
 
-const cellStyle = (record, index, column) => {
+const cellStyle = (record, rowIndex, columnKey) => {
   if (!record) return {}
-  if (record?.isDeleted || isAbsentRow(record)) {
+  if (isRowMuted(record)) {
+    const exempt = ROW_MUTED_EXEMPT_KEYS.has(columnKey)
+    const style = {
+      backgroundColor: ROW_MUTED_BG,
+      color: ROW_MUTED_COLOR,
+      fontStyle: 'italic',
+    }
+    if (!exempt) {
+      style.textDecoration = 'line-through'
+      style.textDecorationColor = ROW_MUTED_STRIKE
+    }
     return mergeCellProps({
-      style: {
-        backgroundColor: '#FFF0F0',
-        color: '#D94040',
-        fontStyle: 'italic',
-        textDecoration: 'line-through',
-        textDecorationColor: '#E8A0A0',
-      },
-    }, column)
+      style,
+      class: exempt ? 'row-muted-exempt-cell' : 'row-muted-strike-cell',
+    }, columnKey)
   }
-  const fieldKey = column?.key
+  const fieldKey = columnKey
   if (fieldKey && isConfiguredRequiredField(fieldKey) && isRequiredFieldEmpty(record, fieldKey)) {
-    return mergeCellProps({ class: 'required-field-cell' }, column)
+    return mergeCellProps({ class: 'required-field-cell' }, columnKey)
   }
   if ((record?.SmartMark || '').includes('模糊')) {
-    return mergeCellProps({ style: { backgroundColor: '#FFF9EC' } }, column)
+    return mergeCellProps({ style: { backgroundColor: '#FFF9EC' } }, columnKey)
   }
-  return mergeCellProps({}, column)
+  return mergeCellProps({}, columnKey)
 }
 
 const baseColumns = computed(() => buildRecognitionTableColumns(t, {
@@ -852,7 +914,9 @@ const { columns: sizedColumns, scrollX } = useAutoSizedColumns(sortedColumns, ta
   actionWidth: isConfirmedTask.value && canCalibrateRecord.value ? 88 : 50,
   getCellSample: (col, record) => {
     if (col.key === 'workHours') return calculateWorkHours(record)
-    if (col.key === 'anomalyReasons') return getRecordAnomalyReasons(record).join(', ')
+    if (col.key === 'anomalyReasons') {
+      return getRecordAnomalyGroups(record).map((group) => group.summary).join('; ')
+    }
     if (col.key === 'PAUSE') return formatPauseDisplay(record.PAUSE)
     return undefined
   },
@@ -1029,7 +1093,7 @@ const loadTask = async (silent = false) => {
     if (dataPayload) {
       const parsedRecords = JSON.parse(dataPayload)
       records.value = parsedRecords.map((record, idx) => {
-        const normalized = sanitizeRecordPlaceholders(normalizeRecordPause({
+        const normalized = prepareRecordPlaceholders(normalizeRecordPause({
           ...record,
           isDeleted: record.isDeleted || false,
           _rowKey: record._rowKey || `${taskId.value}-${idx}-${Date.now()}`,
@@ -1319,7 +1383,7 @@ const refreshRecordNightShiftMark = (record) => {
 
 const handleSubmit = async () => {
   const preparedRecords = records.value.map((record) => {
-    const normalized = sanitizeRecordPlaceholders(normalizeRecordPause(record))
+    const normalized = stripRecordMetadata(sanitizeRecordPlaceholders(normalizeRecordPause(record)))
     refreshRecordNightShiftMark(normalized)
     return normalized
   })
@@ -1772,7 +1836,7 @@ watch(headerFilters, () => {
     &.dot-normal { background-color: $success; }
     &.dot-blurred { background-color: $warning; }
     &.dot-handwritten { background-color: $primary; }
-    &.dot-absent { background-color: $danger; }
+    &.dot-absent { background-color: $text-tertiary; }
     &.dot-deleted { background-color: $text-tertiary; }
   }
 
@@ -1787,8 +1851,9 @@ watch(headerFilters, () => {
     padding: 4px 8px;
   }
 
-  $required-empty-surface: $warning-light;
-  $required-empty-border: rgba($warning, 0.45);
+  $required-empty-surface: rgba($danger, 0.11);
+  $required-empty-border: rgba($danger, 0.42);
+  $required-empty-text: $danger-dark;
 
   :deep(.required-field-cell) {
     background: $required-empty-surface !important;
@@ -1813,27 +1878,28 @@ watch(headerFilters, () => {
   }
 
   :deep(.required-empty) {
-    background: #fffdf5 !important;
+    background: rgba($danger, 0.09) !important;
     border: 1px solid $required-empty-border !important;
     border-radius: $radius-sm;
     box-shadow: none;
+    color: $required-empty-text;
 
     &:hover,
     &:focus,
     &.ant-input-number-focused {
       background: $required-empty-surface !important;
-      border-color: rgba($warning, 0.62) !important;
-      box-shadow: 0 0 0 2px $warning-ring;
+      border-color: rgba($danger, 0.55) !important;
+      box-shadow: 0 0 0 2px $danger-ring;
     }
 
     input {
       border-color: transparent !important;
-      color: $text-primary;
+      color: $required-empty-text;
     }
   }
 
   .required-empty-display {
-    color: $text-secondary;
+    color: $required-empty-text;
     font-weight: 600;
     background: $required-empty-surface;
     box-shadow: inset 0 0 0 1px $required-empty-border;
@@ -1997,6 +2063,50 @@ watch(headerFilters, () => {
       border-bottom-right-radius: 6px;
     }
   }
+
+  .edit-table {
+    :deep(.ant-table-tbody > tr.deleted-row td.row-muted-strike-cell),
+    :deep(.ant-table-tbody > tr.absent-row td.row-muted-strike-cell) {
+      .cell-text,
+      .cell-serial,
+      .cell-muted,
+      .name-cell,
+      .duplicate-tools,
+      .work-hours-cell,
+      span:not(.ant-tag),
+      .ant-input,
+      .ant-input-number,
+      .ant-input-number-input,
+      .ant-select-selector,
+      .ant-select-selection-item,
+      .ant-tag {
+        color: $text-tertiary !important;
+        font-style: italic !important;
+        text-decoration: line-through !important;
+        text-decoration-color: rgba($text-tertiary, 0.75) !important;
+      }
+
+      .field-unreadable-cell,
+      .required-empty-display,
+      .ant-input.field-unreadable-cell,
+      .ant-input.required-empty,
+      .ant-input-number.field-unreadable-cell,
+      .ant-input-number.required-empty {
+        color: $text-tertiary !important;
+        background: rgba($text-tertiary, 0.06) !important;
+        box-shadow: inset 0 0 0 1px rgba($text-tertiary, 0.25) !important;
+        font-style: italic !important;
+        text-decoration: line-through !important;
+      }
+    }
+
+    :deep(.ant-table-tbody > tr.deleted-row td.row-muted-exempt-cell),
+    :deep(.ant-table-tbody > tr.absent-row td.row-muted-exempt-cell) {
+      font-style: normal !important;
+      text-decoration: none !important;
+      color: $text-secondary !important;
+    }
+  }
 }
 </style>
 
@@ -2006,13 +2116,20 @@ watch(headerFilters, () => {
     .ant-table-tbody > tr.deleted-row,
     .ant-table-tbody > tr.absent-row {
       td {
-        background-color: $danger-light;
+        background-color: $bg-muted !important;
+        color: $text-tertiary !important;
       }
     }
-    
+
     .ant-table-tbody > tr.deleted-row:hover > td,
     .ant-table-tbody > tr.absent-row:hover > td {
-      background-color: $danger-light !important;
+      background-color: $bg-muted !important;
+    }
+
+    .ant-table-tbody > tr.deleted-row td.row-muted-exempt-cell,
+    .ant-table-tbody > tr.absent-row td.row-muted-exempt-cell {
+      font-style: normal !important;
+      text-decoration: none !important;
     }
     
     .ant-table-tbody > tr.blurred-row {
@@ -2023,6 +2140,32 @@ watch(headerFilters, () => {
     
     .ant-table-tbody > tr.blurred-row:hover > td {
       background-color: $warning-light !important;
+    }
+
+    .field-unreadable-cell,
+    :deep(.field-unreadable-cell.ant-input),
+    :deep(.field-unreadable-cell.ant-input-number) {
+      color: $warning;
+      background: rgba(250, 173, 20, 0.08) !important;
+      box-shadow: inset 0 0 0 1px rgba(250, 173, 20, 0.45);
+    }
+
+    span.field-unreadable-cell {
+      display: inline-block;
+      min-width: 2.5em;
+      padding: 0 6px;
+      border-radius: 4px;
+      font-style: italic;
+    }
+
+    :deep(.required-empty.field-unreadable-cell),
+    :deep(.field-unreadable-cell.required-empty.ant-input),
+    :deep(.field-unreadable-cell.required-empty.ant-input-number),
+    span.field-unreadable-cell.required-empty-display {
+      color: $danger-dark !important;
+      background: rgba(240, 101, 101, 0.11) !important;
+      box-shadow: inset 0 0 0 1px rgba(240, 101, 101, 0.42) !important;
+      font-style: normal;
     }
   }
 }

@@ -1,5 +1,6 @@
 package com.attendance.config;
 
+import com.attendance.security.ExpensiveApiRateLimitFilter;
 import com.attendance.security.JwtAuthenticationFilter;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Bean;
@@ -23,6 +24,9 @@ public class SecurityConfig {
     private JwtAuthenticationFilter jwtAuthenticationFilter;
 
     @Autowired
+    private ExpensiveApiRateLimitFilter expensiveApiRateLimitFilter;
+
+    @Autowired
     private SecurityJsonHandlers securityJsonHandlers;
 
     @Bean
@@ -44,7 +48,8 @@ public class SecurityConfig {
                 .antMatchers(HttpMethod.GET, "/local/image/**").permitAll()
                 .anyRequest().authenticated()
             )
-            .addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class);
+            .addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class)
+            .addFilterAfter(expensiveApiRateLimitFilter, JwtAuthenticationFilter.class);
 
         return http.build();
     }

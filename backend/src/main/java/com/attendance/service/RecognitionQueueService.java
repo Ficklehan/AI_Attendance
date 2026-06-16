@@ -35,6 +35,7 @@ public class RecognitionQueueService {
         if (!recognitionProperties.getQueue().isEnabled()) {
             return null;
         }
+        reclaimStaleRunningJobs();
         int pending = recognitionQueueMapper.countPending();
         if (pending >= recognitionProperties.getQueue().getMaxPending()) {
             throw new BusinessException(429, ErrorKeys.RECOGNITION_CONCURRENT_LIMIT);
@@ -109,5 +110,19 @@ public class RecognitionQueueService {
         if (redis != null && recognitionCoordinator.isDistributed()) {
             redis.opsForList().leftPush(recognitionCoordinator.getQueueRedisKey(), jobId);
         }
+    }
+
+    public boolean hasActiveJob(String taskId) {
+        reclaimStaleRunningJobs();
+        return recognitionQueueMapper.countActiveByTaskId(taskId) > 0;
+    }
+
+    public int reclaimStaleRunningJobs() {
+        int staleSeconds = Math.max(180, recognitionProperties.getStaleHeartbeatSeconds() * 3);
+        int reclaimed = recognitionQueueMapper.failStaleRunningJobs(staleSeconds);
+        if (reclaimed > 0) {
+            log.warn("回收僵死识别队列任务: count={}, staleSeconds={}", reclaimed, staleSeconds);
+        }
+        return reclaimed;
     }
 }

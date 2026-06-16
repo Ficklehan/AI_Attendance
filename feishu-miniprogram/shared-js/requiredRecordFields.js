@@ -7,7 +7,7 @@
 const {
   formatLineRanges,
   groupConfirmValidationIssues,
-} = require('./confirmValidationGrouping.cjs')
+} = require('./confirmValidationGrouping')
 
 const CONFIRM_FIELD_KEYS = [
   'Pays',

@@ -3,6 +3,7 @@ package com.attendance.service;
 import com.alibaba.fastjson.JSON;
 import com.alibaba.fastjson.JSONArray;
 import com.alibaba.fastjson.JSONObject;
+import com.attendance.dto.ImageQualityAssessment;
 import com.attendance.common.BusinessException;
 import com.attendance.common.ErrorKeys;
 import com.attendance.common.ErrorCode;
@@ -52,6 +53,11 @@ public class AIParserService {
 
     @Autowired
     private RecognitionCoordinator recognitionCoordinator;
+
+    @Autowired
+    private MimoKeyPool mimoKeyPool;
+
+    private final ThreadLocal<MimoKeyLease> activeKeyLease = new ThreadLocal<>();
 
     private final OkHttpClient client = new OkHttpClient.Builder()
             .connectTimeout(60, TimeUnit.SECONDS)
@@ -134,9 +140,8 @@ public class AIParserService {
                 req.put("promptSection", lastPromptSection);
                 req.put("promptLength", prompts.aiPrompt.length());
                 req.put("promptPreview", RecognitionTrace.preview(prompts.aiPrompt, 800));
-                req.put("promptFull", prompts.aiPrompt);
                 req.put("continuePromptLength", prompts.continuePrompt.length());
-                req.put("continuePromptFull", prompts.continuePrompt);
+                req.put("continuePromptPreview", RecognitionTrace.preview(prompts.continuePrompt, 400));
                 req.put("messageHasImagePart", true);
                 trace.step("model_request", req);
             }
@@ -284,6 +289,69 @@ public class AIParserService {
     private void parseImageStreamByLineWithConfig(String base64Image, String mimeType, String aiPrompt,
                                                    String continuePrompt, ParseCallback callback,
                                                    RecognitionTrace trace) {
+        Set<Integer> failedKeyIndices = new HashSet<>();
+        Exception lastError = null;
+        int poolSize = Math.max(1, mimoKeyPool.getPoolSize());
+
+        while (failedKeyIndices.size() < poolSize) {
+            MimoKeyLease lease;
+            try {
+                lease = mimoKeyPool.acquireExcluding(failedKeyIndices);
+            } catch (InterruptedException ie) {
+                Thread.currentThread().interrupt();
+                callback.onError(new IOException("MiMo Key 池等待被中断", ie));
+                return;
+            } catch (BusinessException be) {
+                callback.onError(lastError != null ? lastError : be);
+                return;
+            }
+
+            activeKeyLease.set(lease);
+            try {
+                parseImageStreamByLineWithConfigInner(
+                        base64Image, mimeType, aiPrompt, continuePrompt, callback, trace);
+                return;
+            } catch (Exception e) {
+                lastError = e;
+                boolean canFailover = RecognitionRetrySupport.isKeyFailover(e)
+                        && failedKeyIndices.size() < poolSize - 1;
+                if (canFailover) {
+                    failedKeyIndices.add(lease.getKeyIndex());
+                    log.warn("MiMo Key #{} 不可用，切换下一个 Key ({}/{}): {}",
+                            lease.getKeyIndex(), failedKeyIndices.size(), poolSize, e.getMessage());
+                    if (trace != null) {
+                        JSONObject meta = new JSONObject();
+                        meta.put("failedKeyIndex", lease.getKeyIndex());
+                        meta.put("tried", failedKeyIndices.size());
+                        meta.put("poolSize", poolSize);
+                        meta.put("message", e.getMessage());
+                        trace.step("model_key_failover", meta);
+                    }
+                    continue;
+                }
+                log.error("❌ MiMo API 调用失败", e);
+                if (trace != null) {
+                    trace.step("model_error", "message", e.getMessage());
+                }
+                callback.onError(e);
+                return;
+            } finally {
+                activeKeyLease.remove();
+            }
+        }
+
+        if (lastError != null) {
+            log.error("❌ 所有 MiMo Key 均不可用", lastError);
+            if (trace != null) {
+                trace.step("model_error", "message", lastError.getMessage());
+            }
+            callback.onError(lastError);
+        }
+    }
+
+    private void parseImageStreamByLineWithConfigInner(String base64Image, String mimeType, String aiPrompt,
+                                                   String continuePrompt, ParseCallback callback,
+                                                   RecognitionTrace trace) {
         try {
             List<JSONObject> extractedRecords = new ArrayList<>();
             Set<String> seenRecords = new HashSet<>();
@@ -328,13 +396,6 @@ public class AIParserService {
                 log.info("🤖 调用 MiMo 流式 API - 第 " + currentRound + " 轮");
                 if (trace != null) {
                     trace.step("model_round_start", "round", currentRound);
-                }
-
-                try {
-                    recognitionCoordinator.acquireMimoPermit();
-                } catch (InterruptedException ie) {
-                    Thread.currentThread().interrupt();
-                    throw new IOException("MiMo 限流等待被中断", ie);
                 }
 
                 try {
@@ -414,11 +475,29 @@ public class AIParserService {
                 return;
             }
 
+            ImageQualityAssessment imageQuality = recognitionQualityGuard.assessImageReadability(extractedRecords);
+            if (imageQuality.isBlock()) {
+                log.warn("拒绝模糊图片识别结果: blur={}%, unknown={}%",
+                        imageQuality.getBlurPercent(), imageQuality.getUnknownPercent());
+                if (trace != null) {
+                    JSONObject meta = new JSONObject();
+                    meta.put("messageKey", ErrorKeys.AI_IMAGE_TOO_BLURRY);
+                    meta.put("blurPercent", imageQuality.getBlurPercent());
+                    meta.put("unknownPercent", imageQuality.getUnknownPercent());
+                    trace.step("image_too_blurry_rejected", meta);
+                }
+                callback.onError(new BusinessException(
+                        ErrorCode.AI_PARSE_ERROR,
+                        ErrorKeys.AI_IMAGE_TOO_BLURRY,
+                        recognitionQualityGuard.blurryBlockMessageArgs(imageQuality)));
+                return;
+            }
+
             log.info("✅ AI识别完全结束，共识别 {} 条记录", extractedRecords.size());
             callback.onComplete(extractedRecords.size());
 
         } catch (Exception e) {
-            log.error("❌ MiMo API 调用失败", e);
+            log.error("❌ MiMo 流式解析失败", e);
             if (trace != null) {
                 trace.step("model_error", "message", e.getMessage());
             }
@@ -499,13 +578,26 @@ public class AIParserService {
         throw lastError != null ? lastError : new IOException("MiMo stream failed");
     }
 
+    private String resolveActiveApiKey() {
+        MimoKeyLease lease = activeKeyLease.get();
+        if (lease != null) {
+            return lease.getApiKey();
+        }
+        List<String> keys = mimoProperties.getResolvedApiKeys();
+        if (!keys.isEmpty()) {
+            return keys.get(0);
+        }
+        String single = mimoProperties.getApiKey();
+        return single != null ? single.trim() : "";
+    }
+
     private StreamRoundOutcome callMiMoStreamOnce(List<JSONObject> messages, List<JSONObject> extractedRecords,
                                   Set<String> seenRecords, ParseCallback callback,
                                   RecognitionTrace trace, int round) throws Exception {
         String finishReason = null;
         String roundText = "";
         try {
-            String apiKey = mimoProperties.getApiKey();
+            String apiKey = resolveActiveApiKey();
             String apiUrl = mimoProperties.getApiUrl();
             
             if (apiKey == null || apiKey.trim().isEmpty()) {
@@ -548,7 +640,8 @@ public class AIParserService {
                     }
                 }
                 log.error("❌ Mimo API 请求失败！状态码: {}, 错误内容: {}", response.code(), errorContent);
-                throw new IOException("API请求失败: " + response + " - 错误: " + errorContent);
+                throw new MimoApiException(response.code(),
+                        "API请求失败: " + response.code() + " - 错误: " + errorContent);
             }
 
             if (responseBody == null) {
@@ -914,35 +1007,42 @@ public class AIParserService {
         String arrive = normalized.getString("ARRIVEE");
         String depart = normalized.getString("DEPAR");
 
-        if (baseDate != null && !baseDate.isEmpty() && 
-            arrive != null && !arrive.isEmpty() && 
-            depart != null && !depart.isEmpty()) {
+        if (!RecognizedFieldSanitizer.isUnrecognized(baseDate)
+                && !RecognizedFieldSanitizer.isUnrecognized(arrive)
+                && !RecognizedFieldSanitizer.isUnrecognized(depart)) {
             String normalizedArrive = normalizeTime(arrive);
             String normalizedDepart = normalizeTime(depart);
 
-            int arriveHour = Integer.parseInt(normalizedArrive.split(":")[0]);
-            int departHour = Integer.parseInt(normalizedDepart.split(":")[0]);
+            if (isClockTime(normalizedArrive) && isClockTime(normalizedDepart)) {
+                int arriveHour = Integer.parseInt(normalizedArrive.split(":")[0]);
+                int departHour = Integer.parseInt(normalizedDepart.split(":")[0]);
 
-            if (arriveHour >= 18 && departHour <= 12) {
-                normalized.put("ARRIVEE_DATE", baseDate);
-                normalized.put("DEPAR_DATE", addDays(baseDate, 1));
-            } else {
-                normalized.put("ARRIVEE_DATE", baseDate);
-                normalized.put("DEPAR_DATE", baseDate);
-            }
+                if (arriveHour >= 18 && departHour <= 12) {
+                    normalized.put("ARRIVEE_DATE", baseDate);
+                    normalized.put("DEPAR_DATE", addDays(baseDate, 1));
+                } else {
+                    normalized.put("ARRIVEE_DATE", baseDate);
+                    normalized.put("DEPAR_DATE", baseDate);
+                }
 
-            String arriveDateStr = normalized.getString("ARRIVEE_DATE");
-            String departDateStr = normalized.getString("DEPAR_DATE");
+                String arriveDateStr = normalized.getString("ARRIVEE_DATE");
+                String departDateStr = normalized.getString("DEPAR_DATE");
 
-            if (arriveDateStr != null) {
-                normalized.put("ARRIVEE_DATETIME", arriveDateStr + " " + normalizedArrive);
-            }
-            if (departDateStr != null) {
-                normalized.put("DEPAR_DATETIME", departDateStr + " " + normalizedDepart);
+                if (arriveDateStr != null) {
+                    normalized.put("ARRIVEE_DATETIME", arriveDateStr + " " + normalizedArrive);
+                }
+                if (departDateStr != null) {
+                    normalized.put("DEPAR_DATETIME", departDateStr + " " + normalizedDepart);
+                }
             }
         }
 
+        RecognizedFieldSanitizer.annotateAndSanitizeRecord(normalized);
         return normalized;
+    }
+
+    private static boolean isClockTime(String value) {
+        return value != null && value.matches("\\d{1,2}:\\d{2}");
     }
 
     private String normalizeDate(String dateStr) {
@@ -950,6 +1050,9 @@ public class AIParserService {
             return dateStr;
         }
         String str = dateStr.trim();
+        if (RecognizedFieldSanitizer.isUnrecognized(str)) {
+            return "";
+        }
 
         if (str.matches("\\d{4}-\\d{2}-\\d{2}")) {
             return str;
@@ -1006,6 +1109,9 @@ public class AIParserService {
             return timeStr;
         }
         String str = timeStr.trim();
+        if (RecognizedFieldSanitizer.isUnrecognized(str)) {
+            return "";
+        }
 
         if (str.matches("\\d{1,2}:\\d{2}")) {
             String[] parts = str.split(":");
@@ -1057,11 +1163,7 @@ public class AIParserService {
             return "";
         }
         String raw = String.valueOf(pauseValue).trim();
-        if (raw.isEmpty()
-                || "null".equalsIgnoreCase(raw)
-                || "???".equals(raw)
-                || "??".equals(raw)
-                || "illegible".equalsIgnoreCase(raw)) {
+        if (RecognizedFieldSanitizer.isUnrecognized(raw)) {
             return "";
         }
 
@@ -1103,7 +1205,7 @@ public class AIParserService {
             log.warn("休息时间标准化失败: {}", raw, e);
         }
 
-        return raw;
+        return "";
     }
 
     private String addDays(String dateStr, int days) {

@@ -75,6 +75,17 @@ public class TaskAccessService {
         return task;
     }
 
+    /**
+     * Progress polling: verify access without loading raw_data / confirmed_data.
+     */
+    public void requireTaskAccessForProgress(String taskId) {
+        Task task = taskMapper.selectTaskAccessMeta(taskId);
+        if (task == null) {
+            throw new BusinessException(ErrorCode.TASK_NOT_FOUND, ErrorKeys.TASK_NOT_FOUND);
+        }
+        requireTaskOwner(task);
+    }
+
     public void requireFileAccess(String fileKey) {
         String userId = requireCurrentUserId();
         requireFileAccessForUser(fileKey, userId);

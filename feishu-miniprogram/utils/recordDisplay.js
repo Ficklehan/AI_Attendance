@@ -129,7 +129,113 @@ function isAbsentRow(record) {
   return !arrive && !depart
 }
 
-const { hasRequiredMissing } = require('./requiredRecordFields')
+const { FIELD_LABEL_KEYS } = require('./calibratableFields')
+const { hasRequiredMissing, getMissingRequiredFieldKeys, isConfiguredRequiredField, appendRequiredMark } = require('./requiredRecordFields')
+
+const ANOMALY_CATEGORY_ORDER = ['required', 'unreadable', 'duplicate', 'other']
+
+const ANOMALY_CATEGORY_I18N = {
+  required: 'result.anomalyCategoryRequired',
+  unreadable: 'result.anomalyCategoryUnreadable',
+  duplicate: 'result.anomalyCategoryDuplicate',
+  other: 'result.anomalyCategoryOther',
+}
+
+const ANOMALY_CATEGORY_FALLBACK = {
+  required: '必填缺失',
+  unreadable: '看不清',
+  duplicate: '重名',
+  other: '其他异常',
+}
+
+function getAnomalyCategoryLabel(category) {
+  const key = ANOMALY_CATEGORY_I18N[category]
+  if (key) {
+    const translated = t(key)
+    if (translated && translated !== key) return translated
+  }
+  return ANOMALY_CATEGORY_FALLBACK[category] || category
+}
+
+function getCategoryLevelClass(category) {
+  if (category === 'required') return 'reason-danger'
+  if (category === 'unreadable' || category === 'duplicate') return 'reason-warn'
+  return 'reason-info'
+}
+
+function isMarkRedundantAnomalyReason(reason) {
+  const raw = String(reason || '').trim()
+  if (!raw) return true
+  if (raw.startsWith('missing.')) return true
+  if (raw === 'deleted.record') return true
+  if (['内容模糊', '手写内容', '未出勤'].includes(raw)) return true
+  const translated = translateAnomalyReason(reason, t)
+  const kind = anomalyReasonKind(translated)
+  return kind === 'blurred' || kind === 'handwriting' || kind === 'absent' || kind === 'night'
+}
+
+function getEffectiveAnomalies(record) {
+  const anomalies = Array.isArray(record?.anomalies) ? record.anomalies : []
+  return anomalies.filter(
+    (reason) => reason && !String(reason).includes(t('result.statsNight') || '夜班') && !String(reason).includes('夜班'),
+  )
+}
+
+function collectAnomalyGroups(record) {
+  if (!record || record.isDeleted) return []
+
+  const bucket = new Map()
+  const addItem = (category, text) => {
+    const value = String(text || '').trim()
+    if (!value) return
+    if (!bucket.has(category)) bucket.set(category, new Set())
+    bucket.get(category).add(value)
+  }
+
+  getEffectiveAnomalies(record).forEach((reason) => {
+    if (isMarkRedundantAnomalyReason(reason)) return
+    addItem('other', translateAnomalyReason(String(reason), t))
+  })
+
+  if (Array.isArray(record._unreadableFields)) {
+    record._unreadableFields.forEach((fieldKey) => {
+      const labelKey = FIELD_LABEL_KEYS[fieldKey]
+      addItem('unreadable', labelKey ? t(labelKey) : fieldKey)
+    })
+  }
+
+  getMissingRequiredFieldKeys(record).forEach((fieldKey) => {
+    const labelKey = FIELD_LABEL_KEYS[fieldKey]
+    addItem('required', labelKey ? t(labelKey) : fieldKey)
+  })
+
+  if (record._duplicatePeers && record._duplicatePeers.length) {
+    addItem('duplicate', record._duplicatePeers.join('、'))
+  }
+
+  return ANOMALY_CATEGORY_ORDER
+    .filter((category) => bucket.has(category))
+    .map((category) => {
+      const items = [...bucket.get(category)]
+      const label = getAnomalyCategoryLabel(category)
+      const sep = t('result.confirmValidationFieldSep')
+      return {
+        category,
+        label,
+        items,
+        summary: `${label}：${items.join(sep)}`,
+      }
+    })
+}
+
+function buildGroupBadges(groups, maxCount) {
+  const limit = typeof maxCount === 'number' ? maxCount : groups.length
+  return (groups || []).slice(0, limit).map((group) => ({
+    category: group.category,
+    summary: group.summary,
+    levelClass: getCategoryLevelClass(group.category),
+  }))
+}
 
 function getMarkTag(mark) {
   if (!mark) return 'tag-default'
@@ -311,35 +417,38 @@ function isEmptyFieldValue(value) {
 
 function buildRecordFieldRows(record, ctx) {
   const skipRequired = !!(record.isDeleted || isAbsentRow(record))
+  const missingKeys = skipRequired ? [] : getMissingRequiredFieldKeys(record)
 
-  function cell(key, labelKey, raw, display, required) {
+  function cell(key, labelKey, raw, display) {
     let value = '-'
     if (display !== undefined && display !== null && String(display).trim() !== '' && !isEmptyFieldValue(display)) {
       value = String(display).trim()
     } else if (!isEmptyFieldValue(raw)) {
       value = String(raw).trim()
     }
-    const missing = !skipRequired && !!required && isEmptyFieldValue(raw)
-    return { key, label: t(labelKey), value, missing }
+    const required = isConfiguredRequiredField(key)
+    const label = required ? appendRequiredMark(t(labelKey)) : t(labelKey)
+    const missing = missingKeys.indexOf(key) !== -1
+    return { key, label, value, missing, required }
   }
 
   const primaryRow = [
-    cell('PAGE_NUM', 'result.fieldPageNumber', ctx.PAGE_NUM, ctx.pageNumText, false),
-    cell('NO', 'result.fieldWorkerNo', ctx.NO, ctx.displayNo, false),
-    cell('Date', 'result.fieldDate', ctx.Date, ctx.dateText, true),
-    cell('ARRIVEE', 'result.fieldArrival', ctx.ARRIVEE, ctx.ARRIVEE, true),
-    cell('DEPAR', 'result.fieldDeparture', ctx.DEPAR, ctx.DEPAR, true),
-    cell('PAUSE', 'result.fieldBreak', ctx.PAUSE, ctx.pauseText, true),
-    cell('workHours', 'result.fieldWorkHours', ctx.workHours, ctx.workHoursText, false)
+    cell('PAGE_NUM', 'result.fieldPageNumber', ctx.PAGE_NUM, ctx.pageNumText),
+    cell('NO', 'result.fieldWorkerNo', ctx.NO, ctx.displayNo),
+    cell('Date', 'result.fieldDate', ctx.Date, ctx.dateText),
+    cell('ARRIVEE', 'result.fieldArrival', ctx.ARRIVEE, ctx.ARRIVEE),
+    cell('DEPAR', 'result.fieldDeparture', ctx.DEPAR, ctx.DEPAR),
+    cell('PAUSE', 'result.fieldBreak', ctx.PAUSE, ctx.pauseText),
+    cell('workHours', 'result.fieldWorkHours', ctx.workHours, ctx.workHoursText)
   ]
 
   const contextRow = [
-    cell('Pays', 'result.fieldCountry', ctx.Pays, null, false),
-    cell('Entrepot', 'result.fieldWarehouse', ctx.Entrepot, null, false),
-    cell('HORAIRES_DU_TRAVAIL', 'result.fieldShift', ctx.HORAIRES_DU_TRAVAIL, null, false),
-    cell('AGENCE_INTERIMAIRE', 'result.fieldAgency', ctx.AGENCE_INTERIMAIRE, null, false),
-    cell('SIGNATURE', 'result.fieldSignature', ctx.SIGNATURE, ctx.signatureDisplayText, false),
-    cell('Observations', 'result.fieldObservations', ctx.Observations, null, false)
+    cell('Pays', 'result.fieldCountry', ctx.Pays, null),
+    cell('Entrepot', 'result.fieldWarehouse', ctx.Entrepot, null),
+    cell('HORAIRES_DU_TRAVAIL', 'result.fieldShift', ctx.HORAIRES_DU_TRAVAIL, null),
+    cell('AGENCE_INTERIMAIRE', 'result.fieldAgency', ctx.AGENCE_INTERIMAIRE, null),
+    cell('SIGNATURE', 'result.fieldSignature', ctx.SIGNATURE, ctx.signatureDisplayText),
+    cell('Observations', 'result.fieldObservations', ctx.Observations, null)
   ]
 
   return { primaryRow, contextRow }
@@ -363,9 +472,12 @@ function enrichRecord(record, index) {
   const SIGNATURE = computeSignatureMark({ ...record, SmartMark, SIGNATURE_RAW: record.SIGNATURE_RAW, SIGNATURE: rawSignature })
   const effectiveSmartMark = getEffectiveSmartMark({ ...record, SmartMark })
   const workHours = computeWorkHours(record)
-  const anomalyReasons = collectAnomalyReasons(record)
-  const anomalyReasonPreview = buildReasonBadges(anomalyReasons, 2)
-  const anomalyReasonMore = Math.max(0, anomalyReasons.length - anomalyReasonPreview.length)
+  const anomalyGroups = collectAnomalyGroups(record)
+  const anomalyGroupPreview = buildGroupBadges(anomalyGroups)
+  const anomalySummaryText = anomalyGroups.map((group) => group.summary).join('；')
+  const anomalySummaryLong = anomalySummaryText.length > 42
+  const anomalyReasonPreview = anomalyGroupPreview
+  const anomalyReasonMore = 0
   const displayName = displayFieldValue(cleanPersonName(NOM_PRENOM))
   const displayNo = displayFieldValue(cleanWorkerNo(NO))
   const dateText = displayFieldValue(Date)
@@ -405,10 +517,14 @@ function enrichRecord(record, index) {
     markTag: getMarkTag(effectiveSmartMark),
     rowClass: getRowClass({ ...record, SmartMark: effectiveSmartMark, isDeleted: record.isDeleted }),
     rowDotClass: getRowDotClass({ ...record, SmartMark: effectiveSmartMark, isDeleted: record.isDeleted }),
-    anomalyReasons,
+    anomalyGroups,
+    anomalyGroupPreview,
+    anomalySummaryText,
+    anomalySummaryLong,
+    anomalyReasons: anomalyGroups.map((group) => group.summary),
     anomalyReasonPreview,
     anomalyReasonMore,
-    hasAnomaly: anomalyReasons.length > 0,
+    hasAnomaly: anomalyGroups.length > 0,
     hasDuplicate: !!(record._hasDuplicate || (record._duplicatePeers && record._duplicatePeers.length)),
     hasManualCalibration: hasManualCalibration(record),
     calibrationHistory: buildCalibrationHistoryUi(record),
@@ -470,27 +586,34 @@ function calculateRecordStatsForDisplay(records) {
   return { total: records.length, ...stats, handwritten: stats.handwriting }
 }
 
-function buildAnomalyAlerts(records) {
-  return records
-    .map((record, index) => {
-      if (record.isDeleted) return null
-      const reasons = collectAnomalyReasons(record)
-      if (!reasons.length) return null
-      const NO = pickField(record, 'NO')
-      const NOM_PRENOM = pickField(record, 'NOM_PRENOM', 'Name')
-      return {
-        index,
-        title: `${NO || '?'} - ${NOM_PRENOM || '?'}`,
-        reasons
-      }
+function buildAnomalyAlerts(records, limit) {
+  const max = typeof limit === 'number' ? limit : 20
+  const alerts = []
+  for (let index = 0; index < (records || []).length; index += 1) {
+    const record = records[index]
+    if (record.isDeleted) continue
+    const groups = collectAnomalyGroups(record)
+    if (!groups.length) continue
+    const NO = pickField(record, 'NO')
+    const NOM_PRENOM = pickField(record, 'NOM_PRENOM', 'Name')
+    const displayName = displayFieldValue(cleanPersonName(NOM_PRENOM)) || '?'
+    const displayNo = displayFieldValue(cleanWorkerNo(NO)) || '?'
+    alerts.push({
+      index,
+      title: `${displayName}（${displayNo}）`,
+      groups: buildGroupBadges(groups),
     })
-    .filter(Boolean)
+    if (alerts.length >= max) break
+  }
+  return alerts
 }
 
 module.exports = {
   pickField,
   isAbsentRow,
   hasRequiredMissing,
+  collectAnomalyGroups,
+  buildGroupBadges,
   enrichRecord,
   buildDisplayRecords,
   calculateRecordStats: calculateRecordStatsForDisplay,

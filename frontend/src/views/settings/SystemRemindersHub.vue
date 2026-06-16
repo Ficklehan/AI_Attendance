@@ -10,6 +10,9 @@
         <a-tab-pane key="nightShift" :tab="$t('settings.hub.tabNightShift')">
           <NightShiftSettingsCard />
         </a-tab-pane>
+        <a-tab-pane key="imageQuality" :tab="$t('settings.hub.tabImageQuality')">
+          <ImageQualitySettingsCard />
+        </a-tab-pane>
         <a-tab-pane key="system" :tab="$t('settings.hub.tabSystem')">
           <SystemSettingsPanel />
         </a-tab-pane>
@@ -23,6 +26,7 @@ import { ref, watch } from 'vue'
 import { useRoute } from 'vue-router'
 import PageShell from '@/components/PageShell.vue'
 import NightShiftSettingsCard from '@/components/NightShiftSettingsCard.vue'
+import ImageQualitySettingsCard from '@/components/ImageQualitySettingsCard.vue'
 import ReminderRulesPanel from '@/views/settings/ReminderRulesPanel.vue'
 import SystemSettingsPanel from '@/views/settings/SystemSettingsPanel.vue'
 
@@ -32,7 +36,7 @@ const activeTab = ref('reminders')
 watch(
   () => route.query.tab,
   (tab) => {
-    if (tab === 'nightShift' || tab === 'system' || tab === 'reminders') {
+    if (tab === 'nightShift' || tab === 'imageQuality' || tab === 'system' || tab === 'reminders') {
       activeTab.value = tab
     }
   },

@@ -29,6 +29,9 @@ public class ReminderRuleRequest {
     @NotBlank
     private String intervalUnit;
 
+    /** 0-23，仅 day/week 时有效；minute/hour 应传 null */
+    private Integer scheduleHourOfDay;
+
     /** 兼容字段：主语言（zh-CN）操作者文案 */
     private String messageTemplate;
 
@@ -104,6 +107,14 @@ public class ReminderRuleRequest {
 
     public void setIntervalUnit(String intervalUnit) {
         this.intervalUnit = intervalUnit;
+    }
+
+    public Integer getScheduleHourOfDay() {
+        return scheduleHourOfDay;
+    }
+
+    public void setScheduleHourOfDay(Integer scheduleHourOfDay) {
+        this.scheduleHourOfDay = scheduleHourOfDay;
     }
 
     public String getMessageTemplate() {

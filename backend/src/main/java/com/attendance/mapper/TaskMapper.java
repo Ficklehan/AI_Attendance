@@ -14,6 +14,9 @@ public interface TaskMapper {
 
     Task selectTaskByTaskId(@Param("taskId") String taskId);
 
+    /** Lightweight row for progress/auth checks (no raw_data). */
+    Task selectTaskAccessMeta(@Param("taskId") String taskId);
+
     TaskProgressDTO selectTaskProgress(@Param("taskId") String taskId);
 
     Task selectTaskByFileKeyForScope(@Param("fileKey") String fileKey,

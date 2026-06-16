@@ -265,10 +265,28 @@ function parseTaskError(task) {
     const o = typeof task.anomalySummary === 'string'
       ? JSON.parse(task.anomalySummary)
       : task.anomalySummary
-    return o.error || ''
+    return o.error || o.messageKey || ''
   } catch {
     return ''
   }
+}
+
+function parseImageQualityWarning(task) {
+  if (!task || !task.anomalySummary) return null
+  try {
+    const o = typeof task.anomalySummary === 'string'
+      ? JSON.parse(task.anomalySummary)
+      : task.anomalySummary
+    if (o && o.imageQualityWarning) {
+      return {
+        blurPercent: o.blurPercent || 0,
+        unknownPercent: o.unknownPercent || 0
+      }
+    }
+  } catch (e) {
+    return null
+  }
+  return null
 }
 
 function pollIntervalMs(attempt, baseMs) {
@@ -355,7 +373,12 @@ function pollTaskUntilDone(taskId, options) {
                   return
                 }
                 cleanup()
-                resolve({ task: fullTask, rowCount: fullCount, engine: fullEngine })
+                resolve({
+                  task: fullTask,
+                  rowCount: fullCount,
+                  engine: fullEngine,
+                  imageQualityWarning: parseImageQualityWarning(fullTask)
+                })
               })
               .catch((err) => {
                 cleanup()
@@ -677,5 +700,6 @@ module.exports = {
   runUploadAndWatch,
   runBatchUploadAndWatch,
   startTaskRecognition,
-  resolveUploadCountry
+  resolveUploadCountry,
+  parseImageQualityWarning
 }

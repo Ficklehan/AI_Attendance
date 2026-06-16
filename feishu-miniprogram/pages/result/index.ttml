@@ -1,4 +1,19 @@
 <view class="page result-page">
+  <template name="anomalySummaryBlock">
+    <view tt:if="{{text}}" class="reason-field-row">
+      <text class="reason-label">{{label}}</text>
+      <view class="reason-value-col">
+        <text class="reason-summary-tag {{expanded ? '' : 'is-clamped'}}">{{text}}</text>
+        <text
+          tt:if="{{long}}"
+          class="reason-expand-link"
+          data-row-key="{{rowKey}}"
+          catchtap="toggleAnomalyExpand"
+        >{{expanded ? collapseText : expandText}}</text>
+      </view>
+    </view>
+  </template>
+
   <template name="recordMarkTags">
     <view class="record-head-tags">
       <block tt:for="{{row.markLabels}}" tt:key="key">
@@ -176,6 +191,12 @@
           <text>{{duplicateBannerText}}</text>
         </view>
         <view
+          tt:if="{{showImageQualityBanner}}"
+          class="image-quality-banner"
+        >
+          <text class="image-quality-text">{{imageQualityBannerText}}</text>
+        </view>
+        <view
           tt:if="{{requiredMissingCount > 0}}"
           class="required-validation-banner"
           bindtap="showRequiredValidationDetail"
@@ -200,19 +221,15 @@
               <template is="recordMarkTags" data="{{row: item}}" />
             </view>
             <template is="recordFieldLines" data="{{fieldRows: item.fieldRows}}" />
-            <view tt:if="{{item.anomalyReasonPreview.length > 0}}" class="reason-wrap">
-              <view class="reason-tags">
-                <text
-                  tt:for="{{item.anomalyReasonPreview}}"
-                  tt:for-item="reason"
-                  tt:key="index"
-                  class="result-reason-chip {{reason.levelClass}}"
-                >{{reason.text}}</text>
-                <text tt:if="{{item.anomalyReasonMore > 0}}" class="reason-more">
-                  {{texts.anomalyMorePrefix}} +{{item.anomalyReasonMore}}
-                </text>
-              </view>
-            </view>
+            <template is="anomalySummaryBlock" data="{{
+              text: item.anomalySummaryText,
+              long: item.anomalySummaryLong,
+              expanded: item.anomalyExpanded,
+              rowKey: item._rowKey,
+              label: texts.anomalyLabel,
+              expandText: texts.anomalyExpand,
+              collapseText: texts.anomalyCollapse
+            }}" />
             <view tt:if="{{item.hasDuplicate}}" class="duplicate-tools">
               <text class="duplicate-tag">{{texts.duplicateTag}}</text>
               <text
@@ -278,19 +295,15 @@
               <template is="recordMarkTags" data="{{row: item}}" />
             </view>
             <template is="recordFieldLines" data="{{fieldRows: item.fieldRows}}" />
-            <view tt:if="{{item.anomalyReasonPreview.length > 0}}" class="reason-wrap">
-              <view class="reason-tags">
-                <text
-                  tt:for="{{item.anomalyReasonPreview}}"
-                  tt:for-item="reason"
-                  tt:key="index"
-                  class="result-reason-chip {{reason.levelClass}}"
-                >{{reason.text}}</text>
-                <text tt:if="{{item.anomalyReasonMore > 0}}" class="reason-more">
-                  {{texts.anomalyMorePrefix}} +{{item.anomalyReasonMore}}
-                </text>
-              </view>
-            </view>
+            <template is="anomalySummaryBlock" data="{{
+              text: item.anomalySummaryText,
+              long: item.anomalySummaryLong,
+              expanded: item.anomalyExpanded,
+              rowKey: item._rowKey,
+              label: texts.anomalyLabel,
+              expandText: texts.anomalyExpand,
+              collapseText: texts.anomalyCollapse
+            }}" />
             <view tt:if="{{item.hasDuplicate}}" class="duplicate-tools">
               <text class="duplicate-tag">{{texts.duplicateTag}}</text>
               <text
@@ -360,19 +373,15 @@
               <template is="recordMarkTags" data="{{row: item}}" />
             </view>
             <template is="recordFieldLines" data="{{fieldRows: item.fieldRows}}" />
-            <view tt:if="{{item.anomalyReasonPreview.length > 0}}" class="reason-wrap">
-              <view class="reason-tags">
-                <text
-                  tt:for="{{item.anomalyReasonPreview}}"
-                  tt:for-item="reason"
-                  tt:key="index"
-                  class="result-reason-chip {{reason.levelClass}}"
-                >{{reason.text}}</text>
-                <text tt:if="{{item.anomalyReasonMore > 0}}" class="reason-more">
-                  {{texts.anomalyMorePrefix}} +{{item.anomalyReasonMore}}
-                </text>
-              </view>
-            </view>
+            <template is="anomalySummaryBlock" data="{{
+              text: item.anomalySummaryText,
+              long: item.anomalySummaryLong,
+              expanded: item.anomalyExpanded,
+              rowKey: item._rowKey,
+              label: texts.anomalyLabel,
+              expandText: texts.anomalyExpand,
+              collapseText: texts.anomalyCollapse
+            }}" />
             <template
               is="recordActionLinks"
               data="{{

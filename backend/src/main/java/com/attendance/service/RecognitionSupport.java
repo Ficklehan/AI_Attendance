@@ -3,7 +3,6 @@ package com.attendance.service;
 import com.attendance.common.BusinessException;
 import com.attendance.common.ErrorCode;
 import com.attendance.common.ErrorKeys;
-import com.attendance.config.MimoProperties;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
@@ -14,14 +13,13 @@ public class RecognitionSupport {
     public static final String MSG_MIMO_NOT_CONFIGURED = ErrorKeys.MIMO_NOT_CONFIGURED;
 
     @Autowired
-    private MimoProperties mimoProperties;
+    private MimoKeyPool mimoKeyPool;
 
     @Value("${attendance.allow-simulated-recognition:false}")
     private boolean allowSimulatedRecognition;
 
     public boolean isMimoConfigured() {
-        String apiKey = mimoProperties.getApiKey();
-        return apiKey != null && !apiKey.trim().isEmpty();
+        return mimoKeyPool.isConfigured();
     }
 
     public boolean allowSimulatedFallback() {

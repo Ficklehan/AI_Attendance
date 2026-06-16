@@ -9,7 +9,21 @@ import {
   getRawSmartMark,
   calculateRecordStats,
 } from '@/utils/recognitionLabels'
-import { hasRequiredMissing } from '@/utils/requiredRecordFields'
+import { getMissingRequiredFieldKeys, REQUIRED_FIELD_I18N_KEYS } from '@/utils/requiredRecordFields'
+import { FIELD_LABEL_KEYS } from '@/constants/calibratableFields'
+
+const ANOMALY_CATEGORY_ORDER = ['required', 'unreadable', 'duplicate', 'other']
+
+function isMarkRedundantAnomalyReason(reason, t) {
+  const raw = String(reason || '').trim()
+  if (!raw) return true
+  if (raw.startsWith('missing.')) return true
+  if (raw === 'deleted.record') return true
+  if (['内容模糊', '手写内容', '未出勤'].includes(raw)) return true
+  const translated = translateAnomalyReason(reason, t)
+  const kind = anomalyReasonKind(translated)
+  return kind === 'blurred' || kind === 'handwriting' || kind === 'absent' || kind === 'night'
+}
 
 function buildRowCacheKey(record, duplicatePeers) {
   if (!record?._rowKey) return ''
@@ -27,6 +41,7 @@ function buildRowCacheKey(record, duplicatePeers) {
     record.SIGNATURE,
     record.isDeleted ? '1' : '0',
     record._duplicateConfirmedUnique ? '1' : '0',
+    Array.isArray(record._unreadableFields) ? record._unreadableFields.join('|') : '',
     anomalies,
     duplicatePeers || '',
   ].join('::')
@@ -146,20 +161,77 @@ export function useTaskEditRecordDisplay(records, getDuplicateMeta, { isAbsentRo
     )
   }
 
-  const computeRecordAnomalyReasons = (record) => {
+const ANOMALY_CATEGORY_I18N = {
+  required: 'taskEdit.anomalyCategoryRequired',
+  unreadable: 'taskEdit.anomalyCategoryUnreadable',
+  duplicate: 'taskEdit.anomalyCategoryDuplicate',
+  other: 'taskEdit.anomalyCategoryOther',
+}
+
+  const getAnomalyCategoryLabel = (category) => {
+    const key = ANOMALY_CATEGORY_I18N[category]
+    if (!key) return category
+    const translated = t(key)
+    return translated === key ? category : translated
+  }
+
+  const computeRecordAnomalyGroups = (record) => {
     if (!record || record.isDeleted) return []
-    const mark = getDisplaySmartMark(record)
-    const reasons = getEffectiveAnomalies(record).map((r) => translateAnomalyReason(r, t))
-    if (markContains(mark, 'blurred')) reasons.push(t('taskEdit.blurredContent'))
-    if (markContains(mark, 'handwriting')) reasons.push(t('taskEdit.handwrittenContent'))
-    if (markContains(mark, 'absent')) reasons.push(t('taskEdit.absentReason'))
-    if (hasRequiredMissing(record)) reasons.push(t('taskEdit.requiredFieldMissingShort'))
+
+    const bucket = new Map()
+    const addItem = (category, text) => {
+      const value = String(text || '').trim()
+      if (!value) return
+      if (!bucket.has(category)) bucket.set(category, new Set())
+      bucket.get(category).add(value)
+    }
+
+    getEffectiveAnomalies(record).forEach((reason) => {
+      if (isMarkRedundantAnomalyReason(reason, t)) return
+      addItem('other', translateAnomalyReason(reason, t))
+    })
+
+    if (Array.isArray(record._unreadableFields)) {
+      record._unreadableFields.forEach((fieldKey) => {
+        const labelKey = FIELD_LABEL_KEYS[fieldKey]
+        addItem('unreadable', labelKey ? t(labelKey) : fieldKey)
+      })
+    }
+
+    getMissingRequiredFieldKeys(record).forEach((fieldKey) => {
+      const labelKey = REQUIRED_FIELD_I18N_KEYS[fieldKey] || FIELD_LABEL_KEYS[fieldKey]
+      addItem('required', labelKey ? t(labelKey) : fieldKey)
+    })
+
     const duplicateMeta = getDuplicateMeta(record)
     if (duplicateMeta?.peers?.length) {
-      reasons.push(t('taskEdit.duplicateSuspect', { names: duplicateMeta.peers.join('、') }))
+      addItem('duplicate', duplicateMeta.peers.join('、'))
     }
-    return [...new Set(reasons)]
+
+    return ANOMALY_CATEGORY_ORDER
+      .filter((category) => bucket.has(category))
+      .map((category) => {
+        const items = [...bucket.get(category)]
+        const label = getAnomalyCategoryLabel(category)
+        const sep = t('taskEdit.confirmValidationFieldSep')
+        return {
+          category,
+          label,
+          items,
+          summary: `${label}：${items.join(sep)}`,
+        }
+      })
   }
+
+  const getRecordAnomalyGroups = (record) => {
+    const cached = readCache(record)
+    if (cached?.anomalyGroups) return cached.anomalyGroups
+    const anomalyGroups = computeRecordAnomalyGroups(record)
+    writeCache(record, { ...(readCache(record) || {}), anomalyGroups })
+    return anomalyGroups
+  }
+
+  const computeRecordAnomalyReasons = (record) => getRecordAnomalyGroups(record).map((group) => group.summary)
 
   const getRecordAnomalyReasons = (record) => {
     const cached = readCache(record)
@@ -219,10 +291,17 @@ export function useTaskEditRecordDisplay(records, getDuplicateMeta, { isAbsentRo
 
   const getAnomalyTagColor = (reason) => {
     const kind = anomalyReasonKind(reason)
-    if (kind === 'absent' || kind === 'missing') return 'red'
-    if (kind === 'blurred' || kind === 'duplicate') return 'orange'
-    if (kind === 'handwriting') return 'blue'
+    if (kind === 'missing' || /^必填/.test(reason)) return 'red'
+    if (kind === 'duplicate' || /^重名/.test(reason)) return 'orange'
+    if (/看不清/.test(reason) || kind === 'blurred') return 'gold'
     if (kind === 'deleted') return 'default'
+    return 'default'
+  }
+
+  const getAnomalyCategoryColor = (category) => {
+    if (category === 'required') return 'red'
+    if (category === 'unreadable') return 'gold'
+    if (category === 'duplicate') return 'orange'
     return 'default'
   }
 
@@ -233,19 +312,7 @@ export function useTaskEditRecordDisplay(records, getDuplicateMeta, { isAbsentRo
     return 'tag-default'
   }
 
-  /** 轻量判断：不组装完整原因列表，供收起态计数 */
-  const hasRecordAnomaly = (record) => {
-    if (!record || record.isDeleted) return false
-    if (getEffectiveAnomalies(record).length > 0) return true
-    const mark = getDisplaySmartMark(record)
-    if (markContains(mark, 'blurred')) return true
-    if (markContains(mark, 'handwriting')) return true
-    if (markContains(mark, 'absent')) return true
-    if (hasRequiredMissing(record)) return true
-    const duplicateMeta = getDuplicateMeta(record)
-    if (duplicateMeta?.peers?.length) return true
-    return false
-  }
+  const hasRecordAnomaly = (record) => computeRecordAnomalyGroups(record).length > 0
 
   const countAnomalyRecords = (list = records.value) => {
     let count = 0
@@ -260,11 +327,11 @@ export function useTaskEditRecordDisplay(records, getDuplicateMeta, { isAbsentRo
     const alerts = []
     for (const record of list) {
       if (record.isDeleted) continue
-      const reasons = getRecordAnomalyReasons(record)
-      if (reasons.length === 0) continue
+      const groups = getRecordAnomalyGroups(record)
+      if (groups.length === 0) continue
       alerts.push({
         name: `${record.NO || '?'} - ${record.NOM_PRENOM || '?'}`,
-        reasons: [...new Set(reasons)],
+        groups,
       })
       if (alerts.length >= limit) break
     }
@@ -279,11 +346,13 @@ export function useTaskEditRecordDisplay(records, getDuplicateMeta, { isAbsentRo
     getSmartMarkDisplay,
     getEffectiveAnomalies,
     getRecordAnomalyReasons,
+    getRecordAnomalyGroups,
     getRowClassName,
     getMarkColor,
     getRowTypeLabel,
     getRowTypeDotClass,
     getAnomalyTagColor,
+    getAnomalyCategoryColor,
     getAnomalyTagClass,
     hasRecordAnomaly,
     countAnomalyRecords,

@@ -96,6 +96,7 @@ public class ReminderDatabaseBootstrap implements ApplicationRunner {
             ensureNotificationContentVarsColumn();
             ensureTemplateLocaleColumns();
             ensureFeishuLocaleKeyColumn();
+            ensureScheduleHourColumn();
         } catch (Exception e) {
             log.error("创建 reminder 表失败，提醒功能不可用", e);
         }
@@ -166,6 +167,15 @@ public class ReminderDatabaseBootstrap implements ApplicationRunner {
                     "VARCHAR(16) NOT NULL DEFAULT 'zh-CN' COMMENT 'locale' AFTER rule_id");
         } catch (Exception e) {
             log.warn("检查/添加 reminder_feishu_messages.locale_key 列失败: {}", e.getMessage());
+        }
+    }
+
+    private void ensureScheduleHourColumn() {
+        try {
+            addColumnIfMissing("schedule_hour_of_day",
+                    "TINYINT NULL COMMENT '0-23，仅 day/week 生效' AFTER interval_unit");
+        } catch (Exception e) {
+            log.warn("检查/添加 reminder_rules.schedule_hour_of_day 列失败: {}", e.getMessage());
         }
     }
 

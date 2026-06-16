@@ -24,7 +24,8 @@ for (const name of fs.readdirSync(srcDir)) {
   const src = path.join(srcDir, name)
   const dest = path.join(outDir, `${base}.js`)
   const body = fs.readFileSync(src, 'utf8')
-  fs.writeFileSync(dest, `${banner}${body}`)
+  const adapted = body.replace(/require\((['"])(\.\/[^'"]+)\.cjs\1\)/g, 'require($1$2$1)')
+  fs.writeFileSync(dest, `${banner}${adapted}`)
   console.log('synced', `${base}.js`)
 }
 

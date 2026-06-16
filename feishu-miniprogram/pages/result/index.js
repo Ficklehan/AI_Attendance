@@ -28,6 +28,8 @@ const { ensureFeishuLogin } = require('../../utils/feishuLogin')
 const { setPendingReturn, buildResultPath } = require('../../utils/deepLink')
 const { refreshRecordNightShiftMark } = require('../../utils/recognitionLabels')
 const { loadNightShiftRules } = require('../../utils/nightShiftRules')
+const { loadConfirmValidationConfig } = require('../../utils/confirmValidationConfig')
+const { parseImageQualityWarning } = require('../../utils/recognitionUpload')
 
 const PAGE_SIZE = 20
 const { startAdaptivePoll } = require('../../utils/adaptivePoll')
@@ -90,9 +92,12 @@ Page({
     duplicateBannerText: '',
     expandedDuplicateKeys: [],
     expandedCalibrationKeys: [],
+    expandedAnomalyKeys: [],
     duplicateRefreshing: false,
     requiredMissingCount: 0,
     requiredValidationBannerText: '',
+    showImageQualityBanner: false,
+    imageQualityBannerText: '',
     texts: {}
   },
 
@@ -100,7 +105,15 @@ Page({
     this.refreshPageTexts()
     loadNightShiftRules().catch(() => {})
     if (options && options.id) {
-      this.setData({ taskId: options.id })
+      const patch = { taskId: options.id }
+      if (options.qualityWarn === '1') {
+        patch.showImageQualityBanner = true
+        patch.imageQualityBannerText = t('upload.imageQualityWarning', {
+          blurPercent: Number(options.blurPercent) || 0,
+          unknownPercent: Number(options.unknownPercent) || 0
+        })
+      }
+      this.setData(patch)
       this.bootstrapTaskPage()
     } else {
       this.setData({ loading: false })
@@ -148,6 +161,8 @@ Page({
         allClearTitle: t('result.allClearTitle'),
         allClearDesc: t('result.allClearDesc'),
         anomalyLabel: t('result.anomalyLabel'),
+        anomalyExpand: t('result.anomalyExpand'),
+        anomalyCollapse: t('result.anomalyCollapse'),
         anomalyMorePrefix: t('result.anomalyMorePrefix'),
         issueUnit: t('result.issueUnit'),
         back: t('result.back'),
@@ -218,8 +233,9 @@ Page({
     ensureFeishuLogin({ silent: true, force: Boolean(forceLogin) })
       .then(() => {
         this.refreshUserPermissions()
-        return this.loadTaskResult(Boolean(silent))
+        return loadConfirmValidationConfig()
       })
+      .then(() => this.loadTaskResult(Boolean(silent)))
       .catch(() => {
         const taskId = this.data.taskId
         if (taskId) {
@@ -345,6 +361,14 @@ Page({
           const promptCountry = engine.indexOf('mimo:') === 0 ? engine.slice(5) : (task.promptCountry || '')
           const imageListPromise = buildTaskImageList(task)
           imageListPromise.then((imageList) => {
+            const qualityPatch = {}
+            if (!this.data.showImageQualityBanner) {
+              const warning = parseImageQualityWarning(task)
+              if (warning) {
+                qualityPatch.showImageQualityBanner = true
+                qualityPatch.imageQualityBannerText = t('upload.imageQualityWarning', warning)
+              }
+            }
             this.setData({
               taskInfo: mapTaskDetail(task, imageList),
               records,
@@ -352,7 +376,8 @@ Page({
               imagesLoading: imageList.length > 0,
               recognitionEngine: engine,
               recognitionEngineLabel: formatRecognitionEngine(engine, promptCountry),
-              promptCountryLabel: promptCountry ? getCountryLabel(promptCountry) : ''
+              promptCountryLabel: promptCountry ? getCountryLabel(promptCountry) : '',
+              ...qualityPatch
             })
             this.loadTaskImages(imageList)
             this.applySyncUi(task)
@@ -458,12 +483,23 @@ Page({
   attachDuplicateUi: function (rows) {
     const dupExpanded = this.data.expandedDuplicateKeys || []
     const calExpanded = this.data.expandedCalibrationKeys || []
+    const anomalyExpanded = this.data.expandedAnomalyKeys || []
     return (rows || []).map((row) => ({
       ...row,
       duplicateExpanded: dupExpanded.indexOf(row._rowKey) !== -1,
       calibrationExpanded: calExpanded.indexOf(row._rowKey) !== -1,
+      anomalyExpanded: anomalyExpanded.indexOf(row._rowKey) !== -1,
       duplicateMemberPreview: (row.duplicateMembers || []).slice(0, 4)
     }))
+  },
+
+  toggleAnomalyExpand: function (e) {
+    const rowKey = e.currentTarget.dataset.rowKey
+    if (!rowKey) return
+    const keys = this.data.expandedAnomalyKeys || []
+    const idx = keys.indexOf(rowKey)
+    const next = idx === -1 ? keys.concat(rowKey) : keys.filter((k) => k !== rowKey)
+    this.setData({ expandedAnomalyKeys: next }, () => this.refreshDisplayRecords())
   },
 
   toggleCalibrationExpand: function (e) {
@@ -501,7 +537,10 @@ Page({
       submitCtaLabel = t('result.confirmSubmitWithIssues', { count: issueCount })
     }
     const finish = (payload) => {
-      this.setData(payload, () => this.refreshRequiredValidation())
+      this.setData(payload, () => {
+        this.refreshRequiredValidation()
+        this.refreshPageTexts()
+      })
     }
     if (recordsExpanded) {
       const displayRecords = this.attachDuplicateUi(buildDisplayRecords(records, visibleCount))

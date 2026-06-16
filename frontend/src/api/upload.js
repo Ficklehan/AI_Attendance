@@ -2,6 +2,14 @@ import request from './index'
 
 const UPLOAD_RETRY_DELAYS_MS = [2000, 5000, 10000]
 
+function isNonRetryableUploadError(error) {
+  const key = error?.messageKey || ''
+  return key === 'errors.uploadImageTooBlurry'
+    || key === 'errors.uploadImageTooSmall'
+    || key === 'errors.unrecognizedImageFormat'
+    || key === 'errors.imagesOnly'
+}
+
 async function withUploadRetry(fn) {
   let lastError
   for (let attempt = 0; attempt <= UPLOAD_RETRY_DELAYS_MS.length; attempt += 1) {
@@ -9,6 +17,9 @@ async function withUploadRetry(fn) {
       return await fn()
     } catch (error) {
       lastError = error
+      if (isNonRetryableUploadError(error)) {
+        throw error
+      }
       if (attempt < UPLOAD_RETRY_DELAYS_MS.length) {
         await new Promise((resolve) => {
           setTimeout(resolve, UPLOAD_RETRY_DELAYS_MS[attempt])
@@ -28,6 +39,7 @@ export const uploadImageAsync = (formData) => withUploadRetry(() => request({
     'X-Client': 'pc-web',
   },
   timeout: 180000,
+  silentError: true,
 }))
 
 export const startTaskRecognition = (taskId) => withUploadRetry(() => request({
@@ -36,4 +48,5 @@ export const startTaskRecognition = (taskId) => withUploadRetry(() => request({
   headers: {
     'X-Client': 'pc-web',
   },
+  silentError: true,
 }))

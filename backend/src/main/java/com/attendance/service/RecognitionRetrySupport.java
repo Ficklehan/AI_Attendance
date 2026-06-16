@@ -22,6 +22,9 @@ public final class RecognitionRetrySupport {
         if (error == null) {
             return false;
         }
+        if (error instanceof MimoApiException) {
+            return isRetryableHttpStatus(((MimoApiException) error).getStatusCode());
+        }
         if (error instanceof InterruptedIOException
                 || error instanceof SocketTimeoutException
                 || error instanceof SocketException
@@ -49,6 +52,41 @@ public final class RecognitionRetrySupport {
             return isRetryable(cause);
         }
         return false;
+    }
+
+    /**
+     * 当前 Key 不可用，应切换到池中其他 Key（鉴权失败、单 Key 限流/欠费等）。
+     */
+    public static boolean isKeyFailover(Throwable error) {
+        if (error == null) {
+            return false;
+        }
+        if (error instanceof MimoApiException) {
+            return isKeyFailoverHttpStatus(((MimoApiException) error).getStatusCode());
+        }
+        String message = String.valueOf(error.getMessage()).toLowerCase(Locale.ROOT);
+        if (message.contains("invalid_api_key")
+                || message.contains("invalid api key")
+                || message.contains("incorrect api key")
+                || message.contains("unauthorized")
+                || message.contains("authentication")
+                || message.contains("api key not valid")
+                || message.contains("permission denied")) {
+            return true;
+        }
+        Throwable cause = error.getCause();
+        if (cause != null && cause != error) {
+            return isKeyFailover(cause);
+        }
+        return false;
+    }
+
+    static boolean isKeyFailoverHttpStatus(int statusCode) {
+        return statusCode == 401 || statusCode == 403 || statusCode == 402 || statusCode == 429;
+    }
+
+    static boolean isRetryableHttpStatus(int statusCode) {
+        return statusCode == 502 || statusCode == 503 || statusCode == 504;
     }
 
     public static void sleepBeforeRetry(int attemptIndex) throws InterruptedException {

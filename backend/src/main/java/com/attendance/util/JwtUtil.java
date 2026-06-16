@@ -1,6 +1,7 @@
 package com.attendance.util;
 
 import com.attendance.config.JwtProperties;
+import com.attendance.security.SigningSecretProvider;
 import io.jsonwebtoken.Claims;
 import io.jsonwebtoken.Jwts;
 import io.jsonwebtoken.SignatureAlgorithm;
@@ -11,7 +12,6 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 
 import javax.crypto.SecretKey;
-import java.nio.charset.StandardCharsets;
 import java.util.Date;
 import java.util.HashMap;
 import java.util.Map;
@@ -24,14 +24,11 @@ public class JwtUtil {
     @Autowired
     private JwtProperties jwtProperties;
 
+    @Autowired
+    private SigningSecretProvider signingSecretProvider;
+
     private SecretKey getSigningKey() {
-        byte[] keyBytes = jwtProperties.getSecret().getBytes(StandardCharsets.UTF_8);
-        if (keyBytes.length < 32) {
-            byte[] paddedKey = new byte[32];
-            System.arraycopy(keyBytes, 0, paddedKey, 0, keyBytes.length);
-            keyBytes = paddedKey;
-        }
-        return Keys.hmacShaKeyFor(keyBytes);
+        return Keys.hmacShaKeyFor(signingSecretProvider.getSecretBytes());
     }
 
     public String generateToken(String userId, String username) {

@@ -5,7 +5,7 @@
     <view class="form-body">
       <view tt:for="{{fields}}" tt:key="key" class="field-row">
         <text class="field-label">{{item.label}}</text>
-        <view class="field-input-shell">
+        <view class="field-input-shell {{item.missing ? 'is-required-empty' : ''}}">
           <input
             class="field-input"
             type="{{item.inputType || 'text'}}"

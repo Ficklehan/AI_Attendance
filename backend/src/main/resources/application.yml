@@ -109,6 +109,7 @@ attendance:
 
 mimo:
   api-key: ${MIMO_API_KEY:}
+  api-keys: ${MIMO_API_KEYS:}
   api-url: ${MIMO_API_URL:https://api.xiaomimimo.com/v1}
   # 识图须用 mimo-v2.5 或 mimo-v2-omni；mimo-v2.5-pro 不支持 image_url
   model: ${MIMO_MODEL:mimo-v2.5}

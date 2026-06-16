@@ -37,6 +37,10 @@ function getMessage(locale, key) {
   return null
 }
 
+function te(key) {
+  return getMessage(currentLocale, key) != null
+}
+
 function t(key, params) {
   let text = getMessage(currentLocale, key) || getMessage(DEFAULT_LOCALE, key) || key
   if (params && typeof params === 'object') {
@@ -45,6 +49,22 @@ function t(key, params) {
     })
   }
   return text
+}
+
+/** 翻译失败时返回 fallback，避免界面露出 i18n 键名 */
+function tOr(key, params, fallback) {
+  const raw = getMessage(currentLocale, key) || getMessage(DEFAULT_LOCALE, key)
+  if (raw == null) {
+    if (fallback == null) return key
+    let text = String(fallback)
+    if (params && typeof params === 'object') {
+      Object.keys(params).forEach((k) => {
+        text = text.replace(new RegExp(`\\{${k}\\}`, 'g'), String(params[k]))
+      })
+    }
+    return text
+  }
+  return t(key, params)
 }
 
 function localeToLanguageKey(locale) {
@@ -104,6 +124,8 @@ module.exports = {
   getLocale,
   setLocale,
   t,
+  te,
+  tOr,
   getLanguageOptions: getLanguageOptionsFixed,
   getCountriesForPicker,
   applyTabBarI18n,

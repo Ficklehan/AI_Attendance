@@ -5,8 +5,11 @@ import com.attendance.common.BusinessException;
 import com.attendance.common.ErrorCode;
 import com.attendance.common.Result;
 import com.attendance.service.ConfigService;
+import com.attendance.service.ImageQualityConfigService;
+import com.attendance.service.RecognitionConcurrencyGuard;
 import com.attendance.service.RecognitionRunner;
 import com.attendance.service.RecognitionSupport;
+import com.attendance.security.TaskAccessService;
 import com.attendance.util.CountryResolver;
 import com.attendance.util.ImageUploadValidator;
 import org.slf4j.Logger;
@@ -34,6 +37,15 @@ public class ChatController {
 
     @Autowired
     private RecognitionSupport recognitionSupport;
+
+    @Autowired
+    private ImageQualityConfigService imageQualityConfigService;
+
+    @Autowired
+    private RecognitionConcurrencyGuard recognitionConcurrencyGuard;
+
+    @Autowired
+    private TaskAccessService taskAccessService;
 
     @PostMapping("/completion")
     public Map<String, Object> chatCompletion(@RequestBody Map<String, String> request) {
@@ -77,7 +89,8 @@ public class ChatController {
 
         try {
             byte[] fileBytes = image.getBytes();
-            ImageUploadValidator.validate(fileBytes, image.getOriginalFilename(), image.getContentType(), log);
+            ImageUploadValidator.validate(fileBytes, image.getOriginalFilename(), image.getContentType(), log,
+                    imageQualityConfigService.getConfig());
 
             String workingCountry = CountryResolver.resolveForRecognition(
                     countryHeader, countryParam, configService, log);
@@ -85,8 +98,15 @@ public class ChatController {
 
             recognitionSupport.requireRealAi();
 
-            RecognitionRunner.RecognitionOutcome outcome = recognitionRunner.run(
-                    fileBytes, image.getOriginalFilename(), configCountry, workingCountry, null, null);
+            String userId = taskAccessService.requireCurrentUserId();
+            recognitionConcurrencyGuard.acquire(userId);
+            RecognitionRunner.RecognitionOutcome outcome;
+            try {
+                outcome = recognitionRunner.run(
+                        fileBytes, image.getOriginalFilename(), configCountry, workingCountry, null, null);
+            } finally {
+                recognitionConcurrencyGuard.release(userId);
+            }
 
             List<JSONObject> records = outcome.getRecords();
             String content = formatRecognitionForChat(records, outcome.getEngine(), question);

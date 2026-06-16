@@ -171,8 +171,8 @@
                 :style="{ width: `${Math.round((uploadProgress.uploaded / uploadProgress.total) * 100)}%` }"
               />
             </div>
-            <p v-if="progressRowCount > 0" class="sidebar__progress">
-              {{ $t('home.progressRows', { count: progressRowCount }) }}
+            <p v-if="displayProgressRowCount > 0" class="sidebar__progress">
+              {{ $t('home.progressRows', { count: displayProgressRowCount }) }}
             </p>
             <p v-if="networkUnstable" class="sidebar__network-hint">{{ $t('home.networkUnstable') }}</p>
             <p class="sidebar__bg-hint">{{ $t('home.backgroundRecognitionHint') }}</p>
@@ -374,17 +374,18 @@
 import { ref, computed, onMounted, onBeforeUnmount, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import { useI18n } from 'vue-i18n'
-import { message } from 'ant-design-vue'
+import { message, Modal as aModal } from 'ant-design-vue'
 import { compressImage, getImageHash, getFileSizeDisplay } from '@/utils/image'
 import StatOverview from '@/components/StatOverview.vue'
 import TruncatedTag from '@/components/TruncatedTag.vue'
 import StepGuide from '@/components/StepGuide.vue'
 import { useCountryStore } from '@/stores/country'
-import { getTaskDetail } from '@/api/task'
+import { getTaskDetail, getTaskProgress } from '@/api/task'
 import { getCachedWorkingCountry } from '@/utils/countryHeader'
 import {
   submitBackgroundRecognition,
   pollRecognitionUntilDone,
+  retryTaskRecognition,
   persistBgTaskId,
   clearBgTaskId,
   getPersistedBgTaskId,
@@ -413,6 +414,7 @@ import TableSortableHeader from '@/components/TableSortableHeader.vue'
 import { hasRequiredMissing } from '@/utils/requiredRecordFields'
 import { isAbsentRow } from '@/utils/recordDisplay'
 import { formatCountryLabel } from '@/utils/countryLabels'
+import { translateErrorMessage, showHomeUploadError } from '@/utils/translateError'
 
 const router = useRouter()
 const { t, locale } = useI18n()
@@ -443,6 +445,12 @@ const homeTableAnchor = ref(null)
 
 const stopPolling = ref(false)
 const progressRowCount = ref(0)
+const displayProgressRowCount = computed(() => {
+  if (uploading.value && records.value.length > 0) {
+    return records.value.length
+  }
+  return progressRowCount.value
+})
 const uploadProgress = ref({ uploaded: 0, total: 0, active: false })
 const networkUnstable = ref(false)
 let lastPartialFetchCount = 0
@@ -463,14 +471,85 @@ const applyRecordsFromTask = (taskRows) => {
   records.value = (taskRows || []).map((record) => normalizeRecordPause({ ...record, isDeleted: false }))
 }
 
-const refreshPartialRecords = async (taskId, rowCount) => {
-  if (!taskId || !rowCount || rowCount <= lastPartialFetchCount) return
+const finishRecognitionSuccess = (result) => {
+  applyRecordsFromTask(result.records)
+  currentTaskId.value = result.taskId
+  if (result.records.length > 0) {
+    clearBgTaskId()
+    message.success(t('home.recognizeSuccess', { count: result.records.length }))
+    router.push(`/tasks/${result.taskId}`)
+  } else {
+    message.warning(t('home.noRecordsFound'))
+  }
+}
+
+const showRecognitionFailure = (taskId, error) => {
+  if (!taskId || stopPolling.value) {
+    showHomeUploadError(error)
+    return
+  }
+  const reason = translateErrorMessage(error)
+  aModal.confirm({
+    title: t('home.recognitionFailedTitle'),
+    content: reason,
+    okText: t('home.recognitionRetry'),
+    cancelText: t('home.recognitionReupload'),
+    onOk: () => {
+      void runRecognitionPolling(taskId)
+    },
+    onCancel: () => {
+      handleClear()
+    },
+  })
+}
+
+const runRecognitionPolling = async (taskId) => {
+  stopPolling.value = false
+  uploading.value = true
+  showResult.value = true
+  currentTaskId.value = taskId
+  persistBgTaskId(taskId)
+  lastPartialFetchCount = records.value.length
+  try {
+    const result = await retryTaskRecognition(taskId, {
+      shouldAbort: () => stopPolling.value,
+      onProgress: async (p) => {
+        currentTaskId.value = p.taskId
+        if (p.phase !== 'refresh') {
+          progressRowCount.value = p.rowCount || 0
+          networkUnstable.value = !!p.networkRetry
+        }
+      },
+    })
+    if (result.aborted) return
+    finishRecognitionSuccess(result)
+  } catch (error) {
+    if (String(error?.message || '').includes(t('errors.taskAccessDenied'))) {
+      clearBgTaskId()
+    }
+    if (!stopPolling.value) {
+      const failedTaskId = error?.taskId || taskId
+      console.error('Recognition error:', error)
+      showRecognitionFailure(failedTaskId, error)
+    }
+  } finally {
+    uploading.value = false
+    networkUnstable.value = false
+    uploadProgress.value = { uploaded: 0, total: 0, active: false }
+  }
+}
+
+const refreshPartialRecords = async (taskId) => {
+  if (!taskId) return
   try {
     const detailRes = await getTaskDetail(taskId)
     const rows = parseRecordsFromTask(detailRes.data || {})
-    if (rows.length > 0) {
+    if (rows.length > lastPartialFetchCount) {
       applyRecordsFromTask(rows)
       lastPartialFetchCount = rows.length
+    }
+    if (rows.length > 0) {
+      progressRowCount.value = rows.length
     }
   } catch {
     // partial refresh is best-effort
@@ -488,22 +567,21 @@ const resumeBackgroundPolling = async (taskId) => {
       shouldAbort: () => stopPolling.value,
       onProgress: async (p) => {
         currentTaskId.value = p.taskId
-        progressRowCount.value = p.rowCount || 0
-        networkUnstable.value = !!p.networkRetry
-        await refreshPartialRecords(p.taskId, p.rowCount)
+        if (p.phase !== 'refresh') {
+          progressRowCount.value = p.rowCount || 0
+          networkUnstable.value = !!p.networkRetry
+        }
       },
     })
     if (result.aborted) return
-    applyRecordsFromTask(result.records)
-    currentTaskId.value = result.taskId
-    message.success(t('home.recognizeSuccess', { count: result.records.length }))
-    router.push(`/tasks/${result.taskId}`)
+    finishRecognitionSuccess(result)
   } catch (error) {
     if (String(error?.message || '').includes(t('errors.taskAccessDenied'))) {
       clearBgTaskId()
     }
     if (!stopPolling.value) {
-      message.error(t('home.uploadFailedGeneric', { reason: error.message || t('errors.requestFailed') }))
+      const failedTaskId = error?.taskId || taskId
+      showRecognitionFailure(failedTaskId, error)
     }
   } finally {
     uploading.value = false
@@ -546,7 +624,21 @@ onMounted(async () => {
     console.error('加载工作国家失败:', error)
   }
   if (persistedTaskId) {
-    void resumeBackgroundPolling(persistedTaskId)
+    try {
+      const progressRes = await getTaskProgress(persistedTaskId)
+      const status = progressRes.data?.status
+      if (status === 'processing') {
+        void resumeBackgroundPolling(persistedTaskId)
+      } else if (status === 'failed') {
+        currentTaskId.value = persistedTaskId
+        showResult.value = true
+        await refreshPartialRecords(persistedTaskId)
+      } else {
+        clearBgTaskId()
+      }
+    } catch {
+      clearBgTaskId()
+    }
   }
 })
 onBeforeUnmount(() => {
@@ -808,18 +900,22 @@ const handleUpload = async () => {
         onProgress: async (p) => {
           currentTaskId.value = p.taskId
           persistBgTaskId(p.taskId)
-          progressRowCount.value = p.rowCount || 0
-          networkUnstable.value = !!p.networkRetry
+          if (p.phase !== 'refresh') {
+            progressRowCount.value = p.rowCount || 0
+            networkUnstable.value = !!p.networkRetry
+          }
           if (p.phase === 'uploading') {
             uploadProgress.value = {
               uploaded: p.uploaded || 0,
               total: p.total || 0,
               active: true,
             }
-          } else {
+          } else if (p.phase !== 'refresh') {
             uploadProgress.value = { ...uploadProgress.value, active: false }
           }
-          await refreshPartialRecords(p.taskId, p.rowCount)
+        if (p.status === 'processing' || p.phase === 'refresh') {
+          progressRowCount.value = p.rowCount || progressRowCount.value
+        }
         },
       },
     )
@@ -828,21 +924,22 @@ const handleUpload = async () => {
       return
     }
 
-    applyRecordsFromTask(result.records)
-    currentTaskId.value = result.taskId
-    if (result.records.length > 0) {
-      message.success(t('home.recognizeSuccess', { count: result.records.length }))
-      router.push(`/tasks/${result.taskId}`)
-    } else {
-      message.warning(t('home.noRecordsFound'))
-    }
+    finishRecognitionSuccess(result)
   } catch (error) {
     if (String(error?.message || '').includes(t('errors.taskAccessDenied'))) {
       clearBgTaskId()
     }
     if (!stopPolling.value) {
+      const taskId = error?.taskId || currentTaskId.value
       console.error('Upload error:', error)
-      message.error(t('home.uploadFailedGeneric', { reason: error.message || t('errors.requestFailed') }))
+      if (taskId) {
+        currentTaskId.value = taskId
+        persistBgTaskId(taskId)
+        showResult.value = true
+        showRecognitionFailure(taskId, error)
+      } else {
+        showHomeUploadError(error)
+      }
     }
   } finally {
     uploading.value = false

@@ -22,4 +22,6 @@ public interface RecognitionQueueMapper {
     int countPending();
 
     int requeue(@Param("id") String id);
+
+    int failStaleRunningJobs(@Param("staleSeconds") int staleSeconds);
 }

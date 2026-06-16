@@ -187,9 +187,16 @@ public class RecognitionCoordinator {
     }
 
     /**
-     * 阻塞等待 MiMo QPS 配额（全局限流）。
+     * 阻塞等待 MiMo QPS 配额（全局限流，兼容旧调用）。
      */
     public void acquireMimoPermit() throws InterruptedException {
+        acquireMimoPermitForKey(0);
+    }
+
+    /**
+     * 阻塞等待指定 Key 槽位的 MiMo QPS 配额。
+     */
+    public void acquireMimoPermitForKey(int keyIndex) throws InterruptedException {
         double qps = properties.getMimoQps();
         if (qps <= 0) {
             return;
@@ -198,7 +205,7 @@ public class RecognitionCoordinator {
         long windowMs = 1000L;
         long deadline = System.currentTimeMillis() + 120_000L;
         while (System.currentTimeMillis() < deadline) {
-            if (tryAcquireMimoPermit(limit, windowMs)) {
+            if (tryAcquireMimoPermitForKey(keyIndex, limit, windowMs)) {
                 return;
             }
             Thread.sleep(50L);
@@ -206,26 +213,41 @@ public class RecognitionCoordinator {
         throw new BusinessException(429, ErrorKeys.RECOGNITION_CONCURRENT_LIMIT);
     }
 
-    private boolean tryAcquireMimoPermit(int limit, long windowMs) {
+    /**
+     * 非阻塞尝试获取指定 Key 槽位的 MiMo QPS 配额。
+     */
+    public boolean tryAcquireMimoPermitForKey(int keyIndex) {
+        double qps = properties.getMimoQps();
+        if (qps <= 0) {
+            return true;
+        }
+        int limit = Math.max(1, (int) Math.ceil(qps));
+        return tryAcquireMimoPermitForKey(keyIndex, limit, 1000L);
+    }
+
+    private boolean tryAcquireMimoPermitForKey(int keyIndex, int limit, long windowMs) {
         long bucket = System.currentTimeMillis() / windowMs;
+        String counterKey = KEY_MIMO_QPS_PREFIX + keyIndex + ":" + bucket;
         if (distributed) {
-            String key = KEY_MIMO_QPS_PREFIX + bucket;
-            Long count = redis.opsForValue().increment(key);
+            Long count = redis.opsForValue().increment(counterKey);
             if (count != null && count == 1L) {
-                redis.expire(key, 3, TimeUnit.SECONDS);
+                redis.expire(counterKey, 3, TimeUnit.SECONDS);
             }
             return count != null && count <= limit;
         }
-        String key = String.valueOf(bucket);
-        AtomicInteger counter = localMimoCounters.computeIfAbsent(key, k -> new AtomicInteger(0));
+        AtomicInteger counter = localMimoCounters.computeIfAbsent(counterKey, k -> new AtomicInteger(0));
         if (counter.incrementAndGet() > limit) {
             return false;
         }
-        if (localMimoCounters.size() > 32) {
+        if (localMimoCounters.size() > 64) {
             long cutoff = bucket - 5;
             localMimoCounters.keySet().removeIf(k -> {
+                int colon = k.lastIndexOf(':');
+                if (colon < 0) {
+                    return true;
+                }
                 try {
-                    return Long.parseLong(k) < cutoff;
+                    return Long.parseLong(k.substring(colon + 1)) < cutoff;
                 } catch (NumberFormatException e) {
                     return true;
                 }

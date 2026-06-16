@@ -7,6 +7,7 @@ import com.attendance.entity.Task;
 import com.attendance.entity.TaskListRow;
 import com.attendance.entity.TaskRecord;
 import com.attendance.entity.User;
+import com.attendance.dto.ImageQualityAssessment;
 import com.attendance.dto.RecognitionCheckpoint;
 import com.attendance.dto.request.TaskQuery;
 import com.attendance.dto.response.EmployeeRecordDTO;
@@ -307,6 +308,13 @@ public class TaskService {
         taskRecordSyncService.syncFromTaskId(taskId);
     }
 
+    /** 兼容旧调用：忽略 imageQuality 警告写入 */
+    @Transactional
+    public void updateTaskRawData(String taskId, String rawData, String aiRawOutput, RecognitionTrace recognitionTrace,
+                                  ImageQualityAssessment imageQuality) {
+        updateTaskRawData(taskId, rawData, aiRawOutput, recognitionTrace);
+    }
+
     /** 仅更新识别进度计数（轮询轻量接口数据源） */
     @Transactional
     public void updateTaskRecognitionProgress(String taskId, int rowCount, String engineTag) {
@@ -323,7 +331,7 @@ public class TaskService {
     }
 
     public TaskProgressDTO getTaskProgress(String taskId) {
-        taskAccessService.requireOwnedTask(taskId);
+        taskAccessService.requireTaskAccessForProgress(taskId);
         TaskProgressDTO dto = taskMapper.selectTaskProgress(taskId);
         if (dto == null) {
             throw new BusinessException(ErrorCode.TASK_NOT_FOUND, ErrorKeys.TASK_NOT_FOUND);
@@ -335,6 +343,10 @@ public class TaskService {
                 JSONObject obj = JSON.parseObject(summary);
                 if (obj != null && obj.getString("error") != null) {
                     dto.setProgressError(obj.getString("error"));
+                    JSONObject args = obj.getJSONObject("errorArgs");
+                    if (args != null && !args.isEmpty()) {
+                        dto.setProgressErrorArgs(args);
+                    }
                 }
             } catch (Exception ignored) {
                 // ignore
@@ -357,13 +369,22 @@ public class TaskService {
 
     @Transactional
     public void failTask(String taskId, String errorMessage) {
-        failTask(taskId, errorMessage, null);
+        failTask(taskId, errorMessage, null, null);
     }
 
     @Transactional
     public void failTask(String taskId, String errorMessage, RecognitionTrace recognitionTrace) {
+        failTask(taskId, errorMessage, null, recognitionTrace);
+    }
+
+    @Transactional
+    public void failTask(String taskId, String errorMessage, Map<String, Object> errorArgs,
+                         RecognitionTrace recognitionTrace) {
         JSONObject summary = new JSONObject();
         summary.put("error", errorMessage);
+        if (errorArgs != null && !errorArgs.isEmpty()) {
+            summary.put("errorArgs", errorArgs);
+        }
         if (recognitionTrace != null) {
             summary.put("recognitionTrace", recognitionTrace.toJson());
         }

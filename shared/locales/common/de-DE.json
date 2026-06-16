@@ -66,6 +66,7 @@
     "imagesOnly": "Nur Bilddateien werden unterstützt",
     "unrecognizedImageFormat": "Unbekanntes Bildformat. JPG oder PNG verwenden",
     "mimoNotConfigured": "MIMO API Key nicht konfiguriert",
+    "mimoUnavailable": "KI-Erkennung vorübergehend nicht verfügbar (MiMo-API-Fehler). Bitte 1–2 Minuten warten und erneut versuchen",
     "aiPromptNotFound": "Erkennungs-Prompt nicht gefunden",
     "aiContinuePromptNotFound": "Fortsetzungs-Prompt nicht gefunden",
     "aiHeaderEcho": "Modell hat Spaltenüberschriften als Daten zurückgegeben",

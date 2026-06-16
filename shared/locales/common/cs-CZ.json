@@ -67,6 +67,7 @@
     "imagesOnly": "Podporovány jsou pouze obrázky",
     "unrecognizedImageFormat": "Neznámý formát obrázku. Použijte JPG nebo PNG",
     "mimoNotConfigured": "MIMO API Key není nakonfigurován",
+    "mimoUnavailable": "Rozpoznávání AI dočasně nedostupné (chyba API MiMo). Počkejte 1–2 minuty a zkuste znovu",
     "aiPromptNotFound": "Prompt rozpoznávání nenalezen",
     "aiContinuePromptNotFound": "Pokračovací prompt nenalezen",
     "aiHeaderEcho": "Model vrátil záhlaví sloupců jako data",

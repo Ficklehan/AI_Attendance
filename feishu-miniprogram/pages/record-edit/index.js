@@ -2,13 +2,13 @@ const { t } = require('../../utils/i18n')
 const { isApiSuccess, getApiData, getApiMessage } = require('../../utils/response')
 const { apiCall } = require('../../utils/request')
 const { parseRecords } = require('../../utils/task')
-const { isAbsentRow } = require('../../utils/recordDisplay')
+const { isAbsentRow, normalizePauseMinutes } = require('../../utils/recordDisplay')
 const {
   CALIBRATABLE_FIELDS,
-  FIELD_LABEL_KEYS,
   normalizeCalibValue
 } = require('../../utils/calibratableFields')
-const { normalizePauseMinutes } = require('../../utils/recordDisplay')
+const { buildCalibFormFields } = require('../../utils/calibFormFields')
+const { loadConfirmValidationConfig } = require('../../utils/confirmValidationConfig')
 
 Page({
   data: {
@@ -29,9 +29,11 @@ Page({
       return
     }
     this.setData({ taskId, rowKey })
-    if (!this.loadFromResultPage()) {
-      this.loadFromApi()
-    }
+    loadConfirmValidationConfig().then(() => {
+      if (!this.loadFromResultPage()) {
+        this.loadFromApi()
+      }
+    })
   },
 
   refreshTexts: function () {
@@ -101,6 +103,7 @@ Page({
   },
 
   initDraft: function (record) {
+    this._sourceRecord = record
     const draft = {}
     CALIBRATABLE_FIELDS.forEach((key) => {
       const v = record[key]
@@ -115,14 +118,7 @@ Page({
   },
 
   rebuildForm: function () {
-    const fields = CALIBRATABLE_FIELDS.map((key) => ({
-      key,
-      label: t(FIELD_LABEL_KEYS[key] || key),
-      value: this.data.draft[key] === undefined || this.data.draft[key] === null
-        ? ''
-        : String(this.data.draft[key]),
-      inputType: key === 'PAUSE' ? 'number' : 'text'
-    }))
+    const fields = buildCalibFormFields(this.data.draft, this._sourceRecord || {})
     this.setData({ fields })
   },
 

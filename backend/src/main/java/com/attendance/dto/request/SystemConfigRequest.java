@@ -1,6 +1,7 @@
 package com.attendance.dto.request;
 
 import com.attendance.dto.ConfirmValidationConfigDTO;
+import com.attendance.dto.ImageQualityConfigDTO;
 import com.attendance.dto.NightShiftConfigDTO;
 
 public class SystemConfigRequest {
@@ -8,6 +9,7 @@ public class SystemConfigRequest {
     private Boolean notificationEnabled;
     private ConfirmValidationConfigDTO confirmValidation;
     private NightShiftConfigDTO nightShift;
+    private ImageQualityConfigDTO imageQuality;
 
     public Boolean getNotificationEnabled() {
         return notificationEnabled;
@@ -31,5 +33,13 @@ public class SystemConfigRequest {
 
     public void setNightShift(NightShiftConfigDTO nightShift) {
         this.nightShift = nightShift;
+    }
+
+    public ImageQualityConfigDTO getImageQuality() {
+        return imageQuality;
+    }
+
+    public void setImageQuality(ImageQualityConfigDTO imageQuality) {
+        this.imageQuality = imageQuality;
     }
 }

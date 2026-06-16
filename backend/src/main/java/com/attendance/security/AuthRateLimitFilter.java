@@ -56,13 +56,7 @@ public class AuthRateLimitFilter extends OncePerRequestFilter {
     }
 
     private String resolveClientKey(HttpServletRequest request, String path) {
-        String ip = request.getHeader("X-Forwarded-For");
-        if (ip != null && !ip.trim().isEmpty()) {
-            ip = ip.split(",")[0].trim();
-        } else {
-            ip = request.getRemoteAddr();
-        }
-        return ip + "|" + path;
+        return request.getRemoteAddr() + "|" + path;
     }
 
     private boolean isLimited(String clientKey) {

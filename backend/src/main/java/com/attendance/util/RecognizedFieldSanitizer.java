@@ -1,13 +1,19 @@
 package com.attendance.util;
 
+import com.alibaba.fastjson.JSONArray;
 import com.alibaba.fastjson.JSONObject;
 
+import java.util.LinkedHashSet;
 import java.util.Map;
+import java.util.Set;
 
 /**
  * 识别结果可选字段清洗：未识别到的占位符统一为空，不做默认回填。
+ * 模型输出的 ??? / illegible 记入 {@code _unreadableFields}，不写入单元格值。
  */
 public final class RecognizedFieldSanitizer {
+
+    public static final String UNREADABLE_FIELDS_KEY = "_unreadableFields";
 
     private RecognizedFieldSanitizer() {
     }
@@ -31,6 +37,21 @@ public final class RecognizedFieldSanitizer {
                 || "none".equalsIgnoreCase(trimmed);
     }
 
+    /** 模型明确标为无法辨认（不含空白） */
+    public static boolean isExplicitUnreadable(String value) {
+        if (value == null) {
+            return false;
+        }
+        String trimmed = value.trim();
+        if (trimmed.isEmpty()) {
+            return false;
+        }
+        return "???".equals(trimmed)
+                || "??".equals(trimmed)
+                || "illegible".equalsIgnoreCase(trimmed)
+                || "unknown".equalsIgnoreCase(trimmed);
+    }
+
     private static final String[] RECORD_TEXT_KEYS = {
             "Pays", "Entrepot", "Date", "WorkDate", "NOM_PRENOM", "Name", "NO",
             "AGENCE_INTERIMAIRE", "HORAIRES_DU_TRAVAIL", "ARRIVEE", "DEPAR", "DEPART",
@@ -42,6 +63,7 @@ public final class RecognizedFieldSanitizer {
         if (record == null) {
             return;
         }
+        record.remove(UNREADABLE_FIELDS_KEY);
         for (String key : RECORD_TEXT_KEYS) {
             if (!record.containsKey(key)) {
                 continue;
@@ -52,6 +74,80 @@ public final class RecognizedFieldSanitizer {
             }
             record.put(key, sanitizeOptionalText(String.valueOf(value)));
         }
+    }
+
+    /**
+     * 识别结果入库：收集看不清字段到元数据，单元格值清空；必要时补「模糊」标记。
+     */
+    public static void annotateAndSanitizeRecord(JSONObject record) {
+        if (record == null) {
+            return;
+        }
+        Set<String> unreadable = new LinkedHashSet<>();
+        JSONArray existing = record.getJSONArray(UNREADABLE_FIELDS_KEY);
+        if (existing != null) {
+            for (int i = 0; i < existing.size(); i++) {
+                Object item = existing.get(i);
+                if (item != null && !String.valueOf(item).trim().isEmpty()) {
+                    unreadable.add(String.valueOf(item).trim());
+                }
+            }
+        }
+        for (String key : RECORD_TEXT_KEYS) {
+            if (!record.containsKey(key)) {
+                continue;
+            }
+            String raw = record.getString(key);
+            if (isExplicitUnreadable(raw)) {
+                unreadable.add(key);
+            }
+            record.put(key, sanitizeOptionalText(raw));
+        }
+        if (record.containsKey("PAUSE")) {
+            Object pauseValue = record.get("PAUSE");
+            String pauseText = pauseValue == null ? "" : String.valueOf(pauseValue).trim();
+            if (isExplicitUnreadable(pauseText)) {
+                unreadable.add("PAUSE");
+                record.put("PAUSE", "");
+            } else if (isUnrecognized(pauseText)) {
+                record.put("PAUSE", "");
+            }
+        }
+        if (!unreadable.isEmpty()) {
+            JSONArray fields = new JSONArray();
+            fields.addAll(unreadable);
+            record.put(UNREADABLE_FIELDS_KEY, fields);
+            appendBlurMarkIfNeeded(record);
+        } else {
+            record.remove(UNREADABLE_FIELDS_KEY);
+        }
+    }
+
+    private static void appendBlurMarkIfNeeded(JSONObject record) {
+        if (record.getBooleanValue("isDeleted")) {
+            return;
+        }
+        String smartMark = record.getString("SmartMark");
+        if (smartMark != null) {
+            if (smartMark.contains("未出勤") || smartMark.contains("已删除") || smartMark.contains("模糊")) {
+                return;
+            }
+        }
+        String nextMark = appendMarkToken(smartMark, "模糊");
+        record.put("SmartMark", nextMark);
+        if (record.containsKey("Mark") && record.getString("Mark") != null && !record.getString("Mark").trim().isEmpty()) {
+            record.put("Mark", appendMarkToken(record.getString("Mark"), "模糊"));
+        }
+    }
+
+    private static String appendMarkToken(String existing, String token) {
+        if (existing == null || existing.trim().isEmpty() || "-".equals(existing.trim()) || "正常".equals(existing.trim())) {
+            return token;
+        }
+        if (existing.contains(token)) {
+            return existing;
+        }
+        return existing + ";" + token;
     }
 
     public static String sanitizeOptionalText(String value) {

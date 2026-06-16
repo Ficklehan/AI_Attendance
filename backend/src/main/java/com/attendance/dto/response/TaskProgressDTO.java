@@ -1,5 +1,8 @@
 package com.attendance.dto.response;
 
+import java.util.Collections;
+import java.util.Map;
+
 /**
  * 任务进度轻量视图（识别轮询专用，不含 raw_data / confirmed_data）。
  */
@@ -11,6 +14,7 @@ public class TaskProgressDTO {
     private String aiRawOutput;
     private int progressRowCount;
     private String progressError;
+    private Map<String, Object> progressErrorArgs;
     /** MyBatis 填充，不返回给前端 */
     private String anomalySummaryRaw;
 
@@ -68,6 +72,14 @@ public class TaskProgressDTO {
 
     public void setProgressError(String progressError) {
         this.progressError = progressError;
+    }
+
+    public Map<String, Object> getProgressErrorArgs() {
+        return progressErrorArgs != null ? progressErrorArgs : Collections.emptyMap();
+    }
+
+    public void setProgressErrorArgs(Map<String, Object> progressErrorArgs) {
+        this.progressErrorArgs = progressErrorArgs;
     }
 
     public String getAnomalySummaryRaw() {

@@ -3,7 +3,7 @@ import { useAuthStore } from '@/stores/auth'
 import router from '@/router'
 import { getToken } from '@/utils/auth'
 import { getCachedWorkingCountry } from '@/utils/countryHeader'
-import { showApiError, showErrorMessage } from '@/utils/translateError'
+import { showApiError, showErrorMessage, translateApiError } from '@/utils/translateError'
 import { API_BASE_PATH } from '@/constants/apiBase'
 
 const request = axios.create({
@@ -38,7 +38,7 @@ request.interceptors.response.use(
     
     if (res.code !== 200) {
       const silent = response.config?.silentError === true
-      const text = silent ? (res.message || 'request failed') : showApiError(res)
+      const text = silent ? translateApiError(res) : showApiError(res)
 
       if (res.code === 401 || res.code === 1004 || res.messageKey === 'errors.userDisabled') {
         const authStore = useAuthStore()
@@ -46,14 +46,28 @@ request.interceptors.response.use(
         router.push('/login')
       }
 
-      return Promise.reject(new Error(text))
+      const err = new Error(text)
+      err.messageKey = res.messageKey
+      err.messageArgs = res.messageArgs
+      err.apiCode = res.code
+      return Promise.reject(err)
     }
     
     return res
   },
   (error) => {
     if (error.config?.silentError === true) {
-      return Promise.reject(error)
+      if (error.response?.data) {
+        const data = error.response.data
+        const err = new Error(translateApiError(data))
+        err.messageKey = data.messageKey
+        err.messageArgs = data.messageArgs
+        err.apiCode = data.code
+        return Promise.reject(err)
+      }
+      const err = new Error(translateApiError({ message: error.message, code: error.code }))
+      err.messageKey = error.messageKey
+      return Promise.reject(err)
     }
     const messageText = showErrorMessage(error)
     return Promise.reject(new Error(messageText))

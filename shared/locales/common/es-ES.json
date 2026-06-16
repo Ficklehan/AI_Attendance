@@ -52,6 +52,7 @@
     "taskAccessDenied": "No tiene acceso a esta tarea",
     "imageInvalid": "Archivo de imagen no válido",
     "mimoNotConfigured": "MIMO API Key no configurada. Configure MIMO_API_KEY en backend/.env y reinicie el backend",
+    "mimoUnavailable": "Reconocimiento IA no disponible temporalmente (error API MiMo). Espere 1–2 minutos y reintente",
     "aiHeaderEcho": "El modelo devolvió encabezados de columna (p. ej. nombre/proveedor) como datos. Verifique el país de trabajo y suba una foto más clara",
     "aiInvalidJson": "El modelo devolvió JSON inválido sin comillas. Intente con una imagen más clara. Resumen: {preview}",
     "aiNoParseableRecords": "El modelo no devolvió filas JSON de asistencia analizables. Intente con una imagen más clara. Resumen: {preview}",

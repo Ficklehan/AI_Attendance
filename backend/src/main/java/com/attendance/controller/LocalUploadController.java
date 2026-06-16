@@ -8,6 +8,9 @@ import com.attendance.service.ConfigService;
 import com.attendance.service.RecognitionConcurrencyGuard;
 import com.attendance.service.RecognitionJobService;
 import com.attendance.service.RecognitionRunner;
+import com.attendance.dto.ImageQualityAssessment;
+import com.attendance.service.ImageQualityConfigService;
+import com.attendance.service.RecognitionQualityGuard;
 import com.attendance.service.RecognitionSupport;
 import com.attendance.service.RecognitionTrace;
 import com.attendance.service.SimulatedRecognitionService;
@@ -96,6 +99,12 @@ public class LocalUploadController {
     private RecognitionJobService recognitionJobService;
 
     @Autowired
+    private RecognitionQualityGuard recognitionQualityGuard;
+
+    @Autowired
+    private ImageQualityConfigService imageQualityConfigService;
+
+    @Autowired
     private FileStorage fileStorage;
 
     @Value("${server.servlet.context-path:}")
@@ -125,10 +134,7 @@ public class LocalUploadController {
         return new String[] { configCountry, workingCountry };
     }
 
-    private List<String> saveRecognizablePages(byte[] fileBytes, String originalFilename, String contentType)
-            throws IOException {
-        List<UploadMediaSupport.ImagePage> pages = uploadMediaSupport.toRecognizablePages(
-                fileBytes, originalFilename, contentType);
+    private List<String> saveRecognizablePages(List<UploadMediaSupport.ImagePage> pages) throws IOException {
         List<String> keys = new ArrayList<>(pages.size());
         for (UploadMediaSupport.ImagePage page : pages) {
             String name = page.getLabel();
@@ -138,6 +144,20 @@ public class LocalUploadController {
             keys.add(aiParserService.saveUploadedFile(page.getBytes(), name));
         }
         return keys;
+    }
+
+    private List<UploadMediaSupport.ImagePage> prepareUploadPages(byte[] fileBytes, String originalFilename,
+                                                                   String contentType) {
+        List<UploadMediaSupport.ImagePage> pages = uploadMediaSupport.toRecognizablePages(
+                fileBytes, originalFilename, contentType);
+        ImageUploadValidator.validatePages(pages, fileBytes, originalFilename, contentType, log,
+                imageQualityConfigService.getConfig());
+        return pages;
+    }
+
+    private List<String> saveRecognizablePages(byte[] fileBytes, String originalFilename, String contentType)
+            throws IOException {
+        return saveRecognizablePages(prepareUploadPages(fileBytes, originalFilename, contentType));
     }
 
     private void mergeTaskImageUrls(String taskId, List<String> savedKeys) {
@@ -176,9 +196,9 @@ public class LocalUploadController {
         SecurityContextHolder.setContext(securityContext);
         try {
             byte[] fileBytes = image.getBytes();
-            ImageUploadValidator.validate(fileBytes, image.getOriginalFilename(), image.getContentType(), log);
-            List<String> savedKeys = saveRecognizablePages(
+            List<UploadMediaSupport.ImagePage> pages = prepareUploadPages(
                     fileBytes, image.getOriginalFilename(), image.getContentType());
+            List<String> savedKeys = saveRecognizablePages(pages);
             String savedFilename = savedKeys.get(0);
             
             String newTaskId;
@@ -282,9 +302,6 @@ public class LocalUploadController {
                 String originalFilename = image.getOriginalFilename();
                 String contentType = image.getContentType();
                 log.info("图片信息 - 文件名: {}, Content-Type: {}, 大小: {} bytes", originalFilename, contentType, fileBytes.length);
-                
-                List<UploadMediaSupport.ImagePage> pages = uploadMediaSupport.toRecognizablePages(
-                        fileBytes, originalFilename, contentType);
                 log.info("开始 AI 识别: pages={}, filename={}", pages.size(), originalFilename);
                 final Exception[] streamError = {null};
                 final boolean[] streamCompleted = {false};
@@ -420,9 +437,9 @@ public class LocalUploadController {
         try {
             String plannedEngine = recognitionRunner.plannedEngine();
             byte[] fileBytes = image.getBytes();
-            ImageUploadValidator.validate(fileBytes, image.getOriginalFilename(), image.getContentType(), log);
-            List<String> savedKeys = saveRecognizablePages(
+            List<UploadMediaSupport.ImagePage> pages = prepareUploadPages(
                     fileBytes, image.getOriginalFilename(), image.getContentType());
+            List<String> savedKeys = saveRecognizablePages(pages);
             String filename = savedKeys.get(0);
 
             if (existingTaskId != null && !existingTaskId.trim().isEmpty()) {
@@ -469,10 +486,8 @@ public class LocalUploadController {
 
             SecurityContext securityContext = SecurityContextHolder.getContext();
             final String recognitionUserId = taskAccessService.requireCurrentUserId();
-            List<UploadMediaSupport.ImagePage> recognizePages = uploadMediaSupport.toRecognizablePages(
-                    fileBytes, image.getOriginalFilename(), image.getContentType());
             recognitionJobService.submitPagesRecognition(
-                    taskId, recognizePages, configCountry, workingCountry, client,
+                    taskId, pages, configCountry, workingCountry, client,
                     securityContext, recognitionUserId);
 
             JSONObject result = new JSONObject();
@@ -643,7 +658,7 @@ public class LocalUploadController {
             for (JSONObject record : newRecords) {
                 allRecords.add(new JSONObject(record));
             }
-            
+
             String mergedData = JSON.toJSONString(allRecords);
             if (recognitionTrace != null) {
                 taskService.updateTaskRawData(taskId, mergedData, engine, recognitionTrace);

@@ -176,8 +176,8 @@ public class BitableService {
         }
         body.put("records", recordsArray);
 
-        log.info("发送到飞书的请求: appToken={}, tableId={}, recordsCount={}, excludeParam={}", appToken, tableId, records.size(), excludeParam);
-        log.info("请求URL: https://open.feishu.cn/open-apis/bitable/v1/apps/{}/tables/{}/records/batch_create", appToken, tableId);
+        log.debug("发送到飞书的请求: recordsCount={}, excludeParam={}", records.size(), excludeParam);
+        log.debug("请求URL: https://open.feishu.cn/open-apis/bitable/v1/apps/{}/tables/{}/records/batch_create", maskToken(appToken), maskToken(tableId));
         log.info("完整请求体: {}", body.toJSONString());
 
         Request request = new Request.Builder()
@@ -578,7 +578,7 @@ public class BitableService {
     private String getTableId(String countryCode) {
         Map<String, Object> config = configService.getFeishuConfig(countryCode);
         String tableId = readConfigString(config, "tableId", "bitable_table_id");
-        log.info("获取飞书Table ID: country={}, tableId={}", countryCode, tableId);
+        log.debug("获取飞书Table ID: country={}, tableId={}", countryCode, maskToken(tableId));
         if (tableId == null || tableId.isEmpty()) {
             throw new IllegalStateException("未配置飞书多维表 Table ID: country=" + countryCode);
         }
@@ -657,7 +657,7 @@ public class BitableService {
     }
 
     public boolean validateConnection(String appToken, String tableId) {
-        log.info("验证飞书多维表连接: appToken={}, tableId={}", appToken, tableId);
+        log.debug("验证飞书多维表连接: appToken={}, tableId={}", maskToken(appToken), maskToken(tableId));
 
         try {
             String token = getAccessToken();
@@ -693,5 +693,12 @@ public class BitableService {
             log.error("验证连接异常", e);
             return false;
         }
+    }
+
+    private static String maskToken(String value) {
+        if (value == null || value.length() <= 8) {
+            return "***";
+        }
+        return value.substring(0, 4) + "..." + value.substring(value.length() - 4);
     }
 }

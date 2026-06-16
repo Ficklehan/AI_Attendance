@@ -55,6 +55,12 @@
         WHERE task_id = #{taskId}
     </select>
 
+    <select id="selectTaskAccessMeta" resultMap="BaseResultMap">
+        SELECT task_id, user_id
+        FROM tasks
+        WHERE task_id = #{taskId}
+    </select>
+
     <select id="selectTaskProgress" resultType="com.attendance.dto.response.TaskProgressDTO">
         SELECT task_id AS taskId,
                status,

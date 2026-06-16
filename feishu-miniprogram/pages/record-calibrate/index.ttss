@@ -50,6 +50,11 @@
   border-radius: 16rpx;
 }
 
+.calibrate-page .field-input-shell.is-required-empty {
+  border-color: var(--amber, #d97706);
+  background: rgba(217, 119, 6, 0.06);
+}
+
 .calibrate-page .field-input {
   display: block;
   width: 100%;

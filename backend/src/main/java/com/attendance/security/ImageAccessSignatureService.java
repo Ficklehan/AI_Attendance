@@ -3,12 +3,10 @@ package com.attendance.security;
 import com.attendance.common.BusinessException;
 import com.attendance.common.ErrorCode;
 import com.attendance.common.ErrorKeys;
-import com.attendance.config.JwtProperties;
+import com.attendance.security.SigningSecretProvider;
 import org.apache.commons.codec.digest.HmacUtils;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
-
-import java.nio.charset.StandardCharsets;
 import java.time.Instant;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -24,7 +22,7 @@ public class ImageAccessSignatureService {
     private static final long TTL_SECONDS = 900;
 
     @Autowired
-    private JwtProperties jwtProperties;
+    private SigningSecretProvider signingSecretProvider;
 
     public Map<String, Object> sign(String fileKey, String userId) {
         long exp = Instant.now().getEpochSecond() + TTL_SECONDS;
@@ -77,11 +75,7 @@ public class ImageAccessSignatureService {
     }
 
     private byte[] signingKey() {
-        String secret = jwtProperties.getSecret();
-        if (secret == null || secret.trim().isEmpty()) {
-            secret = "dev-image-access-fallback";
-        }
-        return secret.getBytes(StandardCharsets.UTF_8);
+        return signingSecretProvider.getSecretBytes();
     }
 
     private static String encode(String value) {

@@ -1,5 +1,5 @@
 import { h } from 'vue'
-import { message, notification } from 'ant-design-vue'
+import { Button, message, notification } from 'ant-design-vue'
 import i18n from '@/locales'
 
 const CODE_FALLBACK_KEYS = {
@@ -82,13 +82,74 @@ export function formatErrorPreview(preview) {
     .trim()
 }
 
+const IMAGE_QUALITY_BLOCK_REASON_KEYS = {
+  BLUR_ROWS: 'errors.imageQualityBlockReasonBlurRows',
+  UNKNOWN_FIELDS: 'errors.imageQualityBlockReasonUnknownFields',
+  FEW_ROWS_UNKNOWN: 'errors.imageQualityBlockReasonFewRowsUnknown',
+}
+
+function enrichImageQualityArgs(args) {
+  const enriched = { ...(args || {}) }
+  const t = i18n.global.t
+  const te = i18n.global.te
+  if (enriched.blockReason) {
+    const reasonKey = IMAGE_QUALITY_BLOCK_REASON_KEYS[enriched.blockReason]
+    if (reasonKey && te(reasonKey)) {
+      enriched.blockReasonLabel = t(reasonKey)
+    } else {
+      enriched.blockReasonLabel = String(enriched.blockReason)
+    }
+  } else if (!enriched.blockReasonLabel) {
+    enriched.blockReasonLabel = '—'
+  }
+  const denom = enriched.blurRateDenominator || enriched.unknownRateScope
+  const excludeAbsent = enriched.unknownRateExcludeAbsent !== false
+  let base
+  if (denom === 'ALL_ROWS') {
+    base = te('errors.imageQualityStatsRangeAllRows')
+      ? t('errors.imageQualityStatsRangeAllRows')
+      : (te('errors.imageQualityDenominatorAllRows') ? t('errors.imageQualityDenominatorAllRows') : denom)
+  } else if (excludeAbsent) {
+    base = te('errors.imageQualityStatsRangeAttendanceOnly')
+      ? t('errors.imageQualityStatsRangeAttendanceOnly')
+      : (te('errors.imageQualityDenominatorEffectiveRows') ? t('errors.imageQualityDenominatorEffectiveRows') : 'EFFECTIVE_ROWS')
+  } else {
+    base = te('errors.imageQualityStatsRangeNamedRows')
+      ? t('errors.imageQualityStatsRangeNamedRows')
+      : (te('errors.imageQualityUnknownIncludeAbsent') ? t('errors.imageQualityUnknownIncludeAbsent') : '')
+  }
+  enriched.denominatorLabel = base
+  if (enriched.blockBlurThreshold == null) {
+    enriched.blockBlurThreshold = '—'
+  }
+  if (enriched.blockUnknownThreshold == null) {
+    enriched.blockUnknownThreshold = '—'
+  }
+  return enriched
+}
+
+function resolveAiImageTooBlurryTitle(titleArgs, preview) {
+  const t = i18n.global.t
+  const te = i18n.global.te
+  const byReason = {
+    BLUR_ROWS: 'errors.aiImageTooBlurryBlurRows',
+    UNKNOWN_FIELDS: 'errors.aiImageTooBlurryUnknownFields',
+    FEW_ROWS_UNKNOWN: 'errors.aiImageTooBlurryFewRows',
+  }
+  const reasonKey = byReason[titleArgs.blockReason]
+  if (reasonKey && te(reasonKey)) {
+    return { title: t(reasonKey, titleArgs), preview, key: reasonKey }
+  }
+  return { title: t('errors.aiImageTooBlurry', titleArgs), preview, key: 'errors.aiImageTooBlurry' }
+}
+
 function resolveErrorParts(payload) {
   const { messageKey, messageArgs, message, code } = normalizePayload(payload)
   const t = i18n.global.t
   const te = i18n.global.te
 
   let key = messageKey
-  let args = { ...(messageArgs || {}) }
+  let args = enrichImageQualityArgs(messageArgs || {})
 
   if (!key && message && message.startsWith('errors.') && te(message)) {
     key = message
@@ -134,13 +195,46 @@ function resolveErrorParts(payload) {
       return { title: t('errors.aiFabricated'), preview: '', key: null }
     } else if (message.includes('疑似模型臆测而非读图')) {
       return { title: t('errors.aiUnreadableTimes'), preview: '', key: null }
+    } else if (message.includes('图片不够清晰') || message.startsWith('errors.aiImageTooBlurry')) {
+      key = 'errors.aiImageTooBlurry'
+      if (!args.blurPercent && !args.unknownPercent) {
+        const blurMatch = message.match(/约\s*(\d+)%\s*行模糊/)
+        const unknownMatch = message.match(/或\s*(\d+)%\s*关键字段/)
+        if (blurMatch) args.blurPercent = Number(blurMatch[1])
+        if (unknownMatch) args.unknownPercent = Number(unknownMatch[1])
+      }
+    } else if (message.startsWith('errors.uploadImageTooBlurry')) {
+      key = 'errors.uploadImageTooBlurry'
     } else if (message.includes('未配置 MIMO API Key')) {
       return { title: t('errors.mimoNotConfigured'), preview: '', key: null }
+    } else if (
+      message.includes('xiaomimimo.com')
+      || message.includes('API请求失败')
+      || message.includes('502 Bad Gateway')
+      || message.includes('Bad Gateway')
+    ) {
+      return { title: t('errors.mimoUnavailable'), preview: '', key: 'errors.mimoUnavailable' }
+    } else if (message.startsWith('errors.mimoUnavailable')) {
+      key = 'errors.mimoUnavailable'
     }
   }
 
   if (key && te(key)) {
-    return { title: t(key), preview, key }
+    const titleArgs = enrichImageQualityArgs({ ...args })
+    if (key === 'errors.aiImageTooBlurry'
+        && titleArgs.blurPercent == null
+        && titleArgs.unknownPercent == null) {
+      return { title: t('errors.uploadImageTooBlurry', titleArgs), preview, key: 'errors.uploadImageTooBlurry' }
+    }
+    if (key === 'errors.aiImageTooBlurry') {
+      return resolveAiImageTooBlurryTitle(titleArgs, preview)
+    }
+    if (key === 'errors.uploadImageTooBlurry'
+        && titleArgs.variance == null
+        && titleArgs.threshold == null) {
+      return { title: t('errors.uploadImageTooBlurry', { variance: '—', threshold: '—', ...titleArgs }), preview, key }
+    }
+    return { title: t(key, titleArgs), preview, key }
   }
 
   return {
@@ -189,7 +283,64 @@ export function showApiError(payload) {
 export function translateErrorMessage(error) {
   if (!error) return translateApiError(null)
   if (error.response?.data) return translateApiError(error.response.data)
-  return translateApiError({ message: error.message, code: error.code })
+  return translateApiError({
+    message: error.message,
+    code: error.code,
+    messageKey: error.messageKey,
+    messageArgs: error.messageArgs,
+  })
+}
+
+const HOME_UPLOAD_DIRECT_KEYS = new Set([
+  'errors.uploadImageTooSmall',
+  'errors.unrecognizedImageFormat',
+  'errors.imagesOnly',
+  'errors.aiImageTooBlurry',
+])
+
+function showHomeCenterNotice(type, title, description) {
+  const t = i18n.global.t
+  const key = `home-upload-notice-${Date.now()}`
+  notification[type]({
+    message: title,
+    description,
+    duration: 0,
+    key,
+    class: 'home-upload-center-notice',
+    btn: () => h(
+      Button,
+      {
+        type: 'primary',
+        size: 'small',
+        onClick: () => notification.close(key),
+      },
+      () => (i18n.global.te('common.gotIt') ? t('common.gotIt') : t('common.confirm')),
+    ),
+  })
+}
+
+/** 首页上传/识别失败：单条提示，避免与 axios 拦截器重复弹窗 */
+export function showHomeUploadError(error) {
+  const key = error?.messageKey
+  const t = i18n.global.t
+  const te = i18n.global.te
+  const reason = translateErrorMessage(error)
+
+  if (key === 'errors.uploadImageTooBlurry') {
+    showHomeCenterNotice(
+      'warning',
+      te('home.uploadBlurryTitle') ? t('home.uploadBlurryTitle') : reason,
+      te('home.uploadBlurryHint') ? t('home.uploadBlurryHint') : undefined,
+    )
+    return
+  }
+
+  if (key && HOME_UPLOAD_DIRECT_KEYS.has(key)) {
+    showHomeCenterNotice('warning', reason)
+    return
+  }
+
+  showHomeCenterNotice('error', t('home.uploadFailedGeneric', { reason }))
 }
 
 function isBackendUnreachable(error) {

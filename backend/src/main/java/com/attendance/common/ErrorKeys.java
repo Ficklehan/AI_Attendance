@@ -53,6 +53,7 @@ public final class ErrorKeys {
     public static final String PDF_CONVERT_FAILED = "errors.pdfConvertFailed";
 
     public static final String MIMO_NOT_CONFIGURED = "errors.mimoNotConfigured";
+    public static final String MIMO_UNAVAILABLE = "errors.mimoUnavailable";
     public static final String AI_PROMPT_NOT_FOUND = "errors.aiPromptNotFound";
     public static final String AI_CONTINUE_PROMPT_NOT_FOUND = "errors.aiContinuePromptNotFound";
     public static final String AI_HEADER_ECHO = "errors.aiHeaderEcho";
@@ -60,6 +61,8 @@ public final class ErrorKeys {
     public static final String AI_NO_PARSEABLE_RECORDS = "errors.aiNoParseableRecords";
     public static final String AI_FABRICATED = "errors.aiFabricated";
     public static final String AI_UNREADABLE_TIMES = "errors.aiUnreadableTimes";
+    public static final String AI_IMAGE_TOO_BLURRY = "errors.aiImageTooBlurry";
+    public static final String UPLOAD_IMAGE_TOO_BLURRY = "errors.uploadImageTooBlurry";
 
     public static final String VALIDATION_FAILED = "errors.validationFailed";
     public static final String MISSING_PARAMETER = "errors.missingParameter";

@@ -1,6 +1,7 @@
 import { getTaskDetail, getTaskProgress } from '@/api/task'
 import { uploadImageAsync, startTaskRecognition } from '@/api/upload'
 import { getCachedWorkingCountry } from '@/utils/countryHeader'
+import { translateErrorMessage } from '@/utils/translateError'
 import i18n from '@/locales'
 
 export const BG_TASK_STORAGE_KEY = 'attendance.bgRecognition.taskId'
@@ -15,21 +16,49 @@ function buildUploadFormData(file, { taskId, deferRecognition } = {}) {
   return formData
 }
 
-function pollDelayMs(attempt, baseMs = 2000) {
-  return Math.min(Math.round(baseMs * Math.pow(1.2, Math.max(0, attempt - 1))), 8000)
+function pollDelayMs(attempt, processing = false) {
+  const baseMs = processing ? 800 : 2000
+  return Math.min(Math.round(baseMs * Math.pow(1.15, Math.max(0, attempt - 1))), processing ? 3000 : 8000)
+}
+
+function parseProgressErrorPayload(progress) {
+  if (!progress) return { message: '', messageKey: '', messageArgs: {} }
+  if (progress.progressError) {
+    const key = progress.progressError
+    return {
+      message: key,
+      messageKey: key.startsWith('errors.') ? key : '',
+      messageArgs: progress.progressErrorArgs || {},
+    }
+  }
+  if (!progress.anomalySummary) return { message: '', messageKey: '', messageArgs: {} }
+  try {
+    const summary = typeof progress.anomalySummary === 'string'
+      ? JSON.parse(progress.anomalySummary)
+      : progress.anomalySummary
+    const error = summary?.error || ''
+    return {
+      message: error,
+      messageKey: error.startsWith('errors.') ? error : '',
+      messageArgs: summary?.errorArgs || {},
+    }
+  } catch {
+    return { message: '', messageKey: '', messageArgs: {} }
+  }
 }
 
 function parseProgressError(task) {
-  if (task?.progressError) return task.progressError
-  if (!task?.anomalySummary) return ''
-  try {
-    const summary = typeof task.anomalySummary === 'string'
-      ? JSON.parse(task.anomalySummary)
-      : task.anomalySummary
-    return summary?.error || ''
-  } catch {
-    return ''
-  }
+  return parseProgressErrorPayload(task).message
+}
+
+function formatProgressError(progress) {
+  const payload = parseProgressErrorPayload(progress)
+  const raw = payload.message || i18n.global.t('home.recognitionError')
+  return translateErrorMessage({
+    message: raw,
+    messageKey: payload.messageKey || undefined,
+    messageArgs: payload.messageArgs,
+  })
 }
 
 export function parseRecordsFromTask(task) {
@@ -37,6 +66,24 @@ export function parseRecordsFromTask(task) {
   if (!payload) return []
   const parsed = typeof payload === 'string' ? JSON.parse(payload) : payload
   return Array.isArray(parsed) ? parsed : []
+}
+
+export function parseImageQualityWarning(task) {
+  if (!task?.anomalySummary) return null
+  try {
+    const summary = typeof task.anomalySummary === 'string'
+      ? JSON.parse(task.anomalySummary)
+      : task.anomalySummary
+    if (summary?.imageQualityWarning) {
+      return {
+        blurPercent: summary.blurPercent ?? 0,
+        unknownPercent: summary.unknownPercent ?? 0,
+      }
+    }
+  } catch {
+    // ignore malformed summary
+  }
+  return null
 }
 
 export function persistBgTaskId(taskId) {
@@ -69,6 +116,45 @@ async function uploadOneFile(file, options = {}) {
   return res.data || {}
 }
 
+async function kickRecognitionIfIdle(taskId, rowCount, attempts, state) {
+  if (rowCount > 0 || attempts < 3) return
+  const now = Date.now()
+  if (state.lastKickAt && now - state.lastKickAt < 30000) return
+  if (state.kickCount >= 3) return
+  state.kickCount += 1
+  state.lastKickAt = now
+  try {
+    await startTaskRecognition(taskId)
+  } catch {
+    // 可能已在队列中，忽略
+  }
+}
+
+export async function resolveRecognitionIfReady(taskId) {
+  const progressRes = await getTaskProgress(taskId)
+  const progress = progressRes.data || {}
+  if (progress.status === 'processed') {
+    clearBgTaskId()
+    const detailRes = await getTaskDetail(taskId)
+    const task = detailRes.data || {}
+    const records = parseRecordsFromTask(task)
+    return {
+      taskId,
+      task,
+      records,
+      rowCount: records.length || progress.progressRowCount || 0,
+      imageQualityWarning: parseImageQualityWarning(task),
+    }
+  }
+  if (progress.status === 'failed') {
+    const message = formatProgressError(progress)
+    const err = new Error(message)
+    err.taskId = taskId
+    throw err
+  }
+  return null
+}
+
 /**
  * 轮询识别进度；网络错误时不放弃。shouldAbort 为 true 时仅停止前端轮询，服务端继续处理。
  */
@@ -77,6 +163,12 @@ export async function pollRecognitionUntilDone(taskId, options = {}) {
   let attempts = 0
   let lastRowCount = 0
   const deadline = Date.now() + POLL_DEADLINE_MS
+  const kickState = { kickCount: 0, lastKickAt: 0 }
+
+  const ready = await resolveRecognitionIfReady(taskId)
+  if (ready) {
+    return ready
+  }
 
   while (Date.now() < deadline) {
     if (shouldAbort?.()) {
@@ -98,13 +190,14 @@ export async function pollRecognitionUntilDone(taskId, options = {}) {
         attempt: attempts,
       })
       await new Promise((resolve) => {
-        setTimeout(resolve, pollDelayMs(attempts))
+        setTimeout(resolve, pollDelayMs(attempts, true))
       })
       continue
     }
 
     const status = progress.status
     const rowCount = progress.progressRowCount || 0
+    const rowCountIncreased = rowCount > lastRowCount
     lastRowCount = rowCount
 
     onProgress?.({
@@ -114,6 +207,17 @@ export async function pollRecognitionUntilDone(taskId, options = {}) {
       phase: status === 'processed' ? 'processed' : 'processing',
       attempt: attempts,
     })
+
+    if (status === 'processing' && rowCountIncreased) {
+      // rowCount 有变化时尽快拉取 partial raw_data，不等到下一轮 poll
+      onProgress?.({
+        taskId,
+        status,
+        rowCount,
+        phase: 'refresh',
+        attempt: attempts,
+      })
+    }
 
     if (status === 'processed') {
       clearBgTaskId()
@@ -125,17 +229,23 @@ export async function pollRecognitionUntilDone(taskId, options = {}) {
         task,
         records,
         rowCount: records.length || rowCount,
+        imageQualityWarning: parseImageQualityWarning(task),
       }
     }
 
     if (status === 'failed') {
-      clearBgTaskId()
-      const message = parseProgressError(progress) || i18n.global.t('home.recognitionError')
-      throw new Error(message)
+      const message = formatProgressError(progress)
+      const err = new Error(message)
+      err.taskId = taskId
+      throw err
+    }
+
+    if (status === 'processing') {
+      await kickRecognitionIfIdle(taskId, rowCount, attempts, kickState)
     }
 
     await new Promise((resolve) => {
-      setTimeout(resolve, pollDelayMs(attempts))
+      setTimeout(resolve, pollDelayMs(attempts, status === 'processing'))
     })
   }
 
@@ -184,5 +294,15 @@ export async function submitBackgroundRecognition(files, options = {}) {
 
   await startTaskRecognition(taskId)
   onProgress?.({ taskId, rowCount: 0, phase: 'processing', uploaded: total, total })
+  return pollRecognitionUntilDone(taskId, { onProgress, shouldAbort })
+}
+
+/** 对已上传图片的任务重新发起识别（无需重新上传文件） */
+export async function retryTaskRecognition(taskId, options = {}) {
+  const { onProgress, shouldAbort } = options
+  if (!taskId) throw new Error(i18n.global.t('errors.taskNotFound'))
+  persistBgTaskId(taskId)
+  await startTaskRecognition(taskId)
+  onProgress?.({ taskId, rowCount: 0, phase: 'processing' })
   return pollRecognitionUntilDone(taskId, { onProgress, shouldAbort })
 }

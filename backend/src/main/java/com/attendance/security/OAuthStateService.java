@@ -1,11 +1,10 @@
 package com.attendance.security;
 
-import com.attendance.config.JwtProperties;
+import com.attendance.security.SigningSecretProvider;
 import org.apache.commons.codec.digest.HmacUtils;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 
-import java.nio.charset.StandardCharsets;
 import java.util.UUID;
 
 /**
@@ -17,7 +16,7 @@ public class OAuthStateService {
     private static final String HMAC_ALGORITHM = "HmacSHA256";
 
     @Autowired
-    private JwtProperties jwtProperties;
+    private SigningSecretProvider signingSecretProvider;
 
     public String createState() {
         return createState(null);
@@ -63,10 +62,6 @@ public class OAuthStateService {
     }
 
     private String sign(String nonce) {
-        String secret = jwtProperties.getSecret();
-        if (secret == null || secret.trim().isEmpty()) {
-            secret = "dev-oauth-state-fallback";
-        }
-        return new HmacUtils(HMAC_ALGORITHM, secret.getBytes(StandardCharsets.UTF_8)).hmacHex(nonce);
+        return new HmacUtils(HMAC_ALGORITHM, signingSecretProvider.getSecretBytes()).hmacHex(nonce);
     }
 }

@@ -14,6 +14,7 @@ public class ReminderRuleDTO {
     private List<String> scopeRoles;
     private BigDecimal intervalValue;
     private String intervalUnit;
+    private Integer scheduleHourOfDay;
     private String messageTemplate;
     private String messageTemplateSupervisor;
     private Map<String, String> messageTemplateLocales;
@@ -90,6 +91,14 @@ public class ReminderRuleDTO {
 
     public void setIntervalUnit(String intervalUnit) {
         this.intervalUnit = intervalUnit;
+    }
+
+    public Integer getScheduleHourOfDay() {
+        return scheduleHourOfDay;
+    }
+
+    public void setScheduleHourOfDay(Integer scheduleHourOfDay) {
+        this.scheduleHourOfDay = scheduleHourOfDay;
     }
 
     public String getMessageTemplate() {

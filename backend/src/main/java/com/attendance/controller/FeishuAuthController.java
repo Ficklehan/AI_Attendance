@@ -87,7 +87,7 @@ public class FeishuAuthController {
 
     @GetMapping("/callback")
     public void callback(@RequestParam("code") String code, @RequestParam("state") String state, HttpServletResponse response) throws IOException {
-        log.info("飞书回调, code: {}", code);
+        log.debug("飞书回调收到授权码, len={}", code != null ? code.length() : 0);
 
         try {
             oauthStateService.validateState(state);
@@ -239,7 +239,7 @@ public class FeishuAuthController {
     @PostMapping("/miniprogram/login")
     public Result<LoginResponse> miniprogramLogin(@Valid @RequestBody FeishuMiniprogramLoginRequest request) {
         String code = request.getCode();
-        log.info("飞书小程序登录, code: {}", code);
+        log.debug("飞书小程序登录, codeLen={}", code != null ? code.length() : 0);
 
         if (feishuProperties.getAppId() == null || feishuProperties.getAppId().isEmpty()
                 || feishuProperties.getAppSecret() == null || feishuProperties.getAppSecret().isEmpty()) {

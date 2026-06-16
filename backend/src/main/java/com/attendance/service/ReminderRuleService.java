@@ -126,6 +126,7 @@ public class ReminderRuleService {
         if (request.getRecipientUserIds() == null || request.getRecipientUserIds().isEmpty()) {
             throw new BusinessException(400, ErrorKeys.VALIDATION_FAILED);
         }
+        validateScheduleHour(request);
         if (!hasAnyOperatorTemplate(request)) {
             throw new BusinessException(400, ErrorKeys.VALIDATION_FAILED);
         }
@@ -136,6 +137,23 @@ public class ReminderRuleService {
             if (!activeIds.contains(uid)) {
                 throw new BusinessException(400, ErrorKeys.VALIDATION_FAILED);
             }
+        }
+    }
+
+    private void validateScheduleHour(ReminderRuleRequest request) {
+        String unit = ReminderSupport.normalizeIntervalUnit(request.getIntervalUnit());
+        Integer hour = request.getScheduleHourOfDay();
+        if (ReminderSupport.supportsScheduleHour(unit)) {
+            if (hour == null) {
+                throw new BusinessException(400, ErrorKeys.VALIDATION_FAILED);
+            }
+            if (hour < 0 || hour > 23) {
+                throw new BusinessException(400, ErrorKeys.VALIDATION_FAILED);
+            }
+            return;
+        }
+        if (hour != null) {
+            throw new BusinessException(400, ErrorKeys.VALIDATION_FAILED);
         }
     }
 
@@ -261,6 +279,8 @@ public class ReminderRuleService {
         rule.setScopeRolesJson(toScopeJson(request.getScopeRoles()));
         rule.setIntervalValue(ReminderSupport.normalizeIntervalValue(request.getIntervalValue()));
         rule.setIntervalUnit(ReminderSupport.normalizeIntervalUnit(request.getIntervalUnit()));
+        rule.setScheduleHourOfDay(ReminderSupport.normalizeScheduleHour(
+                request.getScheduleHourOfDay(), request.getIntervalUnit()));
         rule.setMessageTemplateLocalesJson(ReminderLocaleSupport.toTemplateJson(operatorLocales));
         rule.setMessageTemplateSupervisorLocalesJson(ReminderLocaleSupport.toTemplateJson(supervisorLocales));
         rule.setMessageTemplate(ReminderLocaleSupport.primaryTemplateForStorage(operatorLocales));
@@ -282,6 +302,7 @@ public class ReminderRuleService {
         dto.setScopeRoles(ReminderSupport.parseScopeList(rule.getScopeRolesJson()));
         dto.setIntervalValue(rule.getIntervalValue());
         dto.setIntervalUnit(rule.getIntervalUnit());
+        dto.setScheduleHourOfDay(rule.getScheduleHourOfDay());
         dto.setMessageTemplate(rule.getMessageTemplate());
         dto.setMessageTemplateSupervisor(rule.getMessageTemplateSupervisor());
         dto.setMessageTemplateLocales(ReminderLocaleSupport.parseTemplateMap(rule.getMessageTemplateLocalesJson()));

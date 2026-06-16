@@ -14,11 +14,15 @@ import java.io.InputStream;
 import java.nio.charset.StandardCharsets;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
 
 @Service
 public class RecognitionPromptService {
 
     private static final Logger log = LoggerFactory.getLogger(RecognitionPromptService.class);
+
+    private final ConcurrentHashMap<String, String> aiPromptCache = new ConcurrentHashMap<>();
+    private final ConcurrentHashMap<String, String> continuePromptCache = new ConcurrentHashMap<>();
 
     @Autowired
     private RecognitionPromptMapper recognitionPromptMapper;
@@ -29,6 +33,16 @@ public class RecognitionPromptService {
     public String getAiPrompt(String country) {
         String code = normalizeCountry(country);
         String effective = resolveEffectivePromptCountry(code);
+        return aiPromptCache.computeIfAbsent(effective, this::loadAiPromptFromDb);
+    }
+
+    public String getContinuePrompt(String country) {
+        String code = normalizeCountry(country);
+        String effective = resolveEffectivePromptCountry(code);
+        return continuePromptCache.computeIfAbsent(effective, this::loadContinuePromptFromDb);
+    }
+
+    private String loadAiPromptFromDb(String effective) {
         RecognitionPrompt row = recognitionPromptMapper.selectByCountry(effective);
         if (row == null || row.getAiPrompt() == null || row.getAiPrompt().trim().isEmpty()) {
             row = recognitionPromptMapper.selectByCountry("default");
@@ -36,14 +50,17 @@ public class RecognitionPromptService {
         return row != null ? row.getAiPrompt() : null;
     }
 
-    public String getContinuePrompt(String country) {
-        String code = normalizeCountry(country);
-        String effective = resolveEffectivePromptCountry(code);
+    private String loadContinuePromptFromDb(String effective) {
         RecognitionPrompt row = recognitionPromptMapper.selectByCountry(effective);
         if (row == null || row.getContinuePrompt() == null || row.getContinuePrompt().trim().isEmpty()) {
             row = recognitionPromptMapper.selectByCountry("default");
         }
         return row != null ? row.getContinuePrompt() : null;
+    }
+
+    private void clearPromptCache() {
+        aiPromptCache.clear();
+        continuePromptCache.clear();
     }
 
     public boolean hasCountryPrompt(String country) {
@@ -81,6 +98,7 @@ public class RecognitionPromptService {
         row.setSeedVersion(promptProperties.getSeedVersion());
         row.setUserModified(true);
         recognitionPromptMapper.upsertUserEdit(row);
+        clearPromptCache();
         log.info("已保存用户提示词: country={}", row.getCountryCode());
     }
 
@@ -150,6 +168,7 @@ public class RecognitionPromptService {
             count++;
         }
         log.info("识别提示词播种完成: countries={}, force={}, seedVersion={}", count, force, version);
+        clearPromptCache();
         return count;
     }
 
@@ -175,6 +194,7 @@ public class RecognitionPromptService {
             }
             count++;
         }
+        clearPromptCache();
         return count;
     }
 

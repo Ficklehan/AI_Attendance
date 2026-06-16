@@ -22,10 +22,10 @@
 
       <view tt:for="{{fields}}" tt:key="key" class="field-row">
         <text class="field-label">{{item.label}}</text>
-        <view class="field-input-shell">
+        <view class="field-input-shell {{item.missing ? 'is-required-empty' : ''}}">
           <input
             class="field-input"
-            type="text"
+            type="{{item.inputType || 'text'}}"
             value="{{item.value}}"
             data-key="{{item.key}}"
             bindinput="onFieldInput"

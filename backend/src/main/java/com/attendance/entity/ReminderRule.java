@@ -13,6 +13,8 @@ public class ReminderRule {
     private String scopeRolesJson;
     private BigDecimal intervalValue;
     private String intervalUnit;
+    /** 0-23，仅 day/week 周期生效；null 表示不限制时刻 */
+    private Integer scheduleHourOfDay;
     private String messageTemplate;
     private String messageTemplateSupervisor;
     private String messageTemplateLocalesJson;
@@ -94,6 +96,14 @@ public class ReminderRule {
 
     public void setIntervalUnit(String intervalUnit) {
         this.intervalUnit = intervalUnit;
+    }
+
+    public Integer getScheduleHourOfDay() {
+        return scheduleHourOfDay;
+    }
+
+    public void setScheduleHourOfDay(Integer scheduleHourOfDay) {
+        this.scheduleHourOfDay = scheduleHourOfDay;
     }
 
     public String getMessageTemplate() {

@@ -4,13 +4,13 @@ const { apiCall } = require('../../utils/request')
 const { parseRecords } = require('../../utils/task')
 const {
   CALIBRATABLE_FIELDS,
-  FIELD_LABEL_KEYS,
   normalizeCalibValue
 } = require('../../utils/calibratableFields')
 const {
   buildCalibrationHistoryUi,
-  formatCalibDisplayValue
 } = require('../../utils/calibrationHistory')
+const { buildCalibFormFields } = require('../../utils/calibFormFields')
+const { loadConfirmValidationConfig } = require('../../utils/confirmValidationConfig')
 
 Page({
   data: {
@@ -34,7 +34,7 @@ Page({
       return
     }
     this.setData({ taskId, rowKey })
-    this.loadRecord()
+    loadConfirmValidationConfig().then(() => this.loadRecord())
   },
 
   refreshTexts: function () {
@@ -79,6 +79,7 @@ Page({
           draft[key] = record[key]
         })
         const historyEntries = buildCalibrationHistoryUi(record)
+        this._sourceRecord = record
         this.setData({ original, draft, historyEntries }, () => this.rebuildForm())
       })
       .catch(() => {
@@ -91,14 +92,9 @@ Page({
   },
 
   rebuildForm: function () {
-    const fields = CALIBRATABLE_FIELDS.map((key) => ({
-      key,
-      label: t(FIELD_LABEL_KEYS[key] || key),
-      value: this.data.draft[key] === undefined || this.data.draft[key] === null
-        ? ''
-        : String(this.data.draft[key]),
-      originalDisplay: formatCalibDisplayValue(this.data.original[key])
-    }))
+    const fields = buildCalibFormFields(this.data.draft, this._sourceRecord || {}, {
+      includeOriginal: true,
+    })
     this.setData({ fields })
   },
 

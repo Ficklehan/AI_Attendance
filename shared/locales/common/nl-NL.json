@@ -66,6 +66,7 @@
     "imagesOnly": "Alleen afbeeldingsbestanden worden ondersteund",
     "unrecognizedImageFormat": "Onbekend afbeeldingsformaat. Gebruik JPG of PNG",
     "mimoNotConfigured": "MIMO API Key niet geconfigureerd",
+    "mimoUnavailable": "AI-herkenning tijdelijk niet beschikbaar (MiMo API-fout). Wacht 1–2 minuten en probeer opnieuw",
     "aiPromptNotFound": "Herkenningsprompt niet gevonden",
     "aiContinuePromptNotFound": "Vervolgprompt niet gevonden",
     "aiHeaderEcho": "Model gaf kolomkoppen terug als data",

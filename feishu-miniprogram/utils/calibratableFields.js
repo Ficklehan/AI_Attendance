@@ -1,9 +1,10 @@
 const CALIBRATABLE_FIELDS = [
-  'NO', 'Pays', 'Entrepot', 'NOM_PRENOM', 'AGENCE_INTERIMAIRE', 'HORAIRES_DU_TRAVAIL',
+  'PAGE_NUM', 'NO', 'Pays', 'Entrepot', 'NOM_PRENOM', 'AGENCE_INTERIMAIRE', 'HORAIRES_DU_TRAVAIL',
   'Date', 'ARRIVEE', 'DEPAR', 'PAUSE', 'SIGNATURE', 'Observations'
 ]
 
 const FIELD_LABEL_KEYS = {
+  PAGE_NUM: 'result.fieldPageNumber',
   NO: 'result.fieldWorkerNo',
   Pays: 'result.fieldCountry',
   Entrepot: 'result.fieldWarehouse',

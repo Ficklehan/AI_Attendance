@@ -299,3 +299,43 @@ body {
     border: 1px solid $border-color;
   }
 }
+
+// ── Home upload feedback (centered, easy to notice) ──
+.home-upload-center-notice.ant-notification-notice {
+  position: fixed !important;
+  top: 42% !important;
+  left: 50% !important;
+  right: auto !important;
+  bottom: auto !important;
+  transform: translate(-50%, -50%) !important;
+  margin: 0 !important;
+  width: min(440px, 92vw);
+  padding: 20px 24px;
+  border-radius: $radius-lg;
+  box-shadow: 0 12px 40px rgba(15, 23, 42, 0.14);
+
+  .ant-notification-notice-message {
+    margin-bottom: 8px;
+    font-size: 16px;
+    font-weight: 600;
+    line-height: 1.45;
+    color: $text-primary;
+  }
+
+  .ant-notification-notice-description {
+    font-size: 14px;
+    line-height: 1.6;
+    color: $text-secondary;
+  }
+
+  .ant-notification-notice-btn {
+    margin-top: 14px;
+  }
+
+  &:not(:has(.ant-notification-notice-description)) {
+    .ant-notification-notice-message {
+      margin-bottom: 0;
+      font-weight: 500;
+    }
+  }
+}

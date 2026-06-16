@@ -12,6 +12,7 @@
         <result column="scope_roles" property="scopeRolesJson"/>
         <result column="interval_value" property="intervalValue"/>
         <result column="interval_unit" property="intervalUnit"/>
+        <result column="schedule_hour_of_day" property="scheduleHourOfDay"/>
         <result column="message_template" property="messageTemplate"/>
         <result column="message_template_supervisor" property="messageTemplateSupervisor"/>
         <result column="message_template_locales" property="messageTemplateLocalesJson"/>
@@ -28,7 +29,7 @@
 
     <sql id="Base_Column_List">
         id, name, description, task_statuses, scope_countries, scope_roles,
-        interval_value, interval_unit,
+        interval_value, interval_unit, schedule_hour_of_day,
         message_template, message_template_supervisor, message_template_locales,
         message_template_supervisor_locales, include_task_creator, enabled, last_run_at,
         last_hit_count, last_sent_count, created_by, created_at, updated_at
@@ -56,12 +57,12 @@
     <insert id="insertRule">
         INSERT INTO reminder_rules (
             id, name, description, task_statuses, scope_countries, scope_roles,
-            interval_value, interval_unit,
+            interval_value, interval_unit, schedule_hour_of_day,
             message_template, message_template_supervisor, message_template_locales,
             message_template_supervisor_locales, include_task_creator, enabled, created_by
         ) VALUES (
             #{id}, #{name}, #{description}, #{taskStatusesJson}, #{scopeCountriesJson}, #{scopeRolesJson},
-            #{intervalValue}, #{intervalUnit},
+            #{intervalValue}, #{intervalUnit}, #{scheduleHourOfDay},
             #{messageTemplate}, #{messageTemplateSupervisor}, #{messageTemplateLocalesJson},
             #{messageTemplateSupervisorLocalesJson}, #{includeTaskCreator}, #{enabled}, #{createdBy}
         )
@@ -76,6 +77,7 @@
             scope_roles = #{scopeRolesJson},
             interval_value = #{intervalValue},
             interval_unit = #{intervalUnit},
+            schedule_hour_of_day = #{scheduleHourOfDay},
             message_template = #{messageTemplate},
             message_template_supervisor = #{messageTemplateSupervisor},
             message_template_locales = #{messageTemplateLocalesJson},

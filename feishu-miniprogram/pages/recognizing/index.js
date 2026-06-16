@@ -152,13 +152,17 @@ Page({
     })
   },
 
-  openResultPage: function (taskId) {
+  openResultPage: function (taskId, options) {
     if (!taskId) {
       return
     }
     markTaskDataDirty()
     this.stopTimers()
-    tt.redirectTo({ url: `/pages/result/index?id=${taskId}` })
+    let url = `/pages/result/index?id=${taskId}`
+    if (options && options.showQualityBanner) {
+      url += `&qualityWarn=1&blurPercent=${options.blurPercent || 0}&unknownPercent=${options.unknownPercent || 0}`
+    }
+    tt.redirectTo({ url })
   },
 
   runPathRecognition: function (imagePath) {

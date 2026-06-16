@@ -17,7 +17,7 @@
       >
         <template #bodyCell="{ column, record }">
           <template v-if="column.key === 'interval'">
-            {{ formatIntervalLabel(record.intervalValue, record.intervalUnit) }}
+            {{ formatIntervalLabel(record.intervalValue, record.intervalUnit, record.scheduleHourOfDay) }}
           </template>
           <template v-else-if="column.key === 'scope'">
             <div class="scope-cell">
@@ -91,6 +91,18 @@
             </a-space>
             <div class="hint">{{ $t('settings.reminders.intervalDecimalHint') }}</div>
             <div class="hint">{{ $t('settings.reminders.lagHint') }}</div>
+          </a-form-item>
+          <a-form-item
+            v-if="showScheduleHour"
+            :label="$t('settings.reminders.scheduleHour')"
+            required
+          >
+            <a-select
+              v-model:value="form.scheduleHourOfDay"
+              :options="scheduleHourOptions"
+              style="width: 120px"
+            />
+            <div class="hint">{{ $t('settings.reminders.scheduleHourHint') }}</div>
           </a-form-item>
           <a-form-item :label="$t('settings.reminders.scopeCountries')">
             <a-select
@@ -249,6 +261,7 @@ const form = reactive({
   scopeRoles: [],
   intervalValue: 1,
   intervalUnit: 'day',
+  scheduleHourOfDay: 9,
   recipientUserIds: [],
   includeTaskCreator: true,
   messageTemplate: '',
@@ -279,6 +292,13 @@ const unitOptions = computed(() => [
   { value: 'week', label: t('settings.reminders.unitWeek') },
 ])
 
+const showScheduleHour = computed(() => form.intervalUnit === 'day' || form.intervalUnit === 'week')
+
+const scheduleHourOptions = computed(() => Array.from({ length: 24 }, (_, hour) => ({
+  value: hour,
+  label: `${String(hour).padStart(2, '0')}:00`,
+})))
+
 const columns = computed(() => [
   { title: t('settings.reminders.ruleName'), dataIndex: 'name', key: 'name' },
   { title: t('settings.reminders.scope'), key: 'scope', width: 160 },
@@ -297,7 +317,7 @@ const renderTemplatePreview = (template, options = {}, locale = 'zh-CN') => {
   } = options
   return (template || '')
     .replace(/\{pendingCount\}/g, '3')
-    .replace(/\{threshold\}/g, formatIntervalLabel(form.intervalValue, form.intervalUnit))
+    .replace(/\{threshold\}/g, formatIntervalLabel(form.intervalValue, form.intervalUnit, form.scheduleHourOfDay))
     .replace(/\{latestTaskId\}/g, 'T20260101001')
     .replace(/\{latestTaskTime\}/g, '2026-01-01 10:00')
     .replace(/\{recipientName\}/g, recipientName)
@@ -339,7 +359,7 @@ const supervisorVariables = computed(() => [
 
 const operatorHighlightValues = (locale) => [
   '3',
-  formatIntervalLabel(form.intervalValue, form.intervalUnit),
+  formatIntervalLabel(form.intervalValue, form.intervalUnit, form.scheduleHourOfDay),
   'T20260101001',
   '2026-01-01 10:00',
   statusPreviewLabel(locale),
@@ -375,7 +395,14 @@ const unitLabel = (unit) => {
   return map[unit] || unit
 }
 
-const formatIntervalLabel = (value, unit) => `${formatIntervalValue(value)} ${unitLabel(unit)}`
+const formatIntervalLabel = (value, unit, scheduleHourOfDay) => {
+  const base = `${formatIntervalValue(value)} ${unitLabel(unit)}`
+  if ((unit === 'day' || unit === 'week') && scheduleHourOfDay != null) {
+    const hour = String(scheduleHourOfDay).padStart(2, '0')
+    return `${base} · ${t('settings.reminders.scheduleHourAt', { hour: `${hour}:00` })}`
+  }
+  return base
+}
 
 const formatTime = (v) => String(v || '').replace('T', ' ').slice(0, 16)
 
@@ -496,6 +523,7 @@ const resetForm = () => {
   form.scopeRoles = []
   form.intervalValue = 1
   form.intervalUnit = 'day'
+  form.scheduleHourOfDay = 9
   form.recipientUserIds = []
   form.includeTaskCreator = true
   form.messageTemplateLocales = { ...defaultOperatorTemplates.value }
@@ -522,6 +550,7 @@ const openEdit = (record) => {
   form.scopeRoles = [...(record.scopeRoles || [])]
   form.intervalValue = record.intervalValue
   form.intervalUnit = record.intervalUnit
+  form.scheduleHourOfDay = record.scheduleHourOfDay ?? 9
   form.recipientUserIds = [...(record.recipientUserIds || [])]
   form.includeTaskCreator = record.includeTaskCreator !== false
   form.messageTemplateLocales = mergeTemplateMaps(
@@ -547,6 +576,10 @@ const nextStep = () => {
   if (step.value === 0) {
     if (!form.name?.trim() || !form.taskStatuses?.length || !isValidIntervalValue(form.intervalValue)) {
       message.warning(t('settings.reminders.validationRequired'))
+      return
+    }
+    if (showScheduleHour.value && (form.scheduleHourOfDay == null || form.scheduleHourOfDay < 0)) {
+      message.warning(t('settings.reminders.scheduleHourRequired'))
       return
     }
   }
@@ -576,6 +609,7 @@ const handleSave = async () => {
       scopeRoles: form.scopeRoles?.length ? form.scopeRoles : [],
       intervalValue: normalizeIntervalValue(form.intervalValue),
       intervalUnit: form.intervalUnit,
+      scheduleHourOfDay: showScheduleHour.value ? form.scheduleHourOfDay : null,
       recipientUserIds: form.recipientUserIds,
       includeTaskCreator: form.includeTaskCreator,
       messageTemplate: form.messageTemplateLocales[primaryLocale]

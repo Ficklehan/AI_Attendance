@@ -67,6 +67,7 @@
     "imagesOnly": "Obsługiwane są tylko pliki obrazów",
     "unrecognizedImageFormat": "Nierozpoznany format obrazu. Użyj JPG lub PNG",
     "mimoNotConfigured": "Nie skonfigurowano MIMO API Key",
+    "mimoUnavailable": "Rozpoznawanie AI tymczasowo niedostępne (błąd API MiMo). Poczekaj 1–2 minuty i spróbuj ponownie",
     "aiPromptNotFound": "Nie znaleziono promptu rozpoznawania",
     "aiContinuePromptNotFound": "Nie znaleziono promptu kontynuacji",
     "aiHeaderEcho": "Model zwrócił nagłówki kolumn jako dane. Sprawdź kraj roboczy i prześlij wyraźniejsze zdjęcie",

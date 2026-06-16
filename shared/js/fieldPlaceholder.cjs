@@ -61,10 +61,79 @@ function sanitizeRecordPlaceholders(record) {
   return next
 }
 
+function isExplicitUnreadableValue(value) {
+  if (value === null || value === undefined) return false
+  const s = String(value).trim()
+  if (!s) return false
+  if (s === '???' || s === '??') return true
+  const lower = s.toLowerCase()
+  return lower === 'illegible' || lower === 'unknown'
+}
+
+function collectUnreadableFields(record, fieldKeys = RECORD_TEXT_FIELD_KEYS) {
+  if (!record || typeof record !== 'object') return []
+  const merged = new Set()
+  if (Array.isArray(record._unreadableFields)) {
+    record._unreadableFields.forEach((key) => {
+      if (key) merged.add(String(key))
+    })
+  }
+  fieldKeys.forEach((key) => {
+    if (isExplicitUnreadableValue(record[key])) {
+      merged.add(key)
+    }
+  })
+  return [...merged]
+}
+
+function isFieldUnreadable(record, fieldKey) {
+  if (!record || !fieldKey) return false
+  return Array.isArray(record._unreadableFields) && record._unreadableFields.includes(fieldKey)
+}
+
+function clearFieldUnreadable(record, fieldKey) {
+  if (!record || !fieldKey || !Array.isArray(record._unreadableFields)) return
+  record._unreadableFields = record._unreadableFields.filter((k) => k !== fieldKey)
+  if (!record._unreadableFields.length) {
+    delete record._unreadableFields
+  }
+}
+
+/** 识别入库：??? 等写入 _unreadableFields，单元格值清空 */
+function prepareRecordPlaceholders(record) {
+  if (!record || typeof record !== 'object') return record
+  const unreadable = collectUnreadableFields(record)
+  const next = { ...record }
+  RECORD_TEXT_FIELD_KEYS.forEach((key) => {
+    if (key in next) {
+      next[key] = sanitizeFieldValue(next[key])
+    }
+  })
+  if (unreadable.length) {
+    next._unreadableFields = unreadable
+  } else {
+    delete next._unreadableFields
+  }
+  return next
+}
+
+function stripRecordMetadata(record) {
+  if (!record || typeof record !== 'object') return record
+  const next = { ...record }
+  delete next._unreadableFields
+  return next
+}
+
 module.exports = {
   isPlaceholderValue,
+  isExplicitUnreadableValue,
   sanitizeFieldValue,
   displayFieldValue,
   RECORD_TEXT_FIELD_KEYS,
   sanitizeRecordPlaceholders,
+  prepareRecordPlaceholders,
+  collectUnreadableFields,
+  isFieldUnreadable,
+  clearFieldUnreadable,
+  stripRecordMetadata,
 }
