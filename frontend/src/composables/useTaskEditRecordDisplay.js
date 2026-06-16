@@ -168,11 +168,20 @@ const ANOMALY_CATEGORY_I18N = {
   other: 'taskEdit.anomalyCategoryOther',
 }
 
+const ANOMALY_CATEGORY_FALLBACK = {
+  required: '必填缺失',
+  unreadable: '看不清',
+  duplicate: '重名',
+  other: '其他异常',
+}
+
   const getAnomalyCategoryLabel = (category) => {
     const key = ANOMALY_CATEGORY_I18N[category]
-    if (!key) return category
-    const translated = t(key)
-    return translated === key ? category : translated
+    if (key) {
+      const translated = t(key)
+      if (translated && translated !== key) return translated
+    }
+    return ANOMALY_CATEGORY_FALLBACK[category] || category
   }
 
   const computeRecordAnomalyGroups = (record) => {

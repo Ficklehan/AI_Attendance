@@ -269,7 +269,8 @@ export default {
     "uploadFailedGeneric": "Upload fehlgeschlagen: {reason}",
     "recognitionError": "Erkennungsfehler",
     "workingCountry": "Arbeitsland",
-    "changeCountry": "Konfiguration ändern"
+    "changeCountry": "Konfiguration ändern",
+    "pdfNoPreview": "PDF preview is not available"
   },
   "tasks": {
     "title": "Aufgabenliste",
@@ -374,6 +375,11 @@ export default {
     "warehouse": "Lager",
     "signature": "Unterschrift",
     "observations": "Bemerkungen",
+    "anomalyCategoryRequired": "Pflichtfelder fehlen",
+    "anomalyCategoryUnreadable": "Unleserlich",
+    "anomalyCategoryDuplicate": "Doppelte Namen",
+    "anomalyCategoryOther": "Sonstige Anomalien",
+    "fieldUnreadableShort": "Unleserlich",
     "anomalyReasons": "Anomaliegründe",
     "workerNumber": "Arbeiter-ID",
     "pageNumber": "Seite",

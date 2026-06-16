@@ -553,7 +553,8 @@ export default {
     "recognitionFailedTitle": "Recognition failed",
     "recognitionError": "Recognition error",
     "workingCountry": "Working country",
-    "changeCountry": "Change config"
+    "changeCountry": "Change config",
+    "pdfNoPreview": "PDF preview is not available"
   },
   "tasks": {
     "title": "Task List",
@@ -665,6 +666,11 @@ export default {
     "scrollLoadMore": "Scroll down to load more ({loaded}/{total} shown)",
     "scrollLoadingMore": "Loading…",
     "requiredFieldMissingShort": "Required fields missing",
+    "anomalyCategoryRequired": "Required fields missing",
+    "anomalyCategoryUnreadable": "Unreadable",
+    "anomalyCategoryDuplicate": "Duplicate names",
+    "anomalyCategoryOther": "Other anomalies",
+    "fieldUnreadableShort": "Unreadable",
     "anomalyReasons": "Anomaly reasons",
     "noValidRecords": "No valid records to submit",
     "missingField": "Line {line} ({id}) missing: {fields}",

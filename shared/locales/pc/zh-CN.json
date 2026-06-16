@@ -421,7 +421,8 @@
     "recognitionFailedTitle": "识别失败",
     "recognitionError": "识别出错",
     "workingCountry": "当前工作国家",
-    "changeCountry": "更改配置"
+    "changeCountry": "更改配置",
+    "pdfNoPreview": "PDF 文件暂不支持预览"
   },
   "tasks": {
     "title": "任务列表",
@@ -533,6 +534,11 @@
     "scrollLoadMore": "向下滑动加载更多（已显示 {loaded}/{total}）",
     "scrollLoadingMore": "加载中…",
     "requiredFieldMissingShort": "必填字段缺失",
+    "anomalyCategoryRequired": "必填缺失",
+    "anomalyCategoryUnreadable": "看不清",
+    "anomalyCategoryDuplicate": "重名",
+    "anomalyCategoryOther": "其他异常",
+    "fieldUnreadableShort": "看不清",
     "anomalyReasons": "异常说明",
     "noValidRecords": "没有有效记录可以提交",
     "missingField": "第{line}行({id})缺少: {fields}",

@@ -271,7 +271,8 @@ export default {
     "uploadFailedGeneric": "Nahrání selhalo: {reason}",
     "recognitionError": "Chyba rozpoznávání",
     "workingCountry": "Pracovní země",
-    "changeCountry": "Změnit konfiguraci"
+    "changeCountry": "Změnit konfiguraci",
+    "pdfNoPreview": "PDF preview is not available"
   },
   "tasks": {
     "title": "Seznam Úkolů",
@@ -368,6 +369,11 @@ export default {
     "syncRetryFailed": "Znovu sync selhal",
     "requiredFieldsMissing": "{count} záznamů chybí povinné pole, vyplňte je před odesláním",
     "requiredFieldMissingShort": "Chybí povinná pole",
+    "anomalyCategoryRequired": "Chybí povinná pole",
+    "anomalyCategoryUnreadable": "Nečitelné",
+    "anomalyCategoryDuplicate": "Duplicitní jména",
+    "anomalyCategoryOther": "Jiné anomálie",
+    "fieldUnreadableShort": "Nečitelné",
     "anomalyReasons": "Důvody anomálií",
     "noValidRecords": "Žádné platné záznamy k odeslání",
     "missingField": "Řádek {line} ({id}) chybí: {fields}",

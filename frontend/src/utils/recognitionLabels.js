@@ -165,6 +165,24 @@ export function translateAnomalyReason(reason, t) {
     return t('taskEdit.duplicateSuspect', { names: dupMatch[1] })
   }
 
+  const categoryMatch = text.match(/^(required|unreadable|duplicate|other)[:：]\s*(.*)$/i)
+  if (categoryMatch) {
+    const category = categoryMatch[1].toLowerCase()
+    const detail = categoryMatch[2].trim()
+    const labelKey = {
+      required: 'taskEdit.anomalyCategoryRequired',
+      unreadable: 'taskEdit.anomalyCategoryUnreadable',
+      duplicate: 'taskEdit.anomalyCategoryDuplicate',
+      other: 'taskEdit.anomalyCategoryOther',
+    }[category]
+    let label = category
+    if (labelKey) {
+      const translated = t(labelKey)
+      label = translated !== labelKey ? translated : category
+    }
+    return detail ? `${label}：${detail}` : label
+  }
+
   return text
 }
 

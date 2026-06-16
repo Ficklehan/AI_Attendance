@@ -271,7 +271,8 @@ export default {
     "uploadFailedGeneric": "Error al subir: {reason}",
     "recognitionError": "Error de reconocimiento",
     "workingCountry": "País de trabajo",
-    "changeCountry": "Cambiar configuración"
+    "changeCountry": "Cambiar configuración",
+    "pdfNoPreview": "PDF preview is not available"
   },
   "tasks": {
     "title": "Lista de tareas",
@@ -363,6 +364,11 @@ export default {
     "syncRetryFailed": "Failed to retry sync",
     "requiredFieldsMissing": "{count} registros sin campos obligatorios, complétalos antes de enviar",
     "requiredFieldMissingShort": "Faltan campos obligatorios",
+    "anomalyCategoryRequired": "Faltan campos obligatorios",
+    "anomalyCategoryUnreadable": "Ilegible",
+    "anomalyCategoryDuplicate": "Nombres duplicados",
+    "anomalyCategoryOther": "Otras anomalías",
+    "fieldUnreadableShort": "Ilegible",
     "anomalyReasons": "Anomaly reasons",
     "noValidRecords": "No valid records to submit",
     "missingField": "Line {line} ({id}) missing: {fields}",

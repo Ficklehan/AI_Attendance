@@ -357,16 +357,12 @@
       </main>
     </div>
 
-    <!-- Image Preview Modal -->
-    <a-modal
+    <ImagePreviewModal
       v-model:open="previewVisible"
+      :images="uploadPreviewImages"
+      :initial-index="previewIndex"
       :title="previewTitle"
-      :footer="null"
-      centered
-      class="upload-preview-modal"
-    >
-      <img v-if="previewImage" :src="previewImage" class="upload-preview-image" />
-    </a-modal>
+    />
   </div>
 </template>
 
@@ -379,6 +375,7 @@ import { compressImage, getImageHash, getFileSizeDisplay } from '@/utils/image'
 import StatOverview from '@/components/StatOverview.vue'
 import TruncatedTag from '@/components/TruncatedTag.vue'
 import StepGuide from '@/components/StepGuide.vue'
+import ImagePreviewModal from '@/components/ImagePreviewModal.vue'
 import { useCountryStore } from '@/stores/country'
 import { getTaskDetail, getTaskProgress } from '@/api/task'
 import { getCachedWorkingCountry } from '@/utils/countryHeader'
@@ -438,8 +435,14 @@ const currentTaskId = ref(null)
 const processedHashes = ref(new Set())
 const showResult = ref(false)
 const previewVisible = ref(false)
-const previewImage = ref('')
+const previewIndex = ref(0)
 const previewTitle = ref('')
+
+const uploadPreviewImages = computed(() =>
+  fileList.value
+    .filter((file) => !file.isPdf && (file.url || file.thumbUrl))
+    .map((file) => file.url || file.thumbUrl)
+)
 const showAnomalyDetail = ref(true)
 const homeTableAnchor = ref(null)
 
@@ -606,7 +609,7 @@ const resetState = () => {
   processedHashes.value = new Set()
   showResult.value = false
   previewVisible.value = false
-  previewImage.value = ''
+  previewIndex.value = 0
   previewTitle.value = ''
   progressRowCount.value = 0
   uploadProgress.value = { uploaded: 0, total: 0, active: false }
@@ -847,10 +850,19 @@ const revokePreviewUrl = (file) => {
 }
 
 const handleFilePreview = (file) => {
-  const target = fileList.value.find(item => item.uid === file.uid) || file
-  previewImage.value = target.url || target.thumbUrl || ''
+  const target = fileList.value.find((item) => item.uid === file.uid) || file
+  if (target.isPdf || (!target.url && !target.thumbUrl)) {
+    message.info(t('home.pdfNoPreview'))
+    return
+  }
+  const imageFiles = fileList.value.filter(
+    (item) => !item.isPdf && (item.url || item.thumbUrl)
+  )
+  const index = imageFiles.findIndex((item) => item.uid === target.uid)
+  if (index < 0) return
   previewTitle.value = target.name || ''
-  previewVisible.value = Boolean(previewImage.value)
+  previewIndex.value = index
+  previewVisible.value = true
 }
 
 const handleFileRemove = (file) => {
@@ -866,7 +878,7 @@ const handleFileRemove = (file) => {
   fileList.value = fileList.value.filter(item => item.uid !== file.uid)
   if (previewVisible.value && previewTitle.value === file.name) {
     previewVisible.value = false
-    previewImage.value = ''
+    previewIndex.value = 0
     previewTitle.value = ''
   }
   return false
@@ -1828,21 +1840,6 @@ const getDisplaySmartMark = (record) => {
   }
 }
 
-// ── Preview Modal ──
-:deep(.upload-preview-modal) {
-  .ant-modal-body {
-    padding: 0;
-  }
-
-  .upload-preview-image {
-    display: block;
-    width: 100%;
-    max-height: 70vh;
-    object-fit: contain;
-    border-radius: $radius-lg;
-    background: $bg-muted;
-  }
-}
 </style>
 
 <style lang="scss">

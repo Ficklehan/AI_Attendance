@@ -271,7 +271,8 @@ export default {
     "uploadFailedGeneric": "Przesyłanie nieudane: {reason}",
     "recognitionError": "Błąd rozpoznawania",
     "workingCountry": "Kraj roboczy",
-    "changeCountry": "Zmień konfigurację"
+    "changeCountry": "Zmień konfigurację",
+    "pdfNoPreview": "PDF preview is not available"
   },
   "tasks": {
     "title": "Lista Zadań",
@@ -368,6 +369,11 @@ export default {
     "syncRetryFailed": "Nie udało się ponowić sync",
     "requiredFieldsMissing": "{count} rekordów brakuje wymaganych pól, wypełnij je przed przesłaniem",
     "requiredFieldMissingShort": "Brak wymaganych pól",
+    "anomalyCategoryRequired": "Brak wymaganych pól",
+    "anomalyCategoryUnreadable": "Nieczytelne",
+    "anomalyCategoryDuplicate": "Zduplikowane nazwiska",
+    "anomalyCategoryOther": "Inne anomalie",
+    "fieldUnreadableShort": "Nieczytelne",
     "anomalyReasons": "Powody anomalii",
     "noValidRecords": "Brak ważnych rekordów do przesłania",
     "missingField": "Wiersz {line} ({id}) brakuje: {fields}",

@@ -269,7 +269,8 @@ export default {
     "uploadFailedGeneric": "Upload mislukt: {reason}",
     "recognitionError": "Herkenningsfout",
     "workingCountry": "Werkland",
-    "changeCountry": "Configuratie wijzigen"
+    "changeCountry": "Configuratie wijzigen",
+    "pdfNoPreview": "PDF preview is not available"
   },
   "tasks": {
     "title": "Takenlijst",
@@ -374,6 +375,11 @@ export default {
     "warehouse": "Magazijn",
     "signature": "Handtekening",
     "observations": "Opmerkingen",
+    "anomalyCategoryRequired": "Verplichte velden ontbreken",
+    "anomalyCategoryUnreadable": "Onleesbaar",
+    "anomalyCategoryDuplicate": "Dubbele namen",
+    "anomalyCategoryOther": "Overige afwijkingen",
+    "fieldUnreadableShort": "Onleesbaar",
     "anomalyReasons": "Afwijkingsredenen",
     "workerNumber": "Werknemer ID",
     "pageNumber": "Pagina",
