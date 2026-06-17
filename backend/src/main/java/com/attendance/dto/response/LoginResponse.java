@@ -34,6 +34,7 @@ public class LoginResponse {
         private String email;
         private String role;
         private String realName;
+        private String workingCountry;
         private java.util.Map<String, Boolean> permissions;
 
         public UserInfo() {
@@ -85,6 +86,14 @@ public class LoginResponse {
 
         public void setRealName(String realName) {
             this.realName = realName;
+        }
+
+        public String getWorkingCountry() {
+            return workingCountry;
+        }
+
+        public void setWorkingCountry(String workingCountry) {
+            this.workingCountry = workingCountry;
         }
 
         public java.util.Map<String, Boolean> getPermissions() {

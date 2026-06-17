@@ -22,15 +22,17 @@
 
       <view tt:for="{{fields}}" tt:key="key" class="field-row">
         <text class="field-label">{{item.label}}</text>
-        <view class="field-input-shell {{item.missing ? 'is-required-empty' : ''}}">
+        <view class="field-input-shell {{item.missing ? 'is-required-empty' : ''}} {{item.formatInvalid ? 'is-format-invalid' : ''}}">
           <input
             class="field-input"
             type="{{item.inputType || 'text'}}"
             value="{{item.value}}"
+            placeholder="{{item.formatPlaceholder}}"
             data-key="{{item.key}}"
             bindinput="onFieldInput"
           />
         </view>
+        <text tt:if="{{item.formatInvalid && item.formatHint}}" class="field-format-hint">{{item.formatHint}}</text>
         <view class="original-line">
           <text class="original-prefix">{{texts.originalValue}}：</text>
           <text class="original-value">{{item.originalDisplay}}</text>

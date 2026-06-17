@@ -45,7 +45,12 @@
         show-icon
         class="sync-alert"
       >
-        <template #message>{{ syncAlertMessage }}</template>
+        <template #message>
+          <span class="sync-alert-message">
+            <LoadingOutlined v-if="task.syncStatus === 'pending'" spin class="sync-alert-spin" />
+            {{ syncAlertMessage }}
+          </span>
+        </template>
         <template v-if="task.syncError && task.syncStatus === 'sync_failed'" #description>
           {{ task.syncError }}
         </template>
@@ -109,13 +114,13 @@
             </a-radio-group>
           </div>
           <a-alert
-            v-if="requiredMissingCount > 0 && !isConfirmedTask"
+            v-if="submitValidationCount > 0 && !isConfirmedTask"
             type="warning"
             show-icon
             class="required-validation-banner"
           >
             <template #message>
-              <span>{{ $t('taskEdit.requiredValidationBanner', { count: requiredMissingCount }) }}</span>
+              <span>{{ $t('taskEdit.submitValidationBanner', { count: submitValidationCount }) }}</span>
               <a-button type="link" size="small" class="required-validation-detail-btn" @click="showRequiredValidationDetail">
                 {{ $t('taskEdit.requiredValidationViewDetail') }}
               </a-button>
@@ -158,6 +163,7 @@
             :expanded-row-keys="expandedDuplicateRowKeys"
             :expand-icon="hiddenExpandIcon"
             :row-expandable="(record) => !!getDuplicateMeta(record)"
+            :custom-row="customTableRow"
             @expand="handleTableExpand"
             size="small"
             class="edit-table rich-table-header"
@@ -170,6 +176,12 @@
                 @sort="onSorterToggle"
               >
                 <template #extra>
+                  <a-tooltip
+                    v-if="column.formatHintTooltipKey"
+                    :title="t(column.formatHintTooltipKey)"
+                  >
+                    <QuestionCircleOutlined class="col-format-hint-icon" @click.stop />
+                  </a-tooltip>
                   <TableHeaderFilter
                     v-if="column.searchField"
                     :title="formatHeaderTitle(column.title)"
@@ -312,44 +324,75 @@
                 <span v-else :class="fieldTextClass(record, 'AGENCE_INTERIMAIRE')">{{ displayRecordField(record, 'AGENCE_INTERIMAIRE') }}</span>
               </template>
               <template v-if="column.key === 'HORAIRES_DU_TRAVAIL'">
-                <a-input
-                  v-if="isRecordEditable(record)"
-                  v-model:value="record.HORAIRES_DU_TRAVAIL"
-                  size="small"
-                  :class="fieldInputClass(record, 'HORAIRES_DU_TRAVAIL')"
-                  :bordered="false"
-                  :placeholder="fieldUnreadablePlaceholder(record, 'HORAIRES_DU_TRAVAIL')"
-                  @change="onReadableFieldChange(record, 'HORAIRES_DU_TRAVAIL')"
-                />
-                <span v-else :class="fieldTextClass(record, 'HORAIRES_DU_TRAVAIL')">{{ displayRecordField(record, 'HORAIRES_DU_TRAVAIL') }}</span>
+                <div :id="fieldCellDomId(record, 'HORAIRES_DU_TRAVAIL')" class="format-field-cell">
+                  <a-tooltip v-if="isRecordEditable(record)" :title="fieldFormatTooltip('HORAIRES_DU_TRAVAIL')">
+                    <a-input
+                      v-model:value="record.HORAIRES_DU_TRAVAIL"
+                      size="small"
+                      :class="fieldInputClass(record, 'HORAIRES_DU_TRAVAIL')"
+                      :bordered="false"
+                      :placeholder="fieldCellPlaceholder(record, 'HORAIRES_DU_TRAVAIL')"
+                      @change="onReadableFieldChange(record, 'HORAIRES_DU_TRAVAIL')"
+                      @blur="onFormatFieldBlur"
+                    />
+                  </a-tooltip>
+                  <span v-else :class="fieldTextClass(record, 'HORAIRES_DU_TRAVAIL')">{{ displayRecordField(record, 'HORAIRES_DU_TRAVAIL') }}</span>
+                  <div v-if="isFormatFieldInvalid(record, 'HORAIRES_DU_TRAVAIL') && !isRecordEditable(record)" class="format-hint-below">{{ fieldFormatTooltip('HORAIRES_DU_TRAVAIL') }}</div>
+                </div>
               </template>
               <template v-if="column.key === 'Date'">
-                <a-input v-if="isRecordEditable(record)" v-model:value="record.Date" size="small" :class="fieldInputClass(record, 'Date')" :bordered="false" :placeholder="fieldUnreadablePlaceholder(record, 'Date')" @change="onReadableFieldChange(record, 'Date')" />
-                <span v-else :class="fieldTextClass(record, 'Date')">{{ displayRecordField(record, 'Date') }}</span>
+                <div :id="fieldCellDomId(record, 'Date')" class="format-field-cell">
+                  <a-tooltip v-if="isRecordEditable(record)" :title="fieldFormatTooltip('Date')">
+                    <a-date-picker
+                      v-model:value="record.Date"
+                      size="small"
+                      class="task-edit-date-picker"
+                      :class="fieldInputClass(record, 'Date')"
+                      format="YYYY-MM-DD"
+                      value-format="YYYY-MM-DD"
+                      :bordered="false"
+                      :allow-clear="true"
+                      :placeholder="fieldCellPlaceholder(record, 'Date') || fieldFormatTooltip('Date')"
+                      @change="onReadableFieldChange(record, 'Date')"
+                    />
+                  </a-tooltip>
+                  <span v-else :class="fieldTextClass(record, 'Date')">{{ displayRecordField(record, 'Date') }}</span>
+                  <div v-if="isFormatFieldInvalid(record, 'Date') && !isRecordEditable(record)" class="format-hint-below">{{ fieldFormatTooltip('Date') }}</div>
+                </div>
               </template>
               <template v-if="column.key === 'ARRIVEE'">
-                <a-input
-                  v-if="isRecordEditable(record)"
-                  v-model:value="record.ARRIVEE"
-                  size="small"
-                  :class="fieldInputClass(record, 'ARRIVEE')"
-                  :bordered="false"
-                  :placeholder="fieldUnreadablePlaceholder(record, 'ARRIVEE')"
-                  @change="onReadableFieldChange(record, 'ARRIVEE')"
-                />
-                <span v-else :class="fieldTextClass(record, 'ARRIVEE')">{{ displayRecordField(record, 'ARRIVEE') }}</span>
+                <div :id="fieldCellDomId(record, 'ARRIVEE')" class="format-field-cell">
+                  <a-tooltip v-if="isRecordEditable(record)" :title="fieldFormatTooltip('ARRIVEE')">
+                    <a-input
+                      v-model:value="record.ARRIVEE"
+                      size="small"
+                      :class="fieldInputClass(record, 'ARRIVEE')"
+                      :bordered="false"
+                      :placeholder="fieldCellPlaceholder(record, 'ARRIVEE')"
+                      @change="onReadableFieldChange(record, 'ARRIVEE')"
+                      @blur="onFormatFieldBlur"
+                    />
+                  </a-tooltip>
+                  <span v-else :class="fieldTextClass(record, 'ARRIVEE')">{{ displayRecordField(record, 'ARRIVEE') }}</span>
+                  <div v-if="isFormatFieldInvalid(record, 'ARRIVEE') && !isRecordEditable(record)" class="format-hint-below">{{ fieldFormatTooltip('ARRIVEE') }}</div>
+                </div>
               </template>
               <template v-if="column.key === 'DEPAR'">
-                <a-input
-                  v-if="isRecordEditable(record)"
-                  v-model:value="record.DEPAR"
-                  size="small"
-                  :class="fieldInputClass(record, 'DEPAR')"
-                  :bordered="false"
-                  :placeholder="fieldUnreadablePlaceholder(record, 'DEPAR')"
-                  @change="onReadableFieldChange(record, 'DEPAR')"
-                />
-                <span v-else :class="fieldTextClass(record, 'DEPAR')">{{ displayRecordField(record, 'DEPAR') }}</span>
+                <div :id="fieldCellDomId(record, 'DEPAR')" class="format-field-cell">
+                  <a-tooltip v-if="isRecordEditable(record)" :title="fieldFormatTooltip('DEPAR')">
+                    <a-input
+                      v-model:value="record.DEPAR"
+                      size="small"
+                      :class="fieldInputClass(record, 'DEPAR')"
+                      :bordered="false"
+                      :placeholder="fieldCellPlaceholder(record, 'DEPAR')"
+                      @change="onReadableFieldChange(record, 'DEPAR')"
+                      @blur="onFormatFieldBlur"
+                    />
+                  </a-tooltip>
+                  <span v-else :class="fieldTextClass(record, 'DEPAR')">{{ displayRecordField(record, 'DEPAR') }}</span>
+                  <div v-if="isFormatFieldInvalid(record, 'DEPAR') && !isRecordEditable(record)" class="format-hint-below">{{ fieldFormatTooltip('DEPAR') }}</div>
+                </div>
               </template>
               <template v-if="column.key === 'PAUSE'">
                 <a-input-number v-if="isRecordEditable(record)" v-model:value="record.PAUSE" size="small" :class="fieldInputClass(record, 'PAUSE')" :bordered="false" :controls="false" :min="0" :precision="0" style="width: 100%" @blur="() => normalizeRecordPauseOnBlur(record)" />
@@ -517,8 +560,8 @@ import { ref, computed, shallowRef, onMounted, onUnmounted, watch, h, nextTick }
 import { useRoute, useRouter } from 'vue-router'
 import { useI18n } from 'vue-i18n'
 import { message, Modal as aModal } from 'ant-design-vue'
-import { DeleteOutlined, UndoOutlined, ExclamationCircleOutlined, FileImageOutlined, EyeOutlined, UploadOutlined, DownloadOutlined } from '@ant-design/icons-vue'
-import { getTaskDetail, confirmTask, deleteTask, retryFeishuSync, calibrateTaskRecord } from '@/api/task'
+import { DeleteOutlined, UndoOutlined, ExclamationCircleOutlined, FileImageOutlined, EyeOutlined, UploadOutlined, DownloadOutlined, QuestionCircleOutlined, LoadingOutlined } from '@ant-design/icons-vue'
+import { getTaskDetail, getTaskProgress, confirmTask, deleteTask, retryFeishuSync, calibrateTaskRecord } from '@/api/task'
 import { useAuthStore } from '@/stores/auth'
 import { resolveTaskImageUrls, fileNameFromImageUrl } from '@/utils/imageUrl'
 import StatOverview from '@/components/StatOverview.vue'
@@ -565,9 +608,19 @@ import { getConfirmValidationConfig as fetchConfirmValidationConfig } from '@/ap
 import { displayFieldValue, isFieldUnreadable, clearFieldUnreadable, isPlaceholderValue, prepareRecordPlaceholders, sanitizeFieldValue, sanitizeRecordPlaceholders, stripRecordMetadata } from '@/utils/fieldPlaceholder'
 import { startAdaptivePoll } from '@/utils/adaptivePoll'
 import { isAbsentRow } from '@/utils/recordDisplay'
+import { resolveTaskRecordsJson } from '@/utils/taskRecordPayload'
 import { useTaskEditDuplicates } from '@/composables/useTaskEditDuplicates'
 import { useTaskEditConfirmValidation } from '@/composables/useTaskEditConfirmValidation'
 import { useTaskEditRecordDisplay } from '@/composables/useTaskEditRecordDisplay'
+import { getFormatHintKeys, isFormatHintField } from '@/utils/fieldFormatHints'
+import {
+  normalizeWorkerNo,
+  normalizePersonName,
+  normalizeLabelText,
+} from '@/utils/recognizedTextNormalizer'
+import { normalizeDate } from '@/utils/recognizedDateNormalizer'
+import { loadNightShiftRules } from '@/utils/nightShiftRules'
+import { isNonTimeFieldLabel } from '@/utils/recognizedTimeNormalizer'
 
 const { t } = useI18n()
 const route = useRoute()
@@ -613,10 +666,13 @@ const {
   applyConfirmValidationConfig,
   isConfiguredRequiredField,
   isRequiredFieldEmpty,
+  isFormatFieldInvalid,
   requiredInputClass,
   requiredTextClass,
   validateBeforeConfirm,
   collectConfirmValidationIssues,
+  collectSubmitValidationIssues,
+  countSubmitValidationLines,
   showConfirmValidationModal,
 } = useTaskEditConfirmValidation()
 
@@ -637,11 +693,16 @@ const {
   countAnomalyRecords,
   buildAnomalyAlertsSlice,
   clearRowCache,
-} = useTaskEditRecordDisplay(records, getDuplicateMeta, { isAbsentRow, hasManualCalibration })
+} = useTaskEditRecordDisplay(records, getDuplicateMeta, {
+  isAbsentRow,
+  hasManualCalibration,
+  taskCountry: () => task.value?.promptCountry || getCachedWorkingCountry(),
+})
 
 const fieldInputClass = (record, field) => {
   const requiredEmpty = isRequiredFieldEmpty(record, field)
-  const unreadable = isFieldUnreadable(record, field) && !requiredEmpty
+  const formatInvalid = requiredInputClass(record, field)['format-invalid']
+  const unreadable = isFieldUnreadable(record, field) && !requiredEmpty && !formatInvalid
   return {
     ...requiredInputClass(record, field),
     'field-unreadable-cell': unreadable,
@@ -650,7 +711,11 @@ const fieldInputClass = (record, field) => {
 
 const fieldTextClass = (record, field) => {
   const requiredEmpty = isRequiredFieldEmpty(record, field)
+  const formatInvalid = requiredTextClass(record, field)['format-invalid-display']
   if (requiredEmpty) {
+    return requiredTextClass(record, field)
+  }
+  if (formatInvalid) {
     return requiredTextClass(record, field)
   }
   if (isFieldUnreadable(record, field)) {
@@ -659,9 +724,14 @@ const fieldTextClass = (record, field) => {
   return { 'cell-text': true }
 }
 
+const TIME_DISPLAY_FIELDS = ['HORAIRES_DU_TRAVAIL', 'ARRIVEE', 'DEPAR']
+
 const displayRecordField = (record, field) => {
   if (isRequiredFieldEmpty(record, field)) {
     return displayFieldValue(record[field])
+  }
+  if (TIME_DISPLAY_FIELDS.includes(field) && isNonTimeFieldLabel(record[field])) {
+    return t('taskEdit.fieldUnreadableShort')
   }
   if (isFieldUnreadable(record, field) && !sanitizeFieldValue(record[field])) {
     return t('taskEdit.fieldUnreadableShort')
@@ -675,10 +745,77 @@ const fieldUnreadablePlaceholder = (record, field) => (
     : undefined
 )
 
+const fieldCellPlaceholder = (record, field) => {
+  const unreadable = fieldUnreadablePlaceholder(record, field)
+  if (unreadable) return unreadable
+  if (isFormatFieldInvalid(record, field)) {
+    const keys = getFormatHintKeys(field)
+    if (keys) return t(keys.short)
+  }
+  return undefined
+}
+
+const fieldFormatTooltip = (field) => {
+  const keys = getFormatHintKeys(field)
+  return keys ? t(keys.tooltip) : ''
+}
+
+const fieldCellDomId = (record, field) => {
+  if (!isFormatHintField(field)) return undefined
+  return `field-cell-${getRowKey(record)}-${field}`
+}
+
+const customTableRow = (record) => ({
+  id: `field-row-${getRowKey(record)}`,
+})
+
+const onFormatFieldBlur = () => {
+  scheduleRequiredMissingCountUpdate(true)
+}
+
+const scrollToFirstValidationIssue = async (issue) => {
+  if (!issue) return
+  const record = records.value[issue.line - 1]
+  if (!record) return
+  const field = (issue.fields && issue.fields[0]) || null
+  const rowKey = getRowKey(record)
+  const tableIndex = tableRecords.value.findIndex((r) => getRowKey(r) === rowKey)
+  if (tableIndex >= 0 && tableIndex >= visibleRowCount.value) {
+    visibleRowCount.value = Math.min(tableIndex + TABLE_SCROLL_BATCH, tableRecords.value.length)
+    await nextTick()
+  }
+  await nextTick()
+  const cellId = field ? fieldCellDomId(record, field) : `field-row-${rowKey}`
+  const el = document.getElementById(cellId)
+  if (!el) return
+  el.scrollIntoView({ behavior: 'smooth', block: 'center', inline: 'nearest' })
+  el.classList.add('validation-cell-flash')
+  window.setTimeout(() => el.classList.remove('validation-cell-flash'), 2200)
+}
+
+const applyFieldNormalization = (record, field) => {
+  if (!record) return
+  if (field === 'NO') record.NO = normalizeWorkerNo(record.NO)
+  if (field === 'NOM_PRENOM') record.NOM_PRENOM = normalizePersonName(record.NOM_PRENOM)
+  if (field === 'Entrepot') record.Entrepot = normalizeLabelText(record.Entrepot)
+  if (field === 'AGENCE_INTERIMAIRE') record.AGENCE_INTERIMAIRE = normalizeLabelText(record.AGENCE_INTERIMAIRE)
+  if (field === 'Date') record.Date = normalizeDate(record.Date)
+  if (TIME_DISPLAY_FIELDS.includes(field) && isNonTimeFieldLabel(record[field])) {
+    record[field] = ''
+    if (!Array.isArray(record._unreadableFields)) {
+      record._unreadableFields = []
+    }
+    if (!record._unreadableFields.includes(field)) {
+      record._unreadableFields.push(field)
+    }
+  }
+}
+
 const onReadableFieldChange = (record, field) => {
+  applyFieldNormalization(record, field)
   clearFieldUnreadable(record, field)
   if (field === 'NOM_PRENOM') markNameManuallyEdited(record)
-  if (field === 'ARRIVEE' || field === 'DEPAR' || field === 'HORAIRES_DU_TRAVAIL') {
+  if (field === 'ARRIVEE' || field === 'DEPAR' || field === 'HORAIRES_DU_TRAVAIL' || field === 'Date') {
     refreshRecordNightShiftMark(record)
   }
   clearRowCache()
@@ -697,7 +834,7 @@ const task = ref(null)
 const canDeleteTask = computed(() => task.value?.status !== 'confirmed')
 const isConfirmedTask = computed(() => task.value?.status === 'confirmed')
 const canShowSubmitBar = computed(() => task.value?.status === 'processed')
-const requiredMissingCount = ref(0)
+const submitValidationCount = ref(0)
 let requiredValidationDebounceTimer = null
 const scheduleRequiredMissingCountUpdate = (immediate = false) => {
   if (requiredValidationDebounceTimer) {
@@ -705,12 +842,12 @@ const scheduleRequiredMissingCountUpdate = (immediate = false) => {
     requiredValidationDebounceTimer = null
   }
   if (immediate) {
-    requiredMissingCount.value = collectConfirmValidationIssues(records.value).length
+    submitValidationCount.value = countSubmitValidationLines(records.value)
     return
   }
   requiredValidationDebounceTimer = window.setTimeout(() => {
     requiredValidationDebounceTimer = null
-    requiredMissingCount.value = collectConfirmValidationIssues(records.value).length
+    submitValidationCount.value = countSubmitValidationLines(records.value)
   }, VALIDATION_BANNER_DEBOUNCE_MS)
 }
 
@@ -749,9 +886,10 @@ const toggleAnomalyDetail = () => {
   }
 }
 
-const showRequiredValidationDetail = () => {
-  const issues = collectConfirmValidationIssues(records.value)
+const showRequiredValidationDetail = async () => {
+  const issues = collectSubmitValidationIssues(records.value, collectConfirmValidationIssues)
   if (issues.length > 0) {
+    await scrollToFirstValidationIssue(issues[0])
     showConfirmValidationModal(issues)
   }
 }
@@ -798,9 +936,30 @@ const startSyncPoll = () => {
   clearSyncPoll()
   stopSyncPoll = startAdaptivePoll(
     () => task.value?.syncStatus === 'pending',
-    () => loadTask(true),
-    { intervalMs: 3000, maxIntervalMs: 8000 },
+    () => refreshSyncStatusOnly(),
+    { intervalMs: 4000, maxIntervalMs: 12000 },
   )
+}
+
+const refreshSyncStatusOnly = async () => {
+  try {
+    const res = await getTaskProgress(taskId.value)
+    const progress = res.data
+    if (!progress || !task.value) return
+    const prevSync = task.value.syncStatus
+    task.value = {
+      ...task.value,
+      status: progress.status ?? task.value.status,
+      syncStatus: progress.syncStatus ?? task.value.syncStatus,
+      syncError: progress.syncError ?? task.value.syncError,
+    }
+    if (prevSync === 'pending' && progress.syncStatus !== 'pending') {
+      clearSyncPoll()
+      await loadTask(true)
+    }
+  } catch (e) {
+    console.error('刷新飞书同步状态失败:', e)
+  }
 }
 
 const ROW_MUTED_EXEMPT_KEYS = new Set(['anomalyReasons', 'SmartMark'])
@@ -1060,7 +1219,14 @@ const handleCalibrationSubmit = async ({ rowKey, updates, reason }) => {
     } else {
       await loadTask(true)
     }
-    if (res.data?.syncStatus === 'pending') {
+    if (res.data?.syncStatus) {
+      task.value = {
+        ...task.value,
+        syncStatus: res.data.syncStatus,
+        syncError: res.data.syncError ?? task.value?.syncError,
+      }
+    }
+    if (task.value?.syncStatus === 'pending') {
       startSyncPoll()
     }
   } catch (e) {
@@ -1070,33 +1236,38 @@ const handleCalibrationSubmit = async ({ rowKey, updates, reason }) => {
   }
 }
 
-const loadTask = async (silent = false) => {
+const loadTask = async (silent = false, options = {}) => {
+  const { reloadRecords = true } = options
   if (!silent) loading.value = true
   try {
     const response = await getTaskDetail(taskId.value)
     task.value = response.data
-    resetVisibleTableRows()
-    resetTableColumnsLock()
-    clearRowCache()
-    showAnomalyDetail.value = false
+    const taskCountry = task.value?.promptCountry || getCachedWorkingCountry()
 
     if (task.value?.syncStatus === 'pending') {
       startSyncPoll()
     } else {
       clearSyncPoll()
     }
+
+    if (!reloadRecords) {
+      return
+    }
+
+    await loadNightShiftRules(true, taskCountry)
+    resetVisibleTableRows()
+    resetTableColumnsLock()
+    clearRowCache()
+    showAnomalyDetail.value = false
     
-    const dataPayload =
-      task.value.status === 'confirmed' && task.value.confirmedData
-        ? task.value.confirmedData
-        : task.value.rawData
+    const dataPayload = resolveTaskRecordsJson(task.value)
     if (dataPayload) {
       const parsedRecords = JSON.parse(dataPayload)
       records.value = parsedRecords.map((record, idx) => {
         const normalized = prepareRecordPlaceholders(normalizeRecordPause({
           ...record,
           isDeleted: record.isDeleted || false,
-          _rowKey: record._rowKey || `${taskId.value}-${idx}-${Date.now()}`,
+          _rowKey: record._rowKey || `${taskId.value}-${idx}`,
           _baseName: String(sanitizeFieldValue(record.NOM_PRENOM) || '').trim(),
           _nameAutoNumbered: false,
           _duplicateConfirmedUnique: false
@@ -1135,7 +1306,6 @@ const handleRetrySync = async () => {
     await retryFeishuSync(taskId.value)
     message.success(t('taskEdit.syncRetrySuccess'))
     await loadTask(true)
-    startSyncPoll()
   } catch (error) {
     message.error(t('taskEdit.syncRetryFailed'))
     console.error(error)
@@ -1374,7 +1544,11 @@ const normalizeRecordPauseOnBlur = (record) => {
 
 const refreshRecordNightShiftMark = (record) => {
   if (!record || record.isDeleted) return
-  const refreshed = refreshNightShiftInSmartMark(getRawSmartMark(record), record)
+  const refreshed = refreshNightShiftInSmartMark(
+    getRawSmartMark(record),
+    record,
+    task.value?.promptCountry || getCachedWorkingCountry(),
+  )
   record.SmartMark = refreshed
   if (record.Mark != null && record.Mark !== '') {
     record.Mark = refreshed
@@ -1389,7 +1563,7 @@ const handleSubmit = async () => {
   })
   if (!validateBeforeConfirm(preparedRecords)) return
 
-  const nonDeletedRecords = preparedRecords.filter(r => !r.isDeleted)
+  const nonDeletedRecords = preparedRecords.filter((r) => !r.isDeleted && !isAbsentRow(r))
 
   if (nonDeletedRecords.length === 0) {
     message.warning(t('taskEdit.noValidRecords'))
@@ -1423,12 +1597,11 @@ const handleSubmit = async () => {
   submitting.value = true
   try {
     await confirmTask(taskId.value, { 
-      data: nonDeletedRecords,
+      data: preparedRecords,
       anomalySummary: anomalySummary
     })
     message.success(t('taskEdit.submitSuccess'))
     await loadTask(true)
-    startSyncPoll()
   } catch (error) {
     message.error(t('taskEdit.submitFailed'))
     console.error(error)
@@ -1588,6 +1761,16 @@ watch(headerFilters, () => {
 
   .sync-alert {
     margin-bottom: 16px;
+  }
+
+  .sync-alert-message {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+  }
+
+  .sync-alert-spin {
+    font-size: 14px;
   }
 
   .edit-tabs {
@@ -1908,6 +2091,97 @@ watch(headerFilters, () => {
     display: inline-block;
     min-width: 1.2em;
     text-align: center;
+  }
+
+  $format-invalid-surface: rgba($warning, 0.12);
+  $format-invalid-border: rgba($warning, 0.5);
+  $format-invalid-text: darken($warning, 12%);
+
+  :deep(.format-invalid) {
+    background: $format-invalid-surface !important;
+    border: 1px solid $format-invalid-border !important;
+    border-radius: $radius-sm;
+    box-shadow: none;
+    color: $format-invalid-text;
+
+    &:hover,
+    &:focus,
+    &.ant-input-number-focused {
+      background: $format-invalid-surface !important;
+      border-color: $format-invalid-border !important;
+      box-shadow: none;
+    }
+
+    input {
+      border-color: transparent !important;
+      color: $format-invalid-text;
+    }
+  }
+
+  :deep(.task-edit-date-picker) {
+    width: 100%;
+
+    &.ant-picker {
+      padding: 0 4px;
+    }
+
+    .ant-picker-input > input {
+      font-size: 12px;
+    }
+  }
+
+  :deep(.task-edit-date-picker.format-invalid) {
+    background: $format-invalid-surface !important;
+    border: 1px solid $format-invalid-border !important;
+
+    .ant-picker-input > input {
+      color: $format-invalid-text;
+
+      &::placeholder {
+        color: $format-invalid-text;
+      }
+    }
+  }
+
+  .format-invalid-display {
+    color: $format-invalid-text;
+    font-weight: 600;
+    background: $format-invalid-surface;
+    box-shadow: inset 0 0 0 1px $format-invalid-border;
+    border-radius: $radius-sm;
+    padding: 2px 6px;
+    display: inline-block;
+    min-width: 1.2em;
+    text-align: center;
+  }
+
+  .col-format-hint-icon {
+    margin-left: 4px;
+    color: rgba($warning, 0.85);
+    font-size: 12px;
+    cursor: help;
+    vertical-align: -0.1em;
+  }
+
+  .format-field-cell {
+    width: 100%;
+  }
+
+  .format-hint-below {
+    margin-top: 2px;
+    font-size: 11px;
+    line-height: 1.35;
+    color: $format-invalid-text;
+    white-space: normal;
+  }
+
+  :deep(.validation-cell-flash) {
+    animation: validation-cell-flash 2.2s ease;
+  }
+
+  @keyframes validation-cell-flash {
+    0%, 100% { box-shadow: none; }
+    15%, 45% { box-shadow: 0 0 0 2px rgba($warning, 0.55); border-radius: $radius-sm; }
   }
 
   .task-image-files {

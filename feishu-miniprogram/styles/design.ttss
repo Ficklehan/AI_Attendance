@@ -1449,6 +1449,40 @@ page {
   font-weight: 600;
 }
 
+.record-field-value.is-format-invalid {
+  color: #d46b08;
+  font-weight: 600;
+  background: rgba(250, 140, 22, 0.12);
+  border-radius: 6rpx;
+  padding: 0 6rpx;
+}
+
+.record-field-format-hint {
+  display: block;
+  margin-top: 4rpx;
+  font-size: 20rpx;
+  line-height: 1.35;
+  color: #d46b08;
+}
+
+.record-row-flash {
+  border-radius: 12rpx;
+  animation: record-row-flash 2.2s ease;
+}
+
+@keyframes record-row-flash {
+  0%, 100% { box-shadow: none; }
+  15%, 45% { box-shadow: 0 0 0 4rpx rgba(250, 140, 22, 0.45); }
+}
+
+.field-format-hint {
+  display: block;
+  margin-top: 8rpx;
+  font-size: 22rpx;
+  line-height: 1.35;
+  color: #d46b08;
+}
+
 .record-extra {
   display: block;
   font-size: var(--font-xxs);

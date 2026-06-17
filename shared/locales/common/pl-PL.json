@@ -94,5 +94,15 @@
     "invalidFormat": "Format {field} jest nieprawidłowy",
     "minLength": "{field} musi mieć co najmniej {min} znaków",
     "maxLength": "{field} może mieć maksymalnie {max} znaków"
+  },
+  "fieldFormat": {
+    "dateShort": "Wymagana data, np. 2026-06-12",
+    "dateTooltip": "Format YYYY-MM-DD. Jednoznaczne formaty jak 12/06/2026 są konwertowane. Niejednoznaczne jak 03/04/2026 popraw ręcznie",
+    "shiftShort": "Wymagane dwie godziny, np. 8:00-18:00",
+    "shiftTooltip": "Zmiana musi zawierać godzinę rozpoczęcia i zakończenia, np. 8:00-18:00 lub 08h00-17h30",
+    "arrivalShort": "Jedna godzina, np. 08:30",
+    "arrivalTooltip": "Przyjście musi być jedną godziną, np. 8:30, 08:30 lub 18h00",
+    "departureShort": "Jedna godzina, np. 18:00",
+    "departureTooltip": "Wyjście musi być jedną godziną, np. 18:00, 18h00 lub 17:30"
   }
 }

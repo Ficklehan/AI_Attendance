@@ -106,5 +106,15 @@
     "invalidFormat": "{field} format is invalid",
     "minLength": "{field} must be at least {min} characters",
     "maxLength": "{field} must be at most {max} characters"
+  },
+  "fieldFormat": {
+    "dateShort": "Date required, e.g. 2026-06-12",
+    "dateTooltip": "Use YYYY-MM-DD. Clear formats like 12/06/2026 or 12.06.2026 are auto-converted. Ambiguous dates like 03/04/2026 must be corrected manually",
+    "shiftShort": "Two times required, e.g. 8:00-18:00",
+    "shiftTooltip": "Shift must include start and end times, e.g. 8:00-18:00 or 08h00-17h30",
+    "arrivalShort": "Single time required, e.g. 08:30",
+    "arrivalTooltip": "Arrival must be a single time, e.g. 8:30, 08:30 or 18h00",
+    "departureShort": "Single time required, e.g. 18:00",
+    "departureTooltip": "Departure must be a single time, e.g. 18:00, 18h00 or 17:30"
   }
 }

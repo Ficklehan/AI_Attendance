@@ -98,6 +98,7 @@ export default {
     "oldPasswordWrong": "Onjuist huidig wachtwoord",
     "feishuRetryConfirmedOnly": "Alleen bevestigde taken kunnen Feishu-sync opnieuw proberen",
     "feishuAlreadySynced": "Feishu-sync al geslaagd",
+    "feishuSyncDisabled": "Feishu Bitable-sync is uitgeschakeld voor dit land",
     "noConfirmedDataToSync": "Geen bevestigde gegevens om te syncen",
     "confirmedDataEmpty": "Bevestigde gegevens zijn leeg",
     "confirmedTaskCannotDelete": "Bevestigde taken kunnen niet worden verwijderd",
@@ -147,6 +148,16 @@ export default {
     "invalidFormat": "{field} formaat is ongeldig",
     "minLength": "{field} moet ten minste {min} tekens lang zijn",
     "maxLength": "{field} mag maximaal {max} tekens lang zijn"
+  },
+  "fieldFormat": {
+    "dateShort": "Datum vereist, bijv. 2026-06-12",
+    "dateTooltip": "Formaat YYYY-MM-DD. Duidelijke formaten zoals 12/06/2026 worden omgezet. Ambigue datums zoals 03/04/2026 handmatig corrigeren",
+    "shiftShort": "Twee tijden vereist, bijv. 8:00-18:00",
+    "shiftTooltip": "Dienst moet start- en eindtijd bevatten, bijv. 8:00-18:00 of 08h00-17h30",
+    "arrivalShort": "Eén tijd vereist, bijv. 08:30",
+    "arrivalTooltip": "Aankomst moet één tijd zijn, bijv. 8:30, 08:30 of 18h00",
+    "departureShort": "Eén tijd vereist, bijv. 18:00",
+    "departureTooltip": "Vertrek moet één tijd zijn, bijv. 18:00, 18h00 of 17:30"
   },
   "export": {
     "centerTitle": "Exportcentrum",
@@ -267,6 +278,9 @@ export default {
     "selectAtLeastOne": "Selecteer ten minste één afbeelding",
     "uploadFailed": "Upload mislukt: {status} {statusText}",
     "uploadFailedGeneric": "Upload mislukt: {reason}",
+    "recognitionFailedTitle": "Herkenning mislukt",
+    "recognitionRetry": "Herkenning opnieuw proberen",
+    "recognitionReupload": "Opnieuw uploaden",
     "recognitionError": "Herkenningsfout",
     "workingCountry": "Werkland",
     "changeCountry": "Configuratie wijzigen",
@@ -509,7 +523,9 @@ export default {
       "connectionStatus": "Verbindingsstatus",
       "statusConnected": "Verbonden",
       "statusDisconnected": "Verbinding Verbroken",
-      "viewHelp": "Help Bekijken"
+      "viewHelp": "Help Bekijken",
+      "syncEnabled": "Na bevestiging synchroniseren met Feishu Bitable",
+      "syncEnabledHint": "Uit = bevestigen slaat alleen data op, zonder Feishu Bitable te schrijven"
     },
     "mappingConfig": {
       "title": "Veldtoewijzing Configuratie",
@@ -589,6 +605,10 @@ export default {
       "nightShiftEnd": "Eindtijd nachtdienst",
       "nightShiftCrossMidnight": "Over middernacht (einde op volgende dag)",
       "nightShiftUseSchedule": "Ook roosterkolom gebruiken (HORAIRES_DU_TRAVAIL)",
+      "nightShiftCountry": "Land",
+      "nightShiftCountryOverride": "Landspecifieke regels gebruiken",
+      "nightShiftUseGlobalHint": "Globale standaardregels actief. Vink hierboven aan voor regels per land.",
+      "nightShiftConfiguredCountries": "Landen met eigen regels",
       "imageQualityTitle": "Image clarity detection",
       "imageQualityDesc": "Reject blurry uploads and, after recognition, warn or block based on unreadable rows and fields. Pick who to count and how strict to be.",
       "imageQualityEnabled": "Enable clarity detection",

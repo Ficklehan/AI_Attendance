@@ -27,6 +27,7 @@ public final class ErrorKeys {
     public static final String TASK_STATUS_CANNOT_CONFIRM = "errors.taskStatusCannotConfirm";
     public static final String FEISHU_RETRY_CONFIRMED_ONLY = "errors.feishuRetryConfirmedOnly";
     public static final String FEISHU_ALREADY_SYNCED = "errors.feishuAlreadySynced";
+    public static final String FEISHU_SYNC_DISABLED = "errors.feishuSyncDisabled";
     public static final String NO_CONFIRMED_DATA_TO_SYNC = "errors.noConfirmedDataToSync";
     public static final String CONFIRMED_DATA_EMPTY = "errors.confirmedDataEmpty";
     public static final String CONFIRM_REQUIRED_FIELDS_MISSING = "errors.confirmRequiredFieldsMissing";

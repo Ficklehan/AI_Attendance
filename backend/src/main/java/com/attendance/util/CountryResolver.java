@@ -64,7 +64,7 @@ public final class CountryResolver {
         return null;
     }
 
-    private static String normalize(String country) {
+    public static String normalize(String country) {
         String trimmed = country.trim();
         if ("default".equalsIgnoreCase(trimmed)) {
             return "default";

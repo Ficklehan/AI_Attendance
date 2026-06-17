@@ -12,7 +12,11 @@ import com.attendance.storage.FileStorage;
 import com.attendance.service.MarkdownConfigService;
 import com.attendance.util.PageNumberNormalizer;
 import com.attendance.util.RecordCountryDefaults;
+import com.attendance.util.RecordFeishuPrepareSupport;
 import com.attendance.util.RecognizedFieldSanitizer;
+import com.attendance.util.RecognizedTimeNormalizer;
+import com.attendance.util.RecognizedTextNormalizer;
+import com.attendance.util.RecognizedDateNormalizer;
 import com.attendance.util.NightShiftMarkSupport;
 import com.attendance.util.SignatureMarkResolver;
 import okhttp3.*;
@@ -948,7 +952,7 @@ public class AIParserService {
             normalized.put("NO", record.get(0));
             normalized.put("Pays", record.get(1));
             normalized.put("Entrepot", record.get(2));
-            normalized.put("Date", normalizeDate(String.valueOf(record.get(3))));
+            normalized.put("Date", RecognizedDateNormalizer.normalizeDate(String.valueOf(record.get(3))));
             normalized.put("NOM_PRENOM", record.get(4));
             normalized.put("AGENCE_INTERIMAIRE", record.get(5));
             normalized.put("HORAIRES_DU_TRAVAIL", record.get(6));
@@ -968,7 +972,8 @@ public class AIParserService {
             normalized.put("NOM_PRENOM", record.size() > 1 ? record.get(1) : "");
             normalized.put("AGENCE_INTERIMAIRE", record.size() > 2 ? record.get(2) : "");
             normalized.put("HORAIRES_DU_TRAVAIL", record.size() > 3 ? record.get(3) : "");
-            normalized.put("Date", record.size() > 4 ? normalizeDate(String.valueOf(record.get(4))) : "");
+            normalized.put("Date", record.size() > 4
+                    ? RecognizedDateNormalizer.normalizeDate(String.valueOf(record.get(4))) : "");
             normalized.put("ARRIVEE", record.size() > 5 ? record.get(5) : "");
             normalized.put("DEPAR", record.size() > 6 ? record.get(6) : "");
             normalized.put("PAUSE", record.size() > 7 ? normalizePauseMinutes(record.get(7)) : "");
@@ -982,7 +987,13 @@ public class AIParserService {
             normalized.put("PAGE_NUM", "");
         }
         normalized.put("PAGE_NUM", PageNumberNormalizer.sanitize(normalized.getString("PAGE_NUM")));
-        normalized.put("Entrepot", RecognizedFieldSanitizer.sanitizeOptionalText(normalized.getString("Entrepot")));
+        RecognizedTextNormalizer.normalizeRecordTextFields(normalized);
+        normalized.put("Entrepot", RecognizedTextNormalizer.normalizeLabelText(normalized.getString("Entrepot")));
+        normalized.put("Date", RecognizedDateNormalizer.normalizeDate(normalized.getString("Date")));
+        normalized.put("HORAIRES_DU_TRAVAIL",
+                RecognizedTimeNormalizer.normalizeShiftSchedule(normalized.getString("HORAIRES_DU_TRAVAIL")));
+        normalized.put("ARRIVEE", RecognizedTimeNormalizer.normalizeClockTime(normalized.getString("ARRIVEE")));
+        normalized.put("DEPAR", RecognizedTimeNormalizer.normalizeClockTime(normalized.getString("DEPAR")));
         String rawAiSignature = normalized.getString("SIGNATURE");
         normalized.put("SIGNATURE_RAW", rawAiSignature);
 
@@ -1003,39 +1014,8 @@ public class AIParserService {
         normalized.put("SIGNATURE", signatureMark);
         normalized.put("CHECKER", signatureMark);
 
-        String baseDate = normalized.getString("Date");
-        String arrive = normalized.getString("ARRIVEE");
-        String depart = normalized.getString("DEPAR");
-
-        if (!RecognizedFieldSanitizer.isUnrecognized(baseDate)
-                && !RecognizedFieldSanitizer.isUnrecognized(arrive)
-                && !RecognizedFieldSanitizer.isUnrecognized(depart)) {
-            String normalizedArrive = normalizeTime(arrive);
-            String normalizedDepart = normalizeTime(depart);
-
-            if (isClockTime(normalizedArrive) && isClockTime(normalizedDepart)) {
-                int arriveHour = Integer.parseInt(normalizedArrive.split(":")[0]);
-                int departHour = Integer.parseInt(normalizedDepart.split(":")[0]);
-
-                if (arriveHour >= 18 && departHour <= 12) {
-                    normalized.put("ARRIVEE_DATE", baseDate);
-                    normalized.put("DEPAR_DATE", addDays(baseDate, 1));
-                } else {
-                    normalized.put("ARRIVEE_DATE", baseDate);
-                    normalized.put("DEPAR_DATE", baseDate);
-                }
-
-                String arriveDateStr = normalized.getString("ARRIVEE_DATE");
-                String departDateStr = normalized.getString("DEPAR_DATE");
-
-                if (arriveDateStr != null) {
-                    normalized.put("ARRIVEE_DATETIME", arriveDateStr + " " + normalizedArrive);
-                }
-                if (departDateStr != null) {
-                    normalized.put("DEPAR_DATETIME", departDateStr + " " + normalizedDepart);
-                }
-            }
-        }
+        RecordFeishuPrepareSupport.enrichDatetimeFields(normalized);
+        RecordFeishuPrepareSupport.enrichWorkHours(normalized);
 
         RecognizedFieldSanitizer.annotateAndSanitizeRecord(normalized);
         return normalized;
@@ -1043,119 +1023,6 @@ public class AIParserService {
 
     private static boolean isClockTime(String value) {
         return value != null && value.matches("\\d{1,2}:\\d{2}");
-    }
-
-    private String normalizeDate(String dateStr) {
-        if (dateStr == null || dateStr.trim().isEmpty()) {
-            return dateStr;
-        }
-        String str = dateStr.trim();
-        if (RecognizedFieldSanitizer.isUnrecognized(str)) {
-            return "";
-        }
-
-        if (str.matches("\\d{4}-\\d{2}-\\d{2}")) {
-            return str;
-        }
-
-        Pattern pattern1 = Pattern.compile("^(\\d{4})[/-](\\d{1,2})[/-](\\d{1,2})$");
-        Matcher matcher1 = pattern1.matcher(str);
-        if (matcher1.matches()) {
-            String year = matcher1.group(1);
-            String month = String.format("%02d", Integer.parseInt(matcher1.group(2)));
-            String day = String.format("%02d", Integer.parseInt(matcher1.group(3)));
-            return year + "-" + month + "-" + day;
-        }
-
-        Pattern pattern2 = Pattern.compile("^(\\d{1,2})[/-](\\d{1,2})[/-](\\d{4})$");
-        Matcher matcher2 = pattern2.matcher(str);
-        if (matcher2.matches()) {
-            String part1 = matcher2.group(1);
-            String part2 = matcher2.group(2);
-            String year = matcher2.group(3);
-            String month, day;
-            if (Integer.parseInt(part1) > 12) {
-                day = String.format("%02d", Integer.parseInt(part1));
-                month = String.format("%02d", Integer.parseInt(part2));
-            } else {
-                month = String.format("%02d", Integer.parseInt(part1));
-                day = String.format("%02d", Integer.parseInt(part2));
-            }
-            return year + "-" + month + "-" + day;
-        }
-
-        Pattern pattern3 = Pattern.compile("^(\\d{1,2})[/-](\\d{1,2})[/-](\\d{2})$");
-        Matcher matcher3 = pattern3.matcher(str);
-        if (matcher3.matches()) {
-            String part1 = matcher3.group(1);
-            String part2 = matcher3.group(2);
-            String year = "20" + matcher3.group(3);
-            String month, day;
-            if (Integer.parseInt(part1) > 12) {
-                day = String.format("%02d", Integer.parseInt(part1));
-                month = String.format("%02d", Integer.parseInt(part2));
-            } else {
-                month = String.format("%02d", Integer.parseInt(part1));
-                day = String.format("%02d", Integer.parseInt(part2));
-            }
-            return year + "-" + month + "-" + day;
-        }
-
-        return str;
-    }
-
-    private String normalizeTime(String timeStr) {
-        if (timeStr == null || timeStr.trim().isEmpty()) {
-            return timeStr;
-        }
-        String str = timeStr.trim();
-        if (RecognizedFieldSanitizer.isUnrecognized(str)) {
-            return "";
-        }
-
-        if (str.matches("\\d{1,2}:\\d{2}")) {
-            String[] parts = str.split(":");
-            String hour = String.format("%02d", Integer.parseInt(parts[0]));
-            return hour + ":" + parts[1];
-        }
-
-        Pattern patternH = Pattern.compile("^(\\d{1,2})[hH]$");
-        Matcher matcherH = patternH.matcher(str);
-        if (matcherH.matches()) {
-            String hour = String.format("%02d", Integer.parseInt(matcherH.group(1)));
-            return hour + ":00";
-        }
-
-        Pattern patternHM = Pattern.compile("^(\\d{1,2})[hH](\\d{1,2})$");
-        Matcher matcherHM = patternHM.matcher(str);
-        if (matcherHM.matches()) {
-            String hour = String.format("%02d", Integer.parseInt(matcherHM.group(1)));
-            String minute = String.format("%02d", Integer.parseInt(matcherHM.group(2)));
-            return hour + ":" + minute;
-        }
-
-        Pattern patternComma = Pattern.compile("^(\\d{1,2})[,.](\\d{1,2})$");
-        Matcher matcherComma = patternComma.matcher(str);
-        if (matcherComma.matches()) {
-            String hour = String.format("%02d", Integer.parseInt(matcherComma.group(1)));
-            String minute = String.format("%02d", Integer.parseInt(matcherComma.group(2)));
-            return hour + ":" + minute;
-        }
-
-        Pattern pattern4Digits = Pattern.compile("^(\\d{2})(\\d{2})$");
-        Matcher matcher4Digits = pattern4Digits.matcher(str);
-        if (matcher4Digits.matches()) {
-            return matcher4Digits.group(1) + ":" + matcher4Digits.group(2);
-        }
-
-        Pattern pattern1Digit = Pattern.compile("^(\\d)$");
-        Matcher matcher1Digit = pattern1Digit.matcher(str);
-        if (matcher1Digit.matches()) {
-            String hour = String.format("%02d", Integer.parseInt(matcher1Digit.group(1)));
-            return hour + ":00";
-        }
-
-        return str;
     }
 
     private Object normalizePauseMinutes(Object pauseValue) {
@@ -1262,11 +1129,11 @@ public class AIParserService {
 
     private String detectShiftType(String arriveTime, String departTime, String shiftSchedule) {
         if (NightShiftMarkSupport.shouldMarkNightShift(
-                arriveTime, departTime, shiftSchedule, nightShiftConfigService.getConfig())) {
+                arriveTime, departTime, shiftSchedule, nightShiftConfigService.getConfigForCountry(lastPromptCountry))) {
             return "夜班";
         }
-        String normalizedArrive = normalizeTime(arriveTime);
-        String normalizedDepart = normalizeTime(departTime);
+        String normalizedArrive = RecognizedTimeNormalizer.normalizeClockTime(arriveTime);
+        String normalizedDepart = RecognizedTimeNormalizer.normalizeClockTime(departTime);
         if (normalizedArrive == null || normalizedDepart == null) {
             return null;
         }

@@ -13,6 +13,7 @@ import org.springframework.stereotype.Service;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
@@ -26,6 +27,9 @@ public class BitableService {
 
     @Autowired
     private ConfigService configService;
+
+    @Autowired
+    private FeishuCountryConfigService feishuCountryConfigService;
 
     @Autowired
     private OkHttpClient httpClient;
@@ -341,95 +345,8 @@ public class BitableService {
         log.info("最终字段数量: {}", fields.size());
         log.info("最终字段内容: {}", fields);
         
-        // 计算出勤工时 (WorkHours)
-        calculateAndAddWorkHours(record, fields);
-        
         result.put("fields", fields);
         return result;
-    }
-    
-    private void calculateAndAddWorkHours(Map<String, Object> record, JSONObject fields) {
-        try {
-            // 检查是否已删除或未出勤
-            Boolean isDeleted = record.containsKey("isDeleted") ? (Boolean) record.get("isDeleted") : false;
-            Object smartMark = record.get("SmartMark");
-            boolean isAbsent = smartMark != null && smartMark.toString().contains("未出勤");
-            
-            if (isDeleted || isAbsent) {
-                log.info("已删除或未出勤记录，不设置WorkHours");
-                return;
-            }
-            
-            // 获取到达时间、离开时间和休息时间
-            Object arriveTime = record.get("ARRIVEE");
-            Object departTime = record.get("DEPAR");
-            Object pauseMinutes = record.get("PAUSE");
-            
-            if (arriveTime == null || departTime == null) {
-                log.info("缺少时间数据，不设置WorkHours");
-                return;
-            }
-            
-            String arriveStr = arriveTime.toString();
-            String departStr = departTime.toString();
-            
-            // 解析时间
-            Integer arriveMinutes = parseTimeToMinutes(arriveStr);
-            Integer departMinutes = parseTimeToMinutes(departStr);
-            
-            if (arriveMinutes == null || departMinutes == null) {
-                log.info("时间格式解析失败，不设置WorkHours");
-                return;
-            }
-            
-            // 计算总分钟数（处理跨天情况）
-            int totalMinutes = departMinutes - arriveMinutes;
-            if (totalMinutes < 0) {
-                totalMinutes += 24 * 60;
-            }
-            
-            // 减去休息时间
-            int pause = parsePauseToMinutes(pauseMinutes);
-            
-            int workMinutes = totalMinutes - pause;
-            if (workMinutes < 0) {
-                log.info("出勤时间为负数，不设置WorkHours");
-                return;
-            }
-            
-            // 转换为小时，保留2位小数
-            double workHours = Math.round(workMinutes * 100.0 / 60.0) / 100.0;
-            fields.put("WorkHours", workHours);
-            log.info("计算出勤工时: 到达={}, 离开={}, 休息={}, 出勤工时={}小时", arriveStr, departStr, pause, workHours);
-            
-        } catch (Exception e) {
-            log.error("计算出勤工时失败: {}", e.getMessage(), e);
-        }
-    }
-    
-    private Integer parseTimeToMinutes(String timeStr) {
-        if (timeStr == null || timeStr.trim().isEmpty() || "???".equals(timeStr)) {
-            return null;
-        }
-        
-        try {
-            // 清理时间字符串
-            String cleanTime = timeStr.trim().replace(',', '.').replace('h', ':').replace('H', ':');
-            String[] parts = cleanTime.split(":");
-            
-            if (parts.length == 2) {
-                int hours = Integer.parseInt(parts[0].trim());
-                int minutes = Integer.parseInt(parts[1].trim());
-                return hours * 60 + minutes;
-            } else if (parts.length == 1) {
-                double num = Double.parseDouble(parts[0].trim());
-                return (int) (Math.floor(num) * 60 + Math.round((num % 1) * 60));
-            }
-        } catch (Exception e) {
-            log.warn("解析时间失败: {}", timeStr, e);
-        }
-        
-        return null;
     }
 
     private int parsePauseToMinutes(Object pauseValue) {
@@ -602,24 +519,65 @@ public class BitableService {
     }
 
     private Map<String, FieldMapping> getFieldMappings(String countryCode) {
-        try {
-            List<Map<String, Object>> mappingsConfig = configService.getFieldMapping(countryCode);
-            Map<String, FieldMapping> mappings = new java.util.HashMap<>();
-            
-            for (Map<String, Object> mapping : mappingsConfig) {
-                String aiField = mapping.get("aiField") != null ? mapping.get("aiField").toString() : "";
-                String feishuField = mapping.get("feishuField") != null ? mapping.get("feishuField").toString() : "";
-                String type = mapping.get("type") != null ? mapping.get("type").toString() : "string";
-                boolean required = mapping.get("required") != null ? Boolean.parseBoolean(mapping.get("required").toString()) : false;
-                
-                mappings.put(aiField, new FieldMapping(feishuField, type, required));
-            }
-            
+        String requestCountry = normalizeCountryCode(countryCode);
+        String mappingCountry = feishuCountryConfigService.resolveFieldMappingCountry(requestCountry);
+        List<Map<String, Object>> mappingsConfig = feishuCountryConfigService.getFieldMapping(requestCountry);
+        Map<String, FieldMapping> mappings = buildFieldMappings(mappingsConfig);
+        if (!mappings.isEmpty()) {
+            log.info("飞书字段映射: requestCountry={}, mappingCountry={}, items={}",
+                    requestCountry, mappingCountry, mappings.size());
             return mappings;
-        } catch (Exception e) {
-            log.warn("从配置文件读取字段映射失败，使用默认映射: {}", e.getMessage());
-            return getDefaultFieldMappings();
         }
+        log.warn("国家 {} 数据库字段映射为空，使用内置默认映射", requestCountry);
+        return getDefaultFieldMappings();
+    }
+
+    private static Map<String, FieldMapping> buildFieldMappings(List<Map<String, Object>> mappingsConfig) {
+        Map<String, FieldMapping> mappings = new HashMap<>();
+        if (mappingsConfig == null) {
+            return mappings;
+        }
+        for (Map<String, Object> mapping : mappingsConfig) {
+            if (mapping == null) {
+                continue;
+            }
+            String aiField = mappingValue(mapping, "aiField", "ai_field");
+            String feishuField = mappingValue(mapping, "feishuField", "feishu_field");
+            if (aiField.isEmpty() || feishuField.isEmpty()) {
+                continue;
+            }
+            String type = mappingValue(mapping, "type");
+            if (type.isEmpty()) {
+                type = "string";
+            }
+            boolean required = false;
+            Object requiredRaw = mapping.get("required");
+            if (requiredRaw != null) {
+                required = Boolean.parseBoolean(String.valueOf(requiredRaw));
+            }
+            mappings.put(aiField, new FieldMapping(feishuField, type, required));
+        }
+        return mappings;
+    }
+
+    private static String mappingValue(Map<String, Object> mapping, String... keys) {
+        for (String key : keys) {
+            Object value = mapping.get(key);
+            if (value != null) {
+                String text = String.valueOf(value).trim();
+                if (!text.isEmpty()) {
+                    return text;
+                }
+            }
+        }
+        return "";
+    }
+
+    private static String normalizeCountryCode(String countryCode) {
+        if (countryCode == null || countryCode.trim().isEmpty()) {
+            return "default";
+        }
+        return "default".equalsIgnoreCase(countryCode.trim()) ? "default" : countryCode.trim().toUpperCase();
     }
     
     private Map<String, FieldMapping> getDefaultFieldMappings() {
@@ -632,9 +590,12 @@ public class BitableService {
         mappings.put("AGENCE_INTERIMAIRE", new FieldMapping("AGENCE D'INTERIMAIR", "string", false));
         mappings.put("HORAIRES_DU_TRAVAIL", new FieldMapping("HORAIRES DU TRAVAI", "string", false));
         mappings.put("Date", new FieldMapping("Date", "date", true));
+        mappings.put("ARRIVEE_DATE", new FieldMapping("ARRIVE", "date", true));
+        mappings.put("DEPAR_DATE", new FieldMapping("DEPAR", "date", true));
         mappings.put("ARRIVEE_DATETIME", new FieldMapping("ARRIVE", "datetime", true));
         mappings.put("DEPAR_DATETIME", new FieldMapping("DEPAR", "datetime", true));
         mappings.put("PAUSE", new FieldMapping("PAUS", "number", true));
+        mappings.put("WorkHours", new FieldMapping("WorkHours", "number", false));
         mappings.put("SIGNATURE", new FieldMapping("SIGNATURE", "string", false));
         mappings.put("Observations", new FieldMapping("Observations", "string", false));
         mappings.put("SmartMark", new FieldMapping("Mark", "string", false));

@@ -106,7 +106,7 @@ public class RoleDataScopeService {
         options.put("country", toDimensionOptions(roleDataScopeMapper.selectDistinctCountryOptions()));
         options.put("warehouse", toDimensionOptions(roleDataScopeMapper.selectDistinctWarehouseOptions()));
         options.put("agency", toDimensionOptions(roleDataScopeMapper.selectDistinctAgencyOptions()));
-        options.put("owner_user", userMapper.selectUserList(0, 500).stream()
+        options.put("owner_user", userMapper.selectUserList(0, 500, null).stream()
                 .map(u -> new DimensionOptionDTO(u.getId(),
                         buildOwnerUserLabel(u.getRealName(), u.getUsername(), u.getEmail(), u.getId())))
                 .collect(Collectors.toList()));

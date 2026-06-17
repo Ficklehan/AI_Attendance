@@ -133,6 +133,11 @@
                   <a-descriptions-item :label="$t('config.effective.fieldMapping')">
                     {{ $t('config.effective.mappingCount', { n: fieldMappingCount }) }}
                   </a-descriptions-item>
+                  <a-descriptions-item :label="$t('config.effective.feishuSync')">
+                    <a-tag :color="countryBundle.syncEnabled ? 'success' : 'default'">
+                      {{ countryBundle.syncEnabled ? $t('config.effective.syncOn') : $t('config.effective.syncOff') }}
+                    </a-tag>
+                  </a-descriptions-item>
                 </a-descriptions>
                 <p v-if="countryBundle.feishuFromGlobalFallback" class="block-hint">
                   {{ $t('config.effective.feishuFallbackHint') }}
@@ -348,6 +353,11 @@
                 v-model:value="configs.tableId"
                 :placeholder="t('config.feishuConfig.tableIdPlaceholder')"
               />
+            </a-form-item>
+
+            <a-form-item :label="t('config.feishuConfig.syncEnabled')">
+              <a-switch v-model:checked="configs.syncEnabled" />
+              <span class="sync-enabled-hint">{{ t('config.feishuConfig.syncEnabledHint') }}</span>
             </a-form-item>
 
             <a-form-item>
@@ -701,7 +711,8 @@ const countryBundle = ref({
   tableId: '',
   fieldMapping: [],
   promptFromGlobalFallback: false,
-  feishuFromGlobalFallback: false
+  feishuFromGlobalFallback: false,
+  syncEnabled: true
 })
 
 const configs = reactive({
@@ -709,6 +720,7 @@ const configs = reactive({
   continuePrompt: '',
   appToken: '',
   tableId: '',
+  syncEnabled: true,
   autoConfirm: false,
   notificationEnabled: true,
   batchSize: 100
@@ -908,16 +920,19 @@ const defaultFieldMapping = [
   { aiField: 'NO', feishuField: 'NO', type: 'string', required: true, description: '工号' },
   { aiField: 'Pays', feishuField: 'Pays', type: 'string', required: false, description: '国家' },
   { aiField: 'Entrepot', feishuField: 'Entrepôt', type: 'string', required: false, description: '仓库' },
-  { aiField: 'NOM_PRENOM', feishuField: 'NOM', type: 'string', required: true, description: '姓名' },
-  { aiField: 'AGENCE_INTERIMAIRE', feishuField: 'AGENCE', type: 'string', required: false, description: '中介' },
-  { aiField: 'SHIFT', feishuField: 'SHIFT', type: 'string', required: false, description: '班次' },
-  { aiField: 'Date', feishuField: 'DATE', type: 'date', required: true, description: '日期' },
-  { aiField: 'ARRIVEE', feishuField: 'ARRIVE', type: 'datetime', required: true, description: '到达时间' },
-  { aiField: 'DEPAR', feishuField: 'DEPAR', type: 'datetime', required: true, description: '离开时间' },
-  { aiField: 'PAUSE', feishuField: 'PAUS', type: 'number', required: true, description: '休息时间' },
+  { aiField: 'NOM_PRENOM', feishuField: 'NOM PRENOM', type: 'string', required: false, description: '姓名' },
+  { aiField: 'AGENCE_INTERIMAIRE', feishuField: "AGENCE D'INTERIMAIR", type: 'string', required: false, description: '中介机构' },
+  { aiField: 'HORAIRES_DU_TRAVAIL', feishuField: 'HORAIRES DU TRAVAI', type: 'string', required: false, description: '工作时间' },
+  { aiField: 'Date', feishuField: 'Date', type: 'date', required: true, description: '日期' },
+  { aiField: 'ARRIVEE_DATETIME', feishuField: 'ARRIVE', type: 'datetime', required: true, description: '到达时间' },
+  { aiField: 'DEPAR_DATETIME', feishuField: 'DEPAR', type: 'datetime', required: true, description: '离开时间' },
+  { aiField: 'PAUSE', feishuField: 'PAUS', type: 'number', required: true, description: '休息(分钟)' },
   { aiField: 'SIGNATURE', feishuField: 'SIGNATURE', type: 'string', required: false, description: '员工签名' },
   { aiField: 'Observations', feishuField: 'Observations', type: 'string', required: false, description: '备注' },
-  { aiField: 'SmartMark', feishuField: 'Mark', type: 'string', required: false, description: '标记' }
+  { aiField: 'WorkHours', feishuField: 'WorkHours', type: 'number', required: false, description: '出勤工时' },
+  { aiField: 'SmartMark', feishuField: 'Mark', type: 'string', required: false, description: '标记' },
+  { aiField: 'TASK_ID', feishuField: '任务id', type: 'string', required: false, description: '任务id' },
+  { aiField: 'UPLOADED_BY', feishuField: '上传人员', type: 'user', required: false, description: '上传人员' },
 ]
 
 const reloadConfigs = async (silent = false) => {
@@ -978,6 +993,7 @@ const loadConfigs = async () => {
     configs.continuePrompt = aiRes.data.continue_prompt || defaultContinuePrompt
     configs.appToken = feishuRes.data.appToken || ''
     configs.tableId = feishuRes.data.tableId || ''
+    configs.syncEnabled = feishuRes.data.syncEnabled !== false
     
     if (feishuRes.data.fieldMapping && Array.isArray(feishuRes.data.fieldMapping)) {
       fieldMappings.value = feishuRes.data.fieldMapping
@@ -1019,6 +1035,7 @@ const loadCountryConfigs = async () => {
     configs.continuePrompt = aiRes.data.continue_prompt || defaultContinuePrompt
     configs.appToken = feishuRes.data.appToken || ''
     configs.tableId = feishuRes.data.tableId || ''
+    configs.syncEnabled = feishuRes.data.syncEnabled !== false
     if (feishuRes.data.fieldMapping && Array.isArray(feishuRes.data.fieldMapping)) {
       fieldMappings.value = feishuRes.data.fieldMapping
     }
@@ -1066,7 +1083,6 @@ const saveAiConfig = async () => {
 const saveFeishuConfig = async () => {
   saving.value = true
   try {
-    const fieldMappingYaml = generateFieldMappingYaml(fieldMappings.value)
     await request({
       url: '/config/feishu',
       method: 'put',
@@ -1074,7 +1090,8 @@ const saveFeishuConfig = async () => {
         country: selectedCountry.value,
         bitable_app_token: configs.appToken,
         bitable_table_id: configs.tableId,
-        field_mapping: fieldMappingYaml
+        field_mapping: fieldMappings.value,
+        sync_enabled: configs.syncEnabled,
       }
     })
     message.success(t('config.saveSuccess'))
@@ -1395,6 +1412,12 @@ onMounted(async () => {
   &.warn {
     color: $warning-dark;
   }
+}
+
+.sync-enabled-hint {
+  margin-left: 12px;
+  font-size: $font-size-sm;
+  color: $text-secondary;
 }
 
 .token-mask {

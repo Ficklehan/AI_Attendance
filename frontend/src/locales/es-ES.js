@@ -84,6 +84,7 @@ export default {
     "taskStatusCannotConfirm": "El estado de la tarea no permite confirmar",
     "feishuRetryConfirmedOnly": "Solo las tareas confirmadas pueden reintentar la sincronización con Feishu",
     "feishuAlreadySynced": "La sincronización con Feishu ya se completó; no es necesario reintentar",
+    "feishuSyncDisabled": "La sincronización con Feishu Bitable está desactivada para este país",
     "noConfirmedDataToSync": "No hay datos confirmados para sincronizar",
     "confirmedDataEmpty": "Los datos confirmados están vacíos; no se puede sincronizar",
     "confirmRequiredFieldsMissing": "Algunos registros tienen campos obligatorios sin completar (incluido el nombre). Complételos antes de enviar.",
@@ -149,6 +150,16 @@ export default {
     "invalidFormat": "El formato de {field} no es válido",
     "minLength": "{field} debe tener al menos {min} caracteres",
     "maxLength": "{field} debe tener como máximo {max} caracteres"
+  },
+  "fieldFormat": {
+    "dateShort": "Fecha obligatoria, ej. 2026-06-12",
+    "dateTooltip": "Use YYYY-MM-DD. Formatos claros como 12/06/2026 se convierten. Fechas ambiguas como 03/04/2026 deben corregirse manualmente",
+    "shiftShort": "Dos horarios requeridos, ej. 8:00-18:00",
+    "shiftTooltip": "El turno debe incluir hora de inicio y fin, ej. 8:00-18:00 u 08h00-17h30",
+    "arrivalShort": "Un solo horario, ej. 08:30",
+    "arrivalTooltip": "La llegada debe ser un solo horario, ej. 8:30, 08:30 o 18h00",
+    "departureShort": "Un solo horario, ej. 18:00",
+    "departureTooltip": "La salida debe ser un solo horario, ej. 18:00, 18h00 o 17:30"
   },
   "export": {
     "centerTitle": "Centro de exportación",
@@ -269,6 +280,9 @@ export default {
     "selectAtLeastOne": "Selecciona al menos una imagen",
     "uploadFailed": "Error al subir: {status} {statusText}",
     "uploadFailedGeneric": "Error al subir: {reason}",
+    "recognitionFailedTitle": "Error de reconocimiento",
+    "recognitionRetry": "Reintentar reconocimiento",
+    "recognitionReupload": "Subir de nuevo",
     "recognitionError": "Error de reconocimiento",
     "workingCountry": "País de trabajo",
     "changeCountry": "Cambiar configuración",
@@ -462,7 +476,10 @@ export default {
       "configured": "Configurado",
       "notConfigured": "No configurado",
       "chars": "{n} caracteres",
-      "mappingCount": "{n} elementos"
+      "mappingCount": "{n} elementos",
+      "feishuSync": "Sincronizar al confirmar",
+      "syncOn": "Activado",
+      "syncOff": "Desactivado"
     },
     "addConfig": "Añadir configuración",
     "editConfig": "Editar configuración",
@@ -570,7 +587,9 @@ export default {
       "connectionStatus": "Connection Status",
       "statusConnected": "Connected",
       "statusDisconnected": "Disconnected",
-      "viewHelp": "View Help"
+      "viewHelp": "View Help",
+      "syncEnabled": "Sincronizar con Feishu Bitable al confirmar",
+      "syncEnabledHint": "Si está desactivado, confirmar solo guarda los datos sin escribir en Feishu Bitable"
     },
     "mappingConfig": {
       "title": "Field Mapping Configuration",
@@ -650,6 +669,10 @@ export default {
       "nightShiftEnd": "Hora de fin del turno nocturno",
       "nightShiftCrossMidnight": "Cruza medianoche (fin al día siguiente)",
       "nightShiftUseSchedule": "Usar también la columna de horario (HORAIRES_DU_TRAVAIL)",
+      "nightShiftCountry": "País",
+      "nightShiftCountryOverride": "Usar reglas específicas del país",
+      "nightShiftUseGlobalHint": "Se usan las reglas globales. Marque arriba para configurar reglas de este país.",
+      "nightShiftConfiguredCountries": "Países con reglas propias",
       "imageQualityTitle": "Image clarity detection",
       "imageQualityDesc": "Reject blurry uploads and, after recognition, warn or block based on unreadable rows and fields. Pick who to count and how strict to be.",
       "imageQualityEnabled": "Enable clarity detection",

@@ -93,5 +93,15 @@
     "invalidFormat": "{field} formaat is ongeldig",
     "minLength": "{field} moet ten minste {min} tekens lang zijn",
     "maxLength": "{field} mag maximaal {max} tekens lang zijn"
+  },
+  "fieldFormat": {
+    "dateShort": "Datum vereist, bijv. 2026-06-12",
+    "dateTooltip": "Formaat YYYY-MM-DD. Duidelijke formaten zoals 12/06/2026 worden omgezet. Ambigue datums zoals 03/04/2026 handmatig corrigeren",
+    "shiftShort": "Twee tijden vereist, bijv. 8:00-18:00",
+    "shiftTooltip": "Dienst moet start- en eindtijd bevatten, bijv. 8:00-18:00 of 08h00-17h30",
+    "arrivalShort": "Eén tijd vereist, bijv. 08:30",
+    "arrivalTooltip": "Aankomst moet één tijd zijn, bijv. 8:30, 08:30 of 18h00",
+    "departureShort": "Eén tijd vereist, bijv. 18:00",
+    "departureTooltip": "Vertrek moet één tijd zijn, bijv. 18:00, 18h00 of 17:30"
   }
 }

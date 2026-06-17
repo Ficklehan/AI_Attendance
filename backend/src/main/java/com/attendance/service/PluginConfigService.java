@@ -36,7 +36,7 @@ public class PluginConfigService {
         SystemConfigDTO dto = new SystemConfigDTO();
         dto.setNotificationEnabled(isNotificationEnabled());
         dto.setConfirmValidation(confirmValidationService.getConfig());
-        dto.setNightShift(nightShiftConfigService.getConfig());
+        dto.setNightShift(nightShiftConfigService.getAdminConfig());
         dto.setImageQuality(imageQualityConfigService.getConfig());
         return dto;
     }

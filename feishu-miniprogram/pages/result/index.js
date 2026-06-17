@@ -30,6 +30,7 @@ const { refreshRecordNightShiftMark } = require('../../utils/recognitionLabels')
 const { loadNightShiftRules } = require('../../utils/nightShiftRules')
 const { loadConfirmValidationConfig } = require('../../utils/confirmValidationConfig')
 const { parseImageQualityWarning } = require('../../utils/recognitionUpload')
+const { resolveTaskRecordsJson } = require('../../shared-js/taskRecordPayload')
 
 const PAGE_SIZE = 20
 const { startAdaptivePoll } = require('../../utils/adaptivePoll')
@@ -96,6 +97,8 @@ Page({
     duplicateRefreshing: false,
     requiredMissingCount: 0,
     requiredValidationBannerText: '',
+    scrollIntoViewId: '',
+    flashRowKey: '',
     showImageQualityBanner: false,
     imageQualityBannerText: '',
     texts: {}
@@ -123,6 +126,9 @@ Page({
 
   onShow: function () {
     this.refreshPageTexts()
+    if ((this.data.records || []).length) {
+      this.refreshDisplayRecords()
+    }
   },
 
   onUnload: function () {
@@ -130,6 +136,11 @@ Page({
   },
 
   refreshPageTexts: function () {
+    try {
+      tt.setNavigationBarTitle({ title: t('result.title') })
+    } catch (e) {
+      console.warn('setNavigationBarTitle failed', e)
+    }
     this.setData({
       texts: {
         retrySync: t('result.retrySync'),
@@ -276,10 +287,29 @@ Page({
     }
   },
 
+  refreshSyncStatusOnly: function () {
+    const prev = this.data.syncStatus
+    return taskApi.getTaskProgress(this.data.taskId)
+      .then((res) => {
+        if (!isApiSuccess(res.data)) return
+        const p = getApiData(res.data) || {}
+        const syncStatus = p.syncStatus || 'none'
+        const syncError = p.syncError || ''
+        if (prev === 'pending' && syncStatus !== 'pending') {
+          return this.loadTaskResult(true)
+        }
+        this.applySyncUi({
+          status: p.status || this.data.taskStatus,
+          syncStatus,
+          syncError,
+        }, { skipRecordRefresh: true, skipPollRestart: true })
+      })
+  },
+
   startSyncPoll: function () {
     this.clearSyncPoll()
     this._stopSyncPoll = startAdaptivePoll({
-      intervalMs: 3000,
+      intervalMs: 4000,
       shouldContinue: () => this.data.syncStatus === 'pending',
       isPaused: () => false,
       tick: () => {
@@ -287,12 +317,14 @@ Page({
           this.clearSyncPoll()
           return Promise.resolve()
         }
-        return this.loadTaskResult(true)
+        return this.refreshSyncStatusOnly()
       }
     })
   },
 
-  applySyncUi: function (task) {
+  applySyncUi: function (task, options) {
+    const skipRecordRefresh = options && options.skipRecordRefresh
+    const skipPollRestart = options && options.skipPollRestart
     const taskStatus = task.status || ''
     const syncStatus = task.syncStatus || 'none'
     const syncError = task.syncError || ''
@@ -336,13 +368,17 @@ Page({
       canCalibrate
     })
 
-    if (syncStatus === 'pending') {
-      this.startSyncPoll()
-    } else {
-      this.clearSyncPoll()
+    if (!skipPollRestart) {
+      if (syncStatus === 'pending') {
+        this.startSyncPoll()
+      } else {
+        this.clearSyncPoll()
+      }
     }
 
-    this.refreshDisplayRecords()
+    if (!skipRecordRefresh) {
+      this.refreshDisplayRecords()
+    }
   },
 
   loadTaskResult: function (silent) {
@@ -353,9 +389,7 @@ Page({
       .then((res) => {
         if (isApiSuccess(res.data)) {
           const task = getApiData(res.data) || {}
-          const payload = task.status === 'confirmed' && task.confirmedData
-            ? task.confirmedData
-            : (task.rawData || task.confirmedData)
+          const payload = resolveTaskRecordsJson(task)
           const records = parseRecords(payload)
           const engine = task.aiRawOutput || ''
           const promptCountry = engine.indexOf('mimo:') === 0 ? engine.slice(5) : (task.promptCountry || '')
@@ -385,8 +419,8 @@ Page({
             this.refreshStats()
             if (!silent && records.length === 0 && task.status === 'processed') {
               tt.showModal({
-                title: '无识别结果',
-                content: '任务已完成但未解析到记录，请换更清晰照片重试，或查看 PC 端同图是否正常。',
+                title: t('result.noRecordsModalTitle'),
+                content: t('result.noRecordsModalContent'),
                 showCancel: false
               })
             }
@@ -523,7 +557,31 @@ Page({
   },
 
   showRequiredValidationDetail: function () {
-    showRequiredValidationModal(this.data.records, t)
+    const self = this
+    showRequiredValidationModal(this.data.records, t, {
+      beforeModal: function (issue) {
+        if (issue && issue.rowKey) {
+          self.scrollToValidationIssue(issue)
+        }
+      },
+    })
+  },
+
+  scrollToValidationIssue: function (issue) {
+    if (!issue || !issue.rowKey) return
+    const line = issue.line || 1
+    const visibleCount = Math.max(this.data.visibleCount, line)
+    this.setData({
+      recordsExpanded: true,
+      visibleCount,
+      scrollIntoViewId: `record-${issue.rowKey}`,
+      flashRowKey: issue.rowKey,
+    }, () => {
+      this.refreshDisplayRecords()
+      setTimeout(() => {
+        this.setData({ flashRowKey: '', scrollIntoViewId: '' })
+      }, 2200)
+    })
   },
 
   refreshDisplayRecords: function () {

@@ -51,14 +51,43 @@ function parseProgressError(task) {
   return parseProgressErrorPayload(task).message
 }
 
-function formatProgressError(progress) {
+function isOpaqueProgressError(message) {
+  const raw = String(message || '').trim()
+  if (!raw) return true
+  if (raw.startsWith('errors.')) return false
+  if (/^\d+$/.test(raw)) return true
+  return raw.length <= 2
+}
+
+function buildProgressError(progress) {
   const payload = parseProgressErrorPayload(progress)
-  const raw = payload.message || i18n.global.t('home.recognitionError')
-  return translateErrorMessage({
+  let raw = payload.message || ''
+  let messageKey = payload.messageKey
+  if (!messageKey && raw.startsWith('errors.')) {
+    messageKey = raw
+  }
+  if (!messageKey && isOpaqueProgressError(raw)) {
+    raw = i18n.global.t('home.recognitionError')
+  }
+  const text = translateErrorMessage({
     message: raw,
-    messageKey: payload.messageKey || undefined,
+    messageKey: messageKey || undefined,
     messageArgs: payload.messageArgs,
   })
+  return { text, messageKey, messageArgs: payload.messageArgs }
+}
+
+function formatProgressError(progress) {
+  return buildProgressError(progress).text
+}
+
+function attachProgressError(err, progress, taskId) {
+  const built = buildProgressError(progress)
+  err.message = built.text
+  err.messageKey = built.messageKey
+  err.messageArgs = built.messageArgs
+  err.taskId = taskId
+  return err
 }
 
 export function parseRecordsFromTask(task) {
@@ -147,9 +176,8 @@ export async function resolveRecognitionIfReady(taskId) {
     }
   }
   if (progress.status === 'failed') {
-    const message = formatProgressError(progress)
-    const err = new Error(message)
-    err.taskId = taskId
+    const err = new Error('')
+    attachProgressError(err, progress, taskId)
     throw err
   }
   return null
@@ -234,9 +262,8 @@ export async function pollRecognitionUntilDone(taskId, options = {}) {
     }
 
     if (status === 'failed') {
-      const message = formatProgressError(progress)
-      const err = new Error(message)
-      err.taskId = taskId
+      const err = new Error('')
+      attachProgressError(err, progress, taskId)
       throw err
     }
 

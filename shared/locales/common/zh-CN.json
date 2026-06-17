@@ -106,5 +106,15 @@
     "invalidFormat": "{field} 格式不正确",
     "minLength": "{field} 最少 {min} 个字符",
     "maxLength": "{field} 最多 {max} 个字符"
+  },
+  "fieldFormat": {
+    "dateShort": "须为日期，如 2026-06-12",
+    "dateTooltip": "日期须为 YYYY-MM-DD；可识别 12/06/2026、12.06.2026 等明确格式。03/04/2026 等歧义日期请手动改为标准格式",
+    "shiftShort": "须含两个时间，如 8:00-18:00",
+    "shiftTooltip": "班次须包含开始与结束两个时间，例如 8:00-18:00 或 08h00-17h30",
+    "arrivalShort": "须为单个时间，如 08:30",
+    "arrivalTooltip": "到达时间须为单个时间点，例如 8:30、08:30 或 18h00",
+    "departureShort": "须为单个时间，如 18:00",
+    "departureTooltip": "离开时间须为单个时间点，例如 18:00、18h00 或 17:30"
   }
 }

@@ -42,6 +42,9 @@ public final class RecognitionFailureMessages {
         if (isMimoTransientFailure(lower)) {
             return ErrorKeys.MIMO_UNAVAILABLE;
         }
+        if (trimmed.matches("\\d+")) {
+            return ErrorKeys.REQUEST_FAILED;
+        }
         return trimmed;
     }
 

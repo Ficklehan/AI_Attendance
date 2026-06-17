@@ -17,14 +17,21 @@ import com.attendance.mapper.TaskMapper;
 import com.attendance.mapper.TaskRecordMapper;
 import com.attendance.security.DataScopeContext;
 import com.attendance.security.SecurityUtils;
+import com.attendance.util.CountryResolver;
 import com.attendance.util.ExcelExportHelper;
 import com.attendance.util.ExcelExportHelper.ExcelSheetWriter;
 import com.attendance.mapper.UserMapper;
 import com.attendance.security.TaskAccessService;
+import com.attendance.util.RecordFeishuPrepareSupport;
 import com.attendance.util.RecognizedFieldSanitizer;
+import com.attendance.util.RecognizedTextNormalizer;
+import com.attendance.util.RecognitionFailureMessages;
 import com.attendance.util.RecordJsonSupport;
 import com.attendance.util.RecordNoGenerator;
+import com.attendance.util.NightShiftCountryResolver;
 import com.attendance.util.SmartMarkNightShiftRefresher;
+import com.attendance.util.TaskRecordExportSupport;
+import com.attendance.util.TaskRecordPayloadResolver;
 import com.attendance.storage.FileStorage;
 import com.attendance.util.UploadPathSecurity;
 import com.alibaba.fastjson.JSON;
@@ -64,6 +71,9 @@ public class TaskService {
 
     @Autowired
     private FeishuSyncService feishuSyncService;
+
+    @Autowired
+    private FeishuCountryConfigService feishuCountryConfigService;
     
     @Autowired
     private UserMapper userMapper;
@@ -341,8 +351,9 @@ public class TaskService {
         if (summary != null && !summary.trim().isEmpty()) {
             try {
                 JSONObject obj = JSON.parseObject(summary);
-                if (obj != null && obj.getString("error") != null) {
-                    dto.setProgressError(obj.getString("error"));
+                if (obj != null && obj.get("error") != null) {
+                    String err = RecognitionFailureMessages.toClientMessage(String.valueOf(obj.get("error")));
+                    dto.setProgressError(err);
                     JSONObject args = obj.getJSONObject("errorArgs");
                     if (args != null && !args.isEmpty()) {
                         dto.setProgressErrorArgs(args);
@@ -416,10 +427,15 @@ public class TaskService {
         if (data != null) {
             for (Map<String, Object> record : data) {
                 RecognizedFieldSanitizer.sanitizeRecordPlaceholders(record);
-                refreshNightShiftSmartMark(record);
+                RecognizedTextNormalizer.normalizeRecordFields(record);
+                refreshNightShiftSmartMark(record, task.getPromptCountry());
             }
         }
         confirmValidationService.validateConfirmRecords(data);
+
+        for (Map<String, Object> record : data) {
+            RecordFeishuPrepareSupport.prepareRecord(record);
+        }
 
         String currentUserId = taskAccessService.requireCurrentUserId();
         log.info("当前用户: userId={}", currentUserId);
@@ -444,7 +460,14 @@ public class TaskService {
 
         String confirmedData = JSON.toJSONString(data);
         taskMapper.updateTaskConfirmedData(taskId, confirmedData);
-        log.info("已保存确认数据: taskId={}", taskId);
+        log.info("已保存确认数据: taskId={}, recordCount={}", taskId, data.size());
+
+        List<Map<String, Object>> feishuRecords = new ArrayList<>();
+        for (Map<String, Object> record : data) {
+            if (!isRecordDeletedForSync(record)) {
+                feishuRecords.add(record);
+            }
+        }
 
         JSONObject summary = new JSONObject();
         int totalRecords = data.size();
@@ -490,14 +513,19 @@ public class TaskService {
         summary.put("riskLevel", overallRiskLevel);
 
         taskMapper.updateTaskAnomalySummary(taskId, summary.toJSONString());
-        taskMapper.updateTaskSyncStatus(taskId, "pending", null);
         log.info("任务确认成功: taskId={}, recordCount={}", taskId, data.size());
         taskRecordSyncService.syncFromTaskId(taskId);
 
         String feishuCountry = resolveConfirmCountry(countryCode, task);
-        log.info("飞书同步国家: requestCountry={}, taskPromptCountry={}, headerCountry={}",
-                feishuCountry, task.getPromptCountry(), countryCode);
-        feishuSyncService.syncConfirmedTask(taskId, new ArrayList<>(data), feishuCountry);
+        if (feishuCountryConfigService.isSyncEnabled(feishuCountry)) {
+            taskMapper.updateTaskSyncStatus(taskId, "pending", null);
+            log.info("飞书同步国家: requestCountry={}, taskPromptCountry={}, headerCountry={}",
+                    feishuCountry, task.getPromptCountry(), countryCode);
+            feishuSyncService.syncConfirmedTask(taskId, feishuRecords, feishuCountry);
+        } else {
+            taskMapper.updateTaskSyncStatus(taskId, "none", null);
+            log.info("该国已关闭飞书多维表同步，仅确认任务: country={}", feishuCountry);
+        }
     }
 
     public void retryFeishuSync(String taskId) {
@@ -513,33 +541,39 @@ public class TaskService {
             throw new BusinessException(ErrorCode.TASK_STATUS_ERROR, ErrorKeys.NO_CONFIRMED_DATA_TO_SYNC);
         }
 
+        String feishuCountry = resolveConfirmCountry(null, task);
+        if (!feishuCountryConfigService.isSyncEnabled(feishuCountry)) {
+            throw new BusinessException(ErrorCode.TASK_STATUS_ERROR, ErrorKeys.FEISHU_SYNC_DISABLED);
+        }
+
         JSONArray arr = JSON.parseArray(task.getConfirmedData());
         if (arr == null || arr.isEmpty()) {
             throw new BusinessException(ErrorCode.TASK_STATUS_ERROR, ErrorKeys.CONFIRMED_DATA_EMPTY);
         }
         List<Map<String, Object>> data = new ArrayList<>();
         for (int i = 0; i < arr.size(); i++) {
-            data.add(arr.getJSONObject(i));
+            Map<String, Object> row = new HashMap<>(arr.getJSONObject(i));
+            RecordFeishuPrepareSupport.prepareRecord(row);
+            data.add(row);
         }
 
         taskMapper.updateTaskSyncStatus(taskId, "pending", null);
-        String feishuCountry = resolveConfirmCountry(null, task);
         log.info("重试飞书同步: taskId={}, feishuCountry={}, records={}", taskId, feishuCountry, data.size());
         feishuSyncService.syncConfirmedTask(taskId, data, feishuCountry);
     }
 
     private String resolveConfirmCountry(String countryCode, Task task) {
         if (countryCode != null && !countryCode.trim().isEmpty()) {
-            return countryCode.trim().toUpperCase();
+            return CountryResolver.normalize(countryCode);
         }
         if (task.getPromptCountry() != null && !task.getPromptCountry().trim().isEmpty()) {
-            return task.getPromptCountry().trim().toUpperCase();
+            return CountryResolver.normalize(task.getPromptCountry());
         }
         String current = configService.getCurrentCountry();
         if (current != null && !current.trim().isEmpty()) {
-            return current.trim().toUpperCase();
+            return CountryResolver.normalize(current);
         }
-        return "DEFAULT";
+        return "default";
     }
 
     @Transactional
@@ -735,7 +769,7 @@ public class TaskService {
         history.add(entry);
         record.put("_calibrationHistory", history);
         record.put("_manualCalibrated", true);
-        refreshNightShiftSmartMark(record);
+        refreshNightShiftSmartMark(record, task.getPromptCountry());
 
         String json = records.toJSONString();
         taskMapper.updateTaskRecordPayload(taskId, json, json);
@@ -748,10 +782,13 @@ public class TaskService {
         log.info("记录校准完成: taskId={}, rowKey={}, fields={}", taskId, rowKey, changes.keySet());
 
         String feishuCountry = resolveConfirmCountry(null, task);
-        taskMapper.updateTaskSyncStatus(taskId, "pending", null);
-        feishuSyncService.syncCalibratedRecord(taskId, rowKey, feishuCountry);
-
-        result.put("syncStatus", "pending");
+        if (feishuCountryConfigService.isSyncEnabled(feishuCountry)) {
+            taskMapper.updateTaskSyncStatus(taskId, "pending", null);
+            feishuSyncService.syncCalibratedRecord(taskId, rowKey, feishuCountry);
+            result.put("syncStatus", "pending");
+        } else {
+            result.put("syncStatus", task.getSyncStatus() != null ? task.getSyncStatus() : "none");
+        }
         return result;
     }
 
@@ -936,8 +973,8 @@ public class TaskService {
     }
 
     private static final String[] TASK_JSON_EXPORT_HEADERS = {
-            "工号", "国家", "仓库", "日期", "姓名", "中介机构", "班次",
-            "到达时间", "离开时间", "休息(分钟)", "员工签名", "备注", "标记"
+            "页码", "NO", "国家", "仓库", "日期", "姓名", "中介机构", "班次",
+            "到达时间", "离开时间", "休息(分钟)", "出勤工时", "员工签名", "备注", "异常说明", "标记"
     };
 
     /**
@@ -947,7 +984,7 @@ public class TaskService {
         if (task == null) {
             throw new BusinessException(ErrorCode.TASK_NOT_FOUND, ErrorKeys.TASK_NOT_FOUND);
         }
-        String data = task.getConfirmedData() != null ? task.getConfirmedData() : task.getRawData();
+        String data = TaskRecordPayloadResolver.resolvePayload(task);
         if (data == null || data.trim().isEmpty()) {
             throw new BusinessException(ErrorCode.TASK_NOT_FOUND, ErrorKeys.NO_EXPORT_DATA);
         }
@@ -960,6 +997,7 @@ public class TaskService {
                     continue;
                 }
                 writer.writeRow(
+                        ExcelExportHelper.cell(TaskRecordExportSupport.resolvePageNum(record)),
                         ExcelExportHelper.cell(record.getString("NO")),
                         ExcelExportHelper.cell(record.getString("Pays")),
                         ExcelExportHelper.cell(record.getString("Entrepot")),
@@ -970,8 +1008,10 @@ public class TaskService {
                         ExcelExportHelper.cell(record.getString("ARRIVEE")),
                         ExcelExportHelper.cell(record.getString("DEPAR")),
                         ExcelExportHelper.cell(record.getInteger("PAUSE")),
+                        ExcelExportHelper.cell(TaskRecordExportSupport.formatWorkHours(record)),
                         ExcelExportHelper.cell(record.getString("SIGNATURE")),
                         ExcelExportHelper.cell(record.getString("Observations")),
+                        ExcelExportHelper.cell(TaskRecordExportSupport.formatAnomalyDescription(record)),
                         ExcelExportHelper.cell(record.getString("SmartMark")));
             }
         }
@@ -1177,30 +1217,47 @@ public class TaskService {
         return "";
     }
 
-    private void refreshNightShiftSmartMark(Map<String, Object> record) {
+    private void refreshNightShiftSmartMark(Map<String, Object> record, String taskCountry) {
         if (record == null) {
             return;
         }
         JSONObject json = new JSONObject(record);
+        String country = NightShiftCountryResolver.resolveFromRecord(record, taskCountry);
         String refreshed = SmartMarkNightShiftRefresher.refresh(
-                pickSmartMark(record), json, nightShiftConfigService.getConfig());
+                pickSmartMark(record), json, nightShiftConfigService.getConfigForCountry(country));
         record.put("SmartMark", refreshed);
     }
 
-    private void refreshNightShiftSmartMark(JSONObject record) {
+    private void refreshNightShiftSmartMark(JSONObject record, String taskCountry) {
         if (record == null) {
             return;
         }
+        String country = NightShiftCountryResolver.resolveFromRecord(record, taskCountry);
         String refreshed = SmartMarkNightShiftRefresher.refresh(
                 RecordJsonSupport.pickJson(record, "SmartMark", "Mark", "smartMark", "标记"),
                 record,
-                nightShiftConfigService.getConfig());
+                nightShiftConfigService.getConfigForCountry(country));
         record.put("SmartMark", refreshed);
     }
 
     private static String pickSmartMark(Map<String, Object> record) {
         String mark = pick(record, "SmartMark", "smartMark", "Mark", "mark", "标记");
         return mark.isEmpty() ? "正常" : mark;
+    }
+
+    private static boolean isRecordDeletedForSync(Map<String, Object> record) {
+        if (record == null) {
+            return true;
+        }
+        if (Boolean.TRUE.equals(record.get("isDeleted")) || Boolean.TRUE.equals(record.get("deleted"))) {
+            return true;
+        }
+        Object markObj = record.get("SmartMark");
+        if (markObj == null) {
+            markObj = record.get("Mark");
+        }
+        String mark = markObj != null ? String.valueOf(markObj) : "";
+        return mark.contains("已删除");
     }
 
 }

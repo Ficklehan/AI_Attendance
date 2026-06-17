@@ -13,9 +13,15 @@ import {
   isConfiguredRequiredField,
   DEFAULT_CONFIRM_VALIDATION,
 } from '@/utils/requiredRecordFields'
+import {
+  collectSubmitValidationIssues,
+  countSubmitBlockerLines,
+  isFieldFormatInvalid,
+  FORMAT_FIELD_I18N_KEYS,
+} from '@/utils/recordFieldFormatRules'
 
 /**
- * TaskEdit 确认提交必填校验
+ * TaskEdit 确认提交必填 + 格式校验
  */
 export function useTaskEditConfirmValidation() {
   const { t } = useI18n()
@@ -31,25 +37,36 @@ export function useTaskEditConfirmValidation() {
     return getMissingRequiredFieldKeys(record).includes(fieldKey)
   }
 
+  const isFormatFieldInvalid = (record, fieldKey) => isFieldFormatInvalid(record, fieldKey)
+
   const requiredInputClass = (record, fieldKey) => ({
     'required-empty': isRequiredFieldEmpty(record, fieldKey),
+    'format-invalid': isFormatFieldInvalid(record, fieldKey),
   })
 
   const requiredTextClass = (record, fieldKey) => ({
     'cell-text': true,
     'required-empty-display': isRequiredFieldEmpty(record, fieldKey),
+    'format-invalid-display': isFormatFieldInvalid(record, fieldKey),
   })
+
+  const fieldLabelKey = (fieldKey) =>
+    REQUIRED_FIELD_I18N_KEYS[fieldKey] || FORMAT_FIELD_I18N_KEYS[fieldKey] || fieldKey
 
   const formatFieldLabels = (fieldKeys) =>
     (fieldKeys || [])
-      .map((key) => t(REQUIRED_FIELD_I18N_KEYS[key] || key))
+      .map((key) => t(fieldLabelKey(key)))
       .join(t('taskEdit.confirmValidationFieldSep'))
 
   const formatConfirmValidationContent = (issues) => {
     const groups = groupConfirmValidationIssues(issues)
-    const summary = t('taskEdit.confirmValidationSummary', { count: issues.length })
+    const lineCount = new Set((issues || []).map((issue) => issue.line)).size
+    const summary = t('taskEdit.submitValidationSummary', { count: lineCount })
     const groupLines = groups.map((group) => {
-      const header = t('taskEdit.confirmValidationGroupHeader', {
+      const headerKey = group.issueType === 'format'
+        ? 'taskEdit.confirmFormatValidationGroupHeader'
+        : 'taskEdit.confirmValidationGroupHeader'
+      const header = t(headerKey, {
         fields: formatFieldLabels(group.fields),
         count: group.count,
       })
@@ -62,7 +79,7 @@ export function useTaskEditConfirmValidation() {
   const showConfirmValidationModal = (issues) => {
     const content = formatConfirmValidationContent(issues)
     aModal.error({
-      title: t('taskEdit.confirmValidationTitle'),
+      title: t('taskEdit.submitValidationTitle'),
       content: h('div', {
         style: {
           maxHeight: '360px',
@@ -78,7 +95,7 @@ export function useTaskEditConfirmValidation() {
   }
 
   const validateBeforeConfirm = (preparedRecords) => {
-    const issues = collectConfirmValidationIssues(preparedRecords)
+    const issues = collectSubmitValidationIssues(preparedRecords, collectConfirmValidationIssues)
     if (issues.length > 0) {
       showConfirmValidationModal(issues)
       return false
@@ -86,15 +103,21 @@ export function useTaskEditConfirmValidation() {
     return true
   }
 
+  const countSubmitValidationLines = (records) =>
+    countSubmitBlockerLines(records, collectConfirmValidationIssues)
+
   return {
     confirmRequiredFields,
     applyConfirmValidationConfig,
     isConfiguredRequiredField,
     isRequiredFieldEmpty,
+    isFormatFieldInvalid,
     requiredInputClass,
     requiredTextClass,
     validateBeforeConfirm,
     collectConfirmValidationIssues,
+    collectSubmitValidationIssues,
+    countSubmitValidationLines,
     formatConfirmValidationContent,
     showConfirmValidationModal,
   }

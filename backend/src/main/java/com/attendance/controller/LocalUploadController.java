@@ -24,6 +24,7 @@ import com.attendance.util.CountryResolver;
 import com.attendance.util.ExcelExportHelper;
 import com.attendance.util.ExcelExportHelper.ExcelSheetWriter;
 import com.attendance.util.ImageUploadValidator;
+import com.attendance.util.RecognitionFailureMessages;
 import com.attendance.util.RecordCountryDefaults;
 import com.attendance.util.UploadPathSecurity;
 import com.alibaba.fastjson.JSON;
@@ -358,7 +359,8 @@ public class LocalUploadController {
                             streamError[0] = e;
                             try {
                                 trace.step("recognition_failed", "message", e.getMessage());
-                                taskService.failTask(newTaskId, e.getMessage(), trace);
+                                taskService.failTask(newTaskId,
+                                        RecognitionFailureMessages.toClientMessage(e), trace);
                                 sendTraceDump(emitter, trace);
                                 JSONObject errorEvent = buildErrorEvent(e);
                                 emitter.send(SseEmitter.event()

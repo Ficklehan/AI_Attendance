@@ -8,6 +8,9 @@ import com.attendance.entity.TaskRecord;
 import com.attendance.mapper.TaskMapper;
 import com.attendance.mapper.TaskRecordMapper;
 import com.attendance.util.RecordJsonSupport;
+import com.attendance.util.TaskRecordPayloadResolver;
+import com.attendance.util.RecognizedDateNormalizer;
+import com.attendance.util.RecognizedTimeNormalizer;
 import com.attendance.util.SignatureMarkResolver;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -28,6 +31,7 @@ public class TaskRecordSyncService {
 
     private static final Logger log = LoggerFactory.getLogger(TaskRecordSyncService.class);
     private static final int BATCH_SIZE = 200;
+    private static final int VARCHAR_32 = 32;
 
     @Autowired
     private TaskMapper taskMapper;
@@ -53,10 +57,7 @@ public class TaskRecordSyncService {
         if (task == null || task.getTaskId() == null) {
             return;
         }
-        String payload = task.getConfirmedData();
-        if (RecordJsonSupport.isBlank(payload)) {
-            payload = task.getRawData();
-        }
+        String payload = TaskRecordPayloadResolver.resolvePayload(task);
         if (RecordJsonSupport.isBlank(payload)) {
             taskRecordMapper.deleteByTaskId(task.getTaskId());
             return;
@@ -125,18 +126,31 @@ public class TaskRecordSyncService {
         String warehouse = RecordJsonSupport.pickJson(row, "Entrepot", "Entrepôt", "Warehouse");
         tr.setWarehouse(warehouse);
         tr.setWarehouseKey(RecordJsonSupport.upper(warehouse));
-        String workDate = RecordJsonSupport.pickJson(row, "Date", "DATE");
+        String workDate = RecordJsonSupport.clampVarchar(
+                RecognizedDateNormalizer.normalizeDate(RecordJsonSupport.pickJson(row, "Date", "DATE")),
+                VARCHAR_32);
         tr.setWorkDate(workDate);
         String agency = RecordJsonSupport.pickJson(row, "AGENCE_INTERIMAIRE", "AGENCE", "Agency");
         tr.setAgency(agency);
         tr.setAgencyKey(RecordJsonSupport.upper(agency));
-        tr.setShift(RecordJsonSupport.pickJson(row, "HORAIRES_DU_TRAVAIL", "SHIFT", "Shift"));
-        tr.setArrival(RecordJsonSupport.pickJson(row, "ARRIVEE", "ARRIVE", "ARRIVAL"));
-        tr.setDeparture(RecordJsonSupport.pickJson(row, "DEPAR", "DEPART", "DEPARTURE"));
-        tr.setPauseMinutes(RecordJsonSupport.pickJson(row, "PAUSE", "PAUS", "Break"));
+        tr.setShift(RecordJsonSupport.clampVarchar(
+                RecognizedTimeNormalizer.normalizeShiftSchedule(
+                        RecordJsonSupport.pickJson(row, "HORAIRES_DU_TRAVAIL", "SHIFT", "Shift")),
+                VARCHAR_32));
+        tr.setArrival(RecordJsonSupport.clampVarchar(
+                RecognizedTimeNormalizer.normalizeClockTime(
+                        RecordJsonSupport.pickJson(row, "ARRIVEE", "ARRIVE", "ARRIVAL")),
+                VARCHAR_32));
+        tr.setDeparture(RecordJsonSupport.clampVarchar(
+                RecognizedTimeNormalizer.normalizeClockTime(
+                        RecordJsonSupport.pickJson(row, "DEPAR", "DEPART", "DEPARTURE")),
+                VARCHAR_32));
+        tr.setPauseMinutes(RecordJsonSupport.clampVarchar(
+                RecordJsonSupport.pickJson(row, "PAUSE", "PAUS", "Break"), VARCHAR_32));
         String rawAiSignature = RecordJsonSupport.pickJson(row, "SIGNATURE_RAW", "SIGNATURE", "CHECKER", "Signature");
         tr.setObservations(RecordJsonSupport.pickJson(row, "Observations", "OBSERVATIONS", "Remarks"));
-        tr.setPageNum(RecordJsonSupport.pickJson(row, "PAGE_NUM", "PageNum", "pageNum", "页码"));
+        tr.setPageNum(RecordJsonSupport.clampVarchar(
+                RecordJsonSupport.pickJson(row, "PAGE_NUM", "PageNum", "pageNum", "页码"), VARCHAR_32));
         tr.setSmartMark(RecordJsonSupport.pickJson(row, "SmartMark", "Mark", "smartMark", "标记"));
         tr.setSignature(SignatureMarkResolver.resolveFromAiOutput(
                 rawAiSignature,

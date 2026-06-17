@@ -15,6 +15,7 @@ CREATE TABLE IF NOT EXISTS users (
     role ENUM('admin', 'user') DEFAULT 'user' COMMENT '角色',
     real_name VARCHAR(100) COMMENT '真实姓名',
     employee_id VARCHAR(50) COMMENT '员工编号',
+    working_country VARCHAR(64) COMMENT '工作地区代码，如 CN、FR；default 或空表示系统默认',
     status ENUM('active', 'inactive', 'deleted') DEFAULT 'active' COMMENT '状态',
     last_login_at DATETIME COMMENT '最后登录时间',
     created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',

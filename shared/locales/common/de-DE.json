@@ -93,5 +93,15 @@
     "invalidFormat": "{field} Format ist ungültig",
     "minLength": "{field} muss mindestens {min} Zeichen lang sein",
     "maxLength": "{field} darf höchstens {max} Zeichen lang sein"
+  },
+  "fieldFormat": {
+    "dateShort": "Datum erforderlich, z. B. 2026-06-12",
+    "dateTooltip": "Format YYYY-MM-DD. Eindeutige Formate wie 12/06/2026 werden umgewandelt. Mehrdeutige Daten wie 03/04/2026 bitte manuell korrigieren",
+    "shiftShort": "Zwei Zeiten erforderlich, z. B. 8:00-18:00",
+    "shiftTooltip": "Schicht muss Start- und Endzeit enthalten, z. B. 8:00-18:00 oder 08h00-17h30",
+    "arrivalShort": "Eine Zeit erforderlich, z. B. 08:30",
+    "arrivalTooltip": "Ankunft muss eine einzelne Zeit sein, z. B. 8:30, 08:30 oder 18h00",
+    "departureShort": "Eine Zeit erforderlich, z. B. 18:00",
+    "departureTooltip": "Abfahrt muss eine einzelne Zeit sein, z. B. 18:00, 18h00 oder 17:30"
   }
 }

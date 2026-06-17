@@ -17,7 +17,7 @@ function stripNightShiftMarkParts(mark) {
 }
 
 /** 按当前到离/排班重算夜班标记（可增可删，与 PC TaskEdit 一致） */
-function refreshNightShiftInSmartMark(mark, record) {
+function refreshNightShiftInSmartMark(mark, record, taskCountry) {
   if (!record || record.isDeleted) {
     return stripNightShiftMarkParts(mark || '').join(';')
   }
@@ -29,7 +29,7 @@ function refreshNightShiftInSmartMark(mark, record) {
   }
   let parts = stripNightShiftMarkParts(mark || record.SmartMark || record.Mark || '')
   if (!parts.length) parts = ['正常']
-  if (shouldMarkNightShift(record, getNightShiftRules())) {
+  if (shouldMarkNightShift(record, taskCountry)) {
     parts = [...parts, '夜班']
   }
   return [...new Set(parts)].join(';')
@@ -192,9 +192,16 @@ function translateSmartMarkPart(part, t) {
   const p = String(part || '').trim()
   if (!p) return '-'
   const key = MARK_TOKEN_KEYS[p]
-  if (key) return t(key)
+  if (key) {
+    const translated = t(key)
+    if (translated && translated !== key) return translated
+  }
   for (const [token, i18nKey] of Object.entries(MARK_TOKEN_KEYS)) {
-    if (p.includes(token)) return p.replace(token, t(i18nKey))
+    if (p.includes(token)) {
+      const replacement = t(i18nKey)
+      const repl = replacement && replacement !== i18nKey ? replacement : token
+      return p.replace(token, repl)
+    }
   }
   return p
 }

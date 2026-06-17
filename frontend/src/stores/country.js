@@ -2,6 +2,7 @@ import { defineStore } from 'pinia'
 import request from '@/api/index'
 import { useAuthStore } from '@/stores/auth'
 import { getCachedWorkingCountry, setCachedWorkingCountry } from '@/utils/countryHeader'
+import { loadNightShiftRules } from '@/utils/nightShiftRules'
 import { COUNTRY_FLAG_FALLBACK, DEFAULT_COUNTRY_FLAG, resolveCountryFlag } from '@/utils/countryCatalog'
 import { buildCountrySelectOption, formatCountryLabel, translateCountryName } from '@/utils/countryLabels'
 
@@ -106,6 +107,7 @@ export const useCountryStore = defineStore('country', {
       this.workingCountry = code
       setCachedWorkingCountry(code)
       await this.loadBundle(code)
+      loadNightShiftRules(true, code).catch(() => {})
       this.hydrated = true
       return code
     },

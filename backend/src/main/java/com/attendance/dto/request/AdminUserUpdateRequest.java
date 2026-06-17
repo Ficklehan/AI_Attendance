@@ -14,6 +14,7 @@ public class AdminUserUpdateRequest {
     private String role;
     private String realName;
     private String employeeId;
+    private String workingCountry;
     private String status;
     /** Bind Feishu open_id so mini-program login maps to this PC user; empty string clears. */
     private String feishuUserId;
@@ -56,6 +57,14 @@ public class AdminUserUpdateRequest {
 
     public void setEmployeeId(String employeeId) {
         this.employeeId = employeeId;
+    }
+
+    public String getWorkingCountry() {
+        return workingCountry;
+    }
+
+    public void setWorkingCountry(String workingCountry) {
+        this.workingCountry = workingCountry;
     }
 
     public String getStatus() {

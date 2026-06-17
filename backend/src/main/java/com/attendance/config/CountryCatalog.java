@@ -1,5 +1,7 @@
 package com.attendance.config;
 
+import com.attendance.util.CountryResolver;
+
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -77,5 +79,32 @@ public final class CountryCatalog {
                 .map(o -> o.get("name"))
                 .findFirst()
                 .orElse(normalized);
+    }
+
+    /** 从 Pays 列值（国名或代码）解析国家代码；无法识别时返回 null。 */
+    public static String resolveCountryCodeFromPays(String pays) {
+        if (pays == null || pays.trim().isEmpty()) {
+            return null;
+        }
+        String trimmed = pays.trim();
+        if (isSupported(trimmed)) {
+            return CountryResolver.normalize(trimmed);
+        }
+        for (Map.Entry<String, String> entry : PAYS_LABELS.entrySet()) {
+            if (entry.getValue().equalsIgnoreCase(trimmed)) {
+                return entry.getKey();
+            }
+        }
+        for (Map<String, String> option : OPTIONS) {
+            String code = option.get("code");
+            String name = option.get("name");
+            if (code != null && trimmed.equalsIgnoreCase(code)) {
+                return CountryResolver.normalize(code);
+            }
+            if (name != null && trimmed.equalsIgnoreCase(name)) {
+                return CountryResolver.normalize(code);
+            }
+        }
+        return null;
     }
 }

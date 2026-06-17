@@ -42,4 +42,16 @@ public final class RecordJsonSupport {
         }
         return name.trim().replaceAll("\\s\\d{2}$", "").trim();
     }
+
+    /** task_records 等 VARCHAR 列入库前截断，避免 Data truncation */
+    public static String clampVarchar(String value, int maxLen) {
+        if (value == null || value.isEmpty() || maxLen <= 0) {
+            return value == null ? "" : value;
+        }
+        String trimmed = value.trim();
+        if (trimmed.length() <= maxLen) {
+            return trimmed;
+        }
+        return trimmed.substring(0, maxLen);
+    }
 }

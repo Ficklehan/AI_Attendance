@@ -99,6 +99,7 @@ export default {
     "oldPasswordWrong": "Nieprawidłowe obecne hasło",
     "feishuRetryConfirmedOnly": "Tylko potwierdzone zadania mogą ponowić sync Feishu",
     "feishuAlreadySynced": "Sync Feishu już zakończony",
+    "feishuSyncDisabled": "Sync Feishu Bitable jest wyłączony dla tego kraju",
     "noConfirmedDataToSync": "Brak potwierdzonych danych do sync",
     "confirmedDataEmpty": "Potwierdzone dane są puste",
     "confirmedTaskCannotDelete": "Potwierdzonych zadań nie można usunąć",
@@ -149,6 +150,16 @@ export default {
     "invalidFormat": "Format {field} jest nieprawidłowy",
     "minLength": "{field} musi mieć co najmniej {min} znaków",
     "maxLength": "{field} może mieć maksymalnie {max} znaków"
+  },
+  "fieldFormat": {
+    "dateShort": "Wymagana data, np. 2026-06-12",
+    "dateTooltip": "Format YYYY-MM-DD. Jednoznaczne formaty jak 12/06/2026 są konwertowane. Niejednoznaczne jak 03/04/2026 popraw ręcznie",
+    "shiftShort": "Wymagane dwie godziny, np. 8:00-18:00",
+    "shiftTooltip": "Zmiana musi zawierać godzinę rozpoczęcia i zakończenia, np. 8:00-18:00 lub 08h00-17h30",
+    "arrivalShort": "Jedna godzina, np. 08:30",
+    "arrivalTooltip": "Przyjście musi być jedną godziną, np. 8:30, 08:30 lub 18h00",
+    "departureShort": "Jedna godzina, np. 18:00",
+    "departureTooltip": "Wyjście musi być jedną godziną, np. 18:00, 18h00 lub 17:30"
   },
   "export": {
     "centerTitle": "Centrum eksportu",
@@ -269,6 +280,9 @@ export default {
     "selectAtLeastOne": "Proszę wybrać co najmniej jeden obraz",
     "uploadFailed": "Przesyłanie nieudane: {status} {statusText}",
     "uploadFailedGeneric": "Przesyłanie nieudane: {reason}",
+    "recognitionFailedTitle": "Błąd rozpoznawania",
+    "recognitionRetry": "Ponów rozpoznawanie",
+    "recognitionReupload": "Prześlij ponownie",
     "recognitionError": "Błąd rozpoznawania",
     "workingCountry": "Kraj roboczy",
     "changeCountry": "Zmień konfigurację",
@@ -546,7 +560,9 @@ export default {
       "connectionStatus": "Status Połączenia",
       "statusConnected": "Połączono",
       "statusDisconnected": "Rozłączono",
-      "viewHelp": "Zobacz Pomoc"
+      "viewHelp": "Zobacz Pomoc",
+      "syncEnabled": "Synchronizuj z Feishu Bitable po potwierdzeniu",
+      "syncEnabledHint": "Wyłączone = potwierdzenie tylko zapisuje dane, bez zapisu do Feishu Bitable"
     },
     "mappingConfig": {
       "title": "Konfiguracja Mapowania Pól",
@@ -621,7 +637,10 @@ export default {
       "configured": "Skonfigurowano",
       "notConfigured": "Nie skonfigurowano",
       "chars": "{n} znaków",
-      "mappingCount": "{n} elementów"
+      "mappingCount": "{n} elementów",
+      "feishuSync": "Sync po potwierdzeniu",
+      "syncOn": "Włączone",
+      "syncOff": "Wyłączone"
     }
   },
   "settings": {
@@ -655,6 +674,10 @@ export default {
       "nightShiftEnd": "Czas zakończenia zmiany nocnej",
       "nightShiftCrossMidnight": "Przechodzi przez północ (koniec następnego dnia)",
       "nightShiftUseSchedule": "Używaj też kolumny grafiku (HORAIRES_DU_TRAVAIL)",
+      "nightShiftCountry": "Kraj",
+      "nightShiftCountryOverride": "Użyj reguł dla tego kraju",
+      "nightShiftUseGlobalHint": "Obowiązują reguły globalne. Zaznacz powyżej, aby ustawić reguły dla kraju.",
+      "nightShiftConfiguredCountries": "Kraje z własnymi regułami",
       "imageQualityTitle": "Image clarity detection",
       "imageQualityDesc": "Reject blurry uploads and, after recognition, warn or block based on unreadable rows and fields. Pick who to count and how strict to be.",
       "imageQualityEnabled": "Enable clarity detection",

@@ -3,7 +3,9 @@ package com.attendance.service;
 import com.attendance.dto.CountryConfigBundle;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import com.attendance.security.SecurityUtils;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.context.annotation.Lazy;
 import org.springframework.stereotype.Service;
 
 import java.io.IOException;
@@ -18,6 +20,13 @@ public class ConfigService {
 
     @Autowired
     private MarkdownConfigService markdownConfigService;
+
+    @Autowired
+    private FeishuCountryConfigService feishuCountryConfigService;
+
+    @Autowired
+    @Lazy
+    private UserService userService;
     
     public String getConfigValue(String configKey, String defaultValue) {
         Map<String, String> allConfigs = getAllConfigs();
@@ -57,6 +66,18 @@ public class ConfigService {
     }
     
     public String getCurrentCountry() {
+        try {
+            String userId = SecurityUtils.getCurrentUserId();
+            if (userId != null && !userId.trim().isEmpty()) {
+                return userService.resolveWorkingCountryForUserId(userId);
+            }
+        } catch (Exception ignored) {
+            // 未登录或安全上下文不可用
+        }
+        return getGlobalWorkingCountry();
+    }
+
+    public String getGlobalWorkingCountry() {
         return markdownConfigService.getCurrentCountry();
     }
     
@@ -104,10 +125,18 @@ public class ConfigService {
         try {
             markdownConfigService.updateFeishuConfig(country, appToken, tableId, fieldMappingYaml);
             log.info("飞书配置已更新: country={}", country);
-        } catch (IOException e) {
+        } catch (Exception e) {
             log.error("更新飞书配置失败", e);
             throw new RuntimeException("更新飞书配置失败: " + e.getMessage());
         }
+    }
+
+    public void updateFeishuConfig(String country,
+                                 String appToken,
+                                 String tableId,
+                                 List<Map<String, Object>> fieldMapping,
+                                 Boolean syncEnabled) {
+        markdownConfigService.updateFeishuConfig(country, appToken, tableId, fieldMapping, syncEnabled);
     }
     
     public void deleteConfig(String configKey) {
@@ -144,6 +173,10 @@ public class ConfigService {
 
     public String resolveEffectiveFeishuCountry(String country) {
         return markdownConfigService.resolveEffectiveFeishuCountry(country);
+    }
+
+    public boolean isFeishuSyncEnabled(String country) {
+        return feishuCountryConfigService.isSyncEnabled(country);
     }
 
     public CountryConfigBundle getCountryConfigBundle(String country) {

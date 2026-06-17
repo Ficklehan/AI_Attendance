@@ -2,6 +2,7 @@ package com.attendance.service;
 
 import com.attendance.config.ConfigPathResolver;
 import com.attendance.dto.CountryConfigBundle;
+import com.attendance.util.FeishuCanonicalParser;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -31,6 +32,9 @@ public class MarkdownConfigService {
 
     @Autowired
     private RecognitionPromptService recognitionPromptService;
+
+    @Autowired
+    private FeishuCountryConfigService feishuCountryConfigService;
     
     private String promptsContent;
     private String feishuContent;
@@ -190,22 +194,13 @@ public class MarkdownConfigService {
     }
 
     /**
-     * 飞书多维表：所选国家无独立 feishu.md 章节时回退「全局默认配置」。
+     * 飞书多维表：所选国家无独立数据库配置时回退 default。
      */
     public String resolveEffectiveFeishuCountry(String country) {
-        if (country == null || country.trim().isEmpty() || "default".equalsIgnoreCase(country.trim())) {
-            return "default";
-        }
-        String normalized = country.trim().toUpperCase();
-        if (hasCountryFeishuConfig(normalized)) {
-            return normalized;
-        }
-        log.info("国家 {} 未配置独立飞书章节，回退全局默认配置", normalized);
-        return "default";
+        return feishuCountryConfigService.resolveEffectiveFeishuCountry(country);
     }
 
     public CountryConfigBundle getCountryConfigBundle(String country) {
-        ensureFeishuFresh();
         String request = normalizeCountryCode(country);
         String effectivePrompt = resolveEffectivePromptCountry(request);
         String effectiveFeishu = resolveEffectiveFeishuCountry(request);
@@ -225,6 +220,7 @@ public class MarkdownConfigService {
         Map<String, Object> feishu = getFeishuConfig(request);
         bundle.setAppToken((String) feishu.get("appToken"));
         bundle.setTableId((String) feishu.get("tableId"));
+        bundle.setSyncEnabled(feishuCountryConfigService.isSyncEnabled(request));
         Object mapping = feishu.get("fieldMapping");
         if (mapping instanceof List) {
             @SuppressWarnings("unchecked")
@@ -257,14 +253,13 @@ public class MarkdownConfigService {
         return prompt;
     }
 
-    private boolean hasCountryFeishuConfig(String country) {
-        String yaml = extractSection(feishuContent, country, "```yaml", "```");
-        if (yaml == null || yaml.trim().isEmpty()) {
-            yaml = findFeishuSectionByCountryCode(feishuContent, country);
+    public boolean hasCountryConfig(String country) {
+        if (country == null || country.trim().isEmpty() || "default".equalsIgnoreCase(country.trim())) {
+            return true;
         }
-        return yaml != null && !yaml.trim().isEmpty();
+        return feishuCountryConfigService.hasCountryRow(country.trim().toUpperCase());
     }
-
+    
     public String getAiPrompt(String country) {
         String effective = resolveEffectiveCountry(country);
         log.info("getAiPrompt(DB) request={}, effective={}", country, effective);
@@ -301,34 +296,8 @@ public class MarkdownConfigService {
     }
     
     public Map<String, Object> getFeishuConfig(String country) {
-        ensureFeishuFresh();
-        Map<String, Object> config = new HashMap<>();
-        String effective = resolveEffectiveFeishuCountry(country);
-        log.info("getFeishuConfig request={}, effectiveFeishu={}", country, effective);
-
-        String targetSection = "default".equalsIgnoreCase(effective) ? "全局默认配置" : effective;
-        // 先尝试直接匹配国家代码
-        String yamlContent = extractSection(feishuContent, targetSection, "```yaml", "```");
-        
-        // 如果没找到，尝试查找带括号的格式 "### 荷兰 (NL)"
-        if ((yamlContent == null || yamlContent.trim().isEmpty()) && !"default".equalsIgnoreCase(effective)) {
-            yamlContent = findFeishuSectionByCountryCode(feishuContent, effective);
-        }
-        
-        // 最后 fallback 到默认
-        if (yamlContent == null || yamlContent.trim().isEmpty()) {
-            targetSection = "全局默认配置";
-            yamlContent = extractSection(feishuContent, targetSection, "```yaml", "```");
-        }
-        
-        if (yamlContent != null) {
-            config.put("yaml", yamlContent);
-            config.put("appToken", extractYamlValue(yamlContent, "bitable_app_token"));
-            config.put("tableId", extractYamlValue(yamlContent, "bitable_table_id"));
-            config.put("fieldMapping", extractFieldMapping(yamlContent));
-        }
-        
-        return config;
+        log.info("getFeishuConfig(DB) country={}", country);
+        return feishuCountryConfigService.getFeishuConfig(country);
     }
     
     private String findFeishuSectionByCountryCode(String content, String countryCode) {
@@ -347,12 +316,7 @@ public class MarkdownConfigService {
     }
     
     public List<Map<String, Object>> getFieldMapping(String country) {
-        Map<String, Object> config = getFeishuConfig(country);
-        Object mapping = config.get("fieldMapping");
-        if (mapping instanceof List) {
-            return (List<Map<String, Object>>) mapping;
-        }
-        return new ArrayList<>();
+        return feishuCountryConfigService.getFieldMapping(country);
     }
     
     public void setCountry(String country) {
@@ -371,13 +335,6 @@ public class MarkdownConfigService {
         return currentCountry;
     }
     
-    public boolean hasCountryConfig(String country) {
-        if (country == null || country.trim().isEmpty() || "default".equalsIgnoreCase(country.trim())) {
-            return true;
-        }
-        return hasCountryFeishuConfig(country.trim().toUpperCase());
-    }
-    
     public List<String> getAllCountries() {
         List<String> countries = new ArrayList<>();
         countries.add("default");
@@ -390,8 +347,15 @@ public class MarkdownConfigService {
         } catch (Exception e) {
             log.warn("从数据库读取提示词国家列表失败", e);
         }
-        Pattern pattern = Pattern.compile("##+\\s*[^\\n]*\\(([A-Z]{2})\\)");
-        collectCountryCodes(feishuContent, pattern, countries);
+        try {
+            for (String code : feishuCountryConfigService.listCountryCodes()) {
+                if (!"default".equalsIgnoreCase(code) && !countries.contains(code)) {
+                    countries.add(code);
+                }
+            }
+        } catch (Exception e) {
+            log.warn("从数据库读取飞书国家列表失败", e);
+        }
         return countries;
     }
 
@@ -541,28 +505,34 @@ public class MarkdownConfigService {
         log.info("提示词已写入数据库: country={}", country);
     }
     
-    public void updateFeishuConfig(String appToken, String tableId, String fieldMapping) throws IOException {
+    public void updateFeishuConfig(String appToken, String tableId, String fieldMapping) {
         updateFeishuConfig("default", appToken, tableId, fieldMapping);
     }
     
-    public void updateFeishuConfig(String country, String appToken, String tableId, String fieldMapping) throws IOException {
-        String content = feishuContent;
-        
-        String sectionName = "default".equalsIgnoreCase(country) ? "全局默认配置" : country;
-        
-        String newSection = String.format("```yaml\nbitable_app_token: '%s'\nbitable_table_id: '%s'\n%s\n```", 
-                appToken != null ? appToken : "", 
-                tableId != null ? tableId : "",
-                fieldMapping != null ? fieldMapping : "");
-        
-        // 先尝试更新现有的章节
-        content = updateSection(content, sectionName, newSection, country);
-        
-        Path path = configPathResolver.resolveFile("feishu.md");
-        Files.write(path, content.getBytes(StandardCharsets.UTF_8));
-        this.feishuContent = content;
-        
-        log.info("飞书配置已更新: country={}", country);
+    public void updateFeishuConfig(String country, String appToken, String tableId, String fieldMappingYaml) {
+        List<Map<String, Object>> mappings = new ArrayList<>();
+        if (fieldMappingYaml != null && !fieldMappingYaml.trim().isEmpty()) {
+            String raw = fieldMappingYaml.trim();
+            if (raw.startsWith("[")) {
+                mappings = com.alibaba.fastjson.JSON.parseObject(raw,
+                        new com.alibaba.fastjson.TypeReference<List<Map<String, Object>>>() {});
+            } else {
+                if (!raw.contains("field_mapping:")) {
+                    raw = "field_mapping:\n" + raw;
+                }
+                mappings = FeishuCanonicalParser.extractFieldMapping(raw);
+            }
+        }
+        feishuCountryConfigService.saveUserConfig(country, appToken, tableId, mappings, null);
+        log.info("飞书配置已写入数据库: country={}", country);
+    }
+
+    public void updateFeishuConfig(String country,
+                                 String appToken,
+                                 String tableId,
+                                 List<Map<String, Object>> fieldMapping,
+                                 Boolean syncEnabled) {
+        feishuCountryConfigService.saveUserConfig(country, appToken, tableId, fieldMapping, syncEnabled);
     }
     
     private String updateSection(String content, String sectionName, String newContent, String country) {

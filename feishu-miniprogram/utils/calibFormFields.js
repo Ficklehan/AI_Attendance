@@ -8,6 +8,8 @@ const {
   appendRequiredMark,
   getMissingRequiredFieldKeys,
 } = require('./requiredRecordFields')
+const { getInvalidFormatFieldKeys } = require('./recordFieldFormatRules')
+const { getFormatHintKeys } = require('./fieldFormatHints')
 const { normalizePauseMinutes } = require('./recordDisplay')
 const { formatCalibDisplayValue } = require('./calibrationHistory')
 
@@ -16,6 +18,7 @@ function buildCalibFormFields(draft, sourceRecord, options) {
   const fieldKeys = opts.fieldKeys || CALIBRATABLE_FIELDS
   const record = Object.assign({}, sourceRecord || {}, draft || {})
   const missingKeys = getMissingRequiredFieldKeys(record)
+  const formatInvalidKeys = getInvalidFormatFieldKeys(record)
 
   return fieldKeys.map((key) => {
     const required = isConfiguredRequiredField(key)
@@ -30,12 +33,25 @@ function buildCalibFormFields(draft, sourceRecord, options) {
     } else {
       value = value === undefined || value === null ? '' : String(value)
     }
+    const formatInvalid = formatInvalidKeys.indexOf(key) !== -1
+    const hintKeys = getFormatHintKeys(key)
+    let formatPlaceholder = ''
+    let formatHint = ''
+    if (formatInvalid && hintKeys) {
+      const short = t(hintKeys.short)
+      formatPlaceholder = short !== hintKeys.short ? short : ''
+      const tooltip = t(hintKeys.tooltip)
+      formatHint = tooltip !== hintKeys.tooltip ? tooltip : formatPlaceholder
+    }
     const field = {
       key,
       label,
       value,
       required,
       missing: missingKeys.indexOf(key) !== -1,
+      formatInvalid,
+      formatPlaceholder,
+      formatHint,
       inputType: key === 'PAUSE' ? 'number' : 'text',
     }
     if (opts.includeOriginal && sourceRecord) {

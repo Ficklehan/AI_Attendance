@@ -1,7 +1,7 @@
 /** 与 PC 端 Home.vue / TaskEdit.vue 一致的记录展示逻辑 */
 
 const { displayFieldValue, isPlaceholderValue } = require('./fieldPlaceholder')
-const { t } = require('./i18n')
+const { t, tOr } = require('./i18n')
 const { hasManualCalibration, buildCalibrationHistoryUi } = require('./calibrationHistory')
 const {
   translateAnomalyReason,
@@ -42,25 +42,28 @@ function stripDisplayNoise(text) {
     .trim()
 }
 
-function cleanPersonName(name) {
-  return stripDisplayNoise(name)
-}
+const { normalizeWorkerNo } = require('../shared-js/workerNoNormalize')
+const { normalizePersonName } = require('../shared-js/recognizedTextNormalizer')
 
 function cleanWorkerNo(no) {
-  const raw = stripDisplayNoise(no)
-  if (!raw) return ''
-  const normalized = raw.replace(/[()（）]/g, '').trim()
-  return normalized || raw
+  return normalizeWorkerNo(stripDisplayNoise(no))
+}
+
+function cleanPersonName(name) {
+  return normalizePersonName(stripDisplayNoise(name))
 }
 
 function buildTimeRange(arrive, depart) {
-  if (!arrive && !depart) return '--:--'
-  return `${arrive || '--:--'}-${depart || '--:--'}`
+  const placeholder = tOr('result.timeRangePlaceholder', null, '--:--')
+  if (!arrive && !depart) return placeholder
+  return `${arrive || placeholder}-${depart || placeholder}`
 }
 
 function formatPauseText(pause) {
   const minutes = normalizePauseMinutes(pause)
-  return minutes === '' ? '-' : `${minutes} min`
+  if (minutes === '') return '-'
+  const unit = tOr('result.pauseMinutesUnit', null, 'min')
+  return `${minutes} ${unit}`
 }
 
 function normalizePauseMinutes(pause) {
@@ -131,6 +134,8 @@ function isAbsentRow(record) {
 
 const { FIELD_LABEL_KEYS } = require('./calibratableFields')
 const { hasRequiredMissing, getMissingRequiredFieldKeys, isConfiguredRequiredField, appendRequiredMark } = require('./requiredRecordFields')
+const { getInvalidFormatFieldKeys } = require('./recordFieldFormatRules')
+const { getFormatHintKeys } = require('./fieldFormatHints')
 
 const ANOMALY_CATEGORY_ORDER = ['required', 'unreadable', 'duplicate', 'other']
 
@@ -418,6 +423,7 @@ function isEmptyFieldValue(value) {
 function buildRecordFieldRows(record, ctx) {
   const skipRequired = !!(record.isDeleted || isAbsentRow(record))
   const missingKeys = skipRequired ? [] : getMissingRequiredFieldKeys(record)
+  const formatInvalidKeys = skipRequired ? [] : getInvalidFormatFieldKeys(record)
 
   function cell(key, labelKey, raw, display) {
     let value = '-'
@@ -429,7 +435,16 @@ function buildRecordFieldRows(record, ctx) {
     const required = isConfiguredRequiredField(key)
     const label = required ? appendRequiredMark(t(labelKey)) : t(labelKey)
     const missing = missingKeys.indexOf(key) !== -1
-    return { key, label, value, missing, required }
+    const formatInvalid = formatInvalidKeys.indexOf(key) !== -1
+    let formatHint = ''
+    if (formatInvalid) {
+      const hintKeys = getFormatHintKeys(key)
+      if (hintKeys) {
+        const short = t(hintKeys.short)
+        formatHint = short !== hintKeys.short ? short : t(hintKeys.tooltip)
+      }
+    }
+    return { key, label, value, missing, formatInvalid, required, formatHint }
   }
 
   const primaryRow = [
@@ -532,7 +547,7 @@ function enrichRecord(record, index) {
     isAbsent: isAbsentRow({ ...record, SmartMark: effectiveSmartMark }),
     canEdit: !record.isDeleted && !isAbsentRow({ ...record, SmartMark: effectiveSmartMark }),
     _rowKey: record._rowKey,
-    titleText: `${displayName}（${displayNo}）`,
+    titleText: `${displayName} (${displayNo})`,
     dateText,
     timeRangeText,
     pauseText,
@@ -558,7 +573,8 @@ function enrichRecord(record, index) {
       pageNumText: displayFieldValue(PAGE_NUM),
       pauseText,
       workHours,
-      workHoursText
+      workHoursText,
+      signatureDisplayText
     }),
     subLine: [
       Pays ? `${t('result.fieldCountry')}:${Pays}` : '',

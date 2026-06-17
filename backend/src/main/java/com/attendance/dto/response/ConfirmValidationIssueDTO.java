@@ -7,6 +7,8 @@ public class ConfirmValidationIssueDTO {
     private String no;
     private String name;
     private List<String> fields;
+    /** missing | format */
+    private String issueType = "missing";
 
     public int getLine() {
         return line;
@@ -38,5 +40,13 @@ public class ConfirmValidationIssueDTO {
 
     public void setFields(List<String> fields) {
         this.fields = fields;
+    }
+
+    public String getIssueType() {
+        return issueType;
+    }
+
+    public void setIssueType(String issueType) {
+        this.issueType = issueType;
     }
 }

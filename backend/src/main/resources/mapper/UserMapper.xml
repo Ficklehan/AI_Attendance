@@ -12,6 +12,7 @@
         <result column="role" property="role"/>
         <result column="real_name" property="realName"/>
         <result column="employee_id" property="employeeId"/>
+        <result column="working_country" property="workingCountry"/>
         <result column="status" property="status"/>
         <result column="last_login_at" property="lastLoginAt"/>
         <result column="created_at" property="createdAt"/>
@@ -19,8 +20,23 @@
     </resultMap>
 
     <sql id="Base_Column_List">
-        id, username, email, password_hash, feishu_user_id, role, real_name, employee_id,
+        id, username, email, password_hash, feishu_user_id, role, real_name, employee_id, working_country,
         status, last_login_at, created_at, updated_at
+    </sql>
+
+    <sql id="UserListWhere">
+        FROM users
+        WHERE status != 'deleted'
+        <if test="keyword != null and keyword != ''">
+            AND (
+                username LIKE CONCAT('%', #{keyword}, '%')
+                OR email LIKE CONCAT('%', #{keyword}, '%')
+                OR real_name LIKE CONCAT('%', #{keyword}, '%')
+                OR employee_id LIKE CONCAT('%', #{keyword}, '%')
+                OR feishu_user_id LIKE CONCAT('%', #{keyword}, '%')
+                OR working_country LIKE CONCAT('%', #{keyword}, '%')
+            )
+        </if>
     </sql>
 
     <select id="selectUserById" resultMap="BaseResultMap">
@@ -47,21 +63,21 @@
 
     <select id="selectUserList" resultMap="BaseResultMap">
         SELECT <include refid="Base_Column_List"/>
-        FROM users
-        WHERE status != 'deleted'
+        <include refid="UserListWhere"/>
         ORDER BY created_at DESC
         LIMIT #{offset}, #{size}
     </select>
 
     <select id="countUser" resultType="long">
-        SELECT COUNT(*) FROM users WHERE status != 'deleted'
+        SELECT COUNT(*)
+        <include refid="UserListWhere"/>
     </select>
 
     <insert id="insertUser" parameterType="com.attendance.entity.User">
         INSERT INTO users (id, username, email, password_hash, feishu_user_id, role, real_name,
-                          employee_id, status, created_at, updated_at)
+                          employee_id, working_country, status, created_at, updated_at)
         VALUES (#{id}, #{username}, #{email}, #{passwordHash}, #{feishuUserId}, #{role}, #{realName},
-                #{employeeId}, #{status}, NOW(), NOW())
+                #{employeeId}, #{workingCountry}, #{status}, NOW(), NOW())
     </insert>
 
     <update id="updateUser" parameterType="com.attendance.entity.User">
@@ -72,6 +88,7 @@
             role = #{role},
             real_name = #{realName},
             employee_id = #{employeeId},
+            working_country = #{workingCountry},
             status = #{status},
             <if test="passwordHash != null">
             password_hash = #{passwordHash},

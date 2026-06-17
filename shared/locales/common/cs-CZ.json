@@ -94,5 +94,15 @@
     "invalidFormat": "Formát {field} je neplatný",
     "minLength": "{field} musí mít alespoň {min} znaků",
     "maxLength": "{field} může mít maximálně {max} znaků"
+  },
+  "fieldFormat": {
+    "dateShort": "Vyžadováno datum, např. 2026-06-12",
+    "dateTooltip": "Formát YYYY-MM-DD. Jednoznačné formáty jako 12/06/2026 se převedou. Nejednoznačné jako 03/04/2026 opravte ručně",
+    "shiftShort": "Vyžadovány dva časy, např. 8:00-18:00",
+    "shiftTooltip": "Směna musí obsahovat začátek a konec, např. 8:00-18:00 nebo 08h00-17h30",
+    "arrivalShort": "Jeden čas, např. 08:30",
+    "arrivalTooltip": "Příchod musí být jeden čas, např. 8:30, 08:30 nebo 18h00",
+    "departureShort": "Jeden čas, např. 18:00",
+    "departureTooltip": "Odchod musí být jeden čas, např. 18:00, 18h00 nebo 17:30"
   }
 }

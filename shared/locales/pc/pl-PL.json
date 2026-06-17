@@ -149,6 +149,9 @@
     "selectAtLeastOne": "Proszę wybrać co najmniej jeden obraz",
     "uploadFailed": "Przesyłanie nieudane: {status} {statusText}",
     "uploadFailedGeneric": "Przesyłanie nieudane: {reason}",
+    "recognitionFailedTitle": "Błąd rozpoznawania",
+    "recognitionRetry": "Ponów rozpoznawanie",
+    "recognitionReupload": "Prześlij ponownie",
     "recognitionError": "Błąd rozpoznawania",
     "workingCountry": "Kraj roboczy",
     "changeCountry": "Zmień konfigurację",
@@ -426,7 +429,9 @@
       "connectionStatus": "Status Połączenia",
       "statusConnected": "Połączono",
       "statusDisconnected": "Rozłączono",
-      "viewHelp": "Zobacz Pomoc"
+      "viewHelp": "Zobacz Pomoc",
+      "syncEnabled": "Synchronizuj z Feishu Bitable po potwierdzeniu",
+      "syncEnabledHint": "Wyłączone = potwierdzenie tylko zapisuje dane, bez zapisu do Feishu Bitable"
     },
     "mappingConfig": {
       "title": "Konfiguracja Mapowania Pól",
@@ -501,7 +506,10 @@
       "configured": "Skonfigurowano",
       "notConfigured": "Nie skonfigurowano",
       "chars": "{n} znaków",
-      "mappingCount": "{n} elementów"
+      "mappingCount": "{n} elementów",
+      "feishuSync": "Sync po potwierdzeniu",
+      "syncOn": "Włączone",
+      "syncOff": "Wyłączone"
     }
   },
   "settings": {
@@ -535,6 +543,10 @@
       "nightShiftEnd": "Czas zakończenia zmiany nocnej",
       "nightShiftCrossMidnight": "Przechodzi przez północ (koniec następnego dnia)",
       "nightShiftUseSchedule": "Używaj też kolumny grafiku (HORAIRES_DU_TRAVAIL)",
+      "nightShiftCountry": "Kraj",
+      "nightShiftCountryOverride": "Użyj reguł dla tego kraju",
+      "nightShiftUseGlobalHint": "Obowiązują reguły globalne. Zaznacz powyżej, aby ustawić reguły dla kraju.",
+      "nightShiftConfiguredCountries": "Kraje z własnymi regułami",
       "imageQualityTitle": "Image clarity detection",
       "imageQualityDesc": "Reject blurry uploads and, after recognition, warn or block based on unreadable rows and fields. Pick who to count and how strict to be.",
       "imageQualityEnabled": "Enable clarity detection",
@@ -726,6 +738,7 @@
     "oldPasswordWrong": "Nieprawidłowe obecne hasło",
     "feishuRetryConfirmedOnly": "Tylko potwierdzone zadania mogą ponowić sync Feishu",
     "feishuAlreadySynced": "Sync Feishu już zakończony",
+    "feishuSyncDisabled": "Sync Feishu Bitable jest wyłączony dla tego kraju",
     "noConfirmedDataToSync": "Brak potwierdzonych danych do sync",
     "confirmedDataEmpty": "Potwierdzone dane są puste",
     "confirmedTaskCannotDelete": "Potwierdzonych zadań nie można usunąć",

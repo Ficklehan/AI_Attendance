@@ -129,6 +129,8 @@ Page({
       value = String(value || '').replace(/[^\d]/g, '')
     }
     const draft = { ...this.data.draft, [key]: value }
+    const { applyFieldNormalization } = require('../../utils/recognizedFieldNormalize')
+    applyFieldNormalization(draft, key)
     this.setData({ draft }, () => this.rebuildForm())
   },
 

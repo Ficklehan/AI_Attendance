@@ -4,6 +4,9 @@
  * PC Web 与飞书小程序共用（shared/js）
  */
 
+const { isNonTimeFieldLabel } = require('./recognizedTimeNormalizer')
+
+const TIME_FIELD_KEYS = ['HORAIRES_DU_TRAVAIL', 'ARRIVEE', 'DEPAR', 'DEPART']
 const EXACT_PLACEHOLDERS = { '???': true, '??': true, '-': true, '—': true }
 const LOWER_PLACEHOLDERS = {
   illegible: true,
@@ -82,6 +85,10 @@ function collectUnreadableFields(record, fieldKeys = RECORD_TEXT_FIELD_KEYS) {
   fieldKeys.forEach((key) => {
     if (isExplicitUnreadableValue(record[key])) {
       merged.add(key)
+      return
+    }
+    if (TIME_FIELD_KEYS.includes(key) && isNonTimeFieldLabel(record[key])) {
+      merged.add(key)
     }
   })
   return [...merged]
@@ -107,7 +114,11 @@ function prepareRecordPlaceholders(record) {
   const next = { ...record }
   RECORD_TEXT_FIELD_KEYS.forEach((key) => {
     if (key in next) {
-      next[key] = sanitizeFieldValue(next[key])
+      if (TIME_FIELD_KEYS.includes(key) && isNonTimeFieldLabel(next[key])) {
+        next[key] = ''
+      } else {
+        next[key] = sanitizeFieldValue(next[key])
+      }
     }
   })
   if (unreadable.length) {

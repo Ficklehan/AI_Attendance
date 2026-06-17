@@ -18,6 +18,7 @@ import java.util.Locale;
 import java.util.Map;
 import java.util.Set;
 import com.attendance.util.RecognizedFieldSanitizer;
+import com.attendance.util.RecordFieldFormatValidator;
 
 @Service
 public class ConfirmValidationService {
@@ -75,6 +76,17 @@ public class ConfirmValidationService {
                 issue.setNo(firstNonBlank(record, "NO"));
                 issue.setName(firstNonBlank(record, "NOM_PRENOM", "Name"));
                 issue.setFields(missing);
+                issue.setIssueType("missing");
+                issues.add(issue);
+            }
+            List<String> formatInvalid = RecordFieldFormatValidator.getInvalidFormatFieldKeys(record);
+            if (!formatInvalid.isEmpty()) {
+                ConfirmValidationIssueDTO issue = new ConfirmValidationIssueDTO();
+                issue.setLine(i + 1);
+                issue.setNo(firstNonBlank(record, "NO"));
+                issue.setName(firstNonBlank(record, "NOM_PRENOM", "Name"));
+                issue.setFields(formatInvalid);
+                issue.setIssueType("format");
                 issues.add(issue);
             }
         }

@@ -3,6 +3,7 @@ package com.attendance.service;
 import com.attendance.common.BusinessException;
 import com.attendance.common.ErrorCode;
 import com.attendance.common.ErrorKeys;
+import com.attendance.config.CountryCatalog;
 import com.attendance.dto.request.AdminUserCreateRequest;
 import com.attendance.dto.request.AdminUserUpdateRequest;
 import com.attendance.dto.request.LoginRequest;
@@ -12,12 +13,14 @@ import com.attendance.dto.response.UserListDTO;
 import com.attendance.entity.User;
 import com.attendance.mapper.UserMapper;
 import com.attendance.security.SecurityUtils;
+import com.attendance.util.CountryResolver;
 import com.attendance.util.IdGenerator;
 import com.attendance.util.JwtUtil;
 import com.attendance.util.PasswordEncoder;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.context.annotation.Lazy;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -43,6 +46,10 @@ public class UserService {
 
     @Autowired
     private SystemRoleService systemRoleService;
+
+    @Autowired
+    @Lazy
+    private ConfigService configService;
 
     @Transactional
     public LoginResponse register(RegisterRequest request) {
@@ -165,14 +172,15 @@ public class UserService {
         return generateLoginResponse(user);
     }
 
-    public List<UserListDTO> listUsersForAdmin(long offset, long size) {
-        return userMapper.selectUserList(offset, size).stream()
+    public List<UserListDTO> listUsersForAdmin(long offset, long size, String keyword) {
+        String normalizedKeyword = normalizeSearchKeyword(keyword);
+        return userMapper.selectUserList(offset, size, normalizedKeyword).stream()
                 .map(this::toUserListDto)
                 .collect(Collectors.toList());
     }
 
-    public long countUsersForAdmin() {
-        return userMapper.countUser();
+    public long countUsersForAdmin(String keyword) {
+        return userMapper.countUser(normalizeSearchKeyword(keyword));
     }
 
     public UserListDTO getUserDtoForAdmin(String userId) {
@@ -196,6 +204,7 @@ public class UserService {
         user.setRole(role);
         user.setRealName(request.getRealName());
         user.setEmployeeId(request.getEmployeeId());
+        user.setWorkingCountry(normalizeWorkingCountry(request.getWorkingCountry()));
         user.setStatus("active");
         userMapper.insertUser(user);
         log.info("管理员创建用户: username={}, role={}", user.getUsername(), role);
@@ -230,6 +239,9 @@ public class UserService {
         }
         if (request.getEmployeeId() != null) {
             user.setEmployeeId(request.getEmployeeId());
+        }
+        if (request.getWorkingCountry() != null) {
+            user.setWorkingCountry(normalizeWorkingCountry(request.getWorkingCountry()));
         }
         if (request.getStatus() != null && !request.getStatus().trim().isEmpty()) {
             String normalizedStatus = normalizeUserStatus(request.getStatus());
@@ -334,6 +346,12 @@ public class UserService {
         dto.setRole(user.getRole());
         dto.setRealName(user.getRealName());
         dto.setEmployeeId(user.getEmployeeId());
+        String storedCountry = user.getWorkingCountry();
+        if (storedCountry != null && !storedCountry.trim().isEmpty()) {
+            dto.setWorkingCountry(CountryResolver.normalize(storedCountry.trim()));
+        } else {
+            dto.setWorkingCountry(null);
+        }
         dto.setStatus(user.getStatus());
         dto.setFeishuUserId(user.getFeishuUserId());
         dto.setLastLoginAt(user.getLastLoginAt());
@@ -350,6 +368,7 @@ public class UserService {
         userInfo.setEmail(user.getEmail());
         userInfo.setRole(user.getRole());
         userInfo.setRealName(user.getRealName());
+        userInfo.setWorkingCountry(resolveWorkingCountryForUser(user));
         userInfo.setPermissions(permissionService.effectivePermissions(user));
 
         LoginResponse response = new LoginResponse();
@@ -357,5 +376,50 @@ public class UserService {
         response.setUserInfo(userInfo);
 
         return response;
+    }
+
+    /** 用户有效工作地区：个人配置优先，否则系统默认。 */
+    public String resolveWorkingCountryForUser(User user) {
+        if (user == null) {
+            return configService.getGlobalWorkingCountry();
+        }
+        String personal = user.getWorkingCountry();
+        if (personal != null && !personal.trim().isEmpty()) {
+            return CountryResolver.normalize(personal.trim());
+        }
+        return configService.getGlobalWorkingCountry();
+    }
+
+    public String resolveWorkingCountryForUserId(String userId) {
+        if (userId == null || userId.trim().isEmpty()) {
+            return configService.getGlobalWorkingCountry();
+        }
+        User user = userMapper.selectUserById(userId);
+        return resolveWorkingCountryForUser(user);
+    }
+
+    private String normalizeSearchKeyword(String keyword) {
+        if (keyword == null) {
+            return null;
+        }
+        String trimmed = keyword.trim();
+        return trimmed.isEmpty() ? null : trimmed;
+    }
+
+    /**
+     * 规范化并校验工作地区；空字符串或 null 表示清除个人配置（回退系统默认）。
+     */
+    private String normalizeWorkingCountry(String country) {
+        if (country == null) {
+            return null;
+        }
+        String trimmed = country.trim();
+        if (trimmed.isEmpty()) {
+            return null;
+        }
+        if (!CountryCatalog.isSupported(trimmed)) {
+            throw new BusinessException(400, "不支持的工作地区: " + trimmed);
+        }
+        return CountryResolver.normalize(trimmed);
     }
 }

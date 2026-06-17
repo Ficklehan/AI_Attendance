@@ -72,5 +72,15 @@
     "invalidFormat": "Le format de {field} est invalide",
     "minLength": "{field} doit comporter au moins {min} caractères",
     "maxLength": "{field} doit comporter au plus {max} caractères"
+  },
+  "fieldFormat": {
+    "dateShort": "Date requise, ex. 2026-06-12",
+    "dateTooltip": "Format YYYY-MM-DD. Les formats clairs (12/06/2026, 12.06.2026) sont convertis. Les dates ambiguës (03/04/2026) doivent être corrigées manuellement",
+    "shiftShort": "Deux horaires requis, ex. 8:00-18:00",
+    "shiftTooltip": "Le créneau doit inclure une heure de début et de fin, ex. 8:00-18:00 ou 08h00-17h30",
+    "arrivalShort": "Un seul horaire, ex. 08:30",
+    "arrivalTooltip": "L'arrivée doit être un seul horaire, ex. 8:30, 08:30 ou 18h00",
+    "departureShort": "Un seul horaire, ex. 18:00",
+    "departureTooltip": "Le départ doit être un seul horaire, ex. 18:00, 18h00 ou 17:30"
   }
 }

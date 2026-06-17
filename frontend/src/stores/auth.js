@@ -1,6 +1,13 @@
 import { defineStore } from 'pinia'
 import { getToken, setToken, removeToken } from '@/utils/auth'
 import { getUserInfo, login as loginApi } from '@/api/auth'
+import { setCachedWorkingCountry } from '@/utils/countryHeader'
+
+function syncWorkingCountryFromUserInfo(userInfo) {
+  if (userInfo?.workingCountry) {
+    setCachedWorkingCountry(userInfo.workingCountry)
+  }
+}
 
 export const useAuthStore = defineStore('auth', {
   state: () => {
@@ -37,6 +44,7 @@ export const useAuthStore = defineStore('auth', {
       this.roles = response.data.userInfo?.role ? [response.data.userInfo.role] : []
       setToken(this.token)
       localStorage.setItem('userInfo', JSON.stringify(response.data.userInfo))
+      syncWorkingCountryFromUserInfo(response.data.userInfo)
       return response
     },
 
@@ -46,6 +54,7 @@ export const useAuthStore = defineStore('auth', {
         this.userInfo = response.data
         this.roles = response.data?.role ? [response.data.role] : []
         localStorage.setItem('userInfo', JSON.stringify(response.data))
+        syncWorkingCountryFromUserInfo(response.data)
         return response.data
       } catch (error) {
         this.logout()

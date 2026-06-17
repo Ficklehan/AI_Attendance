@@ -72,5 +72,15 @@
     "invalidFormat": "El formato de {field} no es válido",
     "minLength": "{field} debe tener al menos {min} caracteres",
     "maxLength": "{field} debe tener como máximo {max} caracteres"
+  },
+  "fieldFormat": {
+    "dateShort": "Fecha obligatoria, ej. 2026-06-12",
+    "dateTooltip": "Use YYYY-MM-DD. Formatos claros como 12/06/2026 se convierten. Fechas ambiguas como 03/04/2026 deben corregirse manualmente",
+    "shiftShort": "Dos horarios requeridos, ej. 8:00-18:00",
+    "shiftTooltip": "El turno debe incluir hora de inicio y fin, ej. 8:00-18:00 u 08h00-17h30",
+    "arrivalShort": "Un solo horario, ej. 08:30",
+    "arrivalTooltip": "La llegada debe ser un solo horario, ej. 8:30, 08:30 o 18h00",
+    "departureShort": "Un solo horario, ej. 18:00",
+    "departureTooltip": "La salida debe ser un solo horario, ej. 18:00, 18h00 o 17:30"
   }
 }

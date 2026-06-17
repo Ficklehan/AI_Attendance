@@ -7,6 +7,7 @@ import com.attendance.mapper.TaskMapper;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
+import com.attendance.util.RecordFeishuPrepareSupport;
 import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
 
@@ -32,6 +33,9 @@ public class FeishuSyncService {
     @Async
     public void syncConfirmedTask(String taskId, List<Map<String, Object>> data, String configCountry) {
         try {
+            for (Map<String, Object> record : data) {
+                RecordFeishuPrepareSupport.prepareRecord(record);
+            }
             log.info("开始异步飞书同步: taskId={}, configCountry={}, records={}",
                     taskId, configCountry, data.size());
             List<String> recordIds = bitableService.batchWriteRecordsReturningIds(data, configCountry);
@@ -57,6 +61,7 @@ public class FeishuSyncService {
 
             Map<String, Object> recordMap = new HashMap<>(record);
             recordMap.put("TASK_ID", taskId);
+            RecordFeishuPrepareSupport.prepareRecord(recordMap);
 
             String feishuRecordId = record.getString("_feishuRecordId");
             if (feishuRecordId == null || feishuRecordId.trim().isEmpty()) {

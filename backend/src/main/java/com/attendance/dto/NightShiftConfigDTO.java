@@ -1,7 +1,11 @@
 package com.attendance.dto;
 
+import java.util.LinkedHashMap;
+import java.util.Map;
+
 /**
  * 夜班判定规则（由后端根据到离时间与排班列计算，不由大模型输出）。
+ * 顶层字段为全局默认；{@link #byCountry} 可按国家覆盖。
  */
 public class NightShiftConfigDTO {
 
@@ -13,6 +17,8 @@ public class NightShiftConfigDTO {
     private boolean crossMidnight = true;
     /** 参考 HORAIRES_DU_TRAVAIL 排班时段 */
     private boolean useScheduleColumn = true;
+    /** 国家代码 → 该国专属规则（完整规则集，非增量 patch） */
+    private Map<String, NightShiftConfigDTO> byCountry = new LinkedHashMap<>();
 
     public static NightShiftConfigDTO defaults() {
         return new NightShiftConfigDTO();
@@ -48,5 +54,13 @@ public class NightShiftConfigDTO {
 
     public void setUseScheduleColumn(boolean useScheduleColumn) {
         this.useScheduleColumn = useScheduleColumn;
+    }
+
+    public Map<String, NightShiftConfigDTO> getByCountry() {
+        return byCountry;
+    }
+
+    public void setByCountry(Map<String, NightShiftConfigDTO> byCountry) {
+        this.byCountry = byCountry != null ? byCountry : new LinkedHashMap<>();
     }
 }

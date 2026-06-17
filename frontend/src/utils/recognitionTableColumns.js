@@ -58,7 +58,13 @@ export function buildRecognitionTableColumns(t, options = {}) {
     col({ title: titleFor('NO', 'taskEdit.workerNumber'), dataIndex: 'NO', key: 'NO', customCell: bindCellStyle(cellStyle, 'NO') }),
     requiredCol('Pays', { title: titleFor('Pays', 'taskEdit.countryField'), dataIndex: 'Pays', key: 'Pays', customCell: bindCellStyle(cellStyle, 'Pays') }),
     requiredCol('Entrepot', { title: titleFor('Entrepot', 'taskEdit.warehouse'), dataIndex: 'Entrepot', key: 'Entrepot', customCell: bindCellStyle(cellStyle, 'Entrepot') }),
-    requiredCol('Date', { title: titleFor('Date', 'taskEdit.date'), dataIndex: 'Date', key: 'Date', customCell: bindCellStyle(cellStyle, 'Date') }),
+    requiredCol('Date', {
+      title: titleFor('Date', 'taskEdit.date'),
+      dataIndex: 'Date',
+      key: 'Date',
+      formatHintTooltipKey: 'fieldFormat.dateTooltip',
+      customCell: bindCellStyle(cellStyle, 'Date'),
+    }),
     requiredCol('NOM_PRENOM', {
       title: titleFor('NOM_PRENOM', 'taskEdit.name'),
       dataIndex: 'NOM_PRENOM',
@@ -76,10 +82,23 @@ export function buildRecognitionTableColumns(t, options = {}) {
       title: titleFor('HORAIRES_DU_TRAVAIL', 'taskEdit.shift'),
       dataIndex: 'HORAIRES_DU_TRAVAIL',
       key: 'HORAIRES_DU_TRAVAIL',
+      formatHintTooltipKey: 'fieldFormat.shiftTooltip',
       customCell: bindCellStyle(cellStyle, 'HORAIRES_DU_TRAVAIL'),
     }),
-    requiredCol('ARRIVEE', { title: titleFor('ARRIVEE', 'taskEdit.arrival'), dataIndex: 'ARRIVEE', key: 'ARRIVEE', customCell: bindCellStyle(cellStyle, 'ARRIVEE') }),
-    requiredCol('DEPAR', { title: titleFor('DEPAR', 'taskEdit.departure'), dataIndex: 'DEPAR', key: 'DEPAR', customCell: bindCellStyle(cellStyle, 'DEPAR') }),
+    requiredCol('ARRIVEE', {
+      title: titleFor('ARRIVEE', 'taskEdit.arrival'),
+      dataIndex: 'ARRIVEE',
+      key: 'ARRIVEE',
+      formatHintTooltipKey: 'fieldFormat.arrivalTooltip',
+      customCell: bindCellStyle(cellStyle, 'ARRIVEE'),
+    }),
+    requiredCol('DEPAR', {
+      title: titleFor('DEPAR', 'taskEdit.departure'),
+      dataIndex: 'DEPAR',
+      key: 'DEPAR',
+      formatHintTooltipKey: 'fieldFormat.departureTooltip',
+      customCell: bindCellStyle(cellStyle, 'DEPAR'),
+    }),
     requiredCol('PAUSE', { title: titleFor('PAUSE', 'taskEdit.breakTime'), dataIndex: 'PAUSE', key: 'PAUSE', ellipsis: false, customCell: bindCellStyle(cellStyle, 'PAUSE') }),
   ]
 

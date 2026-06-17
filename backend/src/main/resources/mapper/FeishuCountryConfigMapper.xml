@@ -1,0 +1,76 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+    "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.attendance.mapper.FeishuCountryConfigMapper">
+
+    <resultMap id="FeishuCountryConfigMap" type="com.attendance.entity.FeishuCountryConfig">
+        <id property="countryCode" column="country_code"/>
+        <result property="appToken" column="app_token"/>
+        <result property="tableId" column="table_id"/>
+        <result property="fieldMappingJson" column="field_mapping"/>
+        <result property="syncEnabled" column="sync_enabled"/>
+        <result property="seedVersion" column="seed_version"/>
+        <result property="userModified" column="user_modified"/>
+        <result property="createdAt" column="created_at"/>
+        <result property="updatedAt" column="updated_at"/>
+    </resultMap>
+
+    <select id="selectByCountry" resultMap="FeishuCountryConfigMap">
+        SELECT country_code, app_token, table_id, field_mapping, sync_enabled,
+               seed_version, user_modified, created_at, updated_at
+        FROM feishu_country_config
+        WHERE country_code = #{countryCode}
+    </select>
+
+    <select id="selectAllCountryCodes" resultType="string">
+        SELECT country_code FROM feishu_country_config ORDER BY country_code
+    </select>
+
+    <select id="countAll" resultType="long">
+        SELECT COUNT(*) FROM feishu_country_config
+    </select>
+
+    <insert id="upsertSystemSeed">
+        INSERT INTO feishu_country_config
+            (country_code, app_token, table_id, field_mapping, sync_enabled, seed_version, user_modified)
+        VALUES
+            (#{countryCode}, #{appToken}, #{tableId}, #{fieldMappingJson}, #{syncEnabled}, #{seedVersion}, 0)
+        ON DUPLICATE KEY UPDATE
+            app_token = IF(user_modified = 1 AND seed_version >= VALUES(seed_version), app_token, VALUES(app_token)),
+            table_id = IF(user_modified = 1 AND seed_version >= VALUES(seed_version), table_id, VALUES(table_id)),
+            field_mapping = IF(user_modified = 1 AND seed_version >= VALUES(seed_version), field_mapping, VALUES(field_mapping)),
+            sync_enabled = IF(user_modified = 1 AND seed_version >= VALUES(seed_version), sync_enabled, VALUES(sync_enabled)),
+            seed_version = IF(user_modified = 1 AND seed_version >= VALUES(seed_version), seed_version, VALUES(seed_version)),
+            updated_at = CURRENT_TIMESTAMP
+    </insert>
+
+    <insert id="upsertForceSeed">
+        INSERT INTO feishu_country_config
+            (country_code, app_token, table_id, field_mapping, sync_enabled, seed_version, user_modified)
+        VALUES
+            (#{countryCode}, #{appToken}, #{tableId}, #{fieldMappingJson}, #{syncEnabled}, #{seedVersion}, 0)
+        ON DUPLICATE KEY UPDATE
+            app_token = VALUES(app_token),
+            table_id = VALUES(table_id),
+            field_mapping = VALUES(field_mapping),
+            sync_enabled = VALUES(sync_enabled),
+            seed_version = VALUES(seed_version),
+            user_modified = 0,
+            updated_at = CURRENT_TIMESTAMP
+    </insert>
+
+    <insert id="upsertUserEdit">
+        INSERT INTO feishu_country_config
+            (country_code, app_token, table_id, field_mapping, sync_enabled, seed_version, user_modified)
+        VALUES
+            (#{countryCode}, #{appToken}, #{tableId}, #{fieldMappingJson}, #{syncEnabled}, #{seedVersion}, 1)
+        ON DUPLICATE KEY UPDATE
+            app_token = VALUES(app_token),
+            table_id = VALUES(table_id),
+            field_mapping = VALUES(field_mapping),
+            sync_enabled = VALUES(sync_enabled),
+            user_modified = 1,
+            updated_at = CURRENT_TIMESTAMP
+    </insert>
+
+</mapper>

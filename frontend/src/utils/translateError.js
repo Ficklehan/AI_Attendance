@@ -44,6 +44,7 @@ const LEGACY_EXACT = {
   '任务状态不允许确认': 'errors.taskStatusCannotConfirm',
   '仅已确认任务可重试飞书同步': 'errors.feishuRetryConfirmedOnly',
   '飞书已同步成功，无需重试': 'errors.feishuAlreadySynced',
+  '当前国家已关闭飞书多维表同步': 'errors.feishuSyncDisabled',
   '没有可同步的确认数据': 'errors.noConfirmedDataToSync',
   '确认数据为空，无法同步': 'errors.confirmedDataEmpty',
   '已确认任务不可删除': 'errors.confirmedTaskCannotDelete',
@@ -156,6 +157,9 @@ function resolveErrorParts(payload) {
   }
   if (!key && code != null && CODE_FALLBACK_KEYS[code]) {
     key = CODE_FALLBACK_KEYS[code]
+  }
+  if (!key && message && /^\d+$/.test(String(message).trim())) {
+    key = 'errors.requestFailed'
   }
   if (!key && message && LEGACY_EXACT[message]) {
     key = LEGACY_EXACT[message]

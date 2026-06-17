@@ -1,4 +1,7 @@
 import request from '@/api/index'
+import { normalizeCountryCode, resolveRecordCountry } from './countryCatalog'
+
+export { resolveRecordCountry }
 
 const DEFAULTS = {
   startTime: '20:00',
@@ -7,8 +10,71 @@ const DEFAULTS = {
   useScheduleColumn: true,
 }
 
-let cachedRules = { ...DEFAULTS }
-let loadPromise = null
+const rulesByCountry = new Map()
+const loadPromises = new Map()
+
+function cacheKey(country) {
+  return normalizeCountryCode(country)
+}
+
+function normalizeRules(raw) {
+  const rules = { ...DEFAULTS, ...(raw || {}) }
+  if (!rules.startTime) rules.startTime = DEFAULTS.startTime
+  if (!rules.endTime) rules.endTime = DEFAULTS.endTime
+  return rules
+}
+
+export function getNightShiftRules(country) {
+  const key = cacheKey(country)
+  const cached = rulesByCountry.get(key)
+  if (cached) return { ...cached }
+  const fallback = rulesByCountry.get('default')
+  return { ...(fallback || DEFAULTS) }
+}
+
+export async function loadNightShiftRules(force = false, country = 'default') {
+  const key = cacheKey(country)
+  if (!force && loadPromises.has(key)) {
+    return loadPromises.get(key)
+  }
+  const promise = request({
+    url: '/config/runtime/night-shift',
+    method: 'get',
+    params: { country: key },
+    silentError: true,
+  })
+    .then((res) => {
+      const rules = normalizeRules(res.data)
+      rulesByCountry.set(key, rules)
+      if (key === 'default') {
+        rulesByCountry.set('default', rules)
+      }
+      return rules
+    })
+    .catch(() => {
+      const rules = { ...DEFAULTS }
+      rulesByCountry.set(key, rules)
+      return rules
+    })
+    .finally(() => {
+      loadPromises.delete(key)
+    })
+  loadPromises.set(key, promise)
+  return promise
+}
+
+export function setNightShiftRulesLocal(rules, country = 'default') {
+  rulesByCountry.set(cacheKey(country), normalizeRules(rules))
+}
+
+export function setNightShiftAdminConfig(adminConfig) {
+  if (!adminConfig) return
+  setNightShiftRulesLocal(adminConfig, 'default')
+  const overrides = adminConfig.byCountry || {}
+  Object.keys(overrides).forEach((code) => {
+    setNightShiftRulesLocal(overrides[code], code)
+  })
+}
 
 function parseClockToMinutes(timeStr) {
   if (timeStr == null) return -1
@@ -20,38 +86,6 @@ function parseClockToMinutes(timeStr) {
   const minute = parseInt(match[2], 10)
   if (hour < 0 || hour > 23 || minute < 0 || minute > 59) return -1
   return hour * 60 + minute
-}
-
-function normalizeRules(raw) {
-  const rules = { ...DEFAULTS, ...(raw || {}) }
-  if (!rules.startTime) rules.startTime = DEFAULTS.startTime
-  if (!rules.endTime) rules.endTime = DEFAULTS.endTime
-  return rules
-}
-
-export function getNightShiftRules() {
-  return { ...cachedRules }
-}
-
-export async function loadNightShiftRules(force = false) {
-  if (!force && loadPromise) return loadPromise
-  loadPromise = request({ url: '/config/runtime/night-shift', method: 'get', silentError: true })
-    .then((res) => {
-      cachedRules = normalizeRules(res.data)
-      return cachedRules
-    })
-    .catch(() => {
-      cachedRules = { ...DEFAULTS }
-      return cachedRules
-    })
-    .finally(() => {
-      loadPromise = null
-    })
-  return loadPromise
-}
-
-export function setNightShiftRulesLocal(rules) {
-  cachedRules = normalizeRules(rules)
 }
 
 function isNightShiftByTimes(arrive, depart, config) {
@@ -83,9 +117,15 @@ function hasUsableArriveAndDepart(arrive, depart) {
   return parseClockToMinutes(arrive) >= 0 && parseClockToMinutes(depart) >= 0
 }
 
-export function shouldMarkNightShift(record, rules = cachedRules) {
+export function shouldMarkNightShift(record, rulesOrCountry, taskCountry) {
   if (!record || record.isDeleted) return false
-  const config = normalizeRules(rules)
+  let config
+  if (rulesOrCountry && typeof rulesOrCountry === 'object' && 'startTime' in rulesOrCountry) {
+    config = normalizeRules(rulesOrCountry)
+  } else {
+    const country = resolveRecordCountry(record, rulesOrCountry || taskCountry)
+    config = getNightShiftRules(country)
+  }
   const arrive = record.ARRIVEE ?? record.arrival ?? ''
   const depart = record.DEPAR ?? record.departure ?? ''
   const shift = record.HORAIRES_DU_TRAVAIL ?? record.shift ?? ''

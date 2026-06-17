@@ -98,6 +98,7 @@ export default {
     "oldPasswordWrong": "Falsches aktuelles Passwort",
     "feishuRetryConfirmedOnly": "Nur bestätigte Aufgaben können Feishu-Sync wiederholen",
     "feishuAlreadySynced": "Feishu-Sync bereits erfolgreich",
+    "feishuSyncDisabled": "Feishu-Bitable-Sync ist für dieses Land deaktiviert",
     "noConfirmedDataToSync": "Keine bestätigten Daten zum Sync",
     "confirmedDataEmpty": "Bestätigte Daten sind leer",
     "confirmedTaskCannotDelete": "Bestätigte Aufgaben können nicht gelöscht werden",
@@ -147,6 +148,16 @@ export default {
     "invalidFormat": "{field} Format ist ungültig",
     "minLength": "{field} muss mindestens {min} Zeichen lang sein",
     "maxLength": "{field} darf höchstens {max} Zeichen lang sein"
+  },
+  "fieldFormat": {
+    "dateShort": "Datum erforderlich, z. B. 2026-06-12",
+    "dateTooltip": "Format YYYY-MM-DD. Eindeutige Formate wie 12/06/2026 werden umgewandelt. Mehrdeutige Daten wie 03/04/2026 bitte manuell korrigieren",
+    "shiftShort": "Zwei Zeiten erforderlich, z. B. 8:00-18:00",
+    "shiftTooltip": "Schicht muss Start- und Endzeit enthalten, z. B. 8:00-18:00 oder 08h00-17h30",
+    "arrivalShort": "Eine Zeit erforderlich, z. B. 08:30",
+    "arrivalTooltip": "Ankunft muss eine einzelne Zeit sein, z. B. 8:30, 08:30 oder 18h00",
+    "departureShort": "Eine Zeit erforderlich, z. B. 18:00",
+    "departureTooltip": "Abfahrt muss eine einzelne Zeit sein, z. B. 18:00, 18h00 oder 17:30"
   },
   "export": {
     "centerTitle": "Exportzentrum",
@@ -267,6 +278,9 @@ export default {
     "selectAtLeastOne": "Bitte wählen Sie mindestens ein Bild aus",
     "uploadFailed": "Hochladen fehlgeschlagen: {status} {statusText}",
     "uploadFailedGeneric": "Upload fehlgeschlagen: {reason}",
+    "recognitionFailedTitle": "Erkennung fehlgeschlagen",
+    "recognitionRetry": "Erkennung wiederholen",
+    "recognitionReupload": "Erneut hochladen",
     "recognitionError": "Erkennungsfehler",
     "workingCountry": "Arbeitsland",
     "changeCountry": "Konfiguration ändern",
@@ -509,7 +523,9 @@ export default {
       "connectionStatus": "Verbindungsstatus",
       "statusConnected": "Verbunden",
       "statusDisconnected": "Getrennt",
-      "viewHelp": "Hilfe anzeigen"
+      "viewHelp": "Hilfe anzeigen",
+      "syncEnabled": "Nach Bestätigung mit Feishu Bitable synchronisieren",
+      "syncEnabledHint": "Aus = Bestätigung speichert nur Daten, ohne Feishu Bitable zu beschreiben"
     },
     "mappingConfig": {
       "title": "Konfiguration der Feldzuordnung",
@@ -589,6 +605,10 @@ export default {
       "nightShiftEnd": "Endzeit der Nachtschicht",
       "nightShiftCrossMidnight": "Über Mitternacht (Ende am nächsten Tag)",
       "nightShiftUseSchedule": "Auch Spalte Arbeitszeiten (HORAIRES_DU_TRAVAIL) verwenden",
+      "nightShiftCountry": "Land",
+      "nightShiftCountryOverride": "Länderspezifische Regeln verwenden",
+      "nightShiftUseGlobalHint": "Es gelten die globalen Standardregeln. Aktivieren Sie die Option oben für länderspezifische Regeln.",
+      "nightShiftConfiguredCountries": "Länder mit eigenen Regeln",
       "imageQualityTitle": "Image clarity detection",
       "imageQualityDesc": "Reject blurry uploads and, after recognition, warn or block based on unreadable rows and fields. Pick who to count and how strict to be.",
       "imageQualityEnabled": "Enable clarity detection",

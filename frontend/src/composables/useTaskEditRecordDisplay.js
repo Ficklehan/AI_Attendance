@@ -50,7 +50,7 @@ function buildRowCacheKey(record, duplicatePeers) {
 /**
  * TaskEdit 记录行：标记展示、异常原因、行样式（带行级缓存）
  */
-export function useTaskEditRecordDisplay(records, getDuplicateMeta, { isAbsentRow, hasManualCalibration }) {
+export function useTaskEditRecordDisplay(records, getDuplicateMeta, { isAbsentRow, hasManualCalibration, taskCountry }) {
   const { t } = useI18n()
   const rowCache = new Map()
 
@@ -111,8 +111,14 @@ export function useTaskEditRecordDisplay(records, getDuplicateMeta, { isAbsentRo
       || hasHandwrittenText(anomalyText)
   }
 
+  const resolveTaskCountry = () => {
+    if (typeof taskCountry === 'function') return taskCountry()
+    if (taskCountry && typeof taskCountry === 'object' && 'value' in taskCountry) return taskCountry.value
+    return taskCountry
+  }
+
   const computeDisplaySmartMark = (record) => {
-    let raw = refreshNightShiftInSmartMark(getRawSmartMark(record), record)
+    let raw = refreshNightShiftInSmartMark(getRawSmartMark(record), record, resolveTaskCountry())
     const hasHandwritten = hasHandwrittenIdentity(record) || raw.includes('手写')
     if (!hasHandwritten || raw.includes('已删除') || raw.includes('未出勤')) {
       return raw || '-'

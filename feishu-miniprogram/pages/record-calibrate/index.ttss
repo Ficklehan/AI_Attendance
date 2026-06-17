@@ -55,6 +55,11 @@
   background: rgba(217, 119, 6, 0.06);
 }
 
+.calibrate-page .field-input-shell.is-format-invalid {
+  border-color: #d46b08;
+  background: rgba(250, 140, 22, 0.1);
+}
+
 .calibrate-page .field-input {
   display: block;
   width: 100%;

@@ -21,6 +21,7 @@ public class AdminUserCreateRequest {
     private String role = "user";
     private String realName;
     private String employeeId;
+    private String workingCountry;
 
     public String getUsername() {
         return username;
@@ -68,5 +69,13 @@ public class AdminUserCreateRequest {
 
     public void setEmployeeId(String employeeId) {
         this.employeeId = employeeId;
+    }
+
+    public String getWorkingCountry() {
+        return workingCountry;
+    }
+
+    public void setWorkingCountry(String workingCountry) {
+        this.workingCountry = workingCountry;
     }
 }

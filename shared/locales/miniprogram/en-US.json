@@ -262,6 +262,7 @@
     "sendFail": "Sorry, I cannot answer right now. Please try again later."
   },
   "result": {
+    "title": "Recognition results",
     "missingTaskId": "Missing task ID",
     "loadFail": "Load failed",
     "confirmTitle": "Confirm submit",
@@ -353,7 +354,15 @@
     "confirmValidationFieldSep": ", ",
     "requiredValidationBanner": "{count} row(s) still have incomplete required fields",
     "requiredValidationViewDetail": "View details",
+    "submitValidationTitle": "Cannot confirm task",
+    "submitValidationSummary": "{count} row(s) cannot be confirmed. Please fix them before submitting:",
+    "confirmFormatValidationGroupHeader": "[Invalid format · {fields}] {count} row(s)",
+    "submitValidationBanner": "{count} row(s) cannot be confirmed yet",
     "fieldBreakMinutes": "Break (min)",
+    "pauseMinutesUnit": "min",
+    "timeRangePlaceholder": "--:--",
+    "noRecordsModalTitle": "No recognition results",
+    "noRecordsModalContent": "The task finished but no rows were parsed. Take a clearer photo or check the same image on PC.",
     "duplicateSuspect": "Possible duplicate: {names}",
     "calibrate": "Calibrate",
     "editRecord": "Edit"

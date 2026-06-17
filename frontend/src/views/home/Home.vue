@@ -491,12 +491,18 @@ const showRecognitionFailure = (taskId, error) => {
     showHomeUploadError(error)
     return
   }
-  const reason = translateErrorMessage(error)
+  const reason = translateErrorMessage({
+    message: error?.message,
+    messageKey: error?.messageKey,
+    messageArgs: error?.messageArgs,
+  })
   aModal.confirm({
     title: t('home.recognitionFailedTitle'),
     content: reason,
     okText: t('home.recognitionRetry'),
     cancelText: t('home.recognitionReupload'),
+    centered: true,
+    width: 420,
     onOk: () => {
       void runRecognitionPolling(taskId)
     },

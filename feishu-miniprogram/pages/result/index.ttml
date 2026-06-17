@@ -74,7 +74,8 @@
           class="record-field-cell"
         >
           <text class="record-field-label">{{field.label}}</text>
-          <text class="record-field-value {{field.missing ? 'is-missing' : ''}}">{{field.value}}</text>
+          <text class="record-field-value {{field.missing ? 'is-missing' : ''}} {{field.formatInvalid ? 'is-format-invalid' : ''}}">{{field.value}}</text>
+          <text tt:if="{{field.formatInvalid && field.formatHint}}" class="record-field-format-hint">{{field.formatHint}}</text>
         </view>
       </view>
       <view class="record-compact-row record-compact-row-secondary">
@@ -85,7 +86,8 @@
           class="record-field-cell"
         >
           <text class="record-field-label">{{field.label}}</text>
-          <text class="record-field-value {{field.missing ? 'is-missing' : ''}}">{{field.value}}</text>
+          <text class="record-field-value {{field.missing ? 'is-missing' : ''}} {{field.formatInvalid ? 'is-format-invalid' : ''}}">{{field.value}}</text>
+          <text tt:if="{{field.formatInvalid && field.formatHint}}" class="record-field-format-hint">{{field.formatHint}}</text>
         </view>
       </view>
     </view>
@@ -148,7 +150,7 @@
       </view>
     </view>
 
-    <scroll-view scroll-y class="result-scroll" bindscrolltolower="loadMoreRecords">
+    <scroll-view scroll-y class="result-scroll" scroll-into-view="{{scrollIntoViewId}}" bindscrolltolower="loadMoreRecords">
       <view class="result-scroll-meta">
         <view class="result-stats-inline">
           <view class="stat-inline">
@@ -213,7 +215,8 @@
         <view
           tt:for="{{issueRecords}}"
           tt:key="index"
-          class="issue-row"
+          id="record-{{item._rowKey}}"
+          class="issue-row {{flashRowKey === item._rowKey ? 'record-row-flash' : ''}}"
         >
           <view class="record-body">
             <view class="record-head">
@@ -286,7 +289,8 @@
         <view
           tt:for="{{displayRecords}}"
           tt:key="index"
-          class="record-row {{item.rowClass}}"
+          id="record-{{item._rowKey}}"
+          class="record-row {{item.rowClass}} {{flashRowKey === item._rowKey ? 'record-row-flash' : ''}}"
         >
           <view class="result-record-dot {{item.rowDotClass}}"></view>
           <view class="record-body">
@@ -364,7 +368,8 @@
         <view
           tt:for="{{displayRecords}}"
           tt:key="index"
-          class="record-row {{item.rowClass}}"
+          id="record-{{item._rowKey}}"
+          class="record-row {{item.rowClass}} {{flashRowKey === item._rowKey ? 'record-row-flash' : ''}}"
         >
           <view class="result-record-dot {{item.rowDotClass}}"></view>
           <view class="record-body">

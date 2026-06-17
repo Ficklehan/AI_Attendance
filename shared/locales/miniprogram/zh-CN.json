@@ -262,6 +262,7 @@
     "sendFail": "抱歉，我暂时无法回答您的问题，请稍后再试。"
   },
   "result": {
+    "title": "识别结果",
     "missingTaskId": "缺少任务ID",
     "loadFail": "加载失败",
     "confirmTitle": "确认提交",
@@ -353,7 +354,15 @@
     "confirmValidationFieldSep": "、",
     "requiredValidationBanner": "还有 {count} 条记录必填信息不完整",
     "requiredValidationViewDetail": "查看详情",
+    "submitValidationTitle": "无法确认任务",
+    "submitValidationSummary": "共有 {count} 条记录无法确认，请修正后再提交：",
+    "confirmFormatValidationGroupHeader": "【格式不规范 · {fields}】{count} 条",
+    "submitValidationBanner": "还有 {count} 条记录无法确认",
     "fieldBreakMinutes": "休息(分)",
+    "pauseMinutesUnit": "分钟",
+    "timeRangePlaceholder": "--:--",
+    "noRecordsModalTitle": "无识别结果",
+    "noRecordsModalContent": "任务已完成但未解析到记录，请换更清晰照片重试，或查看 PC 端同图是否正常。",
     "duplicateSuspect": "重名疑似：{names}",
     "calibrate": "校准",
     "editRecord": "修改"

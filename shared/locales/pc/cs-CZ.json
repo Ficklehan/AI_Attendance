@@ -149,6 +149,9 @@
     "selectAtLeastOne": "Vyberte prosím alespoň jeden obrázek",
     "uploadFailed": "Nahrání selhalo: {status} {statusText}",
     "uploadFailedGeneric": "Nahrání selhalo: {reason}",
+    "recognitionFailedTitle": "Rozpoznávání selhalo",
+    "recognitionRetry": "Zkusit rozpoznání znovu",
+    "recognitionReupload": "Nahrát znovu",
     "recognitionError": "Chyba rozpoznávání",
     "workingCountry": "Pracovní země",
     "changeCountry": "Změnit konfiguraci",
@@ -426,7 +429,9 @@
       "connectionStatus": "Stav Připojení",
       "statusConnected": "Připojeno",
       "statusDisconnected": "Odpojeno",
-      "viewHelp": "Zobrazit Nápovědu"
+      "viewHelp": "Zobrazit Nápovědu",
+      "syncEnabled": "Po potvrzení synchronizovat do Feishu Bitable",
+      "syncEnabledHint": "Vypnuto = potvrzení pouze uloží data, bez zápisu do Feishu Bitable"
     },
     "mappingConfig": {
       "title": "Konfigurace Mapování Polí",
@@ -501,7 +506,10 @@
       "configured": "Nakonfigurováno",
       "notConfigured": "Nenakonfigurováno",
       "chars": "{n} znaků",
-      "mappingCount": "{n} položek"
+      "mappingCount": "{n} položek",
+      "feishuSync": "Sync po potvrzení",
+      "syncOn": "Zapnuto",
+      "syncOff": "Vypnuto"
     }
   },
   "settings": {
@@ -535,6 +543,10 @@
       "nightShiftEnd": "Čas konce noční směny",
       "nightShiftCrossMidnight": "Přes půlnoc (konec následující den)",
       "nightShiftUseSchedule": "Použít také sloupec rozvrhu (HORAIRES_DU_TRAVAIL)",
+      "nightShiftCountry": "Země",
+      "nightShiftCountryOverride": "Použít pravidla pro tuto zemi",
+      "nightShiftUseGlobalHint": "Platí globální výchozí pravidla. Zaškrtněte výše pro pravidla této země.",
+      "nightShiftConfiguredCountries": "Země s vlastními pravidly",
       "imageQualityTitle": "Image clarity detection",
       "imageQualityDesc": "Reject blurry uploads and, after recognition, warn or block based on unreadable rows and fields. Pick who to count and how strict to be.",
       "imageQualityEnabled": "Enable clarity detection",
@@ -726,6 +738,7 @@
     "oldPasswordWrong": "Nesprávné aktuální heslo",
     "feishuRetryConfirmedOnly": "Pouze potvrzené úkoly mohou znovu sync Feishu",
     "feishuAlreadySynced": "Sync Feishu již úspěšný",
+    "feishuSyncDisabled": "Sync Feishu Bitable je pro tuto zemi vypnutý",
     "noConfirmedDataToSync": "Žádná potvrzená data ke sync",
     "confirmedDataEmpty": "Potvrzená data jsou prázdná",
     "confirmedTaskCannotDelete": "Potvrzené úkoly nelze smazat",

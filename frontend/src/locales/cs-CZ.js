@@ -99,6 +99,7 @@ export default {
     "oldPasswordWrong": "Nesprávné aktuální heslo",
     "feishuRetryConfirmedOnly": "Pouze potvrzené úkoly mohou znovu sync Feishu",
     "feishuAlreadySynced": "Sync Feishu již úspěšný",
+    "feishuSyncDisabled": "Sync Feishu Bitable je pro tuto zemi vypnutý",
     "noConfirmedDataToSync": "Žádná potvrzená data ke sync",
     "confirmedDataEmpty": "Potvrzená data jsou prázdná",
     "confirmedTaskCannotDelete": "Potvrzené úkoly nelze smazat",
@@ -149,6 +150,16 @@ export default {
     "invalidFormat": "Formát {field} je neplatný",
     "minLength": "{field} musí mít alespoň {min} znaků",
     "maxLength": "{field} může mít maximálně {max} znaků"
+  },
+  "fieldFormat": {
+    "dateShort": "Vyžadováno datum, např. 2026-06-12",
+    "dateTooltip": "Formát YYYY-MM-DD. Jednoznačné formáty jako 12/06/2026 se převedou. Nejednoznačné jako 03/04/2026 opravte ručně",
+    "shiftShort": "Vyžadovány dva časy, např. 8:00-18:00",
+    "shiftTooltip": "Směna musí obsahovat začátek a konec, např. 8:00-18:00 nebo 08h00-17h30",
+    "arrivalShort": "Jeden čas, např. 08:30",
+    "arrivalTooltip": "Příchod musí být jeden čas, např. 8:30, 08:30 nebo 18h00",
+    "departureShort": "Jeden čas, např. 18:00",
+    "departureTooltip": "Odchod musí být jeden čas, např. 18:00, 18h00 nebo 17:30"
   },
   "export": {
     "centerTitle": "Centrum exportu",
@@ -269,6 +280,9 @@ export default {
     "selectAtLeastOne": "Vyberte prosím alespoň jeden obrázek",
     "uploadFailed": "Nahrání selhalo: {status} {statusText}",
     "uploadFailedGeneric": "Nahrání selhalo: {reason}",
+    "recognitionFailedTitle": "Rozpoznávání selhalo",
+    "recognitionRetry": "Zkusit rozpoznání znovu",
+    "recognitionReupload": "Nahrát znovu",
     "recognitionError": "Chyba rozpoznávání",
     "workingCountry": "Pracovní země",
     "changeCountry": "Změnit konfiguraci",
@@ -546,7 +560,9 @@ export default {
       "connectionStatus": "Stav Připojení",
       "statusConnected": "Připojeno",
       "statusDisconnected": "Odpojeno",
-      "viewHelp": "Zobrazit Nápovědu"
+      "viewHelp": "Zobrazit Nápovědu",
+      "syncEnabled": "Po potvrzení synchronizovat do Feishu Bitable",
+      "syncEnabledHint": "Vypnuto = potvrzení pouze uloží data, bez zápisu do Feishu Bitable"
     },
     "mappingConfig": {
       "title": "Konfigurace Mapování Polí",
@@ -621,7 +637,10 @@ export default {
       "configured": "Nakonfigurováno",
       "notConfigured": "Nenakonfigurováno",
       "chars": "{n} znaků",
-      "mappingCount": "{n} položek"
+      "mappingCount": "{n} položek",
+      "feishuSync": "Sync po potvrzení",
+      "syncOn": "Zapnuto",
+      "syncOff": "Vypnuto"
     }
   },
   "settings": {
@@ -655,6 +674,10 @@ export default {
       "nightShiftEnd": "Čas konce noční směny",
       "nightShiftCrossMidnight": "Přes půlnoc (konec následující den)",
       "nightShiftUseSchedule": "Použít také sloupec rozvrhu (HORAIRES_DU_TRAVAIL)",
+      "nightShiftCountry": "Země",
+      "nightShiftCountryOverride": "Použít pravidla pro tuto zemi",
+      "nightShiftUseGlobalHint": "Platí globální výchozí pravidla. Zaškrtněte výše pro pravidla této země.",
+      "nightShiftConfiguredCountries": "Země s vlastními pravidly",
       "imageQualityTitle": "Image clarity detection",
       "imageQualityDesc": "Reject blurry uploads and, after recognition, warn or block based on unreadable rows and fields. Pick who to count and how strict to be.",
       "imageQualityEnabled": "Enable clarity detection",

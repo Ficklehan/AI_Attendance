@@ -52,6 +52,10 @@ public final class RecognizedFieldSanitizer {
                 || "unknown".equalsIgnoreCase(trimmed);
     }
 
+    private static final String[] TIME_FIELD_KEYS = {
+            "HORAIRES_DU_TRAVAIL", "ARRIVEE", "DEPAR", "DEPART"
+    };
+
     private static final String[] RECORD_TEXT_KEYS = {
             "Pays", "Entrepot", "Date", "WorkDate", "NOM_PRENOM", "Name", "NO",
             "AGENCE_INTERIMAIRE", "HORAIRES_DU_TRAVAIL", "ARRIVEE", "DEPAR", "DEPART",
@@ -98,10 +102,12 @@ public final class RecognizedFieldSanitizer {
                 continue;
             }
             String raw = record.getString(key);
-            if (isExplicitUnreadable(raw)) {
+            if (isExplicitUnreadable(raw) || isTimeFieldNonTimeLabel(key, raw)) {
                 unreadable.add(key);
+                record.put(key, "");
+            } else {
+                record.put(key, sanitizeOptionalText(raw));
             }
-            record.put(key, sanitizeOptionalText(raw));
         }
         if (record.containsKey("PAUSE")) {
             Object pauseValue = record.get("PAUSE");
@@ -152,6 +158,22 @@ public final class RecognizedFieldSanitizer {
 
     public static String sanitizeOptionalText(String value) {
         return isUnrecognized(value) ? "" : value.trim();
+    }
+
+    private static boolean isTimeFieldKey(String key) {
+        if (key == null) {
+            return false;
+        }
+        for (String timeKey : TIME_FIELD_KEYS) {
+            if (timeKey.equals(key)) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    private static boolean isTimeFieldNonTimeLabel(String key, String raw) {
+        return isTimeFieldKey(key) && RecognizedTimeNormalizer.isNonTimeFieldLabel(raw);
     }
 
     /** 仓库仅保留图片中识别到的值，未识别则留空。 */

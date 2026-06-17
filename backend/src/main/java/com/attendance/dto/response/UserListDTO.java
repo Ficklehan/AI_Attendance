@@ -9,6 +9,7 @@ public class UserListDTO {
     private String role;
     private String realName;
     private String employeeId;
+    private String workingCountry;
     private String status;
     private String feishuUserId;
     private LocalDateTime lastLoginAt;
@@ -60,6 +61,14 @@ public class UserListDTO {
 
     public void setEmployeeId(String employeeId) {
         this.employeeId = employeeId;
+    }
+
+    public String getWorkingCountry() {
+        return workingCountry;
+    }
+
+    public void setWorkingCountry(String workingCountry) {
+        this.workingCountry = workingCountry;
     }
 
     public String getStatus() {

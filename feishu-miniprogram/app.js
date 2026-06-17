@@ -1,4 +1,4 @@
-const { loadPreferences, syncCountryConfig } = require('./utils/preferences')
+const { loadPreferences, syncCountryConfig, getCountry } = require('./utils/preferences')
 const { loadNightShiftRules } = require('./utils/nightShiftRules')
 const { applyTabBarI18n, setLocale, DEFAULT_LOCALE } = require('./utils/i18n')
 const { COUNTRIES } = require('./utils/countries')
@@ -54,7 +54,7 @@ App({
     applyTabBarI18n()
     clearProdApiOverrideIfLocalDev()
     this.refreshApiBaseUrl()
-    loadNightShiftRules().catch(() => {})
+    loadNightShiftRules(false, getCountry()).catch(() => {})
     console.log('飞书小程序启动, API:', this.globalData.baseUrl, 'usePublicApi=', USE_PUBLIC_API)
   },
 

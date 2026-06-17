@@ -54,4 +54,23 @@ class RecognizedFieldSanitizerTest {
         assertEquals("", record.getString("PAUSE"));
         assertTrue(record.getJSONArray("_unreadableFields").contains("PAUSE"));
     }
+
+    @Test
+    void annotate_treats_french_non_time_labels_as_unreadable() {
+        JSONObject record = new JSONObject();
+        record.put("NO", "1");
+        record.put("ARRIVEE", "FIN de mission");
+        record.put("DEPAR", "Pas de");
+        record.put("HORAIRES_DU_TRAVAIL", "Repos");
+        record.put("SmartMark", "正常");
+
+        RecognizedFieldSanitizer.annotateAndSanitizeRecord(record);
+
+        assertEquals("", record.getString("ARRIVEE"));
+        assertEquals("", record.getString("DEPAR"));
+        assertEquals("", record.getString("HORAIRES_DU_TRAVAIL"));
+        assertTrue(record.getJSONArray("_unreadableFields").contains("ARRIVEE"));
+        assertTrue(record.getJSONArray("_unreadableFields").contains("DEPAR"));
+        assertTrue(record.getJSONArray("_unreadableFields").contains("HORAIRES_DU_TRAVAIL"));
+    }
 }

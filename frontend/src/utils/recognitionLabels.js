@@ -3,7 +3,7 @@
 import * as markCoreMod from '@shared/recognitionMarkCore.cjs'
 import markTokens from '../../../shared/locales/mark-tokens.json'
 import { importSharedCjs } from './importSharedCjs'
-import { getNightShiftRules, shouldMarkNightShift } from './nightShiftRules'
+import { getNightShiftRules, shouldMarkNightShift, resolveRecordCountry } from './nightShiftRules'
 
 const markCore = importSharedCjs(markCoreMod)
 const {
@@ -19,7 +19,7 @@ function stripNightShiftMarkParts(mark) {
 }
 
 /** 按当前到离/排班重算夜班标记（可增可删） */
-export function refreshNightShiftInSmartMark(mark, record) {
+export function refreshNightShiftInSmartMark(mark, record, taskCountry) {
   if (!record || record.isDeleted) {
     return stripNightShiftMarkParts(mark || '').join(';')
   }
@@ -33,15 +33,16 @@ export function refreshNightShiftInSmartMark(mark, record) {
   if (!parts.length) {
     parts = ['正常']
   }
-  if (shouldMarkNightShift(record, getNightShiftRules())) {
+  const country = resolveRecordCountry(record, taskCountry)
+  if (shouldMarkNightShift(record, getNightShiftRules(country))) {
     parts = [...parts, '夜班']
   }
   return [...new Set(parts)].join(';')
 }
 
 /** 展示层按规则重算夜班标记 */
-export function withInferredNightShiftMark(mark, record) {
-  return refreshNightShiftInSmartMark(mark, record)
+export function withInferredNightShiftMark(mark, record, taskCountry) {
+  return refreshNightShiftInSmartMark(mark, record, taskCountry)
 }
 
 const MARK_TOKEN_KEYS = markTokens

@@ -151,6 +151,7 @@ function createRequiredRecordFields(deps) {
           no: pickField(record, ['NO']) || '?',
           name: pickField(record, ['NOM_PRENOM', 'Name']),
           fields,
+          issueType: 'missing',
         })
       }
     })

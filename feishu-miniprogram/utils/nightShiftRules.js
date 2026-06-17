@@ -1,4 +1,6 @@
 const { isApiSuccess, getApiData } = require('./response')
+const { normalizeCountryCode, resolveRecordCountry } = require('./nightShiftCountry')
+const { getCountry } = require('./preferences')
 
 const DEFAULTS = {
   startTime: '20:00',
@@ -7,8 +9,53 @@ const DEFAULTS = {
   useScheduleColumn: true,
 }
 
-let cachedRules = { ...DEFAULTS }
-let loadPromise = null
+const rulesByCountry = {}
+const loadPromises = {}
+
+function cacheKey(country) {
+  return normalizeCountryCode(country)
+}
+
+function normalizeRules(raw) {
+  const rules = Object.assign({}, DEFAULTS, raw || {})
+  if (!rules.startTime) rules.startTime = DEFAULTS.startTime
+  if (!rules.endTime) rules.endTime = DEFAULTS.endTime
+  return rules
+}
+
+function getNightShiftRules(country) {
+  const key = cacheKey(country)
+  const cached = rulesByCountry[key]
+  if (cached) return Object.assign({}, cached)
+  const fallback = rulesByCountry.default
+  return Object.assign({}, fallback || DEFAULTS)
+}
+
+function loadNightShiftRules(force, country) {
+  const key = cacheKey(country || getCountry())
+  if (!force && loadPromises[key]) return loadPromises[key]
+  const { apiCall } = require('./request')
+  loadPromises[key] = apiCall({
+    url: `/config/runtime/night-shift?country=${encodeURIComponent(key)}`,
+    timeout: 15000,
+  })
+    .then((res) => {
+      if (isApiSuccess(res.data)) {
+        rulesByCountry[key] = normalizeRules(getApiData(res.data))
+      } else {
+        rulesByCountry[key] = Object.assign({}, DEFAULTS)
+      }
+      return rulesByCountry[key]
+    })
+    .catch(() => {
+      rulesByCountry[key] = Object.assign({}, DEFAULTS)
+      return rulesByCountry[key]
+    })
+    .finally(() => {
+      delete loadPromises[key]
+    })
+  return loadPromises[key]
+}
 
 function parseClockToMinutes(timeStr) {
   if (timeStr == null) return -1
@@ -20,39 +67,6 @@ function parseClockToMinutes(timeStr) {
   const minute = parseInt(match[2], 10)
   if (hour < 0 || hour > 23 || minute < 0 || minute > 59) return -1
   return hour * 60 + minute
-}
-
-function normalizeRules(raw) {
-  const rules = { ...DEFAULTS, ...(raw || {}) }
-  if (!rules.startTime) rules.startTime = DEFAULTS.startTime
-  if (!rules.endTime) rules.endTime = DEFAULTS.endTime
-  return rules
-}
-
-function getNightShiftRules() {
-  return { ...cachedRules }
-}
-
-function loadNightShiftRules(force) {
-  if (!force && loadPromise) return loadPromise
-  const { apiCall } = require('./request')
-  loadPromise = apiCall({ url: '/config/runtime/night-shift', timeout: 15000 })
-    .then((res) => {
-      if (isApiSuccess(res.data)) {
-        cachedRules = normalizeRules(getApiData(res.data))
-      } else {
-        cachedRules = { ...DEFAULTS }
-      }
-      return cachedRules
-    })
-    .catch(() => {
-      cachedRules = { ...DEFAULTS }
-      return cachedRules
-    })
-    .finally(() => {
-      loadPromise = null
-    })
-  return loadPromise
 }
 
 function isNightShiftByTimes(arrive, depart, config) {
@@ -88,12 +102,13 @@ function hasUsableArriveAndDepart(arrive, depart) {
   return parseClockToMinutes(arrive) >= 0 && parseClockToMinutes(depart) >= 0
 }
 
-function shouldMarkNightShift(record, rules) {
+function shouldMarkNightShift(record, taskCountry) {
   if (!record || record.isDeleted) return false
-  const config = normalizeRules(rules || cachedRules)
-  const arrive = record.ARRIVEE ?? record.arrival ?? ''
-  const depart = record.DEPAR ?? record.departure ?? ''
-  const shift = record.HORAIRES_DU_TRAVAIL ?? record.shift ?? ''
+  const country = resolveRecordCountry(record, taskCountry || getCountry())
+  const config = getNightShiftRules(country)
+  const arrive = record.ARRIVEE != null ? record.ARRIVEE : (record.arrival || '')
+  const depart = record.DEPAR != null ? record.DEPAR : (record.departure || '')
+  const shift = record.HORAIRES_DU_TRAVAIL != null ? record.HORAIRES_DU_TRAVAIL : (record.shift || '')
   if (hasUsableArriveAndDepart(arrive, depart)) {
     return isNightShiftByTimes(arrive, depart, config)
   }
@@ -105,4 +120,5 @@ module.exports = {
   getNightShiftRules,
   loadNightShiftRules,
   shouldMarkNightShift,
+  resolveRecordCountry,
 }

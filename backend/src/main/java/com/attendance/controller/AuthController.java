@@ -61,6 +61,7 @@ public class AuthController {
     public Result<User> getProfile() {
         User user = userService.getCurrentUser();
         user.setPasswordHash(null);
+        user.setWorkingCountry(userService.resolveWorkingCountryForUser(user));
         return Result.success(user);
     }
 

@@ -33,11 +33,12 @@ public class UserController {
     @GetMapping
     public Result<PageResult<UserListDTO>> listUsers(
             @RequestParam(defaultValue = "1") Long current,
-            @RequestParam(defaultValue = "20") Long size) {
+            @RequestParam(defaultValue = "20") Long size,
+            @RequestParam(required = false) String keyword) {
         adminAuthService.requireAdmin();
         long offset = (current - 1) * size;
-        List<UserListDTO> records = userService.listUsersForAdmin(offset, size);
-        long total = userService.countUsersForAdmin();
+        List<UserListDTO> records = userService.listUsersForAdmin(offset, size, keyword);
+        long total = userService.countUsersForAdmin(keyword);
         return Result.success(PageResult.of(records, total, current, size));
     }
 

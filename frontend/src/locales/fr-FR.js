@@ -83,6 +83,7 @@ export default {
     "taskStatusCannotConfirm": "Le statut de la tâche ne permet pas la confirmation",
     "feishuRetryConfirmedOnly": "Seules les tâches confirmées peuvent relancer la sync Feishu",
     "feishuAlreadySynced": "Sync Feishu déjà réussie, pas de nouvel essai nécessaire",
+    "feishuSyncDisabled": "La sync Feishu Bitable est désactivée pour ce pays",
     "noConfirmedDataToSync": "Aucune donnée confirmée à synchroniser",
     "confirmedDataEmpty": "Données confirmées vides, sync impossible",
     "confirmedTaskCannotDelete": "Les tâches confirmées ne peuvent pas être supprimées",
@@ -148,6 +149,16 @@ export default {
     "invalidFormat": "Le format de {field} est invalide",
     "minLength": "{field} doit comporter au moins {min} caractères",
     "maxLength": "{field} doit comporter au plus {max} caractères"
+  },
+  "fieldFormat": {
+    "dateShort": "Date requise, ex. 2026-06-12",
+    "dateTooltip": "Format YYYY-MM-DD. Les formats clairs (12/06/2026, 12.06.2026) sont convertis. Les dates ambiguës (03/04/2026) doivent être corrigées manuellement",
+    "shiftShort": "Deux horaires requis, ex. 8:00-18:00",
+    "shiftTooltip": "Le créneau doit inclure une heure de début et de fin, ex. 8:00-18:00 ou 08h00-17h30",
+    "arrivalShort": "Un seul horaire, ex. 08:30",
+    "arrivalTooltip": "L'arrivée doit être un seul horaire, ex. 8:30, 08:30 ou 18h00",
+    "departureShort": "Un seul horaire, ex. 18:00",
+    "departureTooltip": "Le départ doit être un seul horaire, ex. 18:00, 18h00 ou 17:30"
   },
   "export": {
     "centerTitle": "Centre d'export",
@@ -258,7 +269,11 @@ export default {
     "noRecordsFound": "Aucun enregistrement trouvé",
     "duplicateImage": "Cette image a déjà été sélectionnée, veuillez ne pas ajouter de doublons",
     "selectAtLeastOne": "Veuillez sélectionner au moins une image",
-    "uploadFailed": "Échec du téléchargement: {status} {statusText}"
+    "uploadFailed": "Échec du téléchargement: {status} {statusText}",
+    "recognitionFailedTitle": "Échec de la reconnaissance",
+    "recognitionRetry": "Réessayer la reconnaissance",
+    "recognitionReupload": "Téléverser à nouveau",
+    "recognitionError": "Erreur de reconnaissance"
   },
   "tasks": {
     "title": "Liste des Tâches",
@@ -363,6 +378,10 @@ export default {
       "nightShiftEnd": "Heure de fin du poste de nuit",
       "nightShiftCrossMidnight": "Franchit minuit (fin le lendemain)",
       "nightShiftUseSchedule": "Utiliser aussi la colonne horaire (HORAIRES_DU_TRAVAIL)",
+      "nightShiftCountry": "Pays",
+      "nightShiftCountryOverride": "Règles spécifiques à ce pays",
+      "nightShiftUseGlobalHint": "Règles globales par défaut. Cochez ci-dessus pour définir des règles pour ce pays.",
+      "nightShiftConfiguredCountries": "Pays avec règles dédiées",
       "imageQualityTitle": "Image clarity detection",
       "imageQualityDesc": "Reject blurry uploads and, after recognition, warn or block based on unreadable rows and fields. Pick who to count and how strict to be.",
       "imageQualityEnabled": "Enable clarity detection",
@@ -682,7 +701,9 @@ export default {
       "connectionStatus": "État de la Connexion",
       "statusConnected": "Connecté",
       "statusDisconnected": "Déconnecté",
-      "viewHelp": "Voir l'Aide"
+      "viewHelp": "Voir l'Aide",
+      "syncEnabled": "Synchroniser vers Feishu Bitable après confirmation",
+      "syncEnabledHint": "Désactivé = la confirmation enregistre seulement les données, sans écriture dans Feishu Bitable"
     },
     "mappingConfig": {
       "title": "Configuration de Correspondance des Champs",

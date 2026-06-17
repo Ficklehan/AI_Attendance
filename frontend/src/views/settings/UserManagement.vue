@@ -11,6 +11,13 @@
 
     <a-card class="surface-card" :bordered="false">
       <div class="table-toolbar">
+        <a-input-search
+          v-model:value="searchKeyword"
+          class="user-search"
+          :placeholder="$t('settings.users.searchPlaceholder')"
+          allow-clear
+          @search="handleSearch"
+        />
         <TableColumnSettings
           :columns="configurableColumns"
           :hidden-keys="hiddenKeys"
@@ -35,6 +42,9 @@
             <a-tag :color="record.role === 'admin' ? 'blue' : 'default'">
               {{ roleNameMap[record.role] || record.role }}
             </a-tag>
+          </template>
+          <template v-else-if="column.key === 'workingCountry'">
+            <a-tag color="geekblue">{{ formatUserCountry(record) }}</a-tag>
           </template>
           <template v-else-if="column.key === 'status'">
             <a-tag :color="record.status === 'active' ? 'green' : 'red'">
@@ -123,6 +133,16 @@
         <a-form-item :label="$t('settings.users.feishuUserId')" :help="$t('settings.users.feishuUserIdHint')">
           <a-input v-model:value="form.feishuUserId" :placeholder="$t('settings.users.feishuUserIdPlaceholder')" allow-clear />
         </a-form-item>
+        <a-form-item :label="$t('settings.users.workingCountry')" :help="$t('settings.users.workingCountryHint')">
+          <a-select
+            v-model:value="form.workingCountry"
+            :options="countryOptions"
+            show-search
+            :filter-option="filterCountryOption"
+            allow-clear
+            :placeholder="$t('settings.users.workingCountryPlaceholder')"
+          />
+        </a-form-item>
         <a-form-item :label="$t('settings.users.role')">
           <a-select v-model:value="form.role" :options="roleOptions" />
         </a-form-item>
@@ -142,14 +162,18 @@ import { PlusOutlined } from '@ant-design/icons-vue'
 import PageShell from '@/components/PageShell.vue'
 import TableColumnSettings from '@/components/TableColumnSettings.vue'
 import { useAuthStore } from '@/stores/auth'
+import { useCountryStore } from '@/stores/country'
 import { listUsers, createUser, updateUser, updateUserStatus, deleteUser } from '@/api/users'
 import { listRoles } from '@/api/roles'
 import { withTableSorters, keyFieldSorter } from '@/utils/tableSort'
 import { useColumnFreeze } from '@/composables/useColumnFreeze'
 import { sumTableScrollX } from '@/utils/tableAutoColumns'
+import { formatCountryLabel } from '@/utils/countryLabels'
+import { setCachedWorkingCountry } from '@/utils/countryHeader'
 
 const { t } = useI18n()
 const authStore = useAuthStore()
+const countryStore = useCountryStore()
 
 const users = ref([])
 const loading = ref(false)
@@ -159,6 +183,7 @@ const editingId = ref('')
 const page = ref(1)
 const pageSize = ref(20)
 const total = ref(0)
+const searchKeyword = ref('')
 
 const form = reactive({
   username: '',
@@ -167,9 +192,25 @@ const form = reactive({
   realName: '',
   employeeId: '',
   feishuUserId: '',
+  workingCountry: 'default',
   role: 'user',
   status: 'active',
 })
+
+const countryOptions = computed(() => countryStore.selectOptions)
+
+const filterCountryOption = (input, option) => {
+  const label = (option?.label || '').toLowerCase()
+  const value = (option?.value || '').toLowerCase()
+  const q = (input || '').toLowerCase()
+  return label.includes(q) || value.includes(q)
+}
+
+const formatUserCountry = (record) => {
+  const code = record.workingCountry || 'default'
+  const meta = countryStore.options.find((item) => item.code === code)
+  return formatCountryLabel(code, meta?.flag, meta?.name)
+}
 
 const systemRoles = ref([])
 
@@ -206,6 +247,7 @@ const baseColumns = computed(() => withTableSorters([
   { title: t('auth.username'), dataIndex: 'username', key: 'username' },
   { title: t('settings.users.email'), dataIndex: 'email', key: 'email' },
   { title: t('settings.users.realName'), dataIndex: 'realName', key: 'realName' },
+  { title: t('settings.users.workingCountry'), key: 'workingCountry', width: 140, sorter: keyFieldSorter('workingCountry') },
   { title: t('settings.users.feishuUserId'), dataIndex: 'feishuUserId', key: 'feishuUserId', ellipsis: true, width: 140 },
   { title: t('settings.users.role'), key: 'role', width: 100, sorter: keyFieldSorter('role') },
   { title: t('common.status'), key: 'status', width: 100, sorter: keyFieldSorter('status') },
@@ -269,14 +311,23 @@ const resetForm = () => {
   form.realName = ''
   form.employeeId = ''
   form.feishuUserId = ''
+  form.workingCountry = 'default'
   form.role = 'user'
   form.status = 'active'
+}
+
+const handleSearch = () => {
+  page.value = 1
+  fetchUsers()
 }
 
 const fetchUsers = async () => {
   loading.value = true
   try {
-    const res = await listUsers({ current: page.value, size: pageSize.value })
+    const params = { current: page.value, size: pageSize.value }
+    const kw = searchKeyword.value?.trim()
+    if (kw) params.keyword = kw
+    const res = await listUsers(params)
     users.value = res.data?.records || []
     total.value = res.data?.total || 0
   } finally {
@@ -304,6 +355,7 @@ const openEdit = (record) => {
   form.realName = record.realName || ''
   form.employeeId = record.employeeId || ''
   form.feishuUserId = record.feishuUserId || ''
+  form.workingCountry = record.workingCountry || 'default'
   form.role = record.role || 'user'
   form.status = record.status || 'active'
   modalOpen.value = true
@@ -318,11 +370,18 @@ const submitForm = async () => {
         realName: form.realName,
         employeeId: form.employeeId,
         feishuUserId: form.feishuUserId,
+        workingCountry: form.workingCountry === 'default' ? '' : form.workingCountry,
         role: form.role,
         status: form.status,
       }
       if (form.password) payload.password = form.password
       await updateUser(editingId.value, payload)
+      if (editingId.value === authStore.userInfo?.id) {
+        const effective = form.workingCountry || 'default'
+        setCachedWorkingCountry(effective)
+        countryStore.workingCountry = effective
+        await countryStore.loadBundle(effective)
+      }
       message.success(t('settings.users.updated'))
     } else {
       await createUser({
@@ -331,6 +390,7 @@ const submitForm = async () => {
         password: form.password,
         realName: form.realName,
         employeeId: form.employeeId,
+        workingCountry: form.workingCountry === 'default' ? '' : form.workingCountry,
         role: form.role,
       })
       message.success(t('settings.users.created'))
@@ -342,8 +402,23 @@ const submitForm = async () => {
   }
 }
 
-onMounted(() => {
+onMounted(async () => {
+  await countryStore.hydrate()
   fetchRoles()
   fetchUsers()
 })
 </script>
+
+<style scoped>
+.table-toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 12px;
+}
+
+.user-search {
+  width: min(360px, 100%);
+}
+</style>

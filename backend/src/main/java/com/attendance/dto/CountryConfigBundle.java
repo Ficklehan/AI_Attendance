@@ -19,6 +19,7 @@ public class CountryConfigBundle {
     private List<Map<String, Object>> fieldMapping;
     private boolean promptFromGlobalFallback;
     private boolean feishuFromGlobalFallback;
+    private boolean syncEnabled = true;
 
     public String getRequestCountry() {
         return requestCountry;
@@ -108,6 +109,14 @@ public class CountryConfigBundle {
         this.feishuFromGlobalFallback = feishuFromGlobalFallback;
     }
 
+    public boolean isSyncEnabled() {
+        return syncEnabled;
+    }
+
+    public void setSyncEnabled(boolean syncEnabled) {
+        this.syncEnabled = syncEnabled;
+    }
+
     /** Safe summary for non-admin clients: no tokens, prompts, or field mappings. */
     public CountryConfigBundle toPublicSummary() {
         CountryConfigBundle summary = new CountryConfigBundle();
@@ -117,6 +126,7 @@ public class CountryConfigBundle {
         summary.setPromptSection(promptSection);
         summary.setPromptFromGlobalFallback(promptFromGlobalFallback);
         summary.setFeishuFromGlobalFallback(feishuFromGlobalFallback);
+        summary.setSyncEnabled(syncEnabled);
         return summary;
     }
 }

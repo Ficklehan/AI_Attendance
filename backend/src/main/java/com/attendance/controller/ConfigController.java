@@ -9,6 +9,7 @@ import com.attendance.dto.request.SystemConfigRequest;
 import com.attendance.dto.response.SystemConfigDTO;
 import com.attendance.service.ConfigService;
 import com.attendance.service.ConfirmValidationService;
+import com.attendance.service.FeishuCountryConfigService;
 import com.attendance.service.NightShiftConfigService;
 import com.attendance.service.MarkdownConfigService;
 import com.attendance.service.PluginConfigService;
@@ -60,6 +61,9 @@ public class ConfigController {
     @Autowired
     private NightShiftConfigService nightShiftConfigService;
 
+    @Autowired
+    private FeishuCountryConfigService feishuCountryConfigService;
+
     private void requireAdmin() {
         adminAuthService.requireAdmin();
     }
@@ -85,6 +89,7 @@ public class ConfigController {
         body.put("feishuAppTokenConfigured", bundle.getAppToken() != null && !bundle.getAppToken().trim().isEmpty());
         body.put("feishuTableIdConfigured", bundle.getTableId() != null && !bundle.getTableId().trim().isEmpty());
         body.put("fieldMappingCount", bundle.getFieldMapping() != null ? bundle.getFieldMapping().size() : 0);
+        body.put("feishuSyncEnabled", bundle.isSyncEnabled());
         body.put("configPromptLength", fromConfig != null ? fromConfig.length() : 0);
         body.put("apiPromptLength", forApi != null ? forApi.length() : 0);
         body.put("includesExampleBlock", fromConfig != null && fromConfig.contains("示例"));
@@ -199,14 +204,18 @@ public class ConfigController {
     }
     
     @PutMapping("/feishu")
-    public Result<Void> updateFeishuConfig(@RequestBody Map<String, String> request) {
+    public Result<Void> updateFeishuConfig(@RequestBody Map<String, Object> request) {
         requireAdmin();
         try {
-            String country = request.getOrDefault("country", "default");
-            String appToken = request.get("bitable_app_token");
-            String tableId = request.get("bitable_table_id");
-            String fieldMapping = request.get("field_mapping");
-            markdownConfigService.updateFeishuConfig(country, appToken, tableId, fieldMapping);
+            String country = request.get("country") != null ? request.get("country").toString() : "default";
+            String appToken = request.get("bitable_app_token") != null ? request.get("bitable_app_token").toString() : "";
+            String tableId = request.get("bitable_table_id") != null ? request.get("bitable_table_id").toString() : "";
+            Boolean syncEnabled = parseSyncEnabled(request.get("sync_enabled"));
+            List<Map<String, Object>> mappings = parseFieldMappings(request.get("field_mapping"));
+            if (mappings.isEmpty()) {
+                mappings = configService.getFieldMapping(country);
+            }
+            markdownConfigService.updateFeishuConfig(country, appToken, tableId, mappings, syncEnabled);
             return Result.success(null, "飞书配置更新成功");
         } catch (Exception e) {
             log.error("更新飞书配置失败", e);
@@ -228,21 +237,7 @@ public class ConfigController {
             
             @SuppressWarnings("unchecked")
             List<Map<String, Object>> mappings = (List<Map<String, Object>>) request.get("field_mapping");
-            
-            StringBuilder fieldMappingYaml = new StringBuilder("field_mapping:\n");
-            for (Map<String, Object> mapping : mappings) {
-                fieldMappingYaml.append("  - aiField: '").append(mapping.get("aiField")).append("'\n");
-                fieldMappingYaml.append("    feishuField: '").append(mapping.get("feishuField")).append("'\n");
-                fieldMappingYaml.append("    type: '").append(mapping.get("type")).append("'\n");
-                fieldMappingYaml.append("    required: ").append(mapping.get("required")).append("\n");
-                fieldMappingYaml.append("    description: '").append(mapping.get("description")).append("'\n");
-            }
-            
-            Map<String, Object> feishuConfig = configService.getFeishuConfig(country);
-            String appToken = feishuConfig.get("appToken") != null ? feishuConfig.get("appToken").toString() : "";
-            String tableId = feishuConfig.get("tableId") != null ? feishuConfig.get("tableId").toString() : "";
-            
-            markdownConfigService.updateFeishuConfig(country, appToken, tableId, fieldMappingYaml.toString());
+            feishuCountryConfigService.saveFieldMapping(country, mappings);
             return Result.success(null, "字段映射更新成功");
         } catch (Exception e) {
             log.error("更新字段映射失败", e);
@@ -280,12 +275,48 @@ public class ConfigController {
         requireAdmin();
         try {
             markdownConfigService.loadConfigs();
-            log.info("配置已重新加载（仅飞书/国家配置），AI 提示词不做强制覆盖");
-            return Result.success(null, "飞书配置已刷新");
+            log.info("配置已重新加载（飞书配置以数据库为准，未从 md 覆盖）");
+            return Result.success(null, "配置已刷新");
         } catch (Exception e) {
-            log.error("重新加载配置文件失败", e);
-            return Result.error(500, "重新加载配置文件失败: " + e.getMessage());
+            log.error("重新加载配置失败", e);
+            return Result.error(500, "重新加载配置失败: " + e.getMessage());
         }
+    }
+
+    @SuppressWarnings("unchecked")
+    private static List<Map<String, Object>> parseFieldMappings(Object raw) {
+        if (raw == null) {
+            return new java.util.ArrayList<>();
+        }
+        if (raw instanceof List) {
+            return (List<Map<String, Object>>) raw;
+        }
+        String text = String.valueOf(raw).trim();
+        if (text.isEmpty()) {
+            return new java.util.ArrayList<>();
+        }
+        if (text.startsWith("[")) {
+            return com.alibaba.fastjson.JSON.parseObject(text,
+                    new com.alibaba.fastjson.TypeReference<List<Map<String, Object>>>() {});
+        }
+        if (!text.contains("field_mapping:")) {
+            text = "field_mapping:\n" + text;
+        }
+        return com.attendance.util.FeishuCanonicalParser.extractFieldMapping(text);
+    }
+
+    private static Boolean parseSyncEnabled(Object raw) {
+        if (raw == null) {
+            return null;
+        }
+        if (raw instanceof Boolean) {
+            return (Boolean) raw;
+        }
+        String text = String.valueOf(raw).trim();
+        if (text.isEmpty()) {
+            return null;
+        }
+        return "true".equalsIgnoreCase(text) || "1".equals(text);
     }
 
     /**
@@ -324,8 +355,9 @@ public class ConfigController {
      * 路径使用 /runtime/ 前缀，避免与 DELETE /config/{configKey} 单段路径冲突导致 405。
      */
     @GetMapping("/runtime/night-shift")
-    public Result<NightShiftConfigDTO> getNightShiftConfig() {
-        return Result.success(nightShiftConfigService.getConfig());
+    public Result<NightShiftConfigDTO> getNightShiftConfig(
+            @RequestParam(required = false, defaultValue = "default") String country) {
+        return Result.success(nightShiftConfigService.getConfigForCountry(country));
     }
 
     @PutMapping("/system")
