@@ -8,11 +8,11 @@ description: 生产 / 公网部署
 # 环境模式：local = 本机开发 | public = 公网/手机飞书
 # 注意：生产服务器上请保持 mode: public（可与本地仓库提交值不同，部署前确认）
 runtime:
-  mode: local
+  mode: public
   local_api_base: http://localhost:8080/attendance/api
 
 public:
-  host: uat-guanpei.eminxing.com
+  host: otws-de.igofoex.com
   scheme: https
 
 paths:

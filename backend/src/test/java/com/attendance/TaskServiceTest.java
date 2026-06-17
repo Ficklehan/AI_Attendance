@@ -21,7 +21,11 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.mockito.junit.jupiter.MockitoSettings;
 import org.mockito.quality.Strictness;
+import org.springframework.dao.DuplicateKeyException;
+import org.springframework.test.util.ReflectionTestUtils;
 
+import java.time.LocalDate;
+import java.time.format.DateTimeFormatter;
 import java.util.Arrays;
 import java.util.List;
 
@@ -63,6 +67,8 @@ class TaskServiceTest {
     @InjectMocks
     private TaskService taskService;
 
+    private static final DateTimeFormatter TASK_ID_DATE = DateTimeFormatter.ofPattern("yyyyMMdd");
+
     private Task testTask;
     private DataScopeContext allUsersScope;
 
@@ -81,18 +87,39 @@ class TaskServiceTest {
 
     @Test
     void testCreateTask() {
-        when(taskMapper.selectLastTaskId()).thenReturn(null);
-        when(recordNoGenerator.generate(any())).thenReturn("20260520_001");
+        String today = LocalDate.now().format(TASK_ID_DATE);
+        when(taskMapper.selectMaxTaskIdForDate(today)).thenReturn(null);
+        when(recordNoGenerator.generate(null)).thenReturn(today + "_001");
+        ReflectionTestUtils.setField(taskService, "self", taskService);
         when(taskMapper.insertTask(any())).thenReturn(1);
 
         Task result = taskService.createTask("test.jpg");
 
         assertNotNull(result);
-        assertEquals("20260520_001", result.getTaskId());
+        assertEquals(today + "_001", result.getTaskId());
         assertEquals("test.jpg", result.getFileKey());
         assertEquals("processing", result.getStatus());
-        
+
         verify(taskMapper).insertTask(any(Task.class));
+    }
+
+    @Test
+    void testCreateTaskRetriesOnDuplicateTaskId() {
+        String today = LocalDate.now().format(TASK_ID_DATE);
+        String conflictId = today + "_007";
+        String nextId = today + "_008";
+        when(taskMapper.selectMaxTaskIdForDate(today)).thenReturn(today + "_006");
+        when(recordNoGenerator.generate(today + "_006")).thenReturn(conflictId);
+        when(recordNoGenerator.nextAfter(conflictId)).thenReturn(nextId);
+        ReflectionTestUtils.setField(taskService, "self", taskService);
+        when(taskMapper.insertTask(any(Task.class)))
+                .thenThrow(new DuplicateKeyException("duplicate"))
+                .thenReturn(1);
+
+        Task result = taskService.createTask("test.jpg");
+
+        assertEquals(nextId, result.getTaskId());
+        verify(taskMapper, times(2)).insertTask(any(Task.class));
     }
 
     @Test

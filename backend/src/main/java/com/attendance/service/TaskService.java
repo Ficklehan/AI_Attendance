@@ -41,10 +41,14 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Lazy;
+import org.springframework.dao.DuplicateKeyException;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.io.IOException;
+import java.time.LocalDate;
+import java.time.format.DateTimeFormatter;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
@@ -66,6 +70,13 @@ public class TaskService {
 
     @Autowired
     private RecordNoGenerator recordNoGenerator;
+
+    @Autowired
+    @Lazy
+    private TaskService self;
+
+    private static final DateTimeFormatter TASK_ID_DATE = DateTimeFormatter.ofPattern("yyyyMMdd");
+    private static final int TASK_ID_ALLOC_MAX_ATTEMPTS = 8;
 
     @Autowired
     private ConfigService configService;
@@ -189,12 +200,32 @@ public class TaskService {
         return createTask(fileKey, null);
     }
 
-    @Transactional
     public Task createTask(String fileKey, String promptCountry) {
         String userId = taskAccessService.requireCurrentUserId();
-        String lastTaskId = taskMapper.selectLastTaskId();
+        String datePrefix = LocalDate.now().format(TASK_ID_DATE);
+        String lastTaskId = taskMapper.selectMaxTaskIdForDate(datePrefix);
+        DuplicateKeyException lastConflict = null;
         String taskId = recordNoGenerator.generate(lastTaskId);
+        for (int attempt = 0; attempt < TASK_ID_ALLOC_MAX_ATTEMPTS; attempt++) {
+            if (attempt > 0) {
+                taskId = recordNoGenerator.nextAfter(taskId);
+            }
+            try {
+                Task task = self.persistNewTask(taskId, userId, fileKey, promptCountry);
+                log.info("创建任务成功: taskId={}, userId={}, fileKey={}, promptCountry={}",
+                        taskId, userId, fileKey, task.getPromptCountry());
+                return task;
+            } catch (DuplicateKeyException e) {
+                lastConflict = e;
+                log.warn("任务号冲突，流水号+1重试: conflictTaskId={}, attempt={}", taskId, attempt + 1);
+            }
+        }
+        log.error("任务号分配失败，连续 {} 次主键冲突", TASK_ID_ALLOC_MAX_ATTEMPTS, lastConflict);
+        throw new BusinessException(500, ErrorKeys.SYSTEM_ERROR);
+    }
 
+    @Transactional(propagation = Propagation.REQUIRES_NEW)
+    public Task persistNewTask(String taskId, String userId, String fileKey, String promptCountry) {
         Task task = new Task();
         task.setTaskId(taskId);
         task.setUserId(userId);
@@ -204,11 +235,7 @@ public class TaskService {
         if (promptCountry != null && !promptCountry.trim().isEmpty()) {
             task.setPromptCountry(promptCountry.trim());
         }
-
         taskMapper.insertTask(task);
-        log.info("创建任务成功: taskId={}, userId={}, fileKey={}, promptCountry={}",
-                taskId, userId, fileKey, task.getPromptCountry());
-
         return task;
     }
 

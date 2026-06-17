@@ -39,7 +39,8 @@ public interface TaskMapper {
 
     List<java.util.Map<String, Object>> countTasksGroupByStatus(@Param("scope") DataScopeContext scope);
 
-    String selectLastTaskId();
+    /** 当日最大序号任务号（按数字序号，非 created_at） */
+    String selectMaxTaskIdForDate(@Param("datePrefix") String datePrefix);
 
     List<Task> selectTasksByStatuses(@Param("statuses") List<String> statuses);
 

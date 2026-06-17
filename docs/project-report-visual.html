@@ -1,0 +1,1548 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>AttendanceAgent - AI 考勤智能助手项目汇报</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&family=Noto+Sans+SC:wght@300;400;500;600;700;900&family=JetBrains+Mono:wght@400;500;600&display=swap');
+
+  :root {
+    --primary: #2563EB;
+    --primary-light: #3B82F6;
+    --primary-dark: #1D4ED8;
+    --primary-50: #EFF6FF;
+    --primary-100: #DBEAFE;
+    --primary-200: #BFDBFE;
+    --accent: #F59E0B;
+    --accent-light: #FCD34D;
+    --success: #10B981;
+    --success-light: #D1FAE5;
+    --warning: #F59E0B;
+    --warning-light: #FEF3C7;
+    --danger: #EF4444;
+    --danger-light: #FEE2E2;
+    --info: #6366F1;
+    --info-light: #E0E7FF;
+    --gray-50: #F9FAFB;
+    --gray-100: #F3F4F6;
+    --gray-200: #E5E7EB;
+    --gray-300: #D1D5DB;
+    --gray-400: #9CA3AF;
+    --gray-500: #6B7280;
+    --gray-600: #4B5563;
+    --gray-700: #374151;
+    --gray-800: #1F2937;
+    --gray-900: #111827;
+    --radius: 12px;
+    --radius-lg: 20px;
+    --shadow-sm: 0 1px 3px rgba(0,0,0,.06), 0 1px 2px rgba(0,0,0,.04);
+    --shadow: 0 4px 6px -1px rgba(0,0,0,.07), 0 2px 4px -2px rgba(0,0,0,.05);
+    --shadow-lg: 0 10px 25px -3px rgba(0,0,0,.08), 0 4px 6px -4px rgba(0,0,0,.04);
+    --shadow-xl: 0 20px 50px -12px rgba(0,0,0,.12);
+    --nav-width: 260px;
+    --transition: .3s cubic-bezier(.4,0,.2,1);
+  }
+
+  *, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
+
+  html { scroll-behavior: smooth; font-size: 16px; scroll-padding-top: 32px; }
+
+  body {
+    font-family: 'Inter', 'Noto Sans SC', -apple-system, BlinkMacSystemFont, sans-serif;
+    color: var(--gray-800);
+    background: var(--gray-50);
+    line-height: 1.7;
+    -webkit-font-smoothing: antialiased;
+    overflow-x: hidden;
+  }
+
+  /* ── Navigation Sidebar ── */
+  .sidebar {
+    position: fixed; top: 0; left: 0; width: var(--nav-width); height: 100vh;
+    background: #fff; border-right: 1px solid var(--gray-200);
+    z-index: 100; display: flex; flex-direction: column;
+    transition: transform var(--transition);
+  }
+  .sidebar-header {
+    padding: 24px 20px 20px; border-bottom: 1px solid var(--gray-100);
+  }
+  .sidebar-logo {
+    display: flex; align-items: center; gap: 10px; text-decoration: none; color: var(--gray-900);
+  }
+  .sidebar-logo-icon {
+    width: 36px; height: 36px; border-radius: 10px;
+    background: linear-gradient(135deg, var(--primary), var(--info));
+    display: flex; align-items: center; justify-content: center;
+    color: #fff; font-size: 18px; font-weight: 700; flex-shrink: 0;
+  }
+  .sidebar-logo-text { font-weight: 700; font-size: 15px; letter-spacing: -.3px; }
+  .sidebar-logo-sub { font-size: 11px; color: var(--gray-400); font-weight: 400; margin-top: 1px; }
+
+  .sidebar-nav { flex: 1; overflow-y: auto; padding: 12px 10px; }
+  .sidebar-nav::-webkit-scrollbar { width: 3px; }
+  .sidebar-nav::-webkit-scrollbar-thumb { background: var(--gray-300); border-radius: 3px; }
+
+  .nav-group-title {
+    font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: 1.2px;
+    color: var(--gray-400); padding: 14px 12px 6px; user-select: none;
+  }
+  .nav-link {
+    display: flex; align-items: center; gap: 8px; padding: 7px 12px;
+    font-size: 13px; color: var(--gray-600); text-decoration: none;
+    border-radius: 8px; transition: all var(--transition); font-weight: 450;
+    margin-bottom: 1px;
+  }
+  .nav-link:hover { background: var(--gray-100); color: var(--gray-900); }
+  .nav-link.active { background: var(--primary-50); color: var(--primary); font-weight: 600; }
+  .nav-link .nav-icon { font-size: 15px; width: 20px; text-align: center; flex-shrink: 0; }
+
+  .sidebar-footer {
+    padding: 16px 20px; border-top: 1px solid var(--gray-100);
+    font-size: 11px; color: var(--gray-400);
+  }
+
+  /* ── Mobile nav toggle ── */
+  .nav-toggle {
+    display: none; position: fixed; top: 16px; left: 16px; z-index: 200;
+    width: 44px; height: 44px; border-radius: 12px; border: none;
+    background: #fff; box-shadow: var(--shadow-lg); cursor: pointer;
+    align-items: center; justify-content: center; font-size: 20px; color: var(--gray-700);
+  }
+  .nav-overlay {
+    display: none; position: fixed; inset: 0; background: rgba(0,0,0,.3);
+    z-index: 99; opacity: 0; transition: opacity var(--transition);
+  }
+
+  /* ── Main Content ── */
+  .main { margin-left: var(--nav-width); min-height: 100vh; }
+
+  /* ── Hero Section ── */
+  .hero {
+    position: relative; overflow: hidden;
+    background: linear-gradient(135deg, #0F172A 0%, #1E293B 40%, #1E3A5F 100%);
+    padding: 100px 60px 80px; color: #fff;
+  }
+  .hero::before {
+    content: ''; position: absolute; top: -50%; right: -20%; width: 800px; height: 800px;
+    background: radial-gradient(circle, rgba(37,99,235,.25) 0%, transparent 70%);
+    animation: heroPulse 8s ease-in-out infinite;
+  }
+  .hero::after {
+    content: ''; position: absolute; bottom: -30%; left: -10%; width: 600px; height: 600px;
+    background: radial-gradient(circle, rgba(99,102,241,.2) 0%, transparent 70%);
+    animation: heroPulse 10s ease-in-out infinite reverse;
+  }
+  @keyframes heroPulse { 0%,100%{ transform: scale(1); } 50%{ transform: scale(1.15); } }
+
+  .hero-content { position: relative; z-index: 1; max-width: 900px; }
+  .hero-badge {
+    display: inline-flex; align-items: center; gap: 6px;
+    background: rgba(255,255,255,.1); backdrop-filter: blur(8px);
+    border: 1px solid rgba(255,255,255,.15); border-radius: 100px;
+    padding: 6px 16px; font-size: 12px; font-weight: 500; color: var(--primary-200);
+    margin-bottom: 28px;
+  }
+  .hero-badge-dot {
+    width: 6px; height: 6px; border-radius: 50%; background: var(--success);
+    animation: dotPulse 2s ease-in-out infinite;
+  }
+  @keyframes dotPulse { 0%,100%{ opacity: 1; } 50%{ opacity: .4; } }
+
+  .hero h1 {
+    font-size: 48px; font-weight: 800; line-height: 1.15; letter-spacing: -1.5px;
+    margin-bottom: 20px;
+  }
+  .hero h1 .gradient-text {
+    background: linear-gradient(135deg, var(--primary-200), #93C5FD, var(--accent-light));
+    -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+    background-clip: text;
+  }
+  .hero-desc {
+    font-size: 17px; line-height: 1.8; color: rgba(255,255,255,.7);
+    max-width: 720px; margin-bottom: 40px;
+  }
+  .hero-stats { display: flex; gap: 40px; flex-wrap: wrap; }
+  .hero-stat { display: flex; flex-direction: column; }
+  .hero-stat-value {
+    font-size: 36px; font-weight: 800; letter-spacing: -1px;
+    background: linear-gradient(135deg, #fff, rgba(255,255,255,.8));
+    -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+  }
+  .hero-stat-label { font-size: 13px; color: rgba(255,255,255,.5); margin-top: 4px; font-weight: 500; }
+
+  /* ── Section Styles ── */
+  .section { padding: 72px 60px; }
+  .section:nth-child(even) { background: #fff; }
+  .section-header { margin-bottom: 48px; max-width: 700px; }
+  .section-label {
+    display: inline-flex; align-items: center; gap: 6px;
+    font-size: 12px; font-weight: 700; text-transform: uppercase; letter-spacing: 1.5px;
+    color: var(--primary); margin-bottom: 12px;
+  }
+  .section-label .label-bar { width: 20px; height: 3px; border-radius: 2px; background: var(--primary); }
+  .section-title {
+    font-size: 32px; font-weight: 800; letter-spacing: -.8px; color: var(--gray-900);
+    line-height: 1.25; margin-bottom: 12px;
+  }
+  .section-desc { font-size: 15px; color: var(--gray-500); line-height: 1.7; }
+
+  /* ── Cards ── */
+  .card-grid { display: grid; gap: 20px; }
+  .card-grid-2 { grid-template-columns: repeat(2, 1fr); }
+  .card-grid-3 { grid-template-columns: repeat(3, 1fr); }
+  .card-grid-4 { grid-template-columns: repeat(4, 1fr); }
+
+  .card {
+    background: #fff; border-radius: var(--radius); border: 1px solid var(--gray-200);
+    padding: 28px; transition: all var(--transition); position: relative; overflow: hidden;
+  }
+  .section:nth-child(even) .card { background: var(--gray-50); }
+  .card:hover { box-shadow: var(--shadow-lg); transform: translateY(-2px); border-color: var(--gray-300); }
+  .card-icon {
+    width: 48px; height: 48px; border-radius: 12px; display: flex;
+    align-items: center; justify-content: center; font-size: 22px; margin-bottom: 18px;
+  }
+  .card-icon.blue { background: var(--primary-100); color: var(--primary); }
+  .card-icon.green { background: var(--success-light); color: var(--success); }
+  .card-icon.amber { background: var(--warning-light); color: var(--warning); }
+  .card-icon.red { background: var(--danger-light); color: var(--danger); }
+  .card-icon.purple { background: var(--info-light); color: var(--info); }
+  .card-title { font-size: 16px; font-weight: 700; color: var(--gray-900); margin-bottom: 8px; }
+  .card-text { font-size: 14px; color: var(--gray-500); line-height: 1.7; }
+
+  /* ── Flow Diagram ── */
+  .flow-container { padding: 32px 0; overflow-x: auto; }
+  .flow-row {
+    display: flex; align-items: center; justify-content: center; gap: 0; flex-wrap: nowrap;
+    min-width: fit-content;
+  }
+  .flow-node {
+    padding: 14px 22px; border-radius: 12px; font-size: 13px; font-weight: 600;
+    white-space: nowrap; position: relative; border: 2px solid; flex-shrink: 0;
+  }
+  .flow-node.blue { background: var(--primary-50); border-color: var(--primary-200); color: var(--primary-dark); }
+  .flow-node.green { background: var(--success-light); border-color: #6EE7B7; color: #065F46; }
+  .flow-node.amber { background: var(--warning-light); border-color: #FDE68A; color: #92400E; }
+  .flow-node.red { background: var(--danger-light); border-color: #FECACA; color: #991B1B; }
+  .flow-node.purple { background: var(--info-light); border-color: #C7D2FE; color: #3730A3; }
+  .flow-node.gray { background: var(--gray-100); border-color: var(--gray-300); color: var(--gray-700); }
+  .flow-arrow {
+    display: flex; align-items: center; padding: 0 6px; color: var(--gray-400);
+    font-size: 18px; flex-shrink: 0;
+  }
+  .flow-arrow svg { width: 32px; height: 16px; }
+  .flow-sub { font-size: 11px; font-weight: 400; opacity: .7; display: block; margin-top: 2px; }
+
+  /* ── Architecture Diagram ── */
+  .arch-diagram {
+    background: linear-gradient(135deg, #0F172A, #1E293B);
+    border-radius: var(--radius-lg); padding: 48px 40px; position: relative; overflow: hidden;
+  }
+  .arch-diagram::before {
+    content: ''; position: absolute; inset: 0;
+    background: url("data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' fill-rule='evenodd'%3E%3Cg fill='%23ffffff' fill-opacity='0.03'%3E%3Cpath d='M36 34v-4h-2v4h-4v2h4v4h2v-4h4v-2h-4zm0-30V0h-2v4h-4v2h4v4h2V6h4V4h-4zM6 34v-4H4v4H0v2h4v4h2v-4h4v-2H6zM6 4V0H4v4H0v2h4v4h2V6h4V4H6z'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E");
+  }
+  .arch-layers { position: relative; z-index: 1; display: flex; flex-direction: column; gap: 20px; }
+  .arch-layer { display: flex; gap: 16px; align-items: stretch; justify-content: center; flex-wrap: wrap; }
+  .arch-box {
+    padding: 18px 24px; border-radius: 12px; text-align: center; min-width: 160px;
+    backdrop-filter: blur(8px); border: 1px solid; flex: 1; max-width: 300px;
+  }
+  .arch-box.client { background: rgba(37,99,235,.15); border-color: rgba(37,99,235,.3); }
+  .arch-box.server { background: rgba(16,185,129,.15); border-color: rgba(16,185,129,.3); }
+  .arch-box.external { background: rgba(245,158,11,.15); border-color: rgba(245,158,11,.3); }
+  .arch-box-title { font-size: 14px; font-weight: 700; color: #fff; margin-bottom: 4px; }
+  .arch-box-sub { font-size: 11px; color: rgba(255,255,255,.5); }
+  .arch-connector {
+    display: flex; justify-content: center; padding: 4px 0; color: rgba(255,255,255,.2);
+  }
+  .arch-connector svg { width: 24px; height: 24px; }
+
+  /* ── Pipeline ── */
+  .pipeline { display: flex; flex-direction: column; gap: 0; }
+  .pipeline-step {
+    display: flex; gap: 20px; position: relative; padding-bottom: 28px;
+  }
+  .pipeline-step:last-child { padding-bottom: 0; }
+  .pipeline-marker {
+    display: flex; flex-direction: column; align-items: center; flex-shrink: 0; width: 40px;
+  }
+  .pipeline-dot {
+    width: 40px; height: 40px; border-radius: 12px; display: flex;
+    align-items: center; justify-content: center; font-size: 16px; font-weight: 700;
+    color: #fff; background: var(--primary); flex-shrink: 0; z-index: 1;
+  }
+  .pipeline-line {
+    width: 2px; flex: 1; background: var(--primary-200); margin-top: 4px;
+  }
+  .pipeline-step:last-child .pipeline-line { display: none; }
+  .pipeline-body { flex: 1; padding-top: 6px; }
+  .pipeline-title { font-size: 15px; font-weight: 700; color: var(--gray-900); margin-bottom: 4px; }
+  .pipeline-desc { font-size: 13px; color: var(--gray-500); line-height: 1.6; }
+  .pipeline-code {
+    font-family: 'JetBrains Mono', monospace; font-size: 12px;
+    background: var(--gray-100); padding: 8px 14px; border-radius: 8px;
+    margin-top: 8px; color: var(--gray-700); border: 1px solid var(--gray-200);
+    overflow-x: auto; white-space: pre;
+  }
+
+  /* ── Table ── */
+  .data-table { width: 100%; border-collapse: separate; border-spacing: 0; }
+  .data-table thead th {
+    padding: 12px 16px; font-size: 12px; font-weight: 700; text-transform: uppercase;
+    letter-spacing: .8px; color: var(--gray-500); background: var(--gray-50);
+    border-bottom: 2px solid var(--gray-200); text-align: left;
+  }
+  .data-table tbody td {
+    padding: 14px 16px; font-size: 14px; border-bottom: 1px solid var(--gray-100);
+    vertical-align: top; color: var(--gray-700);
+  }
+  .data-table tbody tr:hover { background: var(--primary-50); }
+
+  /* ── Tags / Badges ── */
+  .tag {
+    display: inline-flex; align-items: center; gap: 4px;
+    padding: 3px 10px; border-radius: 6px; font-size: 12px; font-weight: 600;
+  }
+  .tag.blue { background: var(--primary-100); color: var(--primary); }
+  .tag.green { background: var(--success-light); color: #065F46; }
+  .tag.amber { background: var(--warning-light); color: #92400E; }
+  .tag.red { background: var(--danger-light); color: #991B1B; }
+  .tag.purple { background: var(--info-light); color: #3730A3; }
+  .tag.gray { background: var(--gray-100); color: var(--gray-600); }
+
+  /* ── Layered Validation Diagram ── */
+  .layer-stack { display: flex; flex-direction: column; gap: 3px; max-width: 800px; }
+  .layer-item {
+    padding: 20px 28px; border-radius: var(--radius); color: #fff;
+    display: flex; align-items: flex-start; gap: 16px; transition: all var(--transition);
+  }
+  .layer-item:hover { transform: translateX(6px); }
+  .layer-item.l1 { background: linear-gradient(135deg, #1E40AF, #2563EB); }
+  .layer-item.l2 { background: linear-gradient(135deg, #0E7490, #06B6D4); }
+  .layer-item.l3 { background: linear-gradient(135deg, #B45309, #F59E0B); }
+  .layer-item.l4 { background: linear-gradient(135deg, #065F46, #10B981); }
+  .layer-num {
+    font-size: 28px; font-weight: 900; opacity: .3; line-height: 1; flex-shrink: 0;
+    min-width: 36px;
+  }
+  .layer-content { flex: 1; }
+  .layer-title { font-size: 15px; font-weight: 700; margin-bottom: 4px; }
+  .layer-desc { font-size: 13px; opacity: .8; line-height: 1.6; }
+
+  /* ── Principle Quote ── */
+  .principle-quote {
+    background: linear-gradient(135deg, var(--primary-50), var(--info-light));
+    border-left: 4px solid var(--primary); border-radius: 0 var(--radius) var(--radius) 0;
+    padding: 28px 32px; margin: 32px 0; font-size: 17px; font-weight: 600;
+    color: var(--gray-800); line-height: 1.7; position: relative;
+  }
+  .principle-quote::before {
+    content: '"'; position: absolute; top: -10px; left: 16px; font-size: 60px;
+    color: var(--primary-200); font-family: Georgia, serif; line-height: 1;
+  }
+
+  /* ── User Journey Cards ── */
+  .journey-card {
+    background: #fff; border-radius: var(--radius-lg); border: 1px solid var(--gray-200);
+    overflow: hidden; transition: all var(--transition);
+  }
+  .journey-card:hover { box-shadow: var(--shadow-xl); transform: translateY(-3px); }
+  .journey-header {
+    padding: 20px 24px; display: flex; align-items: center; gap: 14px;
+    border-bottom: 1px solid var(--gray-100);
+  }
+  .journey-num {
+    width: 36px; height: 36px; border-radius: 10px; display: flex;
+    align-items: center; justify-content: center; font-size: 15px; font-weight: 800;
+    color: #fff; flex-shrink: 0;
+  }
+  .journey-header-text { flex: 1; }
+  .journey-title { font-size: 16px; font-weight: 700; color: var(--gray-900); }
+  .journey-subtitle { font-size: 12px; color: var(--gray-400); margin-top: 2px; }
+  .journey-body { padding: 20px 24px; }
+  .journey-flow {
+    display: flex; flex-wrap: wrap; gap: 6px; align-items: center;
+  }
+  .journey-flow-step {
+    padding: 6px 14px; border-radius: 8px; font-size: 12px; font-weight: 600;
+    background: var(--gray-100); color: var(--gray-700);
+  }
+  .journey-flow-arrow { color: var(--gray-400); font-size: 14px; }
+  .journey-points { margin-top: 16px; }
+  .journey-point {
+    display: flex; gap: 10px; padding: 6px 0; font-size: 13px; color: var(--gray-600);
+  }
+  .journey-point-icon { color: var(--primary); font-size: 14px; margin-top: 2px; flex-shrink: 0; }
+
+  /* ── Tech Stack ── */
+  .tech-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 12px; }
+  .tech-item {
+    padding: 16px 20px; border-radius: 10px; background: rgba(255,255,255,.05);
+    border: 1px solid rgba(255,255,255,.1); backdrop-filter: blur(4px);
+  }
+  .tech-item-label { font-size: 11px; color: rgba(255,255,255,.4); font-weight: 600; text-transform: uppercase; letter-spacing: .8px; margin-bottom: 4px; }
+  .tech-item-value { font-size: 14px; color: #fff; font-weight: 600; }
+  .tech-item-desc { font-size: 12px; color: rgba(255,255,255,.5); margin-top: 2px; }
+
+  /* ── Comparison Table ── */
+  .compare-table { width: 100%; border-collapse: separate; border-spacing: 0; border-radius: var(--radius); overflow: hidden; border: 1px solid var(--gray-200); }
+  .compare-table thead th {
+    padding: 16px 20px; font-size: 14px; font-weight: 700;
+    background: var(--gray-800); color: #fff; text-align: left;
+  }
+  .compare-table thead th:first-child { background: var(--gray-700); }
+  .compare-table tbody td {
+    padding: 14px 20px; font-size: 14px; border-bottom: 1px solid var(--gray-100);
+    vertical-align: top;
+  }
+  .compare-table tbody tr:last-child td { border-bottom: none; }
+  .compare-old { color: var(--gray-500); }
+  .compare-new { color: var(--gray-800); font-weight: 500; }
+  .compare-icon { margin-right: 6px; }
+
+  /* ── Module Grid ── */
+  .module-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 14px; }
+  .module-item {
+    display: flex; gap: 14px; padding: 18px; border-radius: 10px;
+    background: #fff; border: 1px solid var(--gray-200); transition: all var(--transition);
+  }
+  .section:nth-child(even) .module-item { background: var(--gray-50); }
+  .module-item:hover { border-color: var(--primary-200); box-shadow: var(--shadow); }
+  .module-icon {
+    width: 38px; height: 38px; border-radius: 10px; background: var(--primary-50);
+    display: flex; align-items: center; justify-content: center;
+    font-family: 'JetBrains Mono', monospace; font-size: 12px; font-weight: 700;
+    color: var(--primary); flex-shrink: 0;
+  }
+  .module-name { font-size: 13px; font-weight: 700; color: var(--gray-800); font-family: 'JetBrains Mono', monospace; }
+  .module-desc { font-size: 12px; color: var(--gray-500); margin-top: 2px; }
+
+  /* ── Country Flags ── */
+  .country-grid { display: flex; flex-wrap: wrap; gap: 10px; }
+  .country-chip {
+    display: flex; align-items: center; gap: 8px; padding: 8px 16px;
+    border-radius: 100px; background: #fff; border: 1px solid var(--gray-200);
+    font-size: 13px; font-weight: 600; color: var(--gray-700);
+    transition: all var(--transition);
+  }
+  .country-chip:hover { border-color: var(--primary-200); background: var(--primary-50); }
+  .country-flag { font-size: 20px; }
+
+  /* ── Highlight Box ── */
+  .highlight-box {
+    border-radius: var(--radius-lg); padding: 36px; position: relative; overflow: hidden;
+  }
+  .highlight-box.dark {
+    background: linear-gradient(135deg, #0F172A, #1E293B); color: #fff;
+  }
+  .highlight-box.blue {
+    background: linear-gradient(135deg, var(--primary-50), #DBEAFE);
+    border: 1px solid var(--primary-200);
+  }
+  .highlight-box-title { font-size: 22px; font-weight: 800; margin-bottom: 16px; }
+  .highlight-box.dark .highlight-box-title { color: #fff; }
+
+  /* ── Conclusion ── */
+  .conclusion {
+    background: linear-gradient(135deg, #0F172A 0%, #1E293B 40%, #1E3A5F 100%);
+    padding: 80px 60px; color: #fff; position: relative; overflow: hidden;
+  }
+  .conclusion::before {
+    content: ''; position: absolute; top: 0; left: 0; right: 0; height: 1px;
+    background: linear-gradient(90deg, transparent, rgba(37,99,235,.5), transparent);
+  }
+  .conclusion-content { max-width: 800px; position: relative; z-index: 1; }
+  .conclusion h2 {
+    font-size: 36px; font-weight: 800; margin-bottom: 28px; letter-spacing: -1px;
+    line-height: 1.3;
+  }
+  .conclusion-points { display: flex; flex-direction: column; gap: 20px; }
+  .conclusion-point {
+    display: flex; gap: 16px; padding: 20px 24px; border-radius: var(--radius);
+    background: rgba(255,255,255,.05); border: 1px solid rgba(255,255,255,.1);
+    backdrop-filter: blur(8px);
+  }
+  .conclusion-point-icon {
+    width: 44px; height: 44px; border-radius: 12px; display: flex;
+    align-items: center; justify-content: center; font-size: 20px; flex-shrink: 0;
+  }
+  .conclusion-point-text { flex: 1; }
+  .conclusion-point-label { font-size: 14px; font-weight: 700; margin-bottom: 4px; color: var(--primary-200); }
+  .conclusion-point-desc { font-size: 14px; color: rgba(255,255,255,.7); line-height: 1.7; }
+
+  /* ── Config Model ── */
+  .config-layers { display: flex; flex-direction: column; gap: 8px; max-width: 700px; }
+  .config-layer {
+    display: flex; align-items: center; gap: 16px; padding: 16px 20px;
+    border-radius: 10px; background: rgba(255,255,255,.06);
+    border: 1px solid rgba(255,255,255,.08); transition: all var(--transition);
+  }
+  .config-layer:hover { background: rgba(255,255,255,.1); transform: translateX(4px); }
+  .config-num {
+    width: 32px; height: 32px; border-radius: 8px; display: flex;
+    align-items: center; justify-content: center; font-size: 14px; font-weight: 800;
+    background: var(--primary); color: #fff; flex-shrink: 0;
+  }
+  .config-path {
+    font-family: 'JetBrains Mono', monospace; font-size: 13px; color: var(--accent-light);
+    font-weight: 500;
+  }
+  .config-desc { font-size: 12px; color: rgba(255,255,255,.5); margin-top: 2px; }
+
+  /* ── Animations ── */
+  .fade-up {
+    opacity: 0; transform: translateY(30px);
+    transition: opacity .6s ease, transform .6s ease;
+  }
+  .fade-up.visible { opacity: 1; transform: translateY(0); }
+
+  /* ── Responsive ── */
+  @media (max-width: 1100px) {
+    .card-grid-4 { grid-template-columns: repeat(2, 1fr); }
+    .card-grid-3 { grid-template-columns: repeat(2, 1fr); }
+  }
+  @media (max-width: 900px) {
+    .sidebar { transform: translateX(-100%); }
+    .sidebar.open { transform: translateX(0); }
+    .nav-toggle { display: flex; }
+    .nav-overlay.open { display: block; opacity: 1; }
+    .main { margin-left: 0; }
+    .hero { padding: 80px 28px 60px; }
+    .hero h1 { font-size: 32px; }
+    .section { padding: 48px 28px; }
+    .card-grid-2, .card-grid-3, .card-grid-4 { grid-template-columns: 1fr; }
+    .conclusion { padding: 60px 28px; }
+    .arch-diagram { padding: 28px 20px; }
+  }
+  @media (max-width: 600px) {
+    .hero-stats { gap: 24px; }
+    .hero-stat-value { font-size: 28px; }
+    .flow-row { flex-wrap: wrap; justify-content: center; }
+  }
+</style>
+</head>
+<body>
+
+<!-- Mobile Nav Toggle -->
+<button class="nav-toggle" onclick="toggleNav()" aria-label="Toggle navigation">☰</button>
+<div class="nav-overlay" onclick="toggleNav()"></div>
+
+<!-- Sidebar Navigation -->
+<nav class="sidebar">
+  <div class="sidebar-header">
+    <a href="#top" class="sidebar-logo">
+      <div class="sidebar-logo-icon">A</div>
+      <div>
+        <div class="sidebar-logo-text">AttendanceAgent</div>
+        <div class="sidebar-logo-sub">项目汇报 · v1.x</div>
+      </div>
+    </a>
+  </div>
+  <div class="sidebar-nav">
+    <div class="nav-group-title">概览</div>
+    <a class="nav-link" href="#summary"><span class="nav-icon">◈</span> 一句话总结</a>
+
+    <div class="nav-group-title">业务篇</div>
+    <a class="nav-link" href="#problem"><span class="nav-icon">⚡</span> 问题与痛点</a>
+    <a class="nav-link" href="#scenarios"><span class="nav-icon">◇</span> 核心场景</a>
+    <a class="nav-link" href="#value"><span class="nav-icon">△</span> 提效与价值</a>
+    <a class="nav-link" href="#validation"><span class="nav-icon">▣</span> 校验与规则</a>
+    <a class="nav-link" href="#ux"><span class="nav-icon">◎</span> 交互与体验</a>
+    <a class="nav-link" href="#challenges-biz"><span class="nav-icon">◆</span> 难点与解决</a>
+
+    <div class="nav-group-title">技术篇</div>
+    <a class="nav-link" href="#architecture"><span class="nav-icon">▦</span> 总体架构</a>
+    <a class="nav-link" href="#dataflow"><span class="nav-icon">⇄</span> 核心数据流</a>
+    <a class="nav-link" href="#ai-pipeline"><span class="nav-icon">◉</span> AI 识别管线</a>
+    <a class="nav-link" href="#feishu"><span class="nav-icon">⇌</span> 飞书集成</a>
+    <a class="nav-link" href="#shared"><span class="nav-icon">≡</span> 多端一致性</a>
+    <a class="nav-link" href="#permission"><span class="nav-icon">⊡</span> 权限与多国</a>
+    <a class="nav-link" href="#challenges-tech"><span class="nav-icon">⚙</span> 工程解法</a>
+  </div>
+  <div class="sidebar-footer">
+    AttendanceAgent © 2026
+  </div>
+</nav>
+
+<!-- Main Content -->
+<main class="main" id="top">
+
+  <!-- Hero -->
+  <section class="hero">
+    <div class="hero-content">
+      <div class="hero-badge">
+        <span class="hero-badge-dot"></span>
+        基于飞书平台 · AI 视觉识别 · v1.x
+      </div>
+      <h1>
+        AI 考勤智能助手<br>
+        <span class="gradient-text">AttendanceAgent</span>
+      </h1>
+      <p class="hero-desc">
+        把「纸质/电子考勤表拍照 → AI 结构化识别 → 人工快速核对 → 一键写入飞书多维表格」串成一条可审计、可配置、可跨国运营的流水线，让现场采集与后台入账从「逐格抄写」变成「拍照 + 点确认」。
+      </p>
+      <div class="hero-stats">
+        <div class="hero-stat">
+          <div class="hero-stat-value">9+</div>
+          <div class="hero-stat-label">支持国家</div>
+        </div>
+        <div class="hero-stat">
+          <div class="hero-stat-value">4 层</div>
+          <div class="hero-stat-label">校验体系</div>
+        </div>
+        <div class="hero-stat">
+          <div class="hero-stat-value">3 端</div>
+          <div class="hero-stat-label">PC · 小程序 · 后端</div>
+        </div>
+        <div class="hero-stat">
+          <div class="hero-stat-value">8 语言</div>
+          <div class="hero-stat-label">国际化支持</div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- 1. Summary -->
+  <section class="section" id="summary">
+    <div class="section-header fade-up">
+      <div class="section-label"><span class="label-bar"></span> 概览</div>
+      <h2 class="section-title">一句话总结</h2>
+    </div>
+    <div class="principle-quote fade-up">
+      考勤数据宁可空不可编；不确定就标出来，让人来决定。
+    </div>
+    <div class="card-grid card-grid-3 fade-up">
+      <div class="card">
+        <div class="card-icon blue">📸</div>
+        <div class="card-title">拍照即采集</div>
+        <div class="card-text">现场纸质/电子考勤表拍照上传，AI 自动逐格 OCR 识别，支持多语言表头与手写混排。</div>
+      </div>
+      <div class="card">
+        <div class="card-icon green">✓</div>
+        <div class="card-title">异常优先核对</div>
+        <div class="card-text">系统自动标记模糊、疑似、缺失行，人工只需聚焦 10% 异常，正常行抽样确认即可。</div>
+      </div>
+      <div class="card">
+        <div class="card-icon purple">⇄</div>
+        <div class="card-title">一键入账飞书</div>
+        <div class="card-text">确认后自动结构化写入飞书多维表格，支持按国别映射字段、失败重试与审计追踪。</div>
+      </div>
+    </div>
+  </section>
+
+  <!-- 2. Problem -->
+  <section class="section" id="problem">
+    <div class="section-header fade-up">
+      <div class="section-label"><span class="label-bar"></span> 业务篇</div>
+      <h2 class="section-title">我们在解决什么问题</h2>
+      <p class="section-desc">跨国仓储、劳务外包场景下，考勤数据的人工入账成本高、错误率高、多端协同断裂。</p>
+    </div>
+    <div class="card-grid card-grid-2 fade-up" style="margin-bottom: 36px;">
+      <div class="card">
+        <div class="card-icon red">📋</div>
+        <div class="card-title">表单形态多样</div>
+        <div class="card-text">纸质拍照、多语言表头（中/法/德/荷/西等）、手写与打印混排，格式不统一。</div>
+      </div>
+      <div class="card">
+        <div class="card-icon amber">⏱</div>
+        <div class="card-title">人工入账成本高</div>
+        <div class="card-text">现场拍完照，后台需逐行抄写姓名、日期、到离时间、休息、签字等到飞书多维表格。</div>
+      </div>
+      <div class="card">
+        <div class="card-icon purple">⚠</div>
+        <div class="card-title">AI 不可盲信</div>
+        <div class="card-text">大模型容易「猜时间」「抄示例」「把表头当数据」，直接入库会造成合规与对账风险。</div>
+      </div>
+      <div class="card">
+        <div class="card-icon blue">🔗</div>
+        <div class="card-title">多端协同断裂</div>
+        <div class="card-text">现场用手机、办公室用 PC，若任务与统计不一致，核对效率反而下降。</div>
+      </div>
+    </div>
+
+    <div class="fade-up" style="margin-bottom: 36px;">
+      <h3 style="font-size: 18px; font-weight: 700; margin-bottom: 16px; color: var(--gray-800);">产品定位</h3>
+      <div class="card-grid card-grid-2">
+        <div class="card" style="border-left: 4px solid var(--gray-300);">
+          <div class="card-title" style="color: var(--gray-500);">不是</div>
+          <div class="card-text">「全自动无人值守考勤系统」</div>
+        </div>
+        <div class="card" style="border-left: 4px solid var(--primary);">
+          <div class="card-title" style="color: var(--primary);">而是</div>
+          <div class="card-text">「AI 辅助 + 人工把关 + 飞书落地」的<strong>人机协同录入平台</strong></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="fade-up">
+      <h3 style="font-size: 18px; font-weight: 700; margin-bottom: 16px; color: var(--gray-800);">目标用户</h3>
+      <table class="data-table">
+        <thead>
+          <tr><th>角色</th><th>典型场景</th><th>主要终端</th></tr>
+        </thead>
+        <tbody>
+          <tr><td><span class="tag blue">现场仓管 / 班组长</span></td><td>拍照上传、移动端快速核对、确认提交</td><td>飞书小程序</td></tr>
+          <tr><td><span class="tag green">后台 HR / 运营</span></td><td>批量审核、导出、配置规则、处理异常</td><td>PC Web</td></tr>
+          <tr><td><span class="tag purple">系统管理员</span></td><td>飞书映射、AI 提示词、权限、审计、提醒规则</td><td>PC Web</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <!-- 3. Scenarios -->
+  <section class="section" id="scenarios">
+    <div class="section-header fade-up">
+      <div class="section-label"><span class="label-bar"></span> 业务篇</div>
+      <h2 class="section-title">核心场景与用户旅程</h2>
+      <p class="section-desc">围绕任务状态机设计四大核心场景，把「AI 产出」与「业务入账」明确切开。</p>
+    </div>
+
+    <!-- State Machine Flow -->
+    <div class="fade-up" style="margin-bottom: 40px;">
+      <h3 style="font-size: 16px; font-weight: 700; margin-bottom: 16px; color: var(--gray-700);">主流程状态机</h3>
+      <div class="flow-container">
+        <div class="flow-row">
+          <div class="flow-node blue">上传/识别开始<span class="flow-sub">processing</span></div>
+          <div class="flow-arrow"><svg viewBox="0 0 32 16"><path d="M0 8h28m-6-6l6 6-6 6" stroke="currentColor" stroke-width="2" fill="none"/></svg></div>
+          <div class="flow-node amber">待核对<span class="flow-sub">processed · 人工主战场</span></div>
+          <div class="flow-arrow"><svg viewBox="0 0 32 16"><path d="M0 8h28m-6-6l6 6-6 6" stroke="currentColor" stroke-width="2" fill="none"/></svg></div>
+          <div class="flow-node green">已完成<span class="flow-sub">confirmed</span></div>
+          <div class="flow-arrow"><svg viewBox="0 0 32 16"><path d="M0 8h28m-6-6l6 6-6 6" stroke="currentColor" stroke-width="2" fill="none"/></svg></div>
+          <div class="flow-node purple">异步写入飞书<span class="flow-sub">synced / sync_failed</span></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Journey Cards -->
+    <div class="card-grid card-grid-2 fade-up">
+      <div class="journey-card">
+        <div class="journey-header">
+          <div class="journey-num" style="background: var(--primary);">01</div>
+          <div class="journey-header-text">
+            <div class="journey-title">现场拍照识别</div>
+            <div class="journey-subtitle">飞书小程序 · 移动端</div>
+          </div>
+        </div>
+        <div class="journey-body">
+          <div class="journey-flow">
+            <span class="journey-flow-step">选择国家</span>
+            <span class="journey-flow-arrow">→</span>
+            <span class="journey-flow-step">拍照/相册</span>
+            <span class="journey-flow-arrow">→</span>
+            <span class="journey-flow-step">识别进度</span>
+            <span class="journey-flow-arrow">→</span>
+            <span class="journey-flow-step">结果页</span>
+            <span class="journey-flow-arrow">→</span>
+            <span class="journey-flow-step">抽样核对</span>
+            <span class="journey-flow-arrow">→</span>
+            <span class="journey-flow-step">确认提交</span>
+          </div>
+          <div class="journey-points">
+            <div class="journey-point"><span class="journey-point-icon">◆</span> 国家门禁：未配置工作国家不允许上传</div>
+            <div class="journey-point"><span class="journey-point-icon">◆</span> 识别中页：步骤化进度 + 品牌动效，降低等待焦虑</div>
+            <div class="journey-point"><span class="journey-point-icon">◆</span> 结果页「异常优先」：正常行折叠，减少信息噪音</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="journey-card">
+        <div class="journey-header">
+          <div class="journey-num" style="background: var(--success);">02</div>
+          <div class="journey-header-text">
+            <div class="journey-title">办公室深度核对</div>
+            <div class="journey-subtitle">PC Web · 桌面端</div>
+          </div>
+        </div>
+        <div class="journey-body">
+          <div class="journey-flow">
+            <span class="journey-flow-step">任务列表</span>
+            <span class="journey-flow-arrow">→</span>
+            <span class="journey-flow-step">任务详情</span>
+            <span class="journey-flow-arrow">→</span>
+            <span class="journey-flow-step">表格编辑</span>
+            <span class="journey-flow-arrow">→</span>
+            <span class="journey-flow-step">异常分组</span>
+            <span class="journey-flow-arrow">→</span>
+            <span class="journey-flow-step">确认提交</span>
+            <span class="journey-flow-arrow">→</span>
+            <span class="journey-flow-step">同步状态</span>
+          </div>
+          <div class="journey-points">
+            <div class="journey-point"><span class="journey-point-icon">◆</span> PC 承担高密度信息：多列同屏、批量浏览、配置中心</div>
+            <div class="journey-point"><span class="journey-point-icon">◆</span> 重复名检测、格式高亮、必填缺失分组展示</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="journey-card">
+        <div class="journey-header">
+          <div class="journey-num" style="background: var(--warning);">03</div>
+          <div class="journey-header-text">
+            <div class="journey-title">确认后校准</div>
+            <div class="journey-subtitle">已入账修正 · 审计链</div>
+          </div>
+        </div>
+        <div class="journey-body">
+          <div class="journey-points">
+            <div class="journey-point"><span class="journey-point-icon">◆</span> 具备 <code style="background:var(--gray-100);padding:2px 6px;border-radius:4px;font-size:12px;">recordCalibrate</code> 权限的用户可对单行做校准</div>
+            <div class="journey-point"><span class="journey-point-icon">◆</span> 修改字段 + 必填原因，写入审计链</div>
+            <div class="journey-point"><span class="journey-point-icon">◆</span> 异步更新飞书对应行，承认「确认不是终点」</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="journey-card">
+        <div class="journey-header">
+          <div class="journey-num" style="background: var(--info);">04</div>
+          <div class="journey-header-text">
+            <div class="journey-title">运营提醒</div>
+            <div class="journey-subtitle">待核对滞后 · 闭环驱动</div>
+          </div>
+        </div>
+        <div class="journey-body">
+          <div class="journey-points">
+            <div class="journey-point"><span class="journey-point-icon">◆</span> 对长期停留在 processed 的任务，按可配置规则发送通知</div>
+            <div class="journey-point"><span class="journey-point-icon">◆</span> PC 站内通知（铃铛）+ 飞书交互卡片</div>
+            <div class="journey-point"><span class="journey-point-icon">◆</span> 提醒是闭环，不是骚扰：周期桶去重、全局开关</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- 4. Value -->
+  <section class="section" id="value">
+    <div class="section-header fade-up">
+      <div class="section-label"><span class="label-bar"></span> 业务篇</div>
+      <h2 class="section-title">提效思考与价值</h2>
+      <p class="section-desc">效率杠杆不在「取消人工」，而在缩小注意力范围、下沉重复劳动、一键化入账动作。</p>
+    </div>
+
+    <div class="fade-up" style="margin-bottom: 40px;">
+      <h3 style="font-size: 16px; font-weight: 700; margin-bottom: 16px; color: var(--gray-700);">从「抄表」到「审表」</h3>
+      <table class="compare-table">
+        <thead>
+          <tr><th style="width:45%">传统方式</th><th style="width:45%">AttendanceAgent 方式</th></tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td class="compare-old"><span class="compare-icon">✕</span> 人眼读图 + 手敲每一格</td>
+            <td class="compare-new"><span class="compare-icon" style="color:var(--success)">✓</span> AI 逐格 OCR + 人只处理异常</td>
+          </tr>
+          <tr>
+            <td class="compare-old"><span class="compare-icon">✕</span> 错误发现靠对账</td>
+            <td class="compare-new"><span class="compare-icon" style="color:var(--success)">✓</span> 识别阶段即打标：模糊/手写/未出勤/夜班</td>
+          </tr>
+          <tr>
+            <td class="compare-old"><span class="compare-icon">✕</span> 多国表各自一套 Excel</td>
+            <td class="compare-new"><span class="compare-icon" style="color:var(--success)">✓</span> 一国一提示词 + 一国一飞书映射，配置驱动</td>
+          </tr>
+          <tr>
+            <td class="compare-old"><span class="compare-icon">✕</span> 手机拍了发微信，PC 再录</td>
+            <td class="compare-new"><span class="compare-icon" style="color:var(--success)">✓</span> 小程序拍照 → 同账号任务 PC 可续审</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+    <div class="card-grid card-grid-3 fade-up" style="margin-bottom: 40px;">
+      <div class="card" style="text-align: center; border-top: 3px solid var(--primary);">
+        <div style="font-size: 36px; margin-bottom: 12px;">🔍</div>
+        <div class="card-title">缩小注意力范围</div>
+        <div class="card-text">只看异常行、异常字段，正常行抽样提交即可</div>
+      </div>
+      <div class="card" style="text-align: center; border-top: 3px solid var(--success);">
+        <div style="font-size: 36px; margin-bottom: 12px;">⚙</div>
+        <div class="card-title">重复劳动下沉机器</div>
+        <div class="card-text">格式归一、夜班重算、重复名比对全部自动化</div>
+      </div>
+      <div class="card" style="text-align: center; border-top: 3px solid var(--info);">
+        <div style="font-size: 36px; margin-bottom: 12px;">⇄</div>
+        <div class="card-title">入账动作一键化</div>
+        <div class="card-text">确认即 structured JSON → Bitable 批量写入</div>
+      </div>
+    </div>
+
+    <div class="fade-up">
+      <h3 style="font-size: 16px; font-weight: 700; margin-bottom: 16px; color: var(--gray-700);">多国运营支持</h3>
+      <div class="country-grid">
+        <div class="country-chip"><span class="country-flag">🇨🇳</span> 中国</div>
+        <div class="country-chip"><span class="country-flag">🇫🇷</span> 法国</div>
+        <div class="country-chip"><span class="country-flag">🇩🇪</span> 德国</div>
+        <div class="country-chip"><span class="country-flag">🇺🇸</span> 美国</div>
+        <div class="country-chip"><span class="country-flag">🇵🇱</span> 波兰</div>
+        <div class="country-chip"><span class="country-flag">🇳🇱</span> 荷兰</div>
+        <div class="country-chip"><span class="country-flag">🇮🇹</span> 意大利</div>
+        <div class="country-chip"><span class="country-flag">🇪🇸</span> 西班牙</div>
+        <div class="country-chip"><span class="country-flag">🇨🇿</span> 捷克</div>
+      </div>
+    </div>
+  </section>
+
+  <!-- 5. Validation -->
+  <section class="section" id="validation">
+    <div class="section-header fade-up">
+      <div class="section-label"><span class="label-bar"></span> 业务篇</div>
+      <h2 class="section-title">校验与规则设计</h2>
+      <p class="section-desc">校验不是「卡用户」，而是把风险前置到确认按钮之前，让操作者始终知道「为什么不能提交」以及「改哪里」。</p>
+    </div>
+
+    <div class="layer-stack fade-up" style="margin-bottom: 40px;">
+      <div class="layer-item l1">
+        <div class="layer-num">L1</div>
+        <div class="layer-content">
+          <div class="layer-title">识别层质量守卫</div>
+          <div class="layer-desc">AI 产出后、展示前 — 示例行过滤 / 表头占位过滤 / 臆测时间检测 / 图片可读性评估</div>
+        </div>
+      </div>
+      <div class="layer-item l2">
+        <div class="layer-num">L2</div>
+        <div class="layer-content">
+          <div class="layer-title">展示层异常聚合</div>
+          <div class="layer-desc">结果页 / 任务编辑页 — 标记列翻译 / 必填缺失 / 看不清字段 / 重名疑似 / 格式异常</div>
+        </div>
+      </div>
+      <div class="layer-item l3">
+        <div class="layer-num">L3</div>
+        <div class="layer-content">
+          <div class="layer-title">确认提交阻断</div>
+          <div class="layer-desc">客户端预检 + 服务端强校验 — 必填项 / 字段格式 / 到离相同 / 删除 &amp; 未出勤豁免</div>
+        </div>
+      </div>
+      <div class="layer-item l4">
+        <div class="layer-num">L4</div>
+        <div class="layer-content">
+          <div class="layer-title">同步层</div>
+          <div class="layer-desc">确认之后 — 已删除行不写飞书 / 按国开关同步 / 失败可重试不 rollback</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="card-grid card-grid-2 fade-up">
+      <div class="card">
+        <div class="card-icon blue">✓</div>
+        <div class="card-title">必填校验（可配置）</div>
+        <div class="card-text">默认必填：姓名、日期、到达、离开、休息。管理员可配置，整行豁免已删除/未出勤行，占位符视为缺失。</div>
+      </div>
+      <div class="card">
+        <div class="card-icon green">⊞</div>
+        <div class="card-title">格式校验（固定开启）</div>
+        <div class="card-text">日期 YYYY-MM-DD、班次须含两个时间、到达/离开各为一个时间点、到达=离开则禁止确认。</div>
+      </div>
+      <div class="card">
+        <div class="card-icon amber">⊕</div>
+        <div class="card-title">识别语义校验 SmartMark</div>
+        <div class="card-text">AI 输出标记列：正常、模糊、手写、夜班、未出勤、已删除。后端与前端统一翻译为可读标签。</div>
+      </div>
+      <div class="card">
+        <div class="card-icon purple">≡</div>
+        <div class="card-title">重复名 &amp; 夜班规则</div>
+        <div class="card-text">按国家+仓库+日期+中介+基础姓名分组检测重复。夜班支持全局默认+按国覆盖，不仅依赖模型自报。</div>
+      </div>
+    </div>
+  </section>
+
+  <!-- 6. UX -->
+  <section class="section" id="ux">
+    <div class="section-header fade-up">
+      <div class="section-label"><span class="label-bar"></span> 业务篇</div>
+      <h2 class="section-title">交互与体验设计</h2>
+      <p class="section-desc">设计系统代号 Product Clarity：关键页有氛围、业务页要可读、一蓝到底、状态一眼分清。</p>
+    </div>
+
+    <div class="card-grid card-grid-4 fade-up" style="margin-bottom: 36px;">
+      <div class="card" style="text-align:center;">
+        <div style="font-size:28px;margin-bottom:10px;">🎨</div>
+        <div class="card-title">关键页有氛围</div>
+        <div class="card-text">登录、识别中、空状态用定制插画</div>
+      </div>
+      <div class="card" style="text-align:center;">
+        <div style="font-size:28px;margin-bottom:10px;">📖</div>
+        <div class="card-title">业务页要可读</div>
+        <div class="card-text">密卡片 + 语义色标签 + 固定底部主操作</div>
+      </div>
+      <div class="card" style="text-align:center;">
+        <div style="font-size:28px;margin-bottom:10px;">💎</div>
+        <div class="card-title">一蓝到底</div>
+        <div class="card-text">主色 #2563EB，渐变仅用于 CTA/英雄区</div>
+      </div>
+      <div class="card" style="text-align:center;">
+        <div style="font-size:28px;margin-bottom:10px;">🚦</div>
+        <div class="card-title">状态一眼分清</div>
+        <div class="card-text">待核对=警示、已完成=成功、同步失败=可重试</div>
+      </div>
+    </div>
+
+    <div class="fade-up" style="margin-bottom: 36px;">
+      <h3 style="font-size: 16px; font-weight: 700; margin-bottom: 16px; color: var(--gray-700);">双端能力分工</h3>
+      <table class="data-table">
+        <thead>
+          <tr><th>能力</th><th>小程序</th><th>PC</th></tr>
+        </thead>
+        <tbody>
+          <tr><td>采集</td><td><span class="tag green">主战场</span></td><td><span class="tag gray">上传为辅</span></td></tr>
+          <tr><td>快速核对 &amp; 提交</td><td><span class="tag green">✓</span></td><td><span class="tag green">✓</span></td></tr>
+          <tr><td>大批量浏览编辑</td><td><span class="tag amber">分页加载</span></td><td><span class="tag green">表格</span></td></tr>
+          <tr><td>配置中心</td><td><span class="tag amber">国家/语言</span></td><td><span class="tag green">全量</span></td></tr>
+          <tr><td>导出 Excel</td><td><span class="tag gray">—</span></td><td><span class="tag green">✓</span></td></tr>
+          <tr><td>权限 / 审计 / 提醒</td><td><span class="tag gray">—</span></td><td><span class="tag green">✓</span></td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <div class="fade-up">
+      <h3 style="font-size: 16px; font-weight: 700; margin-bottom: 16px; color: var(--gray-700);">国际化 i18n 工程化</h3>
+      <div class="card" style="max-width: 600px;">
+        <div class="card-text" style="margin-bottom: 12px;">文案源按 common + pc + miniprogram 三层组织，构建时生成各端产物，CI 脚本防止漏翻、键名裸露。</div>
+        <div style="font-family:'JetBrains Mono',monospace;font-size:13px;color:var(--gray-600);background:var(--gray-50);padding:16px;border-radius:8px;border:1px solid var(--gray-200);line-height:1.8;">
+          shared/locales/{common,pc,miniprogram}/&lt;locale&gt;.json<br>
+          &nbsp;&nbsp;↓ npm run build:locales<br>
+          frontend/src/locales/*.js + miniprogram/utils/localeMessages.js<br>
+          &nbsp;&nbsp;↓ CI check:locale-*<br>
+          键齐全、结构一致、禁止键名裸露到 UI
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- 7. Biz Challenges -->
+  <section class="section" id="challenges-biz">
+    <div class="section-header fade-up">
+      <div class="section-label"><span class="label-bar"></span> 业务篇</div>
+      <h2 class="section-title">典型难点与解决思路</h2>
+    </div>
+    <div class="fade-up">
+      <table class="data-table">
+        <thead>
+          <tr><th style="width:25%">难点</th><th style="width:30%">业务风险</th><th>解决思路</th></tr>
+        </thead>
+        <tbody>
+          <tr><td>图糊但时间很整齐</td><td>AI 编造出勤</td><td>质量守卫：拒绝或强提示</td></tr>
+          <tr><td>提示词示例被抄进结果</td><td>假员工入库</td><td>PromptGuard 剥示例 + 命中计数拒绝</td></tr>
+          <tr><td>多国日期格式</td><td>03/04/2026 歧义</td><td>明确格式自动转；歧义保留原值 + 确认前阻断</td></tr>
+          <tr><td>同名同天两人</td><td>工资对账错误</td><td>历史重复检测 + 人工确认非重复</td></tr>
+          <tr><td>到离时间相同</td><td>零工时误记</td><td>格式层互斥校验，双端阻断提交</td></tr>
+          <tr><td>确认后飞书失败</td><td>以为没入账</td><td>sync_status 显式展示 + 重试同步，不回滚确认</td></tr>
+          <tr><td>PC 与手机任务不一致</td><td>重复劳动</td><td>推荐绑定 feishu_user_id；统计走统一 summary API</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <!-- 8. Architecture -->
+  <section class="section" id="architecture">
+    <div class="section-header fade-up">
+      <div class="section-label"><span class="label-bar"></span> 技术篇</div>
+      <h2 class="section-title">总体架构</h2>
+      <p class="section-desc">前后端分离 + AI 视觉管线 + 飞书深度集成，四层配置模型支持灵活部署。</p>
+    </div>
+
+    <div class="arch-diagram fade-up" style="margin-bottom: 40px;">
+      <div class="arch-layers">
+        <div class="arch-layer">
+          <div class="arch-box client">
+            <div class="arch-box-title">PC Web</div>
+            <div class="arch-box-sub">Vue 3 + Vite + Ant Design</div>
+          </div>
+          <div class="arch-box client">
+            <div class="arch-box-title">飞书小程序</div>
+            <div class="arch-box-sub">TTML / TTSS 原生</div>
+          </div>
+        </div>
+        <div class="arch-connector">
+          <svg viewBox="0 0 24 24"><path d="M12 4v16m-5-5l5 5 5-5" stroke="currentColor" stroke-width="2" fill="none"/></svg>
+        </div>
+        <div style="text-align:center;font-size:11px;color:rgba(255,255,255,.35);margin:-8px 0 4px;">HTTPS / JWT / Feishu OAuth</div>
+        <div class="arch-layer">
+          <div class="arch-box server" style="max-width: 620px; flex: 2;">
+            <div class="arch-box-title">Spring Boot 2.7 — :8080/attendance/api</div>
+            <div class="arch-box-sub">Controllers → Services → MyBatis → MySQL · JWT · TaskAccess · Permission · DataScope</div>
+          </div>
+        </div>
+        <div class="arch-connector">
+          <svg viewBox="0 0 24 24"><path d="M12 4v16m-5-5l5 5 5-5" stroke="currentColor" stroke-width="2" fill="none"/></svg>
+        </div>
+        <div class="arch-layer">
+          <div class="arch-box external">
+            <div class="arch-box-title">MiMo Vision</div>
+            <div class="arch-box-sub">流式识图 API · SSE</div>
+          </div>
+          <div class="arch-box external">
+            <div class="arch-box-title">飞书 Open API</div>
+            <div class="arch-box-sub">Bitable · IM 卡片 · OAuth</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="fade-up" style="margin-bottom: 40px;">
+      <h3 style="font-size: 16px; font-weight: 700; margin-bottom: 16px; color: var(--gray-700);">技术栈</h3>
+      <div class="highlight-box dark">
+        <div class="tech-grid">
+          <div class="tech-item">
+            <div class="tech-item-label">后端</div>
+            <div class="tech-item-value">JDK 8 + Spring Boot 2.7</div>
+            <div class="tech-item-desc">MyBatis 3.5 · MySQL 8</div>
+          </div>
+          <div class="tech-item">
+            <div class="tech-item-label">PC 前端</div>
+            <div class="tech-item-value">Vue 3 + Vite + Pinia</div>
+            <div class="tech-item-desc">Ant Design Vue 4 · vue-i18n</div>
+          </div>
+          <div class="tech-item">
+            <div class="tech-item-label">小程序</div>
+            <div class="tech-item-value">飞书原生小程序</div>
+            <div class="tech-item-desc">shared-js 同步共享逻辑</div>
+          </div>
+          <div class="tech-item">
+            <div class="tech-item-label">AI 引擎</div>
+            <div class="tech-item-value">MiMo Vision v2.5</div>
+            <div class="tech-item-desc">SSE 流式返回</div>
+          </div>
+          <div class="tech-item">
+            <div class="tech-item-label">存储</div>
+            <div class="tech-item-value">本地 / OSS</div>
+            <div class="tech-item-desc">图片与导出文件</div>
+          </div>
+          <div class="tech-item">
+            <div class="tech-item-label">配置</div>
+            <div class="tech-item-value">四层配置模型</div>
+            <div class="tech-item-desc">密钥与业务配置分离</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="fade-up">
+      <h3 style="font-size: 16px; font-weight: 700; margin-bottom: 16px; color: var(--gray-700);">配置四层模型</h3>
+      <div class="highlight-box dark" style="padding: 28px 32px;">
+        <div class="config-layers">
+          <div class="config-layer">
+            <div class="config-num">1</div>
+            <div>
+              <div class="config-path">backend/.env</div>
+              <div class="config-desc">DB、JWT、飞书 App、MiMo Key</div>
+            </div>
+          </div>
+          <div class="config-layer">
+            <div class="config-num">2</div>
+            <div>
+              <div class="config-path">application.yml</div>
+              <div class="config-desc">框架开关、播种策略</div>
+            </div>
+          </div>
+          <div class="config-layer">
+            <div class="config-num">3</div>
+            <div>
+              <div class="config-path">base-config/</div>
+              <div class="config-desc">feishu.md、prompts.md、permissions.json</div>
+            </div>
+          </div>
+          <div class="config-layer">
+            <div class="config-num">4</div>
+            <div>
+              <div class="config-path">MySQL</div>
+              <div class="config-desc">任务数据、recognition_prompt、plugin_config</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- 9. Data Flow -->
+  <section class="section" id="dataflow">
+    <div class="section-header fade-up">
+      <div class="section-label"><span class="label-bar"></span> 技术篇</div>
+      <h2 class="section-title">核心数据流</h2>
+    </div>
+
+    <div class="card-grid card-grid-2 fade-up" style="margin-bottom: 36px;">
+      <div class="card" style="border-top: 3px solid var(--primary);">
+        <div class="card-title" style="margin-bottom: 14px;">识别入库</div>
+        <div class="pipeline-code">POST /local/upload-stream (SSE)
+  → 创建 task (processing)
+  → AIParserService 流式调用 MiMo
+  → 行级 JSON 解析 + 归一化
+  → RecognitionQualityGuard 质量判定
+  → 写入 raw_data / task_records
+  → status = processed | failed</div>
+      </div>
+      <div class="card" style="border-top: 3px solid var(--success);">
+        <div class="card-title" style="margin-bottom: 14px;">确认与同步</div>
+        <div class="pipeline-code">POST /tasks/:id/confirm
+  → ConfirmValidationService 校验
+  → 清洗字段 → confirmed_data
+  → TaskRecordSyncService 同步员工宽表
+  → 取消提醒调度
+  → 异步 FeishuSyncService → Bitable
+  → sync_status: pending → synced | sync_failed</div>
+      </div>
+    </div>
+
+    <div class="fade-up">
+      <div class="principle-quote" style="margin: 0; font-size: 15px;">
+        所有端「待核对 N 条」「任务 Tab 角标」必须来自 <code style="background:rgba(37,99,235,.1);padding:2px 8px;border-radius:4px;font-size:13px;">GET /attendance/api/tasks/summary</code>，禁止用列表分页 records.length 冒充全库统计。
+      </div>
+    </div>
+  </section>
+
+  <!-- 10. AI Pipeline -->
+  <section class="section" id="ai-pipeline">
+    <div class="section-header fade-up">
+      <div class="section-label"><span class="label-bar"></span> 技术篇</div>
+      <h2 class="section-title">AI 识别管线</h2>
+      <p class="section-desc">模型被定位为「逐格读图的 OCR 提取器」，而非业务助手。六大设计要点确保识别质量。</p>
+    </div>
+
+    <div class="card-grid card-grid-3 fade-up" style="margin-bottom: 36px;">
+      <div class="card">
+        <div class="card-icon blue">🔍</div>
+        <div class="card-title">可读性三态</div>
+        <div class="card-text">看清 / <code style="font-size:12px;background:var(--gray-100);padding:1px 5px;border-radius:3px;">???</code> / <code style="font-size:12px;background:var(--gray-100);padding:1px 5px;border-radius:3px;">""</code>，绝不猜测</div>
+      </div>
+      <div class="card">
+        <div class="card-icon green">📐</div>
+        <div class="card-title">先结构后填格</div>
+        <div class="card-text">定位表头 → 数行 → 逐格 → 自检</div>
+      </div>
+      <div class="card">
+        <div class="card-icon purple">📊</div>
+        <div class="card-title">15 列固定 schema</div>
+        <div class="card-text">便于流式解析与飞书字段映射</div>
+      </div>
+      <div class="card">
+        <div class="card-icon amber">🏷</div>
+        <div class="card-title">标记列承载质量语义</div>
+        <div class="card-text">正常、模糊、手写、夜班、未出勤、已删除</div>
+      </div>
+      <div class="card">
+        <div class="card-icon red">⊘</div>
+        <div class="card-title">十条「禁止推断」</div>
+        <div class="card-text">严格约束模型不做业务假设</div>
+      </div>
+      <div class="card">
+        <div class="card-icon blue">✂</div>
+        <div class="card-title">删线行仍输出</div>
+        <div class="card-text"><code style="font-size:12px;background:var(--gray-100);padding:1px 5px;border-radius:3px;">已删除=true</code> 标记</div>
+      </div>
+    </div>
+
+    <div class="fade-up" style="margin-bottom: 36px;">
+      <h3 style="font-size: 16px; font-weight: 700; margin-bottom: 16px; color: var(--gray-700);">关键服务组件</h3>
+      <div class="module-grid">
+        <div class="module-item">
+          <div class="module-icon">AI</div>
+          <div>
+            <div class="module-name">AIParserService</div>
+            <div class="module-desc">流式调用、按国选提示词、字段归一化</div>
+          </div>
+        </div>
+        <div class="module-item">
+          <div class="module-icon">PG</div>
+          <div>
+            <div class="module-name">RecognitionPromptGuard</div>
+            <div class="module-desc">剥示例、表头过滤、API 输出约束</div>
+          </div>
+        </div>
+        <div class="module-item">
+          <div class="module-icon">QG</div>
+          <div>
+            <div class="module-name">RecognitionQualityGuard</div>
+            <div class="module-desc">臆测检测、可读性评估、拒绝fabrication</div>
+          </div>
+        </div>
+        <div class="module-item">
+          <div class="module-icon">KP</div>
+          <div>
+            <div class="module-name">MimoKeyPool</div>
+            <div class="module-desc">API Key 租约与轮换</div>
+          </div>
+        </div>
+        <div class="module-item">
+          <div class="module-icon">RC</div>
+          <div>
+            <div class="module-name">RecognitionCoordinator</div>
+            <div class="module-desc">队列、断点续传、重复提交跳过</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="fade-up">
+      <h3 style="font-size: 16px; font-weight: 700; margin-bottom: 16px; color: var(--gray-700);">流式识别工程收益</h3>
+      <div class="card-grid card-grid-3">
+        <div class="card">
+          <div class="card-title">首行早返回</div>
+          <div class="card-text">大表不必等全图结束再展示</div>
+        </div>
+        <div class="card">
+          <div class="card-title">断点续写</div>
+          <div class="card-text">多页考勤表 continue prompt 拼接</div>
+        </div>
+        <div class="card">
+          <div class="card-title">SSE 到端</div>
+          <div class="card-text">小程序/PC 可展示实时进度与条数</div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- 11. Feishu Integration -->
+  <section class="section" id="feishu">
+    <div class="section-header fade-up">
+      <div class="section-label"><span class="label-bar"></span> 技术篇</div>
+      <h2 class="section-title">飞书集成与同步</h2>
+    </div>
+    <div class="fade-up">
+      <table class="data-table">
+        <thead>
+          <tr><th style="width:25%">能力</th><th>实现要点</th></tr>
+        </thead>
+        <tbody>
+          <tr><td><span class="tag blue">登录</span></td><td>小程序 tokenLoginValidate；PC OAuth；feishu_user_id 绑定统一账号</td></tr>
+          <tr><td><span class="tag green">多维表格</span></td><td>feishu.md 按国配置 app_token / table_id / 字段类型映射</td></tr>
+          <tr><td><span class="tag purple">确认写入</span></td><td>批量 create；删除行过滤；country 级 sync 开关</td></tr>
+          <tr><td><span class="tag amber">校准更新</span></td><td>_feishuRecordId 优先，fallback 任务号+工号</td></tr>
+          <tr><td><span class="tag blue">消息</span></td><td>FeishuService 交互卡片；失败不阻塞站内信</td></tr>
+          <tr><td><span class="tag red">失败恢复</span></td><td>POST /tasks/:id/retry-sync；确认态不回滚</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <!-- 12. Shared Logic -->
+  <section class="section" id="shared">
+    <div class="section-header fade-up">
+      <div class="section-label"><span class="label-bar"></span> 技术篇</div>
+      <h2 class="section-title">多端一致性与共享逻辑</h2>
+      <p class="section-desc">PC (ESM)、小程序 (CJS)、后端 (Java) 三端共用一套校验规则，避免漂移。</p>
+    </div>
+
+    <div class="fade-up" style="margin-bottom: 36px;">
+      <div class="highlight-box dark" style="padding: 28px 32px;">
+        <div style="font-family:'JetBrains Mono',monospace;font-size:13px;color:rgba(255,255,255,.8);line-height:2;">
+          shared/js/*.cjs <span style="color:var(--accent-light)">──sync──►</span> feishu-miniprogram/shared-js/*.js<br>
+          &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span style="color:var(--accent-light)">──import──►</span> frontend (Vite 插件加载 CJS)
+        </div>
+      </div>
+    </div>
+
+    <div class="fade-up">
+      <h3 style="font-size: 16px; font-weight: 700; margin-bottom: 16px; color: var(--gray-700);">核心共享模块</h3>
+      <div class="module-grid">
+        <div class="module-item">
+          <div class="module-icon">FF</div>
+          <div>
+            <div class="module-name">recordFieldFormatRules</div>
+            <div class="module-desc">日期/班次/到离/同时间校验</div>
+          </div>
+        </div>
+        <div class="module-item">
+          <div class="module-icon">RF</div>
+          <div>
+            <div class="module-name">requiredRecordFields</div>
+            <div class="module-desc">必填与确认问题聚合</div>
+          </div>
+        </div>
+        <div class="module-item">
+          <div class="module-icon">DC</div>
+          <div>
+            <div class="module-name">duplicateCheckCore</div>
+            <div class="module-desc">重名分组与 payload</div>
+          </div>
+        </div>
+        <div class="module-item">
+          <div class="module-icon">MK</div>
+          <div>
+            <div class="module-name">recognitionMarkCore</div>
+            <div class="module-desc">标记解析</div>
+          </div>
+        </div>
+        <div class="module-item">
+          <div class="module-icon">DN</div>
+          <div>
+            <div class="module-name">recognizedDateNormalizer</div>
+            <div class="module-desc">日期归一化</div>
+          </div>
+        </div>
+        <div class="module-item">
+          <div class="module-icon">TN</div>
+          <div>
+            <div class="module-name">recognizedTimeNormalizer</div>
+            <div class="module-desc">时间 token 提取</div>
+          </div>
+        </div>
+        <div class="module-item">
+          <div class="module-icon">VG</div>
+          <div>
+            <div class="module-name">confirmValidationGrouping</div>
+            <div class="module-desc">弹窗行号区间分组</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- 13. Permission -->
+  <section class="section" id="permission">
+    <div class="section-header fade-up">
+      <div class="section-label"><span class="label-bar"></span> 技术篇</div>
+      <h2 class="section-title">权限、数据范围与多国家</h2>
+    </div>
+
+    <div class="card-grid card-grid-3 fade-up">
+      <div class="card">
+        <div class="card-icon blue">⊡</div>
+        <div class="card-title">功能权限</div>
+        <div class="card-text">tasks、country、aiConfig、feishuConfig、users、audit、recordCalibrate、reminderConfig 等权限键精细化管控。</div>
+      </div>
+      <div class="card">
+        <div class="card-icon green">◎</div>
+        <div class="card-title">数据范围</div>
+        <div class="card-text">管理员全员任务；普通角色按归属人/国家/仓库/中介维度过滤，作用于列表、汇总、导出。</div>
+      </div>
+      <div class="card">
+        <div class="card-icon purple">⊕</div>
+        <div class="card-title">多国家</div>
+        <div class="card-text">CountryCatalog + recognition_prompt 表；任务创建时快照 prompt_country；夜班规则按国覆盖。</div>
+      </div>
+    </div>
+  </section>
+
+  <!-- 14. Tech Challenges -->
+  <section class="section" id="challenges-tech">
+    <div class="section-header fade-up">
+      <div class="section-label"><span class="label-bar"></span> 技术篇</div>
+      <h2 class="section-title">重点难点与工程解法</h2>
+    </div>
+    <div class="fade-up" style="margin-bottom: 36px;">
+      <table class="data-table">
+        <thead>
+          <tr><th style="width:35%">技术难点</th><th>解法摘要</th></tr>
+        </thead>
+        <tbody>
+          <tr><td>LLM 抄示例行</td><td>调 API 前剥示例；结果命中 ≥3 示例行则拒绝</td></tr>
+          <tr><td>表头变数据行</td><td>Header placeholder 检测</td></tr>
+          <tr><td>模糊图整齐时间</td><td>可读性评分 + guessed-times 启发式</td></tr>
+          <tr><td>流式 JSON 断行</td><td>MimoStreamParser 行缓冲 + 容错</td></tr>
+          <tr><td>三端校验漂移</td><td>shared/js 单源 + Maven/CI 双轨测试</td></tr>
+          <tr><td>飞书字段类型错</td><td>映射表声明 date/datetime/number；prepare 层转换</td></tr>
+          <tr><td>确认后同步失败</td><td>异步 + 显式 sync_failed + 重试 API</td></tr>
+          <tr><td>提醒风暴</td><td>(rule, task, user, period_bucket) 去重 + 总开关</td></tr>
+          <tr><td>JDK8 部署</td><td>scripts/setup-jdk8.sh 捆绑 Zulu 8；enforcer 插件约束</td></tr>
+          <tr><td>公网多环境</td><td>deploy/environments/*.yaml + start.sh apply 渲染各端配置</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <div class="fade-up">
+      <h3 style="font-size: 16px; font-weight: 700; margin-bottom: 16px; color: var(--gray-700);">仓库结构</h3>
+      <div class="highlight-box dark" style="padding: 28px 32px;">
+        <div style="font-family:'JetBrains Mono',monospace;font-size:13px;color:rgba(255,255,255,.8);line-height:2;">
+          <span style="color:var(--accent-light);">AttendanceAgent/</span><br>
+          ├── <span style="color:#93C5FD;">backend/</span>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;# Java 服务<br>
+          ├── <span style="color:#93C5FD;">frontend/</span>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;# PC Web<br>
+          ├── <span style="color:#93C5FD;">feishu-miniprogram/</span>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;# 飞书小程序<br>
+          ├── <span style="color:#93C5FD;">shared/js/</span>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;# 跨端业务逻辑 (CJS)<br>
+          ├── <span style="color:#93C5FD;">shared/locales/</span>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;# 多语言源<br>
+          ├── <span style="color:#93C5FD;">base-config/</span>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;# 业务配置源文件<br>
+          ├── <span style="color:#93C5FD;">deploy/</span>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;# 公网 render 与部署<br>
+          └── <span style="color:#93C5FD;">docs/</span>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;# 架构、SOP、需求
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Conclusion -->
+  <section class="conclusion" id="conclusion">
+    <div class="conclusion-content fade-up">
+      <h2>
+        用工程化把 AI 的不确定性<br>
+        <span style="background:linear-gradient(135deg,var(--primary-200),#93C5FD,var(--accent-light));-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;">关进笼子</span>
+      </h2>
+      <div class="conclusion-points">
+        <div class="conclusion-point">
+          <div class="conclusion-point-icon" style="background:rgba(37,99,235,.2);">📋</div>
+          <div class="conclusion-point-text">
+            <div class="conclusion-point-label">业务上</div>
+            <div class="conclusion-point-desc">围绕跨国考勤的真实纸质表单，设计了从采集、核对、校验到飞书入账的闭环，并用可配置规则适应不同国家与仓库。</div>
+          </div>
+        </div>
+        <div class="conclusion-point">
+          <div class="conclusion-point-icon" style="background:rgba(16,185,129,.2);">⚙</div>
+          <div class="conclusion-point-text">
+            <div class="conclusion-point-label">技术上</div>
+            <div class="conclusion-point-desc">通过流式识图、质量守卫、共享校验层与单一统计源，让 PC 与飞书小程序说同一种业务语言。</div>
+          </div>
+        </div>
+        <div class="conclusion-point">
+          <div class="conclusion-point-icon" style="background:rgba(245,158,11,.2);">✨</div>
+          <div class="conclusion-point-text">
+            <div class="conclusion-point-label">体验上</div>
+            <div class="conclusion-point-desc">坚持「异常优先、失败可解释、确认可审计」，让系统更像协作工具，而不是黑盒自动化。</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+</main>
+
+<script>
+// ── Mobile Nav Toggle ──
+function toggleNav() {
+  document.querySelector('.sidebar').classList.toggle('open');
+  document.querySelector('.nav-overlay').classList.toggle('open');
+}
+
+// ── Scroll Spy for Navigation ──
+const sections = document.querySelectorAll('section[id]');
+const navLinks = document.querySelectorAll('.nav-link');
+
+function updateActiveNav() {
+  const scrollY = window.scrollY + 100;
+  sections.forEach(section => {
+    const top = section.offsetTop;
+    const height = section.offsetHeight;
+    const id = section.getAttribute('id');
+    if (scrollY >= top && scrollY < top + height) {
+      navLinks.forEach(link => {
+        link.classList.remove('active');
+        if (link.getAttribute('href') === '#' + id) {
+          link.classList.add('active');
+        }
+      });
+    }
+  });
+}
+window.addEventListener('scroll', updateActiveNav, { passive: true });
+updateActiveNav();
+
+// ── Fade-up Animation on Scroll ──
+const fadeEls = document.querySelectorAll('.fade-up');
+const fadeObserver = new IntersectionObserver((entries) => {
+  entries.forEach(entry => {
+    if (entry.isIntersecting) {
+      entry.target.classList.add('visible');
+      fadeObserver.unobserve(entry.target);
+    }
+  });
+}, { threshold: 0.08, rootMargin: '0px 0px -40px 0px' });
+fadeEls.forEach(el => fadeObserver.observe(el));
+
+// ── Close mobile nav on link click ──
+navLinks.forEach(link => {
+  link.addEventListener('click', () => {
+    if (window.innerWidth <= 900) {
+      document.querySelector('.sidebar').classList.remove('open');
+      document.querySelector('.nav-overlay').classList.remove('open');
+    }
+  });
+});
+</script>
+
+</body>
+</html>

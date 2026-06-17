@@ -182,8 +182,11 @@
         </if>
     </select>
 
-    <select id="selectLastTaskId" resultType="string">
-        SELECT task_id FROM tasks ORDER BY created_at DESC LIMIT 1
+    <select id="selectMaxTaskIdForDate" resultType="string">
+        SELECT task_id FROM tasks
+        WHERE task_id LIKE CONCAT(#{datePrefix}, '_%')
+        ORDER BY CAST(SUBSTRING_INDEX(task_id, '_', -1) AS UNSIGNED) DESC
+        LIMIT 1
     </select>
 
     <select id="selectTaskByFileKeyForScope" resultMap="BaseResultMap">

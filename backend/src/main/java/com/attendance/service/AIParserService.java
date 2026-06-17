@@ -717,8 +717,28 @@ public class AIParserService {
             return;
         }
         String cleaned = stripMarkdownFences(raw);
+        cleaned = repairMissingRowClosingBrackets(cleaned);
         tryParseAndPushRecords(cleaned, extractedRecords, 0, callback, 0, seenRecords);
         parseAsWholeArray(cleaned, extractedRecords, 0, callback, seenRecords);
+    }
+
+    /**
+     * 模型流式输出时常见错误：每行数组未写闭合 ] 就直接换行开始下一行，例如
+     * ["41",...,"","","","",\n["42",...  → 需在换行前的 [ 之前补上 ]。
+     */
+    static String repairMissingRowClosingBrackets(String text) {
+        if (text == null || text.isEmpty()) {
+            return text;
+        }
+        String repaired = text.replaceAll("(?<![\\]])\\r?\\n\\s*\\[", "]\n[");
+        repaired = repaired.trim();
+        if (repaired.startsWith("[") && !repaired.endsWith("]")) {
+            int lastOpen = repaired.lastIndexOf('[');
+            if (lastOpen >= 0 && findMatchingBracket(repaired, lastOpen) == -1) {
+                repaired = repaired + "]";
+            }
+        }
+        return repaired;
     }
 
     private String stripMarkdownFences(String text) {
@@ -837,7 +857,7 @@ public class AIParserService {
         }
     }
 
-    private int findMatchingBracket(String text, int startPos) {
+    private static int findMatchingBracket(String text, int startPos) {
         int depth = 0;
         boolean inString = false;
         boolean escapeNext = false;
