@@ -7,11 +7,13 @@ import com.attendance.dto.NotificationContentVars;
 import com.attendance.dto.SiteNotificationReplaceResult;
 import com.attendance.entity.ReminderDelivery;
 import com.attendance.entity.ReminderRule;
+import com.attendance.entity.ReminderSchedule;
 import com.attendance.entity.Task;
 import com.attendance.entity.User;
 import com.attendance.mapper.ReminderDeliveryMapper;
 import com.attendance.mapper.ReminderFeishuMessageMapper;
 import com.attendance.mapper.ReminderRuleMapper;
+import com.attendance.mapper.ReminderScheduleMapper;
 import com.attendance.mapper.TaskMapper;
 import com.attendance.mapper.UserMapper;
 import com.attendance.util.IdGenerator;
@@ -26,25 +28,37 @@ import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.HashMap;
-import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
-import java.util.Set;
 import java.util.stream.Collectors;
 
+/**
+ * 仅执行 {@link ReminderSchedule} 中已到期的计划项；发送时刻由 {@link ReminderScheduleService} 按规则配置写入。
+ */
 @Service
 public class ReminderSchedulerService {
 
     private static final Logger log = LoggerFactory.getLogger(ReminderSchedulerService.class);
     private static final DateTimeFormatter CONTENT_TIME = DateTimeFormatter.ISO_LOCAL_DATE_TIME;
+    private static final int DUE_BATCH_LIMIT = 200;
+
+    /** 轻量轮询到期计划，不再全表扫描任务猜时间。 */
+    private static final long EXECUTOR_INTERVAL_MS = 5_000;
+    private static final long EXECUTOR_INITIAL_DELAY_MS = 15_000;
 
     @Autowired
     private PluginConfigService pluginConfigService;
 
     @Autowired
     private ReminderRuleMapper reminderRuleMapper;
+
+    @Autowired
+    private ReminderScheduleMapper reminderScheduleMapper;
+
+    @Autowired
+    private ReminderScheduleService reminderScheduleService;
 
     @Autowired
     private ReminderDeliveryMapper reminderDeliveryMapper;
@@ -67,161 +81,172 @@ public class ReminderSchedulerService {
     @Autowired
     private ReminderFeishuMessageMapper reminderFeishuMessageMapper;
 
-    @Scheduled(fixedDelay = 900_000, initialDelay = 180_000)
+    @Scheduled(fixedDelay = EXECUTOR_INTERVAL_MS, initialDelay = EXECUTOR_INITIAL_DELAY_MS)
     public void runReminders() {
         if (!pluginConfigService.isNotificationEnabled()) {
             return;
         }
-        List<ReminderRule> rules = reminderRuleMapper.selectEnabled();
-        if (rules.isEmpty()) {
+        LocalDateTime now = LocalDateTime.now();
+        List<ReminderSchedule> dueSchedules = reminderScheduleMapper.selectDuePending(now, DUE_BATCH_LIMIT);
+        if (dueSchedules.isEmpty()) {
             return;
         }
-        LocalDateTime now = LocalDateTime.now();
         Map<String, User> userCache = new HashMap<>();
-        for (ReminderRule rule : rules) {
-            try {
-                processRule(rule, now, userCache);
-            } catch (Exception e) {
-                log.error("提醒规则执行失败 ruleId={}", rule.getId(), e);
+        Map<String, ReminderRule> ruleCache = new HashMap<>();
+        Map<String, Task> taskCache = new HashMap<>();
+
+        // ruleId -> recipientId -> locale -> schedules in this batch
+        Map<String, Map<String, Map<String, List<DueItem>>>> batches = new LinkedHashMap<>();
+
+        for (ReminderSchedule schedule : dueSchedules) {
+            ReminderRule rule = ruleCache.computeIfAbsent(
+                    schedule.getRuleId(), reminderRuleMapper::selectById);
+            if (rule == null || !rule.isEnabled()) {
+                reminderScheduleMapper.markCancelled(schedule.getId());
+                continue;
+            }
+            Task task = taskCache.computeIfAbsent(
+                    schedule.getTaskId(), taskMapper::selectTaskByTaskId);
+            if (task == null || !taskStillEligible(task, rule)) {
+                reminderScheduleMapper.markCancelled(schedule.getId());
+                continue;
+            }
+            User recipient = getUser(schedule.getUserId(), userCache);
+            if (recipient == null || !"active".equals(recipient.getStatus())) {
+                reminderScheduleMapper.markCancelled(schedule.getId());
+                continue;
+            }
+            if (reminderDeliveryMapper.existsDelivery(
+                    schedule.getRuleId(),
+                    schedule.getTaskId(),
+                    schedule.getUserId(),
+                    schedule.getPeriodBucket()) > 0) {
+                reminderScheduleMapper.markCancelled(schedule.getId());
+                continue;
+            }
+            String locale = ReminderLocaleSupport.resolveLocale(
+                    ReminderSupport.normalizeTaskCountry(task.getPromptCountry()));
+            batches
+                    .computeIfAbsent(schedule.getRuleId(), k -> new LinkedHashMap<>())
+                    .computeIfAbsent(schedule.getUserId(), k -> new LinkedHashMap<>())
+                    .computeIfAbsent(locale, k -> new ArrayList<>())
+                    .add(new DueItem(schedule, rule, task, recipient));
+        }
+
+        for (Map.Entry<String, Map<String, Map<String, List<DueItem>>>> ruleEntry : batches.entrySet()) {
+            String ruleId = ruleEntry.getKey();
+            ReminderRule rule = ruleCache.get(ruleId);
+            int hitCount = 0;
+            int sentCount = 0;
+            for (Map.Entry<String, Map<String, List<DueItem>>> recipientEntry : ruleEntry.getValue().entrySet()) {
+                for (Map.Entry<String, List<DueItem>> localeEntry : recipientEntry.getValue().entrySet()) {
+                    List<DueItem> items = localeEntry.getValue();
+                    if (items.isEmpty()) {
+                        continue;
+                    }
+                    int delivered = dispatchAggregated(rule, items, userCache);
+                    if (delivered > 0) {
+                        hitCount += items.size();
+                        sentCount += delivered;
+                    }
+                }
+            }
+            reminderRuleMapper.updateLastRun(ruleId, hitCount, sentCount);
+            if (sentCount > 0) {
+                log.info("提醒计划执行完成 ruleId={} name={} hitTasks={} deliveries={}",
+                        ruleId, rule != null ? rule.getName() : "-", hitCount, sentCount);
             }
         }
     }
 
-    private void processRule(ReminderRule rule, LocalDateTime now, Map<String, User> userCache) {
+    private int dispatchAggregated(ReminderRule rule, List<DueItem> items, Map<String, User> userCache) {
+        if (items == null || items.isEmpty()) {
+            return 0;
+        }
+        DueItem anchor = items.get(0);
+        String recipientId = anchor.recipient.getId();
+        String locale = ReminderLocaleSupport.resolveLocale(
+                ReminderSupport.normalizeTaskCountry(anchor.task.getPromptCountry()));
+
+        List<Task> userTasks = items.stream()
+                .map(item -> item.task)
+                .distinct()
+                .sorted(Comparator.comparing(
+                        t -> t.getUpdatedAt() != null ? t.getUpdatedAt() : t.getCreatedAt(),
+                        Comparator.nullsLast(Comparator.reverseOrder())))
+                .collect(Collectors.toList());
+
+        int delivered = 0;
+        for (DueItem item : items) {
+            recordDelivery(rule, item.task, recipientId, item.schedule.getPeriodBucket(), item.recipient);
+            reminderScheduleMapper.markSent(item.schedule.getId());
+            reminderScheduleService.scheduleFollowingPeriod(
+                    rule,
+                    item.task,
+                    recipientId,
+                    item.schedule.getPeriodIndex(),
+                    item.schedule.getStatusEnteredAt());
+            delivered++;
+        }
+
         List<String> statuses = JSON.parseArray(rule.getTaskStatusesJson(), String.class);
-        if (statuses == null || statuses.isEmpty()) {
-            return;
-        }
-        List<String> ruleRecipients = reminderRuleMapper.selectRecipientUserIds(rule.getId());
-        if (ruleRecipients == null || ruleRecipients.isEmpty()) {
-            return;
-        }
-        Set<String> ruleRecipientSet = new HashSet<>(ruleRecipients);
-        long intervalMs = ReminderSupport.intervalToMillis(rule.getIntervalValue(), rule.getIntervalUnit());
-        if (!ReminderSupport.isScheduleTimeReached(rule.getIntervalUnit(), rule.getScheduleHourOfDay(), now)) {
-            return;
-        }
-
-        List<Task> tasks = taskMapper.selectTasksByStatuses(statuses);
-        int hitCount = 0;
-        int sentCount = 0;
-
-        // userId -> countryCode -> tasks pending delivery in this run (per locale message)
-        Map<String, Map<String, List<Task>>> userTaskAgg = new LinkedHashMap<>();
-
-        for (Task task : tasks) {
-            User creator = getUser(task.getUserId(), userCache);
-            if (!ReminderSupport.taskMatchesRuleScope(
-                    task,
-                    creator,
-                    ReminderSupport.parseScopeList(rule.getScopeCountriesJson()),
-                    ReminderSupport.parseScopeList(rule.getScopeRolesJson()))) {
-                continue;
-            }
-            LocalDateTime enteredAt = task.getUpdatedAt() != null ? task.getUpdatedAt() : task.getCreatedAt();
-            long periodIndex = ReminderSupport.computePeriodIndex(enteredAt, now, intervalMs);
-            if (periodIndex < 1) {
-                continue;
-            }
-            String periodBucket = String.valueOf(periodIndex);
-            Set<String> recipients = new HashSet<>(ruleRecipientSet);
-            if (rule.isIncludeTaskCreator() && task.getUserId() != null) {
-                recipients.add(task.getUserId());
-            }
-            boolean taskHit = false;
-            for (String recipientId : recipients) {
-                User recipient = getUser(recipientId, userCache);
-                if (recipient == null || !"active".equals(recipient.getStatus())) {
-                    if (recipient != null) {
-                        log.debug("跳过非活跃用户提醒 userId={} taskId={}", recipientId, task.getTaskId());
-                    }
-                    continue;
-                }
-                if (reminderDeliveryMapper.existsDelivery(rule.getId(), task.getTaskId(), recipientId, periodBucket) > 0) {
-                    continue;
-                }
-                taskHit = true;
-                recordDelivery(rule, task, recipientId, periodBucket, recipient);
-                sentCount++;
-                String countryKey = ReminderSupport.normalizeTaskCountry(task.getPromptCountry());
-                userTaskAgg
-                        .computeIfAbsent(recipientId, k -> new LinkedHashMap<>())
-                        .computeIfAbsent(countryKey, k -> new ArrayList<>())
-                        .add(task);
-            }
-            if (taskHit) {
-                hitCount++;
-            }
-        }
+        String statusLabel = statuses != null && statuses.size() == 1 ? statuses.get(0) : "processed";
+        Task latest = userTasks.get(0);
+        LocalDateTime latestTime = latest.getUpdatedAt() != null ? latest.getUpdatedAt() : latest.getCreatedAt();
+        User creator = getUser(latest.getUserId(), userCache);
+        boolean recipientIsOperator = userTasks.stream().allMatch(t -> recipientId.equals(t.getUserId()));
+        List<String> creatorNameList = collectCreatorNames(userTasks, userCache);
+        String creatorNames = ReminderMessageBuilder.joinCreatorNames(creatorNameList, locale);
 
         ReminderMessageBuilder.LocaleTemplates localeTemplates = ReminderMessageBuilder.resolveLocaleTemplates(rule);
+        String template = ReminderMessageBuilder.pickTemplate(localeTemplates, rule, locale, recipientIsOperator);
+        String body = ReminderMessageBuilder.renderBody(
+                userTasks.size(),
+                rule.getIntervalValue(),
+                rule.getIntervalUnit(),
+                statusLabel,
+                latest.getTaskId(),
+                latestTime,
+                ReminderMessageBuilder.displayName(anchor.recipient),
+                creator != null ? ReminderMessageBuilder.displayName(creator) : "",
+                creatorNames,
+                template,
+                locale);
+        String title = ReminderMessageBuilder.notificationTitle(rule, locale);
+        String siteLink = ReminderSupport.buildPcTaskLink(feishuProperties.getFrontendLoginUrl(), latest.getTaskId());
+        String feishuLink = ReminderSupport.buildMiniprogramTaskApplink(feishuProperties.getAppId(), latest.getTaskId());
+        NotificationContentVars contentVars = buildContentVars(
+                userTasks.size(),
+                rule,
+                statusLabel,
+                latest,
+                latestTime,
+                ReminderMessageBuilder.displayName(anchor.recipient),
+                creator != null ? ReminderMessageBuilder.displayName(creator) : "",
+                creatorNameList,
+                recipientIsOperator);
+        String periodBucket = ReminderSupport.aggregatePeriodBucket(locale);
+        SiteNotificationReplaceResult replaced = userNotificationService.replaceSiteNotification(
+                recipientId, rule.getId(), periodBucket, title, body, siteLink, contentVars.toJson());
+        String webLoginLink = ReminderSupport.buildFeishuWebLoginTaskLink(
+                feishuProperties.getApiBaseUrl(), latest.getTaskId());
+        String webApplink = ReminderSupport.buildFeishuWebApplink(webLoginLink);
+        sendFeishuIfPossible(rule.getId(), locale, anchor.recipient, title, body,
+                webLoginLink, webApplink, feishuLink, replaced);
+        return delivered;
+    }
 
-        for (Map.Entry<String, Map<String, List<Task>>> entry : userTaskAgg.entrySet()) {
-            String recipientId = entry.getKey();
-            User recipient = getUser(recipientId, userCache);
-            if (recipient == null) {
-                continue;
-            }
-            for (Map.Entry<String, List<Task>> countryEntry : entry.getValue().entrySet()) {
-                List<Task> userTasks = countryEntry.getValue();
-                if (userTasks == null || userTasks.isEmpty()) {
-                    continue;
-                }
-                String countryKey = countryEntry.getKey();
-                String locale = ReminderLocaleSupport.resolveLocale(countryKey);
-                String periodBucket = ReminderSupport.aggregatePeriodBucket(locale);
-
-                userTasks.sort(Comparator.comparing(
-                        t -> t.getUpdatedAt() != null ? t.getUpdatedAt() : t.getCreatedAt(),
-                        Comparator.nullsLast(Comparator.reverseOrder())));
-                Task latest = userTasks.get(0);
-                LocalDateTime latestTime = latest.getUpdatedAt() != null ? latest.getUpdatedAt() : latest.getCreatedAt();
-                String statusLabel = statuses.size() == 1 ? statuses.get(0) : "processed";
-                User creator = getUser(latest.getUserId(), userCache);
-                boolean recipientIsOperator = userTasks.stream()
-                        .allMatch(t -> recipientId.equals(t.getUserId()));
-                List<String> creatorNameList = collectCreatorNames(userTasks, userCache);
-                String creatorNames = ReminderMessageBuilder.joinCreatorNames(creatorNameList, locale);
-                String template = ReminderMessageBuilder.pickTemplate(
-                        localeTemplates, rule, locale, recipientIsOperator);
-                String body = ReminderMessageBuilder.renderBody(
-                        userTasks.size(),
-                        rule.getIntervalValue(),
-                        rule.getIntervalUnit(),
-                        statusLabel,
-                        latest.getTaskId(),
-                        latestTime,
-                        ReminderMessageBuilder.displayName(recipient),
-                        creator != null ? ReminderMessageBuilder.displayName(creator) : "",
-                        creatorNames,
-                        template,
-                        locale);
-                String title = ReminderMessageBuilder.notificationTitle(rule, locale);
-                String siteLink = ReminderSupport.buildPcTaskLink(
-                        feishuProperties.getFrontendLoginUrl(), latest.getTaskId());
-                String feishuLink = ReminderSupport.buildMiniprogramTaskApplink(
-                        feishuProperties.getAppId(), latest.getTaskId());
-                NotificationContentVars contentVars = buildContentVars(
-                        userTasks.size(),
-                        rule,
-                        statusLabel,
-                        latest,
-                        latestTime,
-                        ReminderMessageBuilder.displayName(recipient),
-                        creator != null ? ReminderMessageBuilder.displayName(creator) : "",
-                        creatorNameList,
-                        recipientIsOperator);
-                SiteNotificationReplaceResult replaced = userNotificationService.replaceSiteNotification(
-                        recipientId, rule.getId(), periodBucket, title, body, siteLink, contentVars.toJson());
-                String webLoginLink = ReminderSupport.buildFeishuWebLoginTaskLink(
-                        feishuProperties.getApiBaseUrl(), latest.getTaskId());
-                String webApplink = ReminderSupport.buildFeishuWebApplink(webLoginLink);
-                sendFeishuIfPossible(rule.getId(), locale, recipient, title, body,
-                        webLoginLink, webApplink, feishuLink, replaced);
-            }
+    private boolean taskStillEligible(Task task, ReminderRule rule) {
+        List<String> statuses = JSON.parseArray(rule.getTaskStatusesJson(), String.class);
+        if (statuses == null || !statuses.contains(task.getStatus())) {
+            return false;
         }
-
-        reminderRuleMapper.updateLastRun(rule.getId(), hitCount, sentCount);
+        User creator = userMapper.selectUserById(task.getUserId());
+        return ReminderSupport.taskMatchesRuleScope(
+                task,
+                creator,
+                ReminderSupport.parseScopeList(rule.getScopeCountriesJson()),
+                ReminderSupport.parseScopeList(rule.getScopeRolesJson()));
     }
 
     private void recordDelivery(ReminderRule rule, Task task, String recipientId, String periodBucket, User recipient) {
@@ -380,5 +405,19 @@ public class ReminderSchedulerService {
         contentVars.setCreatorNames(creatorNames != null ? creatorNames : new ArrayList<>());
         contentVars.setRecipientIsOperator(recipientIsOperator);
         return contentVars;
+    }
+
+    private static final class DueItem {
+        private final ReminderSchedule schedule;
+        private final ReminderRule rule;
+        private final Task task;
+        private final User recipient;
+
+        private DueItem(ReminderSchedule schedule, ReminderRule rule, Task task, User recipient) {
+            this.schedule = schedule;
+            this.rule = rule;
+            this.task = task;
+            this.recipient = recipient;
+        }
     }
 }

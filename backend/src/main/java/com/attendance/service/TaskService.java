@@ -40,6 +40,7 @@ import com.alibaba.fastjson.JSONObject;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.context.annotation.Lazy;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -104,6 +105,10 @@ public class TaskService {
 
     @Autowired
     private NightShiftConfigService nightShiftConfigService;
+
+    @Autowired
+    @Lazy
+    private ReminderScheduleService reminderScheduleService;
 
     private static final String[] CALIBRATABLE_FIELDS = {
             "NO", "Pays", "Entrepot", "NOM_PRENOM", "AGENCE_INTERIMAIRE", "HORAIRES_DU_TRAVAIL",
@@ -316,6 +321,7 @@ public class TaskService {
         taskMapper.updateTaskRawData(taskId, rawData, aiRawOutput, rowCount);
         log.info("更新任务AI解析结果: taskId={}, recordCount={}", taskId, rowCount);
         taskRecordSyncService.syncFromTaskId(taskId);
+        refreshReminderSchedulesAfterAnchorChange(taskId);
     }
 
     /** 兼容旧调用：忽略 imageQuality 警告写入 */
@@ -407,6 +413,7 @@ public class TaskService {
         }
         taskMapper.updateTaskStatus(taskId, "failed");
         taskRecordSyncService.syncFromTaskId(taskId);
+        cancelReminderSchedulesForTask(taskId);
         log.warn("任务识别失败: taskId={}, error={}, partialRows={}", taskId, errorMessage, partialRows);
     }
 
@@ -515,6 +522,7 @@ public class TaskService {
         taskMapper.updateTaskAnomalySummary(taskId, summary.toJSONString());
         log.info("任务确认成功: taskId={}, recordCount={}", taskId, data.size());
         taskRecordSyncService.syncFromTaskId(taskId);
+        cancelReminderSchedulesForTask(taskId);
 
         String feishuCountry = resolveConfirmCountry(countryCode, task);
         if (feishuCountryConfigService.isSyncEnabled(feishuCountry)) {
@@ -774,6 +782,7 @@ public class TaskService {
         String json = records.toJSONString();
         taskMapper.updateTaskRecordPayload(taskId, json, json);
         taskRecordSyncService.syncFromTaskId(taskId);
+        refreshReminderSchedulesAfterAnchorChange(taskId);
 
         Map<String, Object> result = new HashMap<>();
         result.put("rowKey", rowKey);
@@ -847,6 +856,7 @@ public class TaskService {
 
         taskMapper.updateTaskStatus(taskId, "cancelled");
         taskRecordSyncService.syncFromTaskId(taskId);
+        cancelReminderSchedulesForTask(taskId);
         log.info("作废任务: taskId={}", taskId);
     }
 
@@ -1346,6 +1356,22 @@ public class TaskService {
         }
         String mark = markObj != null ? String.valueOf(markObj) : "";
         return mark.contains("已删除");
+    }
+
+    private void refreshReminderSchedulesAfterAnchorChange(String taskId) {
+        try {
+            reminderScheduleService.onTaskAnchorChanged(taskId);
+        } catch (Exception e) {
+            log.warn("更新提醒计划失败 taskId={}: {}", taskId, e.getMessage());
+        }
+    }
+
+    private void cancelReminderSchedulesForTask(String taskId) {
+        try {
+            reminderScheduleService.onTaskLeftReminderScope(taskId);
+        } catch (Exception e) {
+            log.warn("取消提醒计划失败 taskId={}: {}", taskId, e.getMessage());
+        }
     }
 
 }

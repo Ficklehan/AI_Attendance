@@ -45,6 +45,9 @@ public class ReminderRuleService {
     @Autowired
     private PermissionService permissionService;
 
+    @Autowired
+    private ReminderScheduleService reminderScheduleService;
+
     public List<ReminderRuleDTO> listRules() {
         requireReminderConfig();
         return reminderRuleMapper.selectAll().stream()
@@ -71,6 +74,7 @@ public class ReminderRuleService {
         rule.setCreatedBy(SecurityUtils.getCurrentUserId());
         reminderRuleMapper.insertRule(rule);
         saveRecipients(rule.getId(), request.getRecipientUserIds());
+        reminderScheduleService.reconcileRule(rule.getId());
         return toDto(reminderRuleMapper.selectById(rule.getId()));
     }
 
@@ -88,6 +92,7 @@ public class ReminderRuleService {
         reminderRuleMapper.updateRule(rule);
         reminderRuleMapper.deleteRecipients(id);
         saveRecipients(id, request.getRecipientUserIds());
+        reminderScheduleService.reconcileRule(id);
         return toDto(reminderRuleMapper.selectById(id));
     }
 
@@ -97,6 +102,11 @@ public class ReminderRuleService {
             throw new BusinessException(404, ErrorKeys.VALIDATION_FAILED);
         }
         reminderRuleMapper.updateEnabled(id, enabled);
+        if (enabled) {
+            reminderScheduleService.reconcileRule(id);
+        } else {
+            reminderScheduleService.onRuleDisabledOrDeleted(id);
+        }
     }
 
     @Transactional
@@ -106,6 +116,7 @@ public class ReminderRuleService {
             throw new BusinessException(404, ErrorKeys.VALIDATION_FAILED);
         }
         reminderRuleMapper.deleteRecipients(id);
+        reminderScheduleService.onRuleDisabledOrDeleted(id);
         reminderRuleMapper.deleteById(id);
     }
 

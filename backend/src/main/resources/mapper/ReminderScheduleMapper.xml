@@ -1,0 +1,106 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+    "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.attendance.mapper.ReminderScheduleMapper">
+
+    <resultMap id="BaseResultMap" type="com.attendance.entity.ReminderSchedule">
+        <id column="id" property="id"/>
+        <result column="rule_id" property="ruleId"/>
+        <result column="task_id" property="taskId"/>
+        <result column="user_id" property="userId"/>
+        <result column="period_index" property="periodIndex"/>
+        <result column="period_bucket" property="periodBucket"/>
+        <result column="due_at" property="dueAt"/>
+        <result column="status_entered_at" property="statusEnteredAt"/>
+        <result column="status" property="status"/>
+        <result column="created_at" property="createdAt"/>
+        <result column="updated_at" property="updatedAt"/>
+    </resultMap>
+
+    <sql id="Base_Column_List">
+        id, rule_id, task_id, user_id, period_index, period_bucket,
+        due_at, status_entered_at, status, created_at, updated_at
+    </sql>
+
+    <insert id="insertSchedule">
+        INSERT INTO reminder_schedules (
+            id, rule_id, task_id, user_id, period_index, period_bucket,
+            due_at, status_entered_at, status
+        ) VALUES (
+            #{id}, #{ruleId}, #{taskId}, #{userId}, #{periodIndex}, #{periodBucket},
+            #{dueAt}, #{statusEnteredAt}, #{status}
+        )
+    </insert>
+
+    <update id="markSent">
+        UPDATE reminder_schedules SET status = 'sent', updated_at = NOW() WHERE id = #{id}
+    </update>
+
+    <update id="markCancelled">
+        UPDATE reminder_schedules SET status = 'cancelled', updated_at = NOW() WHERE id = #{id}
+    </update>
+
+    <update id="cancelPendingByTask">
+        UPDATE reminder_schedules SET status = 'cancelled', updated_at = NOW()
+        WHERE task_id = #{taskId} AND status = 'pending'
+    </update>
+
+    <update id="cancelPendingByRule">
+        UPDATE reminder_schedules SET status = 'cancelled', updated_at = NOW()
+        WHERE rule_id = #{ruleId} AND status = 'pending'
+    </update>
+
+    <delete id="deleteReschedulableByRule">
+        DELETE FROM reminder_schedules
+        WHERE rule_id = #{ruleId} AND status IN ('pending', 'cancelled')
+    </delete>
+
+    <delete id="deleteReschedulableByTask">
+        DELETE FROM reminder_schedules
+        WHERE task_id = #{taskId} AND status IN ('pending', 'cancelled')
+    </delete>
+
+    <update id="cancelPendingByRuleAndTask">
+        UPDATE reminder_schedules SET status = 'cancelled', updated_at = NOW()
+        WHERE rule_id = #{ruleId} AND task_id = #{taskId} AND status = 'pending'
+    </update>
+
+    <select id="selectDuePending" resultMap="BaseResultMap">
+        SELECT <include refid="Base_Column_List"/>
+        FROM reminder_schedules
+        WHERE status = 'pending' AND due_at &lt;= #{now}
+        ORDER BY due_at ASC
+        LIMIT #{limit}
+    </select>
+
+    <select id="selectPendingForRecipientPeriod" resultMap="BaseResultMap">
+        SELECT <include refid="Base_Column_List"/>
+        FROM reminder_schedules
+        WHERE rule_id = #{ruleId}
+          AND task_id = #{taskId}
+          AND user_id = #{userId}
+          AND period_bucket = #{periodBucket}
+          AND status = 'pending'
+        LIMIT 1
+    </select>
+
+    <select id="selectForRecipientPeriod" resultMap="BaseResultMap">
+        SELECT <include refid="Base_Column_List"/>
+        FROM reminder_schedules
+        WHERE rule_id = #{ruleId}
+          AND task_id = #{taskId}
+          AND user_id = #{userId}
+          AND period_bucket = #{periodBucket}
+        LIMIT 1
+    </select>
+
+    <update id="updateReschedule">
+        UPDATE reminder_schedules SET
+            period_index = #{periodIndex},
+            due_at = #{dueAt},
+            status_entered_at = #{statusEnteredAt},
+            status = 'pending',
+            updated_at = NOW()
+        WHERE id = #{id}
+    </update>
+</mapper>

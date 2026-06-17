@@ -275,7 +275,70 @@ public final class ReminderSupport {
     }
 
     /**
-     * day/week 周期：达到滞后阈值后，仅在当天该小时及之后发送（调度每 15 分钟扫描）。
+     * 计算第 {@code periodIndex} 个提醒周期的计划发送时刻（由规则间隔与发送时段决定）。
+     *
+     * @param periodIndex 从 1 开始；第 1 次提醒 = 进入状态后满 1 个间隔
+     */
+    public static LocalDateTime computeDueAtForPeriod(LocalDateTime statusEnteredAt,
+                                                      long periodIndex,
+                                                      BigDecimal intervalValue,
+                                                      String intervalUnit,
+                                                      Integer scheduleHourOfDay) {
+        if (statusEnteredAt == null || periodIndex < 1) {
+            return null;
+        }
+        long intervalMs = intervalToMillis(intervalValue, intervalUnit);
+        if (intervalMs <= 0) {
+            return null;
+        }
+        LocalDateTime threshold = statusEnteredAt.plus(Duration.ofMillis(intervalMs * periodIndex));
+        if (!supportsScheduleHour(intervalUnit)) {
+            return threshold;
+        }
+        Integer hour = normalizeScheduleHour(scheduleHourOfDay, intervalUnit);
+        if (hour == null) {
+            return threshold;
+        }
+        LocalDateTime daySlot = threshold.toLocalDate().atTime(hour, 0);
+        if (threshold.isBefore(daySlot)) {
+            return daySlot;
+        }
+        return threshold;
+    }
+
+    /**
+     * 在已发送周期基础上，计算下一条待排程的周期序号。
+     */
+    public static long resolveNextPeriodToSchedule(LocalDateTime statusEnteredAt,
+                                                   LocalDateTime now,
+                                                   BigDecimal intervalValue,
+                                                   String intervalUnit,
+                                                   java.util.function.LongPredicate periodDelivered) {
+        if (statusEnteredAt == null || now == null || periodDelivered == null) {
+            return 1L;
+        }
+        long intervalMs = intervalToMillis(intervalValue, intervalUnit);
+        long currentPeriod = computePeriodIndex(statusEnteredAt, now, intervalMs);
+        if (currentPeriod < 1) {
+            return 1L;
+        }
+        for (long period = 1; period <= currentPeriod; period++) {
+            if (!periodDelivered.test(period)) {
+                return period;
+            }
+        }
+        return currentPeriod + 1;
+    }
+
+    public static LocalDateTime resolveStatusEnteredAt(Task task) {
+        if (task == null) {
+            return null;
+        }
+        return task.getUpdatedAt() != null ? task.getUpdatedAt() : task.getCreatedAt();
+    }
+
+    /**
+     * day/week 周期：达到滞后阈值后，仅在当天该小时及之后发送。
      */
     public static boolean isScheduleTimeReached(String unit, Integer scheduleHour, LocalDateTime now) {
         if (!supportsScheduleHour(unit)) {

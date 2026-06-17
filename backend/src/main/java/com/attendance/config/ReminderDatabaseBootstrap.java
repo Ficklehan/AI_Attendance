@@ -99,6 +99,7 @@ public class ReminderDatabaseBootstrap implements ApplicationRunner {
             ensureNotificationContentVarsColumn();
             ensureTemplateLocaleColumns();
             ensureScheduleHourColumn();
+            ensureReminderSchedulesTable();
         } catch (Exception e) {
             log.error("创建 reminder 表失败，提醒功能不可用", e);
         }
@@ -169,6 +170,30 @@ public class ReminderDatabaseBootstrap implements ApplicationRunner {
                     "TINYINT NULL COMMENT '0-23，仅 day/week 生效' AFTER interval_unit");
         } catch (Exception e) {
             log.warn("检查/添加 reminder_rules.schedule_hour_of_day 列失败: {}", e.getMessage());
+        }
+    }
+
+    private void ensureReminderSchedulesTable() {
+        try {
+            jdbcTemplate.execute("CREATE TABLE IF NOT EXISTS reminder_schedules ("
+                    + "id VARCHAR(64) PRIMARY KEY,"
+                    + "rule_id VARCHAR(64) NOT NULL,"
+                    + "task_id VARCHAR(64) NOT NULL,"
+                    + "user_id VARCHAR(64) NOT NULL,"
+                    + "period_index BIGINT NOT NULL,"
+                    + "period_bucket VARCHAR(32) NOT NULL,"
+                    + "due_at DATETIME NOT NULL,"
+                    + "status_entered_at DATETIME NOT NULL,"
+                    + "status VARCHAR(16) NOT NULL DEFAULT 'pending',"
+                    + "created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,"
+                    + "updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,"
+                    + "UNIQUE KEY uk_reminder_schedule (rule_id, task_id, user_id, period_bucket),"
+                    + "INDEX idx_reminder_schedule_due (status, due_at),"
+                    + "INDEX idx_reminder_schedule_task (task_id, status),"
+                    + "INDEX idx_reminder_schedule_rule (rule_id, status)"
+                    + ") ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");
+        } catch (Exception e) {
+            log.warn("检查/创建 reminder_schedules 表失败: {}", e.getMessage());
         }
     }
 
