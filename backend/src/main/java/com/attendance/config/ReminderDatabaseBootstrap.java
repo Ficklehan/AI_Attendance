@@ -8,6 +8,9 @@ import org.springframework.core.annotation.Order;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Component;
 
+import java.util.Arrays;
+import java.util.List;
+
 /**
  * Ensures reminder tables exist (migration 007).
  */
@@ -84,9 +87,10 @@ public class ReminderDatabaseBootstrap implements ApplicationRunner {
             jdbcTemplate.execute("CREATE TABLE IF NOT EXISTS reminder_feishu_messages ("
                     + "user_id VARCHAR(64) NOT NULL,"
                     + "rule_id VARCHAR(64) NOT NULL,"
+                    + "locale_key VARCHAR(16) NOT NULL DEFAULT 'zh-CN',"
                     + "feishu_message_id VARCHAR(64) NOT NULL,"
                     + "updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,"
-                    + "PRIMARY KEY (user_id, rule_id)"
+                    + "PRIMARY KEY (user_id, rule_id, locale_key)"
                     + ") ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");
 
             log.info("reminder 相关表已就绪");
@@ -96,6 +100,7 @@ public class ReminderDatabaseBootstrap implements ApplicationRunner {
             ensureNotificationContentVarsColumn();
             ensureTemplateLocaleColumns();
             ensureFeishuLocaleKeyColumn();
+            ensureReminderTablePrimaryKeys();
             ensureScheduleHourColumn();
         } catch (Exception e) {
             log.error("创建 reminder 表失败，提醒功能不可用", e);
@@ -168,6 +173,107 @@ public class ReminderDatabaseBootstrap implements ApplicationRunner {
         } catch (Exception e) {
             log.warn("检查/添加 reminder_feishu_messages.locale_key 列失败: {}", e.getMessage());
         }
+    }
+
+    /**
+     * 去重并校正 reminder 关联表主键（修复历史库无复合主键或 feishu 表主键未含 locale_key）。
+     */
+    private void ensureReminderTablePrimaryKeys() {
+        try {
+            dedupeReminderRuleUsers();
+            ensurePrimaryKey("reminder_rule_users", Arrays.asList("rule_id", "user_id"));
+        } catch (Exception e) {
+            log.warn("修复 reminder_rule_users 主键失败: {}", e.getMessage());
+        }
+        try {
+            jdbcTemplate.execute(
+                    "UPDATE reminder_feishu_messages SET locale_key = 'zh-CN' "
+                            + "WHERE locale_key IS NULL OR locale_key = ''");
+            dedupeReminderFeishuMessages();
+            ensurePrimaryKey("reminder_feishu_messages",
+                    Arrays.asList("user_id", "rule_id", "locale_key"));
+        } catch (Exception e) {
+            log.warn("修复 reminder_feishu_messages 主键失败: {}", e.getMessage());
+        }
+    }
+
+    private void dedupeReminderRuleUsers() {
+        if (!tableExists("reminder_rule_users")) {
+            return;
+        }
+        Integer dupCount = jdbcTemplate.queryForObject(
+                "SELECT COUNT(*) - COUNT(DISTINCT CONCAT(rule_id, CHAR(0), user_id)) FROM reminder_rule_users",
+                Integer.class);
+        if (dupCount == null || dupCount <= 0) {
+            return;
+        }
+        jdbcTemplate.execute("CREATE TEMPORARY TABLE tmp_reminder_rule_users_dedup AS "
+                + "SELECT rule_id, user_id FROM reminder_rule_users GROUP BY rule_id, user_id");
+        jdbcTemplate.execute("DELETE FROM reminder_rule_users");
+        jdbcTemplate.execute("INSERT INTO reminder_rule_users (rule_id, user_id) "
+                + "SELECT rule_id, user_id FROM tmp_reminder_rule_users_dedup");
+        jdbcTemplate.execute("DROP TEMPORARY TABLE tmp_reminder_rule_users_dedup");
+        log.info("reminder_rule_users 去重完成，移除 {} 条重复", dupCount);
+    }
+
+    private void dedupeReminderFeishuMessages() {
+        if (!tableExists("reminder_feishu_messages")) {
+            return;
+        }
+        Integer dupCount = jdbcTemplate.queryForObject(
+                "SELECT COUNT(*) - COUNT(DISTINCT CONCAT(user_id, CHAR(0), rule_id, CHAR(0), locale_key)) "
+                        + "FROM reminder_feishu_messages",
+                Integer.class);
+        if (dupCount == null || dupCount <= 0) {
+            return;
+        }
+        jdbcTemplate.execute("CREATE TEMPORARY TABLE tmp_reminder_feishu_dedup AS "
+                + "SELECT user_id, rule_id, locale_key, "
+                + "SUBSTRING_INDEX(GROUP_CONCAT(feishu_message_id ORDER BY updated_at DESC), ',', 1) "
+                + "AS feishu_message_id, MAX(updated_at) AS updated_at "
+                + "FROM reminder_feishu_messages "
+                + "GROUP BY user_id, rule_id, locale_key");
+        jdbcTemplate.execute("DELETE FROM reminder_feishu_messages");
+        jdbcTemplate.execute("INSERT INTO reminder_feishu_messages "
+                + "(user_id, rule_id, locale_key, feishu_message_id, updated_at) "
+                + "SELECT user_id, rule_id, locale_key, feishu_message_id, updated_at "
+                + "FROM tmp_reminder_feishu_dedup");
+        jdbcTemplate.execute("DROP TEMPORARY TABLE tmp_reminder_feishu_dedup");
+        log.info("reminder_feishu_messages 去重完成，移除 {} 条重复", dupCount);
+    }
+
+    private boolean tableExists(String table) {
+        Integer count = jdbcTemplate.queryForObject(
+                "SELECT COUNT(*) FROM information_schema.TABLES "
+                        + "WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = ?",
+                Integer.class,
+                table);
+        return count != null && count > 0;
+    }
+
+    private List<String> getPrimaryKeyColumns(String table) {
+        return jdbcTemplate.query(
+                "SELECT COLUMN_NAME FROM information_schema.STATISTICS "
+                        + "WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = ? AND INDEX_NAME = 'PRIMARY' "
+                        + "ORDER BY SEQ_IN_INDEX",
+                (rs, rowNum) -> rs.getString("COLUMN_NAME"),
+                table);
+    }
+
+    private void ensurePrimaryKey(String table, List<String> expectedColumns) {
+        if (!tableExists(table)) {
+            return;
+        }
+        List<String> current = getPrimaryKeyColumns(table);
+        if (current.equals(expectedColumns)) {
+            return;
+        }
+        if (!current.isEmpty()) {
+            jdbcTemplate.execute("ALTER TABLE " + table + " DROP PRIMARY KEY");
+        }
+        jdbcTemplate.execute("ALTER TABLE " + table + " ADD PRIMARY KEY ("
+                + String.join(", ", expectedColumns) + ")");
+        log.info("{} 主键已修复为 ({})", table, String.join(", ", expectedColumns));
     }
 
     private void ensureScheduleHourColumn() {
