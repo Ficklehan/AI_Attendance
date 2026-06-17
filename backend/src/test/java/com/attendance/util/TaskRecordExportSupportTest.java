@@ -2,6 +2,7 @@ package com.attendance.util;
 
 import com.alibaba.fastjson.JSONArray;
 import com.alibaba.fastjson.JSONObject;
+import com.attendance.entity.TaskRecord;
 import org.junit.jupiter.api.Test;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
@@ -40,5 +41,16 @@ class TaskRecordExportSupportTest {
         JSONObject record = new JSONObject();
         record.put("pageNum", "2");
         assertEquals("2", TaskRecordExportSupport.resolvePageNum(record));
+    }
+
+    @Test
+    void toExportJson_computesWorkHoursFromTaskRecord() {
+        TaskRecord row = new TaskRecord();
+        row.setArrival("08:00");
+        row.setDeparture("17:30");
+        row.setPauseMinutes("60");
+        JSONObject json = TaskRecordExportSupport.toExportJson(row);
+        assertEquals("8.50", TaskRecordExportSupport.formatWorkHours(json));
+        assertEquals("08:00", json.getString("ARRIVEE"));
     }
 }

@@ -10,9 +10,10 @@ import {
   calculateRecordStats,
 } from '@/utils/recognitionLabels'
 import { getMissingRequiredFieldKeys, REQUIRED_FIELD_I18N_KEYS } from '@/utils/requiredRecordFields'
+import { isArrivalDepartureSameTime } from '@/utils/recordFieldFormatRules'
 import { FIELD_LABEL_KEYS } from '@/constants/calibratableFields'
 
-const ANOMALY_CATEGORY_ORDER = ['required', 'unreadable', 'duplicate', 'other']
+const ANOMALY_CATEGORY_ORDER = ['required', 'unreadable', 'format', 'duplicate', 'other']
 
 function isMarkRedundantAnomalyReason(reason, t) {
   const raw = String(reason || '').trim()
@@ -38,6 +39,7 @@ function buildRowCacheKey(record, duplicatePeers) {
     record.ARRIVEE,
     record.DEPAR,
     record.HORAIRES_DU_TRAVAIL,
+    isArrivalDepartureSameTime(record) ? '1' : '0',
     record.SIGNATURE,
     record.isDeleted ? '1' : '0',
     record._duplicateConfirmedUnique ? '1' : '0',
@@ -170,6 +172,7 @@ export function useTaskEditRecordDisplay(records, getDuplicateMeta, { isAbsentRo
 const ANOMALY_CATEGORY_I18N = {
   required: 'taskEdit.anomalyCategoryRequired',
   unreadable: 'taskEdit.anomalyCategoryUnreadable',
+  format: 'taskEdit.anomalyCategoryFormat',
   duplicate: 'taskEdit.anomalyCategoryDuplicate',
   other: 'taskEdit.anomalyCategoryOther',
 }
@@ -177,6 +180,7 @@ const ANOMALY_CATEGORY_I18N = {
 const ANOMALY_CATEGORY_FALLBACK = {
   required: '必填缺失',
   unreadable: '看不清',
+  format: '格式异常',
   duplicate: '重名',
   other: '其他异常',
 }
@@ -217,6 +221,11 @@ const ANOMALY_CATEGORY_FALLBACK = {
       const labelKey = REQUIRED_FIELD_I18N_KEYS[fieldKey] || FIELD_LABEL_KEYS[fieldKey]
       addItem('required', labelKey ? t(labelKey) : fieldKey)
     })
+
+    if (isArrivalDepartureSameTime(record)) {
+      const sameTimeLabel = t('fieldFormat.sameTimeShort')
+      addItem('format', sameTimeLabel !== 'fieldFormat.sameTimeShort' ? sameTimeLabel : '到达与离开时间相同')
+    }
 
     const duplicateMeta = getDuplicateMeta(record)
     if (duplicateMeta?.peers?.length) {
@@ -316,6 +325,7 @@ const ANOMALY_CATEGORY_FALLBACK = {
   const getAnomalyCategoryColor = (category) => {
     if (category === 'required') return 'red'
     if (category === 'unreadable') return 'gold'
+    if (category === 'format') return 'warning'
     if (category === 'duplicate') return 'orange'
     return 'default'
   }

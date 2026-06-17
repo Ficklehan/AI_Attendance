@@ -122,7 +122,9 @@ const zhCN = {
     "arrivalShort": "须为单个时间，如 08:30",
     "arrivalTooltip": "到达时间须为单个时间点，例如 8:30、08:30 或 18h00",
     "departureShort": "须为单个时间，如 18:00",
-    "departureTooltip": "离开时间须为单个时间点，例如 18:00、18h00 或 17:30"
+    "departureTooltip": "离开时间须为单个时间点，例如 18:00、18h00 或 17:30",
+    "sameTimeShort": "到达与离开时间相同",
+    "sameTimeTooltip": "到达时间与离开时间不能相同，请核对后修改"
   },
   "tab": {
     "recognize": "识别",
@@ -699,7 +701,9 @@ const enUS = {
     "arrivalShort": "Single time required, e.g. 08:30",
     "arrivalTooltip": "Arrival must be a single time, e.g. 8:30, 08:30 or 18h00",
     "departureShort": "Single time required, e.g. 18:00",
-    "departureTooltip": "Departure must be a single time, e.g. 18:00, 18h00 or 17:30"
+    "departureTooltip": "Departure must be a single time, e.g. 18:00, 18h00 or 17:30",
+    "sameTimeShort": "Arrival and departure times are the same",
+    "sameTimeTooltip": "Arrival and departure must be different. Please correct and try again"
   },
   "tab": {
     "recognize": "Scan",
@@ -1243,7 +1247,9 @@ const frFR = {
     "arrivalShort": "Un seul horaire, ex. 08:30",
     "arrivalTooltip": "L'arrivée doit être un seul horaire, ex. 8:30, 08:30 ou 18h00",
     "departureShort": "Un seul horaire, ex. 18:00",
-    "departureTooltip": "Le départ doit être un seul horaire, ex. 18:00, 18h00 ou 17:30"
+    "departureTooltip": "Le départ doit être un seul horaire, ex. 18:00, 18h00 ou 17:30",
+    "sameTimeShort": "Arrivée et départ identiques",
+    "sameTimeTooltip": "L'arrivée et le départ doivent être différents. Veuillez corriger."
   },
   "tab": {
     "recognize": "Scan",
@@ -1804,7 +1810,9 @@ const nlNL = {
     "arrivalShort": "Eén tijd vereist, bijv. 08:30",
     "arrivalTooltip": "Aankomst moet één tijd zijn, bijv. 8:30, 08:30 of 18h00",
     "departureShort": "Eén tijd vereist, bijv. 18:00",
-    "departureTooltip": "Vertrek moet één tijd zijn, bijv. 18:00, 18h00 of 17:30"
+    "departureTooltip": "Vertrek moet één tijd zijn, bijv. 18:00, 18h00 of 17:30",
+    "sameTimeShort": "Aankomst en vertrek zijn gelijk",
+    "sameTimeTooltip": "Aankomst en vertrek moeten verschillen. Corrigeer en probeer opnieuw."
   },
   "tab": {
     "recognize": "Scan",
@@ -2365,7 +2373,9 @@ const csCZ = {
     "arrivalShort": "Jeden čas, např. 08:30",
     "arrivalTooltip": "Příchod musí být jeden čas, např. 8:30, 08:30 nebo 18h00",
     "departureShort": "Jeden čas, např. 18:00",
-    "departureTooltip": "Odchod musí být jeden čas, např. 18:00, 18h00 nebo 17:30"
+    "departureTooltip": "Odchod musí být jeden čas, např. 18:00, 18h00 nebo 17:30",
+    "sameTimeShort": "Příjezd a odchod jsou stejné",
+    "sameTimeTooltip": "Příjezd a odchod se musí lišit. Opravte prosím."
   },
   "tab": {
     "recognize": "Scan",
@@ -2926,7 +2936,9 @@ const plPL = {
     "arrivalShort": "Jedna godzina, np. 08:30",
     "arrivalTooltip": "Przyjście musi być jedną godziną, np. 8:30, 08:30 lub 18h00",
     "departureShort": "Jedna godzina, np. 18:00",
-    "departureTooltip": "Wyjście musi być jedną godziną, np. 18:00, 18h00 lub 17:30"
+    "departureTooltip": "Wyjście musi być jedną godziną, np. 18:00, 18h00 lub 17:30",
+    "sameTimeShort": "Przyjazd i wyjazd są takie same",
+    "sameTimeTooltip": "Przyjazd i wyjazd muszą się różnić. Popraw i spróbuj ponownie."
   },
   "tab": {
     "recognize": "Scan",
@@ -3487,7 +3499,9 @@ const deDE = {
     "arrivalShort": "Eine Zeit erforderlich, z. B. 08:30",
     "arrivalTooltip": "Ankunft muss eine einzelne Zeit sein, z. B. 8:30, 08:30 oder 18h00",
     "departureShort": "Eine Zeit erforderlich, z. B. 18:00",
-    "departureTooltip": "Abfahrt muss eine einzelne Zeit sein, z. B. 18:00, 18h00 oder 17:30"
+    "departureTooltip": "Abfahrt muss eine einzelne Zeit sein, z. B. 18:00, 18h00 oder 17:30",
+    "sameTimeShort": "Ankunft und Abfahrt sind gleich",
+    "sameTimeTooltip": "Ankunft und Abfahrt müssen unterschiedlich sein. Bitte korrigieren."
   },
   "tab": {
     "recognize": "Scan",
@@ -4026,7 +4040,9 @@ const esES = {
     "arrivalShort": "Un solo horario, ej. 08:30",
     "arrivalTooltip": "La llegada debe ser un solo horario, ej. 8:30, 08:30 o 18h00",
     "departureShort": "Un solo horario, ej. 18:00",
-    "departureTooltip": "La salida debe ser un solo horario, ej. 18:00, 18h00 o 17:30"
+    "departureTooltip": "La salida debe ser un solo horario, ej. 18:00, 18h00 o 17:30",
+    "sameTimeShort": "Llegada y salida son iguales",
+    "sameTimeTooltip": "La llegada y la salida deben ser distintas. Corrija e inténtelo de nuevo."
   },
   "tab": {
     "recognize": "Escanear",

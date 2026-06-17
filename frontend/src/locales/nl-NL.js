@@ -157,7 +157,9 @@ export default {
     "arrivalShort": "Eén tijd vereist, bijv. 08:30",
     "arrivalTooltip": "Aankomst moet één tijd zijn, bijv. 8:30, 08:30 of 18h00",
     "departureShort": "Eén tijd vereist, bijv. 18:00",
-    "departureTooltip": "Vertrek moet één tijd zijn, bijv. 18:00, 18h00 of 17:30"
+    "departureTooltip": "Vertrek moet één tijd zijn, bijv. 18:00, 18h00 of 17:30",
+    "sameTimeShort": "Aankomst en vertrek zijn gelijk",
+    "sameTimeTooltip": "Aankomst en vertrek moeten verschillen. Corrigeer en probeer opnieuw."
   },
   "export": {
     "centerTitle": "Exportcentrum",
@@ -391,6 +393,7 @@ export default {
     "observations": "Opmerkingen",
     "anomalyCategoryRequired": "Verplichte velden ontbreken",
     "anomalyCategoryUnreadable": "Onleesbaar",
+    "anomalyCategoryFormat": "Formaatfout",
     "anomalyCategoryDuplicate": "Dubbele namen",
     "anomalyCategoryOther": "Overige afwijkingen",
     "fieldUnreadableShort": "Onleesbaar",

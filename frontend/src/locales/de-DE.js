@@ -157,7 +157,9 @@ export default {
     "arrivalShort": "Eine Zeit erforderlich, z. B. 08:30",
     "arrivalTooltip": "Ankunft muss eine einzelne Zeit sein, z. B. 8:30, 08:30 oder 18h00",
     "departureShort": "Eine Zeit erforderlich, z. B. 18:00",
-    "departureTooltip": "Abfahrt muss eine einzelne Zeit sein, z. B. 18:00, 18h00 oder 17:30"
+    "departureTooltip": "Abfahrt muss eine einzelne Zeit sein, z. B. 18:00, 18h00 oder 17:30",
+    "sameTimeShort": "Ankunft und Abfahrt sind gleich",
+    "sameTimeTooltip": "Ankunft und Abfahrt müssen unterschiedlich sein. Bitte korrigieren."
   },
   "export": {
     "centerTitle": "Exportzentrum",
@@ -391,6 +393,7 @@ export default {
     "observations": "Bemerkungen",
     "anomalyCategoryRequired": "Pflichtfelder fehlen",
     "anomalyCategoryUnreadable": "Unleserlich",
+    "anomalyCategoryFormat": "Formatfehler",
     "anomalyCategoryDuplicate": "Doppelte Namen",
     "anomalyCategoryOther": "Sonstige Anomalien",
     "fieldUnreadableShort": "Unleserlich",

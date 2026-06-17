@@ -159,7 +159,9 @@ export default {
     "arrivalShort": "Jeden čas, např. 08:30",
     "arrivalTooltip": "Příchod musí být jeden čas, např. 8:30, 08:30 nebo 18h00",
     "departureShort": "Jeden čas, např. 18:00",
-    "departureTooltip": "Odchod musí být jeden čas, např. 18:00, 18h00 nebo 17:30"
+    "departureTooltip": "Odchod musí být jeden čas, např. 18:00, 18h00 nebo 17:30",
+    "sameTimeShort": "Příjezd a odchod jsou stejné",
+    "sameTimeTooltip": "Příjezd a odchod se musí lišit. Opravte prosím."
   },
   "export": {
     "centerTitle": "Centrum exportu",
@@ -385,6 +387,7 @@ export default {
     "requiredFieldMissingShort": "Chybí povinná pole",
     "anomalyCategoryRequired": "Chybí povinná pole",
     "anomalyCategoryUnreadable": "Nečitelné",
+    "anomalyCategoryFormat": "Chyba formátu",
     "anomalyCategoryDuplicate": "Duplicitní jména",
     "anomalyCategoryOther": "Jiné anomálie",
     "fieldUnreadableShort": "Nečitelné",

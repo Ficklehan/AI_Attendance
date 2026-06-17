@@ -22,6 +22,7 @@ export function buildEmployeeRecordFieldDefs(t) {
     { field: 'SIGNATURE', label: t('taskEdit.signature'), dataIndex: 'signature', key: 'signature', filterType: FILTER_TYPES.MULTISELECT, filterOptionsKey: 'signatureMarks' },
     { field: 'SmartMark', label: t('taskEdit.mark'), dataIndex: 'smartMark', key: 'smartMark', filterType: FILTER_TYPES.MULTISELECT, filterOptionsKey: 'smartMarks' },
     { field: 'Observations', label: t('taskEdit.observations'), dataIndex: 'observations', key: 'observations', filterType: FILTER_TYPES.TEXT },
+    { field: 'anomalyDescription', label: t('taskEdit.anomalyReasons'), dataIndex: 'anomalyDescription', key: 'anomalyDescription', filterable: false, ellipsis: false },
     { field: 'userName', label: t('tasks.operator'), dataIndex: 'userName', key: 'userName', filterType: FILTER_TYPES.TEXT },
     { field: 'status', label: t('tasks.status'), dataIndex: 'taskStatus', key: 'taskStatus', filterType: FILTER_TYPES.STATUS, filterOptionsKey: 'taskStatus' },
     { field: 'createdAt', label: t('tasks.createTime'), dataIndex: 'createdAt', key: 'createdAt', filterType: FILTER_TYPES.DATETIME },

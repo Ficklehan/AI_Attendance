@@ -171,7 +171,9 @@ export default {
     "arrivalShort": "Single time required, e.g. 08:30",
     "arrivalTooltip": "Arrival must be a single time, e.g. 8:30, 08:30 or 18h00",
     "departureShort": "Single time required, e.g. 18:00",
-    "departureTooltip": "Departure must be a single time, e.g. 18:00, 18h00 or 17:30"
+    "departureTooltip": "Departure must be a single time, e.g. 18:00, 18h00 or 17:30",
+    "sameTimeShort": "Arrival and departure times are the same",
+    "sameTimeTooltip": "Arrival and departure must be different. Please correct and try again"
   },
   "export": {
     "centerTitle": "Export center",
@@ -694,6 +696,7 @@ export default {
     "requiredFieldMissingShort": "Required fields missing",
     "anomalyCategoryRequired": "Required fields missing",
     "anomalyCategoryUnreadable": "Unreadable",
+    "anomalyCategoryFormat": "Format issue",
     "anomalyCategoryDuplicate": "Duplicate names",
     "anomalyCategoryOther": "Other anomalies",
     "fieldUnreadableShort": "Unreadable",

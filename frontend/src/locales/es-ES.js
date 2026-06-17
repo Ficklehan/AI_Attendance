@@ -159,7 +159,9 @@ export default {
     "arrivalShort": "Un solo horario, ej. 08:30",
     "arrivalTooltip": "La llegada debe ser un solo horario, ej. 8:30, 08:30 o 18h00",
     "departureShort": "Un solo horario, ej. 18:00",
-    "departureTooltip": "La salida debe ser un solo horario, ej. 18:00, 18h00 o 17:30"
+    "departureTooltip": "La salida debe ser un solo horario, ej. 18:00, 18h00 o 17:30",
+    "sameTimeShort": "Llegada y salida son iguales",
+    "sameTimeTooltip": "La llegada y la salida deben ser distintas. Corrija e inténtelo de nuevo."
   },
   "export": {
     "centerTitle": "Centro de exportación",
@@ -380,6 +382,7 @@ export default {
     "requiredFieldMissingShort": "Faltan campos obligatorios",
     "anomalyCategoryRequired": "Faltan campos obligatorios",
     "anomalyCategoryUnreadable": "Ilegible",
+    "anomalyCategoryFormat": "Error de formato",
     "anomalyCategoryDuplicate": "Nombres duplicados",
     "anomalyCategoryOther": "Otras anomalías",
     "fieldUnreadableShort": "Ilegible",

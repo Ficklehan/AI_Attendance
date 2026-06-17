@@ -868,9 +868,10 @@ public class TaskService {
         DataScopeContext scope = resolveDataScope();
         List<Map<String, String>> conditions = parseFilters(searchField, keyword, filters);
         List<TaskRecord> rows = taskRecordMapper.selectRecordPage(scope, status, conditions, offset, size);
+        Map<String, Map<String, JSONObject>> taskRowCache = new HashMap<>();
         List<EmployeeRecordDTO> result = new ArrayList<>();
         for (TaskRecord row : rows) {
-            result.add(toEmployeeRecord(row));
+            result.add(toEmployeeRecord(row, taskRowCache));
         }
         return result;
     }
@@ -882,6 +883,10 @@ public class TaskService {
     }
 
     private EmployeeRecordDTO toEmployeeRecord(TaskRecord row) {
+        return toEmployeeRecord(row, new HashMap<>());
+    }
+
+    private EmployeeRecordDTO toEmployeeRecord(TaskRecord row, Map<String, Map<String, JSONObject>> taskRowCache) {
         EmployeeRecordDTO dto = new EmployeeRecordDTO();
         dto.setTaskId(row.getTaskId());
         dto.setFileKey(row.getFileKey());
@@ -889,7 +894,6 @@ public class TaskService {
         dto.setTaskStatus(row.getTaskStatus());
         dto.setRecordStatus(row.getTaskStatus());
         dto.setImageUrls(row.getImageUrls());
-        dto.setNo(row.getEmpNo());
         dto.setName(row.getEmpName());
         dto.setCountry(row.getCountry());
         dto.setWarehouse(row.getWarehouse());
@@ -901,10 +905,90 @@ public class TaskService {
         dto.setPauseMinutes(row.getPauseMinutes());
         dto.setSignature(row.getSignature());
         dto.setObservations(row.getObservations());
-        dto.setPageNum(row.getPageNum());
+        JSONObject exportJson = buildEmployeeRecordExportJson(row, taskRowCache);
+        dto.setNo(RecordJsonSupport.pickJson(exportJson, "NO", "No", "no"));
+        dto.setPageNum(TaskRecordExportSupport.resolvePageNum(exportJson));
+        dto.setWorkHours(TaskRecordExportSupport.formatWorkHours(exportJson));
+        dto.setAnomalyDescription(TaskRecordExportSupport.formatAnomalyDescription(exportJson));
         dto.setSmartMark(row.getSmartMark());
         dto.setCreatedAt(row.getTaskCreatedAt() == null ? "" : row.getTaskCreatedAt().toString());
         return dto;
+    }
+
+    private JSONObject buildEmployeeRecordExportJson(TaskRecord row, Map<String, Map<String, JSONObject>> taskRowCache) {
+        JSONObject export = TaskRecordExportSupport.toExportJson(row);
+        JSONObject source = resolveTaskRowJson(row, taskRowCache);
+        if (source == null) {
+            return export;
+        }
+        if (source.containsKey("anomalies")) {
+            export.put("anomalies", source.get("anomalies"));
+        }
+        String unreadableKey = RecognizedFieldSanitizer.UNREADABLE_FIELDS_KEY;
+        if (source.containsKey(unreadableKey)) {
+            export.put(unreadableKey, source.get(unreadableKey));
+        }
+        if (RecordJsonSupport.isBlank(TaskRecordExportSupport.resolvePageNum(export))) {
+            String pageNum = TaskRecordExportSupport.resolvePageNum(source);
+            if (!RecordJsonSupport.isBlank(pageNum)) {
+                export.put("PAGE_NUM", pageNum);
+            }
+        }
+        if (RecordJsonSupport.isBlank(RecordJsonSupport.pickJson(export, "NO", "No", "no"))) {
+            String no = RecordJsonSupport.pickJson(source, "NO", "No", "no");
+            if (!RecordJsonSupport.isBlank(no)) {
+                export.put("NO", no);
+            }
+        }
+        return export;
+    }
+
+    private JSONObject resolveTaskRowJson(TaskRecord row, Map<String, Map<String, JSONObject>> taskRowCache) {
+        if (row == null || RecordJsonSupport.isBlank(row.getTaskId())) {
+            return null;
+        }
+        Map<String, JSONObject> rowMap = taskRowCache.computeIfAbsent(row.getTaskId(), this::loadTaskRowJsonMap);
+        if (rowMap == null || rowMap.isEmpty()) {
+            return null;
+        }
+        if (!RecordJsonSupport.isBlank(row.getRowKey()) && rowMap.containsKey(row.getRowKey())) {
+            return rowMap.get(row.getRowKey());
+        }
+        return rowMap.get(String.valueOf(row.getRecordIndex()));
+    }
+
+    private Map<String, JSONObject> loadTaskRowJsonMap(String taskId) {
+        try {
+            Task task = taskMapper.selectTaskByTaskId(taskId);
+            if (task == null) {
+                return Collections.emptyMap();
+            }
+            String payload = TaskRecordPayloadResolver.resolvePayload(task);
+            if (RecordJsonSupport.isBlank(payload)) {
+                return Collections.emptyMap();
+            }
+            JSONArray rows = JSON.parseArray(payload);
+            if (rows == null || rows.isEmpty()) {
+                return Collections.emptyMap();
+            }
+            Map<String, JSONObject> map = new HashMap<>();
+            for (int i = 0; i < rows.size(); i++) {
+                JSONObject row = rows.getJSONObject(i);
+                if (row == null) {
+                    continue;
+                }
+                String rowKey = RecordJsonSupport.pickJson(row, "_rowKey");
+                if (!RecordJsonSupport.isBlank(rowKey)) {
+                    map.put(rowKey, row);
+                }
+                map.put(taskId + "_" + i, row);
+                map.put(String.valueOf(i), row);
+            }
+            return map;
+        } catch (Exception e) {
+            log.warn("加载任务 JSON 失败: taskId={}", taskId, e);
+            return Collections.emptyMap();
+        }
     }
 
     private List<Map<String, String>> parseFilters(String searchField, String keyword, String filters) {
@@ -1041,24 +1125,27 @@ public class TaskService {
 
     public long exportEmployeeRecordsToExcel(DataScopeContext scope, String status, String keyword, String searchField,
                                              String filters, ExcelSheetWriter writer) throws IOException {
-        writer.writeHeader("任务ID", "操作人", "任务状态", "创建时间", "页码", "工号", "姓名", "国家", "仓库", "日期",
-                "中介机构", "班次", "到达", "离开", "休息(分钟)", "签名", "标记", "备注", "文件名");
+        writer.writeHeader("任务ID", "操作人", "任务状态", "创建时间", "文件名",
+                "页码", "NO", "姓名", "国家", "仓库", "日期", "中介机构", "班次",
+                "到达时间", "离开时间", "休息(分钟)", "出勤工时", "员工签名", "备注", "异常说明", "标记");
         List<Map<String, String>> conditionList = parseFilters(searchField, keyword, filters);
         long count = 0;
         int offset = 0;
         final int batchSize = 500;
+        Map<String, Map<String, JSONObject>> taskRowCache = new HashMap<>();
         while (true) {
             List<TaskRecord> rows = taskRecordMapper.selectForExport(scope, status, conditionList, offset, batchSize);
             if (rows == null || rows.isEmpty()) {
                 break;
             }
             for (TaskRecord row : rows) {
-                EmployeeRecordDTO dto = toEmployeeRecord(row);
+                EmployeeRecordDTO dto = toEmployeeRecord(row, taskRowCache);
                 writer.writeRow(
                         ExcelExportHelper.cell(dto.getTaskId()),
                         ExcelExportHelper.cell(dto.getUserName()),
                         ExcelExportHelper.cell(dto.getTaskStatus()),
                         ExcelExportHelper.cell(dto.getCreatedAt()),
+                        ExcelExportHelper.cell(dto.getFileKey()),
                         ExcelExportHelper.cell(dto.getPageNum()),
                         ExcelExportHelper.cell(dto.getNo()),
                         ExcelExportHelper.cell(dto.getName()),
@@ -1070,10 +1157,11 @@ public class TaskService {
                         ExcelExportHelper.cell(dto.getArrival()),
                         ExcelExportHelper.cell(dto.getDeparture()),
                         ExcelExportHelper.cell(dto.getPauseMinutes()),
+                        ExcelExportHelper.cell(dto.getWorkHours()),
                         ExcelExportHelper.cell(dto.getSignature()),
-                        ExcelExportHelper.cell(dto.getSmartMark()),
                         ExcelExportHelper.cell(dto.getObservations()),
-                        ExcelExportHelper.cell(dto.getFileKey()));
+                        ExcelExportHelper.cell(dto.getAnomalyDescription()),
+                        ExcelExportHelper.cell(dto.getSmartMark()));
                 count++;
             }
             offset += rows.size();

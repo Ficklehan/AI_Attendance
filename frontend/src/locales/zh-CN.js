@@ -171,7 +171,9 @@ export default {
     "arrivalShort": "须为单个时间，如 08:30",
     "arrivalTooltip": "到达时间须为单个时间点，例如 8:30、08:30 或 18h00",
     "departureShort": "须为单个时间，如 18:00",
-    "departureTooltip": "离开时间须为单个时间点，例如 18:00、18h00 或 17:30"
+    "departureTooltip": "离开时间须为单个时间点，例如 18:00、18h00 或 17:30",
+    "sameTimeShort": "到达与离开时间相同",
+    "sameTimeTooltip": "到达时间与离开时间不能相同，请核对后修改"
   },
   "export": {
     "centerTitle": "导出中心",
@@ -694,6 +696,7 @@ export default {
     "requiredFieldMissingShort": "必填字段缺失",
     "anomalyCategoryRequired": "必填缺失",
     "anomalyCategoryUnreadable": "看不清",
+    "anomalyCategoryFormat": "格式异常",
     "anomalyCategoryDuplicate": "重名",
     "anomalyCategoryOther": "其他异常",
     "fieldUnreadableShort": "看不清",

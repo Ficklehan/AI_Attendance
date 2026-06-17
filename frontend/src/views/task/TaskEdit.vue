@@ -258,16 +258,18 @@
                 <span class="cell-text cell-serial">{{ globalRowSerial(index) }}</span>
               </template>
               <template v-if="column.key === 'anomalyReasons'">
-                <div v-if="getRecordAnomalyGroups(record).length > 0" class="inline-anomaly-tags">
-                  <TruncatedTag
-                    v-for="group in getRecordAnomalyGroups(record)"
-                    :key="group.category"
-                    :text="group.summary"
-                    :color="getAnomalyCategoryColor(group.category)"
-                    size="small"
-                  />
-                </div>
-                <span v-else class="cell-muted">-</span>
+                <template v-for="anomalyGroups in [getRecordAnomalyGroups(record)]" :key="`${record._rowKey}-anomaly`">
+                  <div v-if="anomalyGroups.length > 0" class="inline-anomaly-tags">
+                    <TruncatedTag
+                      v-for="group in anomalyGroups"
+                      :key="group.category"
+                      :text="group.summary"
+                      :color="getAnomalyCategoryColor(group.category)"
+                      size="small"
+                    />
+                  </div>
+                  <span v-else class="cell-muted">-</span>
+                </template>
               </template>
               <template v-if="column.key === 'PAGE_NUM'">
                 <a-input
@@ -325,7 +327,7 @@
               </template>
               <template v-if="column.key === 'HORAIRES_DU_TRAVAIL'">
                 <div :id="fieldCellDomId(record, 'HORAIRES_DU_TRAVAIL')" class="format-field-cell">
-                  <a-tooltip v-if="isRecordEditable(record)" :title="fieldFormatTooltip('HORAIRES_DU_TRAVAIL')">
+                  <a-tooltip v-if="isRecordEditable(record)" :title="fieldFormatTooltip(record,'HORAIRES_DU_TRAVAIL')">
                     <a-input
                       v-model:value="record.HORAIRES_DU_TRAVAIL"
                       size="small"
@@ -333,16 +335,16 @@
                       :bordered="false"
                       :placeholder="fieldCellPlaceholder(record, 'HORAIRES_DU_TRAVAIL')"
                       @change="onReadableFieldChange(record, 'HORAIRES_DU_TRAVAIL')"
-                      @blur="onFormatFieldBlur"
+                      @blur="() => onFormatFieldBlur(record, 'HORAIRES_DU_TRAVAIL')"
                     />
                   </a-tooltip>
                   <span v-else :class="fieldTextClass(record, 'HORAIRES_DU_TRAVAIL')">{{ displayRecordField(record, 'HORAIRES_DU_TRAVAIL') }}</span>
-                  <div v-if="isFormatFieldInvalid(record, 'HORAIRES_DU_TRAVAIL') && !isRecordEditable(record)" class="format-hint-below">{{ fieldFormatTooltip('HORAIRES_DU_TRAVAIL') }}</div>
+                  <div v-if="isFormatFieldInvalid(record, 'HORAIRES_DU_TRAVAIL')" class="format-hint-below">{{ fieldFormatTooltip(record,'HORAIRES_DU_TRAVAIL') }}</div>
                 </div>
               </template>
               <template v-if="column.key === 'Date'">
                 <div :id="fieldCellDomId(record, 'Date')" class="format-field-cell">
-                  <a-tooltip v-if="isRecordEditable(record)" :title="fieldFormatTooltip('Date')">
+                  <a-tooltip v-if="isRecordEditable(record)" :title="fieldFormatTooltip(record,'Date')">
                     <a-date-picker
                       v-model:value="record.Date"
                       size="small"
@@ -352,17 +354,17 @@
                       value-format="YYYY-MM-DD"
                       :bordered="false"
                       :allow-clear="true"
-                      :placeholder="fieldCellPlaceholder(record, 'Date') || fieldFormatTooltip('Date')"
+                      :placeholder="fieldCellPlaceholder(record, 'Date') || fieldFormatTooltip(record,'Date')"
                       @change="onReadableFieldChange(record, 'Date')"
                     />
                   </a-tooltip>
                   <span v-else :class="fieldTextClass(record, 'Date')">{{ displayRecordField(record, 'Date') }}</span>
-                  <div v-if="isFormatFieldInvalid(record, 'Date') && !isRecordEditable(record)" class="format-hint-below">{{ fieldFormatTooltip('Date') }}</div>
+                  <div v-if="isFormatFieldInvalid(record, 'Date')" class="format-hint-below">{{ fieldFormatTooltip(record,'Date') }}</div>
                 </div>
               </template>
               <template v-if="column.key === 'ARRIVEE'">
                 <div :id="fieldCellDomId(record, 'ARRIVEE')" class="format-field-cell">
-                  <a-tooltip v-if="isRecordEditable(record)" :title="fieldFormatTooltip('ARRIVEE')">
+                  <a-tooltip v-if="isRecordEditable(record)" :title="fieldFormatTooltip(record,'ARRIVEE')">
                     <a-input
                       v-model:value="record.ARRIVEE"
                       size="small"
@@ -370,16 +372,20 @@
                       :bordered="false"
                       :placeholder="fieldCellPlaceholder(record, 'ARRIVEE')"
                       @change="onReadableFieldChange(record, 'ARRIVEE')"
-                      @blur="onFormatFieldBlur"
+                      @input="() => onTimeFieldInput(record, 'ARRIVEE')"
+                      @blur="() => onFormatFieldBlur(record, 'ARRIVEE')"
                     />
                   </a-tooltip>
                   <span v-else :class="fieldTextClass(record, 'ARRIVEE')">{{ displayRecordField(record, 'ARRIVEE') }}</span>
-                  <div v-if="isFormatFieldInvalid(record, 'ARRIVEE') && !isRecordEditable(record)" class="format-hint-below">{{ fieldFormatTooltip('ARRIVEE') }}</div>
+                  <div v-if="showSameTimeHint(record, 'ARRIVEE')" class="format-hint-below format-same-time-hint">
+                    {{ sameTimeHintText(record) }}
+                  </div>
+                  <div v-else-if="isFormatFieldInvalid(record, 'ARRIVEE')" class="format-hint-below">{{ fieldFormatTooltip(record,'ARRIVEE') }}</div>
                 </div>
               </template>
               <template v-if="column.key === 'DEPAR'">
                 <div :id="fieldCellDomId(record, 'DEPAR')" class="format-field-cell">
-                  <a-tooltip v-if="isRecordEditable(record)" :title="fieldFormatTooltip('DEPAR')">
+                  <a-tooltip v-if="isRecordEditable(record)" :title="fieldFormatTooltip(record,'DEPAR')">
                     <a-input
                       v-model:value="record.DEPAR"
                       size="small"
@@ -387,11 +393,15 @@
                       :bordered="false"
                       :placeholder="fieldCellPlaceholder(record, 'DEPAR')"
                       @change="onReadableFieldChange(record, 'DEPAR')"
-                      @blur="onFormatFieldBlur"
+                      @input="() => onTimeFieldInput(record, 'DEPAR')"
+                      @blur="() => onFormatFieldBlur(record, 'DEPAR')"
                     />
                   </a-tooltip>
                   <span v-else :class="fieldTextClass(record, 'DEPAR')">{{ displayRecordField(record, 'DEPAR') }}</span>
-                  <div v-if="isFormatFieldInvalid(record, 'DEPAR') && !isRecordEditable(record)" class="format-hint-below">{{ fieldFormatTooltip('DEPAR') }}</div>
+                  <div v-if="showSameTimeHint(record, 'DEPAR')" class="format-hint-below format-same-time-hint">
+                    {{ sameTimeHintText(record) }}
+                  </div>
+                  <div v-else-if="isFormatFieldInvalid(record, 'DEPAR')" class="format-hint-below">{{ fieldFormatTooltip(record,'DEPAR') }}</div>
                 </div>
               </template>
               <template v-if="column.key === 'PAUSE'">
@@ -573,6 +583,7 @@ import TableSortableHeader from '@/components/TableSortableHeader.vue'
 import TableHeaderFilter from '@/components/TableHeaderFilter.vue'
 import { useTableColumnSort } from '@/composables/useTableColumnSort'
 import { useAutoSizedColumns } from '@/composables/useAutoSizedColumns'
+import { sumTableScrollX } from '@/utils/tableAutoColumns'
 import axios from 'axios'
 import { getCachedWorkingCountry } from '@/utils/countryHeader'
 import { applyMissingPays } from '@/utils/countryDefaults'
@@ -613,6 +624,7 @@ import { useTaskEditDuplicates } from '@/composables/useTaskEditDuplicates'
 import { useTaskEditConfirmValidation } from '@/composables/useTaskEditConfirmValidation'
 import { useTaskEditRecordDisplay } from '@/composables/useTaskEditRecordDisplay'
 import { getFormatHintKeys, isFormatHintField } from '@/utils/fieldFormatHints'
+import { isArrivalDepartureSameTime } from '@/utils/recordFieldFormatRules'
 import {
   normalizeWorkerNo,
   normalizePersonName,
@@ -748,17 +760,32 @@ const fieldUnreadablePlaceholder = (record, field) => (
 const fieldCellPlaceholder = (record, field) => {
   const unreadable = fieldUnreadablePlaceholder(record, field)
   if (unreadable) return unreadable
+  if ((field === 'ARRIVEE' || field === 'DEPAR') && isArrivalDepartureSameTime(record)) {
+    return t('fieldFormat.sameTimeShort')
+  }
   if (isFormatFieldInvalid(record, field)) {
-    const keys = getFormatHintKeys(field)
+    const keys = getFormatHintKeys(field, { record, isSameArrivalDeparture: isArrivalDepartureSameTime })
     if (keys) return t(keys.short)
   }
   return undefined
 }
 
-const fieldFormatTooltip = (field) => {
-  const keys = getFormatHintKeys(field)
+const sameTimeHintText = (record) => {
+  const text = t('fieldFormat.sameTimeTooltip')
+  return text !== 'fieldFormat.sameTimeTooltip' ? text : '到达时间与离开时间不能相同，请核对后修改'
+}
+
+const fieldFormatTooltip = (record, field) => {
+  if ((field === 'ARRIVEE' || field === 'DEPAR') && isArrivalDepartureSameTime(record)) {
+    return sameTimeHintText(record)
+  }
+  const keys = getFormatHintKeys(field, { record, isSameArrivalDeparture: isArrivalDepartureSameTime })
   return keys ? t(keys.tooltip) : ''
 }
+
+const showSameTimeHint = (record, field) => (
+  (field === 'ARRIVEE' || field === 'DEPAR') && isArrivalDepartureSameTime(record)
+)
 
 const fieldCellDomId = (record, field) => {
   if (!isFormatHintField(field)) return undefined
@@ -769,8 +796,20 @@ const customTableRow = (record) => ({
   id: `field-row-${getRowKey(record)}`,
 })
 
-const onFormatFieldBlur = () => {
+const onTimeFieldInput = (record, field) => {
+  clearRowCache()
+  if (field === 'ARRIVEE' || field === 'DEPAR') {
+    scheduleAnomalyCountUpdate(true)
+    scheduleRequiredMissingCountUpdate(true)
+  }
+}
+
+const onFormatFieldBlur = (record, field) => {
+  clearRowCache()
   scheduleRequiredMissingCountUpdate(true)
+  if (field === 'ARRIVEE' || field === 'DEPAR' || field === 'HORAIRES_DU_TRAVAIL' || field === 'Date') {
+    scheduleAnomalyCountUpdate(true)
+  }
 }
 
 const scrollToFirstValidationIssue = async (issue) => {
@@ -819,6 +858,9 @@ const onReadableFieldChange = (record, field) => {
     refreshRecordNightShiftMark(record)
   }
   clearRowCache()
+  if (field === 'ARRIVEE' || field === 'DEPAR') {
+    scheduleAnomalyCountUpdate(true)
+  }
 }
 
 const getRowAnomalyReasons = (record) => getRecordAnomalyReasons(record)
@@ -996,6 +1038,9 @@ const cellStyle = (record, rowIndex, columnKey) => {
     }, columnKey)
   }
   const fieldKey = columnKey
+  if ((fieldKey === 'ARRIVEE' || fieldKey === 'DEPAR') && isArrivalDepartureSameTime(record)) {
+    return mergeCellProps({ class: 'format-time-cell format-time-cell--invalid' }, columnKey)
+  }
   if (fieldKey && isConfiguredRequiredField(fieldKey) && isRequiredFieldEmpty(record, fieldKey)) {
     return mergeCellProps({ class: 'required-field-cell' }, columnKey)
   }
@@ -1069,7 +1114,8 @@ const resetTableColumnsLock = () => {
   lockedSizedColumns.value = []
 }
 
-const { columns: sizedColumns, scrollX } = useAutoSizedColumns(sortedColumns, tableRecords, {
+const { columns: sizedColumns, scrollX: autoScrollX } = useAutoSizedColumns(sortedColumns, tableRecords, {
+  enabled: computed(() => !columnsLocked.value),
   actionWidth: isConfirmedTask.value && canCalibrateRecord.value ? 88 : 50,
   getCellSample: (col, record) => {
     if (col.key === 'workHours') return calculateWorkHours(record)
@@ -1079,6 +1125,13 @@ const { columns: sizedColumns, scrollX } = useAutoSizedColumns(sortedColumns, ta
     if (col.key === 'PAUSE') return formatPauseDisplay(record.PAUSE)
     return undefined
   },
+})
+
+const scrollX = computed(() => {
+  if (columnsLocked.value && lockedSizedColumns.value.length) {
+    return sumTableScrollX(lockedSizedColumns.value)
+  }
+  return autoScrollX.value
 })
 
 watch(
@@ -1645,6 +1698,8 @@ onMounted(async () => {
   loadTask()
 })
 
+let duplicateDebounceTimer = null
+
 onUnmounted(() => {
   isComponentMounted = false
   expandedDuplicateRowKeys.value = []
@@ -1665,17 +1720,52 @@ watch(taskId, () => {
   }
 })
 
-let duplicateDebounceTimer = null
-watch(records, () => {
+const DUPLICATE_WATCH_FIELDS = [
+  'NOM_PRENOM', 'Pays', 'Entrepot', 'Date', 'AGENCE_INTERIMAIRE',
+  'ARRIVEE', 'DEPAR', '_duplicateConfirmedUnique', 'isDeleted', 'NO', 'SmartMark', 'Mark',
+]
+
+const VALIDATION_WATCH_FIELDS = [
+  'NO', 'NOM_PRENOM', 'Pays', 'Entrepot', 'Date', 'AGENCE_INTERIMAIRE',
+  'HORAIRES_DU_TRAVAIL', 'ARRIVEE', 'DEPAR', 'PAUSE', 'SIGNATURE', 'Observations', 'PAGE_NUM',
+  'SmartMark', 'Mark', 'isDeleted', '_duplicateConfirmedUnique', '_unreadableFields',
+]
+
+function buildRecordsFieldSignature(list, fields) {
+  if (!Array.isArray(list) || !list.length) return ''
+  const parts = new Array(list.length)
+  for (let i = 0; i < list.length; i++) {
+    const record = list[i]
+    const rowParts = new Array(fields.length)
+    for (let j = 0; j < fields.length; j++) {
+      const field = fields[j]
+      const value = record[field]
+      rowParts[j] = Array.isArray(value) ? value.join('|') : (value == null ? '' : String(value))
+    }
+    parts[i] = rowParts.join('\x01')
+  }
+  return parts.join('\x02')
+}
+
+const validationWatchSignature = computed(() =>
+  buildRecordsFieldSignature(records.value, VALIDATION_WATCH_FIELDS))
+
+const duplicateWatchSignature = computed(() =>
+  buildRecordsFieldSignature(records.value, DUPLICATE_WATCH_FIELDS))
+
+watch(validationWatchSignature, () => {
   scheduleRequiredMissingCountUpdate()
   scheduleAnomalyCountUpdate()
+})
+
+watch(duplicateWatchSignature, () => {
   if (duplicateRefreshing.value) return
   if (duplicateDebounceTimer) window.clearTimeout(duplicateDebounceTimer)
   duplicateDebounceTimer = window.setTimeout(() => {
     duplicateDebounceTimer = null
     refreshDuplicateDecorations()
   }, 300)
-}, { deep: true })
+})
 
 watch(headerFilters, () => {
   resetVisibleTableRows()
@@ -2165,14 +2255,29 @@ watch(headerFilters, () => {
 
   .format-field-cell {
     width: 100%;
+    min-width: 0;
+  }
+
+  :deep(.format-time-cell) {
+    overflow: visible !important;
+    vertical-align: top !important;
   }
 
   .format-hint-below {
-    margin-top: 2px;
-    font-size: 11px;
-    line-height: 1.35;
+    margin-top: 4px;
+    font-size: 12px;
+    line-height: 1.4;
     color: $format-invalid-text;
     white-space: normal;
+  }
+
+  .format-same-time-hint {
+    display: block;
+    padding: 2px 6px;
+    border-radius: $radius-sm;
+    background: $format-invalid-surface;
+    border: 1px solid $format-invalid-border;
+    font-weight: $font-weight-medium;
   }
 
   :deep(.validation-cell-flash) {

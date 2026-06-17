@@ -8,7 +8,7 @@ const {
   appendRequiredMark,
   getMissingRequiredFieldKeys,
 } = require('./requiredRecordFields')
-const { getInvalidFormatFieldKeys } = require('./recordFieldFormatRules')
+const { getInvalidFormatFieldKeys, isArrivalDepartureSameTime } = require('./recordFieldFormatRules')
 const { getFormatHintKeys } = require('./fieldFormatHints')
 const { normalizePauseMinutes } = require('./recordDisplay')
 const { formatCalibDisplayValue } = require('./calibrationHistory')
@@ -34,7 +34,7 @@ function buildCalibFormFields(draft, sourceRecord, options) {
       value = value === undefined || value === null ? '' : String(value)
     }
     const formatInvalid = formatInvalidKeys.indexOf(key) !== -1
-    const hintKeys = getFormatHintKeys(key)
+    const hintKeys = getFormatHintKeys(key, { record, isSameArrivalDeparture: isArrivalDepartureSameTime })
     let formatPlaceholder = ''
     let formatHint = ''
     if (formatInvalid && hintKeys) {

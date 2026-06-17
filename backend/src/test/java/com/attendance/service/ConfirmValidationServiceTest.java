@@ -97,6 +97,14 @@ class ConfirmValidationServiceTest {
         assertThrows(BusinessException.class, () -> confirmValidationService.validateConfirmRecords(Arrays.asList(record3)));
     }
 
+    @Test
+    void rejectsSameArrivalDeparture() {
+        Map<String, Object> record = validNormalRecord();
+        record.put("ARRIVEE", "08:00");
+        record.put("DEPAR", "08:00");
+        assertThrows(BusinessException.class, () -> confirmValidationService.validateConfirmRecords(Arrays.asList(record)));
+    }
+
     private static Map<String, Object> validNormalRecord() {
         Map<String, Object> record = new HashMap<>();
         record.put("NO", "001");

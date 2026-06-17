@@ -20,6 +20,8 @@ public class EmployeeRecordDTO {
     private String signature;
     private String observations;
     private String pageNum;
+    private String workHours;
+    private String anomalyDescription;
     private String smartMark;
     private String createdAt;
 
@@ -173,6 +175,22 @@ public class EmployeeRecordDTO {
 
     public void setPageNum(String pageNum) {
         this.pageNum = pageNum;
+    }
+
+    public String getWorkHours() {
+        return workHours;
+    }
+
+    public void setWorkHours(String workHours) {
+        this.workHours = workHours;
+    }
+
+    public String getAnomalyDescription() {
+        return anomalyDescription;
+    }
+
+    public void setAnomalyDescription(String anomalyDescription) {
+        this.anomalyDescription = anomalyDescription;
     }
 
     public String getSmartMark() {

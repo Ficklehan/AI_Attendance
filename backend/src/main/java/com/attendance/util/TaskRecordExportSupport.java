@@ -2,6 +2,7 @@ package com.attendance.util;
 
 import com.alibaba.fastjson.JSONArray;
 import com.alibaba.fastjson.JSONObject;
+import com.attendance.entity.TaskRecord;
 
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
@@ -24,6 +25,30 @@ public final class TaskRecordExportSupport {
 
     public static String resolvePageNum(JSONObject record) {
         return RecordJsonSupport.pickJson(record, "PAGE_NUM", "pageNum", "PageNum");
+    }
+
+    /** 将 task_records 行转为导出/派生字段计算用的 JSON 视图 */
+    public static JSONObject toExportJson(TaskRecord row) {
+        if (row == null) {
+            return new JSONObject();
+        }
+        JSONObject record = new JSONObject();
+        record.put("NO", row.getEmpNo());
+        record.put("NOM_PRENOM", row.getEmpName());
+        record.put("Pays", row.getCountry());
+        record.put("Entrepot", row.getWarehouse());
+        record.put("Date", row.getWorkDate());
+        record.put("AGENCE_INTERIMAIRE", row.getAgency());
+        record.put("HORAIRES_DU_TRAVAIL", row.getShift());
+        record.put("ARRIVEE", row.getArrival());
+        record.put("DEPAR", row.getDeparture());
+        record.put("PAUSE", row.getPauseMinutes());
+        record.put("SIGNATURE", row.getSignature());
+        record.put("Observations", row.getObservations());
+        record.put("PAGE_NUM", row.getPageNum());
+        record.put("SmartMark", row.getSmartMark());
+        record.put("isDeleted", row.isDeleted());
+        return record;
     }
 
     public static String formatWorkHours(JSONObject record) {

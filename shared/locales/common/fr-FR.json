@@ -81,6 +81,8 @@
     "arrivalShort": "Un seul horaire, ex. 08:30",
     "arrivalTooltip": "L'arrivée doit être un seul horaire, ex. 8:30, 08:30 ou 18h00",
     "departureShort": "Un seul horaire, ex. 18:00",
-    "departureTooltip": "Le départ doit être un seul horaire, ex. 18:00, 18h00 ou 17:30"
+    "departureTooltip": "Le départ doit être un seul horaire, ex. 18:00, 18h00 ou 17:30",
+    "sameTimeShort": "Arrivée et départ identiques",
+    "sameTimeTooltip": "L'arrivée et le départ doivent être différents. Veuillez corriger."
   }
 }

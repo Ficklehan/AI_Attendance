@@ -112,8 +112,17 @@
               {{ translateSignatureMark(getDisplaySignature(record.signature, record), t) }}
             </a-tag>
           </template>
+          <template v-if="column.key === 'pageNum'">
+            <span>{{ record.pageNum || '-' }}</span>
+          </template>
+          <template v-if="column.key === 'no'">
+            <span>{{ record.no || '-' }}</span>
+          </template>
           <template v-if="column.key === 'workHours'">
-            <span>{{ calculateWorkHours(record) }}</span>
+            <span>{{ record.workHours || calculateWorkHours(record) }}</span>
+          </template>
+          <template v-if="column.key === 'anomalyDescription'">
+            <span>{{ record.anomalyDescription || '-' }}</span>
           </template>
           <template v-if="column.key === 'smartMark'">
             <a-space v-if="record.smartMark" wrap size="small" class="mark-tags">
@@ -241,7 +250,12 @@ const baseColumns = computed(() => [
     ellipsis: def.ellipsis,
     align: 'left',
     ...(def.key === 'workHours'
-      ? { sorter: (a, b) => compareTableValues(calculateWorkHours(a), calculateWorkHours(b)) }
+      ? {
+          sorter: (a, b) => compareTableValues(
+            a.workHours || calculateWorkHours(a),
+            b.workHours || calculateWorkHours(b),
+          ),
+        }
       : {}),
   })),
   {
@@ -279,7 +293,7 @@ const {
   setFrozenKeys,
   showAllColumns,
   clearFrozenKeys,
-} = useColumnFreeze('task-records', sizedColumns, { defaultFrozen: ['serialNo', 'taskId'] })
+} = useColumnFreeze('task-records', sizedColumns, { defaultFrozen: ['serialNo', 'taskId', 'pageNum', 'no'] })
 
 const searchableFieldDefs = computed(() => {
   const hidden = new Set(hiddenKeys.value)

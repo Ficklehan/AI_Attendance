@@ -7,8 +7,8 @@ const FORMAT_FIELD_KEYS = ['Date', 'HORAIRES_DU_TRAVAIL', 'ARRIVEE', 'DEPAR']
 
 const FIELD_ALIASES = {
   Date: ['Date', 'WorkDate'],
-  ARRIVEE: ['ARRIVEE', 'arrival'],
-  DEPAR: ['DEPAR', 'DEPART', 'departure'],
+  ARRIVEE: ['ARRIVEE', 'arrival', 'ArriveTime', 'ARRIVAL'],
+  DEPAR: ['DEPAR', 'DEPART', 'departure', 'DepartTime', 'DEPARTURE'],
   HORAIRES_DU_TRAVAIL: ['HORAIRES_DU_TRAVAIL', 'shift'],
 }
 
@@ -46,40 +46,55 @@ function extractTimeTokens(raw) {
     .filter(Boolean)
 }
 
-function createRecordFieldFormatRules({ isPlaceholderValue, markContains }) {
-  function getRecordMark(record) {
-    return String((record && record.SmartMark) || (record && record.Mark) || '').trim()
-  }
+function isValidationExempt(record, { isPlaceholderValue, markContains }) {
+  if (!record) return true
+  if (record.isDeleted) return true
+  const mark = String((record && record.SmartMark) || (record && record.Mark) || '').trim()
+  if (markContains(mark, 'deleted')) return true
+  if (!record._restored && (mark.indexOf('未出勤') !== -1 || markContains(mark, 'absent'))) return true
+  return false
+}
 
-  function isValidationExempt(record) {
-    if (!record) return true
-    if (record.isDeleted) return true
-    const mark = getRecordMark(record)
-    if (markContains(mark, 'deleted')) return true
-    if (!record._restored && (mark.indexOf('未出勤') !== -1 || markContains(mark, 'absent'))) return true
+function shouldSkipFormatCheck(value, isPlaceholderValue) {
+  return isPlaceholderValue(value) || !String(value || '').trim()
+}
+
+/** 到达与离开时间相同（独立导出，供各端直接调用） */
+function isArrivalDepartureSameTime(record, { isPlaceholderValue, markContains }) {
+  if (isValidationExempt(record, { isPlaceholderValue, markContains })) return false
+  const arrive = pickField(record, FIELD_ALIASES.ARRIVEE)
+  const depart = pickField(record, FIELD_ALIASES.DEPAR)
+  if (shouldSkipFormatCheck(arrive, isPlaceholderValue) || shouldSkipFormatCheck(depart, isPlaceholderValue)) {
     return false
   }
+  const arriveTokens = extractTimeTokens(arrive)
+  const departTokens = extractTimeTokens(depart)
+  if (arriveTokens.length !== 1 || departTokens.length !== 1) return false
+  const a = arriveTokens[0]
+  const d = departTokens[0]
+  return a.hours === d.hours && a.minutes === d.minutes
+}
 
-  function shouldSkipFormatCheck(value) {
-    return isPlaceholderValue(value) || !String(value || '').trim()
-  }
+function createRecordFieldFormatRules({ isPlaceholderValue, markContains }) {
+  const deps = { isPlaceholderValue, markContains }
+  const checkSameTime = (record) => isArrivalDepartureSameTime(record, deps)
 
   function isShiftFormatValid(value) {
-    if (shouldSkipFormatCheck(value)) return null
+    if (shouldSkipFormatCheck(value, isPlaceholderValue)) return null
     return extractTimeTokens(value).length === 2
   }
 
   function isArrivalDepartureFormatValid(value) {
-    if (shouldSkipFormatCheck(value)) return null
+    if (shouldSkipFormatCheck(value, isPlaceholderValue)) return null
     return extractTimeTokens(value).length === 1
   }
 
   function isDateFormatValid(value) {
-    if (shouldSkipFormatCheck(value)) return null
+    if (shouldSkipFormatCheck(value, isPlaceholderValue)) return null
     return !isDateValueInvalid(value)
   }
 
-  function isFieldFormatInvalid(record, fieldKey) {
+  function isSingleFieldFormatInvalid(record, fieldKey) {
     const keys = FIELD_ALIASES[fieldKey] || [fieldKey]
     const value = pickField(record, keys)
     if (fieldKey === 'Date') {
@@ -97,9 +112,22 @@ function createRecordFieldFormatRules({ isPlaceholderValue, markContains }) {
     return false
   }
 
+  function isFieldFormatInvalid(record, fieldKey) {
+    if ((fieldKey === 'ARRIVEE' || fieldKey === 'DEPAR') && checkSameTime(record)) {
+      return true
+    }
+    return isSingleFieldFormatInvalid(record, fieldKey)
+  }
+
   function getInvalidFormatFieldKeys(record) {
-    if (isValidationExempt(record)) return []
-    return FORMAT_FIELD_KEYS.filter((key) => isFieldFormatInvalid(record, key))
+    if (isValidationExempt(record, deps)) return []
+    const invalid = FORMAT_FIELD_KEYS.filter((key) => isSingleFieldFormatInvalid(record, key))
+    if (checkSameTime(record)) {
+      ;['ARRIVEE', 'DEPAR'].forEach((key) => {
+        if (invalid.indexOf(key) === -1) invalid.push(key)
+      })
+    }
+    return invalid
   }
 
   function collectFormatValidationIssues(records) {
@@ -135,7 +163,8 @@ function createRecordFieldFormatRules({ isPlaceholderValue, markContains }) {
 
   return {
     FORMAT_FIELD_KEYS,
-    isValidationExempt,
+    isValidationExempt: (record) => isValidationExempt(record, deps),
+    isArrivalDepartureSameTime: checkSameTime,
     isFieldFormatInvalid,
     getInvalidFormatFieldKeys,
     collectFormatValidationIssues,
@@ -152,4 +181,5 @@ module.exports = {
   FORMAT_FIELD_KEYS,
   createRecordFieldFormatRules,
   extractTimeTokens,
+  isArrivalDepartureSameTime,
 }

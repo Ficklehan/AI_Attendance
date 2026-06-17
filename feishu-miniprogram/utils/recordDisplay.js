@@ -134,7 +134,7 @@ function isAbsentRow(record) {
 
 const { FIELD_LABEL_KEYS } = require('./calibratableFields')
 const { hasRequiredMissing, getMissingRequiredFieldKeys, isConfiguredRequiredField, appendRequiredMark } = require('./requiredRecordFields')
-const { getInvalidFormatFieldKeys } = require('./recordFieldFormatRules')
+const { getInvalidFormatFieldKeys, isArrivalDepartureSameTime } = require('./recordFieldFormatRules')
 const { getFormatHintKeys } = require('./fieldFormatHints')
 
 const ANOMALY_CATEGORY_ORDER = ['required', 'unreadable', 'duplicate', 'other']
@@ -213,6 +213,10 @@ function collectAnomalyGroups(record) {
     const labelKey = FIELD_LABEL_KEYS[fieldKey]
     addItem('required', labelKey ? t(labelKey) : fieldKey)
   })
+
+  if (isArrivalDepartureSameTime(record)) {
+    addItem('other', tOr('fieldFormat.sameTimeShort', null, '到达与离开时间相同'))
+  }
 
   if (record._duplicatePeers && record._duplicatePeers.length) {
     addItem('duplicate', record._duplicatePeers.join('、'))
@@ -438,7 +442,7 @@ function buildRecordFieldRows(record, ctx) {
     const formatInvalid = formatInvalidKeys.indexOf(key) !== -1
     let formatHint = ''
     if (formatInvalid) {
-      const hintKeys = getFormatHintKeys(key)
+      const hintKeys = getFormatHintKeys(key, { record, isSameArrivalDeparture: isArrivalDepartureSameTime })
       if (hintKeys) {
         const short = t(hintKeys.short)
         formatHint = short !== hintKeys.short ? short : t(hintKeys.tooltip)

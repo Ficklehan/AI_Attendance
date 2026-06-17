@@ -51,6 +51,28 @@ class RecordFieldFormatValidatorTest {
         assertInvalid("Date", dateRow(""), false);
     }
 
+    @Test
+    void arrivalDepartureSameTimeFlagsBothFields() {
+        Map<String, Object> record = row("08:30-17:30", "08:30", "08:30", new HashMap<>());
+        List<String> invalid = RecordFieldFormatValidator.getInvalidFormatFieldKeys(record);
+        assertTrue(invalid.contains("ARRIVEE"));
+        assertTrue(invalid.contains("DEPAR"));
+    }
+
+    @Test
+    void arrivalDepartureSameTimeAllowsDifferentMinutes() {
+        Map<String, Object> record = row("08:30-17:30", "08:30", "17:30", new HashMap<>());
+        List<String> invalid = RecordFieldFormatValidator.getInvalidFormatFieldKeys(record);
+        assertFalse(invalid.contains("ARRIVEE"));
+        assertFalse(invalid.contains("DEPAR"));
+    }
+
+    @Test
+    void arrivalDepartureSameTimeSkipsWhenEitherMissing() {
+        Map<String, Object> record = row("08:30-17:30", "", "08:30", new HashMap<>());
+        assertFalse(RecordFieldFormatValidator.getInvalidFormatFieldKeys(record).contains("ARRIVEE"));
+    }
+
     private static Map<String, Object> dateRow(String date) {
         Map<String, Object> record = row("08:30-17:30", "08:30", "17:30", new HashMap<>());
         record.put("Date", date);

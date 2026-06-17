@@ -24,14 +24,48 @@ public final class RecordFieldFormatValidator {
         }
         List<String> invalid = new ArrayList<>();
         for (String key : FORMAT_FIELD_KEYS) {
-            if (isFieldFormatInvalid(record, key)) {
+            if (isSingleFieldFormatInvalid(record, key)) {
                 invalid.add(key);
+            }
+        }
+        if (isArrivalDepartureSameTime(record)) {
+            for (String key : Arrays.asList("ARRIVEE", "DEPAR")) {
+                if (!invalid.contains(key)) {
+                    invalid.add(key);
+                }
             }
         }
         return invalid;
     }
 
+    static boolean isArrivalDepartureSameTime(Map<String, Object> record) {
+        if (ConfirmValidationExempt.isExempt(record)) {
+            return false;
+        }
+        String arrive = pickField(record, "ARRIVEE");
+        String depart = pickField(record, "DEPAR");
+        if (shouldSkipFormatCheck(arrive) || shouldSkipFormatCheck(depart)) {
+            return false;
+        }
+        List<TimeToken> arriveTokens = extractTimeTokens(arrive);
+        List<TimeToken> departTokens = extractTimeTokens(depart);
+        if (arriveTokens.size() != 1 || departTokens.size() != 1) {
+            return false;
+        }
+        TimeToken a = arriveTokens.get(0);
+        TimeToken d = departTokens.get(0);
+        return a.hours == d.hours && a.minutes == d.minutes;
+    }
+
     static boolean isFieldFormatInvalid(Map<String, Object> record, String fieldKey) {
+        if (("ARRIVEE".equals(fieldKey) || "DEPAR".equals(fieldKey))
+                && isArrivalDepartureSameTime(record)) {
+            return true;
+        }
+        return isSingleFieldFormatInvalid(record, fieldKey);
+    }
+
+    static boolean isSingleFieldFormatInvalid(Map<String, Object> record, String fieldKey) {
         String value = pickField(record, fieldKey);
         if (shouldSkipFormatCheck(value)) {
             return false;
