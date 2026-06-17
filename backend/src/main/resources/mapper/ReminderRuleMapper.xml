@@ -112,6 +112,6 @@
     </delete>
 
     <insert id="insertRecipient">
-        INSERT IGNORE INTO reminder_rule_users (rule_id, user_id) VALUES (#{ruleId}, #{userId})
+        INSERT INTO reminder_rule_users (rule_id, user_id) VALUES (#{ruleId}, #{userId})
     </insert>
 </mapper>

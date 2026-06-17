@@ -19,9 +19,10 @@ CREATE TABLE IF NOT EXISTS reminder_rules (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='任务提醒规则';
 
 CREATE TABLE IF NOT EXISTS reminder_rule_users (
+    id BIGINT AUTO_INCREMENT PRIMARY KEY COMMENT '自增主键',
     rule_id VARCHAR(64) NOT NULL,
     user_id VARCHAR(64) NOT NULL,
-    PRIMARY KEY (rule_id, user_id),
+    UNIQUE KEY uk_reminder_rule_user (rule_id, user_id),
     INDEX idx_reminder_rule_users_user (user_id)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='提醒规则-提醒人';
 
