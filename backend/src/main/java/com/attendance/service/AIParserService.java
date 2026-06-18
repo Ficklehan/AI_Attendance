@@ -13,6 +13,7 @@ import com.attendance.service.MarkdownConfigService;
 import com.attendance.util.PageNumberNormalizer;
 import com.attendance.util.RecordCountryDefaults;
 import com.attendance.util.RecordFeishuPrepareSupport;
+import com.attendance.util.RecognizedAgencyShiftCorrector;
 import com.attendance.util.RecognizedFieldSanitizer;
 import com.attendance.util.RecognizedTimeNormalizer;
 import com.attendance.util.RecognizedTextNormalizer;
@@ -1007,6 +1008,7 @@ public class AIParserService {
             normalized.put("PAGE_NUM", "");
         }
         normalized.put("PAGE_NUM", PageNumberNormalizer.sanitize(normalized.getString("PAGE_NUM")));
+        RecognizedAgencyShiftCorrector.correctSwappedFields(normalized);
         RecognizedTextNormalizer.normalizeRecordTextFields(normalized);
         normalized.put("Entrepot", RecognizedTextNormalizer.normalizeLabelText(normalized.getString("Entrepot")));
         normalized.put("Date", RecognizedDateNormalizer.normalizeDate(normalized.getString("Date")));

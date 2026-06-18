@@ -30,7 +30,7 @@ public class PermissionController {
         return Result.success(permissionService.getRolePermissions());
     }
 
-    @PutMapping("/roles")
+    @PostMapping("/roles")
     public Result<Void> updateRolePermissions(@RequestBody Map<String, Map<String, Boolean>> body) {
         permissionService.updateRolePermissions(body);
         return Result.success(null, "权限已更新");

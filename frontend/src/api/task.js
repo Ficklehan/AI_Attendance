@@ -48,8 +48,8 @@ export const confirmTask = (taskId, data) => {
 
 export const deleteTask = (taskId) => {
   return request({
-    url: `/tasks/${taskId}`,
-    method: 'delete',
+    url: `/tasks/${taskId}/delete`,
+    method: 'post',
   })
 }
 

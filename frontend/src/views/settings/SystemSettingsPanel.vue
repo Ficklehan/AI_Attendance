@@ -84,7 +84,7 @@ const handleSave = async () => {
   try {
     await request({
       url: '/config/system',
-      method: 'put',
+      method: 'post',
       data: {
         notificationEnabled: form.notificationEnabled,
         confirmValidation: {

@@ -8,6 +8,7 @@ import java.util.HashSet;
 import java.util.Set;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 class ReminderSupportScheduleTest {
@@ -65,5 +66,25 @@ class ReminderSupportScheduleTest {
         LocalDateTime due = ReminderSupport.computeDueAtForPeriod(
                 entered, next, new BigDecimal("1"), "day", 9);
         assertTrue(due.isAfter(now));
+    }
+
+    @Test
+    void isScheduleTimeReached_dayUnitBeforeHour() {
+        LocalDateTime now = LocalDateTime.of(2026, 6, 18, 8, 30, 0);
+        assertFalse(ReminderSupport.isScheduleTimeReached("day", 9, now));
+    }
+
+    @Test
+    void isScheduleTimeReached_dayUnitAtHour() {
+        LocalDateTime now = LocalDateTime.of(2026, 6, 18, 9, 0, 0);
+        assertTrue(ReminderSupport.isScheduleTimeReached("day", 9, now));
+    }
+
+    @Test
+    void computePeriodIndex_catchUpTenDays() {
+        LocalDateTime entered = LocalDateTime.of(2026, 6, 8, 10, 0, 0);
+        LocalDateTime now = LocalDateTime.of(2026, 6, 18, 10, 0, 0);
+        long intervalMs = ReminderSupport.intervalToMillis(new BigDecimal("1"), "day");
+        assertEquals(10L, ReminderSupport.computePeriodIndex(entered, now, intervalMs));
     }
 }

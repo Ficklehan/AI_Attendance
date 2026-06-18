@@ -24,6 +24,8 @@ public interface ReminderScheduleMapper {
 
     int deleteReschedulableByTask(@Param("taskId") String taskId);
 
+    int cancelAllPending();
+
     List<ReminderSchedule> selectDuePending(@Param("now") LocalDateTime now, @Param("limit") int limit);
 
     ReminderSchedule selectPendingForRecipientPeriod(@Param("ruleId") String ruleId,

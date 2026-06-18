@@ -283,6 +283,7 @@ export default {
     "recognitionFailedTitle": "Herkenning mislukt",
     "recognitionRetry": "Herkenning opnieuw proberen",
     "recognitionReupload": "Opnieuw uploaden",
+    "recognitionFailureHint": "Herkenning opnieuw: opnieuw herkennen met afbeeldingen die al op de server staan (handig na het bijwerken van prompts). Opnieuw uploaden: selectie wissen en bestanden opnieuw kiezen.",
     "recognitionError": "Herkenningsfout",
     "workingCountry": "Werkland",
     "changeCountry": "Configuratie wijzigen",

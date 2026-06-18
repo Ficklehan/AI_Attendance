@@ -13,13 +13,13 @@ export function createUser(data) {
 }
 
 export function updateUser(userId, data) {
-  return request.put(`/users/${userId}`, data)
+  return request.post(`/users/${userId}/update`, data)
 }
 
 export function updateUserStatus(userId, status) {
-  return request.patch(`/users/${userId}/status`, { status })
+  return request.post(`/users/${userId}/status`, { status })
 }
 
 export function deleteUser(userId) {
-  return request.delete(`/users/${userId}`)
+  return request.post(`/users/${userId}/delete`)
 }

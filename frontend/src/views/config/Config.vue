@@ -1063,7 +1063,7 @@ const saveAiConfig = async () => {
   try {
     await request({
       url: '/config/ai-prompt',
-      method: 'put',
+      method: 'post',
       data: {
         country: selectedCountry.value,
         ai_prompt: configs.aiPrompt,
@@ -1085,7 +1085,7 @@ const saveFeishuConfig = async () => {
   try {
     await request({
       url: '/config/feishu',
-      method: 'put',
+      method: 'post',
       data: {
         country: selectedCountry.value,
         bitable_app_token: configs.appToken,
@@ -1108,7 +1108,7 @@ const saveMappingConfig = async () => {
   try {
     await request({
       url: '/config/field-mapping',
-      method: 'put',
+      method: 'post',
       data: {
         country: selectedCountry.value,
         field_mapping: fieldMappings.value
@@ -1128,7 +1128,7 @@ const saveSystemConfig = async () => {
   try {
     await request({
       url: '/config/system',
-      method: 'put',
+      method: 'post',
       data: { notificationEnabled: configs.notificationEnabled },
     })
     message.success(t('config.saveSuccess'))
@@ -1273,7 +1273,7 @@ const completeWizard = async () => {
     const prompt = defaultPrompts[wizardCountry.value] || defaultPrompts.default
     await request({
       url: '/config/ai-prompt',
-      method: 'put',
+      method: 'post',
       data: {
         country: wizardCountry.value,
         ai_prompt: prompt,
@@ -1285,7 +1285,7 @@ const completeWizard = async () => {
       const fieldMappingYaml = generateFieldMappingYaml(defaultFieldMapping)
       await request({
         url: '/config/feishu',
-        method: 'put',
+        method: 'post',
         data: {
           country: wizardCountry.value,
           bitable_app_token: wizardAppToken.value,

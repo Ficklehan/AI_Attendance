@@ -575,6 +575,7 @@ export default {
     "recognitionFailedTitle": "识别失败",
     "recognitionRetry": "重试识别",
     "recognitionReupload": "重新上传",
+    "recognitionFailureHint": "「重试识别」：使用服务端已保存的原图重新识别（适合测试提示词更新）。「重新上传」：清空当前选择后重新选取文件。",
     "recognitionError": "识别出错",
     "workingCountry": "当前工作国家",
     "changeCountry": "更改配置",

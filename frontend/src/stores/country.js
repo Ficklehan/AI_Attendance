@@ -100,7 +100,7 @@ export const useCountryStore = defineStore('country', {
       if (authStore.isAdmin) {
         await request({
           url: '/config/current-country',
-          method: 'put',
+          method: 'post',
           data: { country: code },
         })
       }

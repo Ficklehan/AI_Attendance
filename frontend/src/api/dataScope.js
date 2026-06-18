@@ -5,7 +5,7 @@ export function getRoleDataScopes() {
 }
 
 export function updateRoleDataScope(role, data) {
-  return request.put(`/data-scope/roles/${role}`, data)
+  return request.post(`/data-scope/roles/${role}`, data)
 }
 
 export function getDataScopeDimensionOptions() {

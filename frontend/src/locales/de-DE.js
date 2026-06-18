@@ -283,6 +283,7 @@ export default {
     "recognitionFailedTitle": "Erkennung fehlgeschlagen",
     "recognitionRetry": "Erkennung wiederholen",
     "recognitionReupload": "Erneut hochladen",
+    "recognitionFailureHint": "Erkennung wiederholen: bereits auf dem Server gespeicherte Bilder erneut erkennen (hilfreich nach Prompt-Aktualisierung). Erneut hochladen: Auswahl leeren und Dateien neu wählen.",
     "recognitionError": "Erkennungsfehler",
     "workingCountry": "Arbeitsland",
     "changeCountry": "Konfiguration ändern",

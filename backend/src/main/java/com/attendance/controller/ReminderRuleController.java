@@ -38,23 +38,27 @@ public class ReminderRuleController {
         return Result.success(reminderRuleService.createRule(request));
     }
 
-    @PutMapping("/{id}")
+    @PostMapping("/{id}/update")
     public Result<ReminderRuleDTO> update(@PathVariable String id,
                                           @Valid @RequestBody ReminderRuleRequest request) {
         return Result.success(reminderRuleService.updateRule(id, request));
     }
 
-    @PatchMapping("/{id}/enabled")
+    @PostMapping("/{id}/enabled")
     public Result<Void> setEnabled(@PathVariable String id, @RequestBody Map<String, Boolean> body) {
+        applyEnabled(id, body);
+        return Result.success(null);
+    }
+
+    private void applyEnabled(String id, Map<String, Boolean> body) {
         Boolean enabled = body != null ? body.get("enabled") : null;
         if (enabled == null) {
             enabled = body != null ? body.get("value") : null;
         }
         reminderRuleService.setEnabled(id, Boolean.TRUE.equals(enabled));
-        return Result.success(null);
     }
 
-    @DeleteMapping("/{id}")
+    @PostMapping("/{id}/delete")
     public Result<Void> delete(@PathVariable String id) {
         reminderRuleService.deleteRule(id);
         return Result.success(null);

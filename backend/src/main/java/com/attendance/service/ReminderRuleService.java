@@ -13,6 +13,7 @@ import com.attendance.entity.SystemRole;
 import com.attendance.mapper.ReminderRuleMapper;
 import com.attendance.mapper.SystemRoleMapper;
 import com.attendance.mapper.UserMapper;
+import com.attendance.security.AdminAuthService;
 import com.attendance.security.SecurityUtils;
 import com.attendance.util.IdGenerator;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -44,6 +45,9 @@ public class ReminderRuleService {
 
     @Autowired
     private PermissionService permissionService;
+
+    @Autowired
+    private AdminAuthService adminAuthService;
 
     @Autowired
     private ReminderScheduleService reminderScheduleService;
@@ -122,6 +126,9 @@ public class ReminderRuleService {
 
     private void requireReminderConfig() {
         String userId = SecurityUtils.getCurrentUserId();
+        if (adminAuthService.isAdmin(userId)) {
+            return;
+        }
         User user = userMapper.selectUserById(userId);
         permissionService.requirePermission(user, ReminderSupport.PERMISSION_KEY);
     }

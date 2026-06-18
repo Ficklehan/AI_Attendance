@@ -640,9 +640,14 @@ const handleSave = async () => {
 
 const toggleEnabled = async (record, enabled) => {
   togglingId.value = record.id
+  const previous = record.enabled
   try {
     await setReminderRuleEnabled(record.id, enabled)
     record.enabled = enabled
+  } catch (e) {
+    record.enabled = previous
+    console.error(e)
+    message.error(e?.message || t('errors.accessDenied'))
   } finally {
     togglingId.value = null
   }

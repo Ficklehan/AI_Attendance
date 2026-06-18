@@ -32,7 +32,7 @@ export async function syncWorkingCountryFromServer() {
 export async function updateWorkingCountryOnServer(country) {
   await request({
     url: '/config/current-country',
-    method: 'put',
+    method: 'post',
     data: { country: country || 'default' },
   })
   setCachedWorkingCountry(country)

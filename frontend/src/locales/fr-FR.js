@@ -275,6 +275,7 @@ export default {
     "recognitionFailedTitle": "Échec de la reconnaissance",
     "recognitionRetry": "Réessayer la reconnaissance",
     "recognitionReupload": "Téléverser à nouveau",
+    "recognitionFailureHint": "Réessayer : relancer la reconnaissance sur les images déjà enregistrées sur le serveur (utile après mise à jour des consignes). Téléverser à nouveau : vider la sélection et choisir de nouveaux fichiers.",
     "recognitionError": "Erreur de reconnaissance"
   },
   "tasks": {

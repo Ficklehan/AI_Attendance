@@ -22,6 +22,9 @@ import com.attendance.entity.User;
 
 public final class ReminderSupport {
 
+    /** 跨规则聚合站内/飞书消息时使用的虚拟 rule_id */
+    public static final String AGGREGATE_RULE_ID = "__aggregate__";
+
     public static final String PERMISSION_KEY = "reminderConfig";
     public static final String NOTIFICATION_CONFIG_KEY = "notification_enabled";
 
@@ -333,6 +336,9 @@ public final class ReminderSupport {
     public static LocalDateTime resolveStatusEnteredAt(Task task) {
         if (task == null) {
             return null;
+        }
+        if (task.getStatusEnteredAt() != null) {
+            return task.getStatusEnteredAt();
         }
         return task.getUpdatedAt() != null ? task.getUpdatedAt() : task.getCreatedAt();
     }

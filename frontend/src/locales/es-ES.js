@@ -285,6 +285,7 @@ export default {
     "recognitionFailedTitle": "Error de reconocimiento",
     "recognitionRetry": "Reintentar reconocimiento",
     "recognitionReupload": "Subir de nuevo",
+    "recognitionFailureHint": "Reintentar: volver a reconocer las imágenes ya guardadas en el servidor (útil tras actualizar las instrucciones). Subir de nuevo: borrar la selección y elegir archivos otra vez.",
     "recognitionError": "Error de reconocimiento",
     "workingCountry": "País de trabajo",
     "changeCountry": "Cambiar configuración",

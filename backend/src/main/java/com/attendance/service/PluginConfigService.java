@@ -7,6 +7,7 @@ import com.attendance.dto.request.SystemConfigRequest;
 import com.attendance.dto.response.SystemConfigDTO;
 import com.attendance.mapper.PluginConfigMapper;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.context.annotation.Lazy;
 import org.springframework.stereotype.Service;
 
 @Service
@@ -23,6 +24,10 @@ public class PluginConfigService {
 
     @Autowired
     private ImageQualityConfigService imageQualityConfigService;
+
+    @Autowired
+    @Lazy
+    private ReminderScheduleService reminderScheduleService;
 
     public boolean isNotificationEnabled() {
         String value = pluginConfigMapper.selectValue(ReminderSupport.NOTIFICATION_CONFIG_KEY);
@@ -46,11 +51,17 @@ public class PluginConfigService {
             return;
         }
         if (request.getNotificationEnabled() != null) {
+            boolean enabled = request.getNotificationEnabled();
             pluginConfigMapper.upsertValue(
                     ReminderSupport.NOTIFICATION_CONFIG_KEY,
-                    Boolean.toString(request.getNotificationEnabled()),
+                    Boolean.toString(enabled),
                     "boolean",
                     "是否启用通知");
+            if (enabled) {
+                reminderScheduleService.onNotificationEnabled();
+            } else {
+                reminderScheduleService.onNotificationDisabled();
+            }
         }
         if (request.getConfirmValidation() != null) {
             confirmValidationService.saveConfig(request.getConfirmValidation());

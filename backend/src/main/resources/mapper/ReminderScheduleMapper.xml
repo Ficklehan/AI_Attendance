@@ -65,6 +65,11 @@
         WHERE rule_id = #{ruleId} AND task_id = #{taskId} AND status = 'pending'
     </update>
 
+    <update id="cancelAllPending">
+        UPDATE reminder_schedules SET status = 'cancelled', updated_at = NOW()
+        WHERE status = 'pending'
+    </update>
+
     <select id="selectDuePending" resultMap="BaseResultMap">
         SELECT <include refid="Base_Column_List"/>
         FROM reminder_schedules

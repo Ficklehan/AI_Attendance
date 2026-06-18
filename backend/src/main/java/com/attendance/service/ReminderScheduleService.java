@@ -2,28 +2,26 @@ package com.attendance.service;
 
 import com.alibaba.fastjson.JSON;
 import com.attendance.entity.ReminderRule;
-import com.attendance.entity.ReminderSchedule;
 import com.attendance.entity.Task;
 import com.attendance.entity.User;
-import com.attendance.mapper.ReminderDeliveryMapper;
 import com.attendance.mapper.ReminderRuleMapper;
 import com.attendance.mapper.ReminderScheduleMapper;
 import com.attendance.mapper.TaskMapper;
 import com.attendance.mapper.UserMapper;
-import com.attendance.util.IdGenerator;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.context.annotation.Lazy;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.support.TransactionSynchronization;
+import org.springframework.transaction.support.TransactionSynchronizationManager;
 
-import java.time.LocalDateTime;
-import java.util.HashSet;
+import java.util.Collections;
 import java.util.List;
-import java.util.Set;
 
 /**
- * 根据提醒规则配置计算 {@code due_at} 并写入计划表；调度器仅执行到期项。
+ * 规则/任务变更时清理旧版计划表，并触发基于规则扫描的补发。
  */
 @Service
 public class ReminderScheduleService {
@@ -37,9 +35,6 @@ public class ReminderScheduleService {
     private ReminderScheduleMapper reminderScheduleMapper;
 
     @Autowired
-    private ReminderDeliveryMapper reminderDeliveryMapper;
-
-    @Autowired
     private TaskMapper taskMapper;
 
     @Autowired
@@ -48,16 +43,19 @@ public class ReminderScheduleService {
     @Autowired
     private PluginConfigService pluginConfigService;
 
-    /** 启动或规则变更后，为所有启用规则重建计划。 */
+    @Autowired
+    @Lazy
+    private ReminderSchedulerService reminderSchedulerService;
+
     @Transactional
     public void reconcileAllEnabledRules() {
         if (!pluginConfigService.isNotificationEnabled()) {
+            cancelAllPendingSchedules();
             return;
         }
-        List<ReminderRule> rules = reminderRuleMapper.selectEnabled();
-        for (ReminderRule rule : rules) {
-            reconcileRule(rule);
-        }
+        reminderScheduleMapper.cancelAllPending();
+        scheduleCatchUpAfterCommit("reconcile-all");
+        log.info("提醒规则全量对齐完成，已排队历史欠账补发扫描");
     }
 
     @Transactional
@@ -69,7 +67,12 @@ public class ReminderScheduleService {
             }
             return;
         }
-        reconcileRule(rule);
+        if (!pluginConfigService.isNotificationEnabled()) {
+            return;
+        }
+        reminderScheduleMapper.deleteReschedulableByRule(ruleId);
+        scheduleCatchUpAfterCommit("reconcile-rule:" + ruleId);
+        log.debug("提醒规则已对齐并排队补发扫描 ruleId={}", ruleId);
     }
 
     @Transactional
@@ -80,143 +83,67 @@ public class ReminderScheduleService {
     }
 
     @Transactional
-    public void onTaskAnchorChanged(String taskId) {
-        if (!pluginConfigService.isNotificationEnabled()) {
-            return;
-        }
-        Task task = taskMapper.selectTaskByTaskId(taskId);
-        if (task == null) {
-            return;
-        }
-        reminderScheduleMapper.deleteReschedulableByTask(taskId);
-        List<ReminderRule> rules = reminderRuleMapper.selectEnabled();
-        for (ReminderRule rule : rules) {
-            if (taskMatchesRule(task, rule)) {
-                scheduleNextForTaskRule(task, rule);
-            }
-        }
-    }
-
-    @Transactional
     public void onTaskLeftReminderScope(String taskId) {
         reminderScheduleMapper.deleteReschedulableByTask(taskId);
     }
 
-  /** 发送完成后排下一条周期。 */
     @Transactional
-    public void scheduleFollowingPeriod(ReminderRule rule,
-                                        Task task,
-                                        String recipientId,
-                                        long sentPeriodIndex,
-                                        LocalDateTime statusEnteredAt) {
-        if (rule == null || task == null || recipientId == null || statusEnteredAt == null) {
-            return;
-        }
-        long nextPeriod = sentPeriodIndex + 1;
-        LocalDateTime dueAt = ReminderSupport.computeDueAtForPeriod(
-                statusEnteredAt,
-                nextPeriod,
-                rule.getIntervalValue(),
-                rule.getIntervalUnit(),
-                rule.getScheduleHourOfDay());
-        if (dueAt == null) {
-            return;
-        }
-        upsertPendingSchedule(rule, task, recipientId, nextPeriod, statusEnteredAt, dueAt);
+    public void cancelAllPendingSchedules() {
+        reminderScheduleMapper.cancelAllPending();
     }
 
-    private void reconcileRule(ReminderRule rule) {
-        List<String> statuses = JSON.parseArray(rule.getTaskStatusesJson(), String.class);
-        if (statuses == null || statuses.isEmpty()) {
-            reminderScheduleMapper.deleteReschedulableByRule(rule.getId());
+    @Transactional
+    public void onNotificationDisabled() {
+        cancelAllPendingSchedules();
+    }
+
+    @Transactional
+    public void onNotificationEnabled() {
+        reminderScheduleMapper.cancelAllPending();
+        scheduleCatchUpAfterCommit("notification-enabled");
+    }
+
+    /** 补发扫描在事务提交后异步执行，避免启用/保存规则 API 被扫描失败拖垮。 */
+    private void scheduleCatchUpAfterCommit(String reason) {
+        if (TransactionSynchronizationManager.isSynchronizationActive()) {
+            TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
+                @Override
+                public void afterCommit() {
+                    runCatchUpSafely(reason);
+                }
+            });
             return;
         }
-        List<String> recipients = reminderRuleMapper.selectRecipientUserIds(rule.getId());
-        if (recipients == null || recipients.isEmpty()) {
-            reminderScheduleMapper.deleteReschedulableByRule(rule.getId());
+        runCatchUpSafely(reason);
+    }
+
+    private void runCatchUpSafely(String reason) {
+        try {
+            reminderSchedulerService.runCatchUpScan();
+        } catch (Exception e) {
+            log.warn("提醒补发扫描失败 reason={}: {}", reason, e.getMessage(), e);
+        }
+    }
+
+    /** 任务状态离开提醒范围时取消旧计划（扫描层以 status_entered_at + 状态过滤为准）。 */
+    @Transactional
+    public void onTaskStatusChanged(String taskId) {
+        Task task = taskMapper.selectTaskByTaskId(taskId);
+        if (task == null) {
+            reminderScheduleMapper.deleteReschedulableByTask(taskId);
             return;
         }
-        reminderScheduleMapper.deleteReschedulableByRule(rule.getId());
-        List<Task> tasks = taskMapper.selectTasksByStatuses(statuses);
-        for (Task task : tasks) {
+        List<ReminderRule> rules = reminderRuleMapper.selectEnabled();
+        boolean inScope = false;
+        for (ReminderRule rule : rules) {
             if (taskMatchesRule(task, rule)) {
-                scheduleNextForTaskRule(task, rule);
+                inScope = true;
+                break;
             }
         }
-        log.debug("提醒规则计划已重建 ruleId={} taskCount={}", rule.getId(), tasks.size());
-    }
-
-    private void scheduleNextForTaskRule(Task task, ReminderRule rule) {
-        Set<String> recipients = resolveRecipients(rule, task);
-        LocalDateTime enteredAt = ReminderSupport.resolveStatusEnteredAt(task);
-        if (enteredAt == null) {
-            return;
+        if (!inScope) {
+            reminderScheduleMapper.deleteReschedulableByTask(taskId);
         }
-        LocalDateTime now = LocalDateTime.now();
-        for (String recipientId : recipients) {
-            User recipient = userMapper.selectUserById(recipientId);
-            if (recipient == null || !"active".equals(recipient.getStatus())) {
-                continue;
-            }
-            long nextPeriod = ReminderSupport.resolveNextPeriodToSchedule(
-                    enteredAt,
-                    now,
-                    rule.getIntervalValue(),
-                    rule.getIntervalUnit(),
-                    period -> reminderDeliveryMapper.existsDelivery(
-                                    rule.getId(), task.getTaskId(), recipientId, String.valueOf(period)) > 0
-                            || isSchedulePeriodSent(rule.getId(), task.getTaskId(), recipientId, period));
-            LocalDateTime dueAt = ReminderSupport.computeDueAtForPeriod(
-                    enteredAt,
-                    nextPeriod,
-                    rule.getIntervalValue(),
-                    rule.getIntervalUnit(),
-                    rule.getScheduleHourOfDay());
-            if (dueAt == null) {
-                continue;
-            }
-            upsertPendingSchedule(rule, task, recipientId, nextPeriod, enteredAt, dueAt);
-        }
-    }
-
-    private void upsertPendingSchedule(ReminderRule rule,
-                                       Task task,
-                                       String recipientId,
-                                       long periodIndex,
-                                       LocalDateTime statusEnteredAt,
-                                       LocalDateTime dueAt) {
-        String periodBucket = String.valueOf(periodIndex);
-        if (reminderDeliveryMapper.existsDelivery(
-                rule.getId(), task.getTaskId(), recipientId, periodBucket) > 0) {
-            return;
-        }
-        ReminderSchedule existing = reminderScheduleMapper.selectForRecipientPeriod(
-                rule.getId(), task.getTaskId(), recipientId, periodBucket);
-        if (existing != null) {
-            if (ReminderSchedule.STATUS_SENT.equals(existing.getStatus())) {
-                return;
-            }
-            existing.setPeriodIndex(periodIndex);
-            existing.setDueAt(dueAt);
-            existing.setStatusEnteredAt(statusEnteredAt);
-            reminderScheduleMapper.updateReschedule(existing);
-            log.debug("提醒计划已更新 ruleId={} taskId={} userId={} period={} dueAt={}",
-                    rule.getId(), task.getTaskId(), recipientId, periodIndex, dueAt);
-            return;
-        }
-        ReminderSchedule schedule = new ReminderSchedule();
-        schedule.setId(IdGenerator.generateId());
-        schedule.setRuleId(rule.getId());
-        schedule.setTaskId(task.getTaskId());
-        schedule.setUserId(recipientId);
-        schedule.setPeriodIndex(periodIndex);
-        schedule.setPeriodBucket(periodBucket);
-        schedule.setDueAt(dueAt);
-        schedule.setStatusEnteredAt(statusEnteredAt);
-        schedule.setStatus(ReminderSchedule.STATUS_PENDING);
-        reminderScheduleMapper.insertSchedule(schedule);
-        log.debug("提醒计划已创建 ruleId={} taskId={} userId={} period={} dueAt={}",
-                rule.getId(), task.getTaskId(), recipientId, periodIndex, dueAt);
     }
 
     private boolean taskMatchesRule(Task task, ReminderRule rule) {
@@ -233,19 +160,5 @@ public class ReminderScheduleService {
                 creator,
                 ReminderSupport.parseScopeList(rule.getScopeCountriesJson()),
                 ReminderSupport.parseScopeList(rule.getScopeRolesJson()));
-    }
-
-    private boolean isSchedulePeriodSent(String ruleId, String taskId, String recipientId, long period) {
-        ReminderSchedule existing = reminderScheduleMapper.selectForRecipientPeriod(
-                ruleId, taskId, recipientId, String.valueOf(period));
-        return existing != null && ReminderSchedule.STATUS_SENT.equals(existing.getStatus());
-    }
-
-    private Set<String> resolveRecipients(ReminderRule rule, Task task) {
-        Set<String> recipients = new HashSet<>(reminderRuleMapper.selectRecipientUserIds(rule.getId()));
-        if (rule.isIncludeTaskCreator() && task.getUserId() != null) {
-            recipients.add(task.getUserId());
-        }
-        return recipients;
     }
 }

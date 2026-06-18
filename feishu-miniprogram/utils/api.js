@@ -16,7 +16,7 @@ const taskApi = {
     data: { records, scope: scope || 'confirmed_only' }
   }),
   retryFeishuSync: (taskId) => request({ url: `/tasks/${taskId}/retry-sync`, method: 'POST' }),
-  deleteTask: (taskId) => request({ url: `/tasks/${taskId}`, method: 'DELETE' }),
+  deleteTask: (taskId) => request({ url: `/tasks/${taskId}/delete`, method: 'POST' }),
   getTaskStats: () => request({ url: '/tasks/stats', method: 'GET' }),
   getTaskSummary: () => request({ url: '/tasks/summary', method: 'GET' }),
   calibrateRecord: (taskId, data) => request({
@@ -35,7 +35,7 @@ const configApi = {
   getCurrentCountry: () => request({ url: '/config/current-country', method: 'GET' }),
   setCurrentCountry: (country) => request({
     url: '/config/current-country',
-    method: 'PUT',
+    method: 'POST',
     data: { country }
   })
 }

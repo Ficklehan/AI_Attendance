@@ -9,16 +9,16 @@ export const getAllConfigs = () => {
 
 export const updateConfig = (data) => {
   return request({
-    url: '/config',
-    method: 'put',
+    url: '/config/update',
+    method: 'post',
     data,
   })
 }
 
 export const deleteConfig = (configKey) => {
   return request({
-    url: `/config/${configKey}`,
-    method: 'delete',
+    url: `/config/${configKey}/delete`,
+    method: 'post',
   })
 }
 
@@ -27,7 +27,7 @@ export const getSystemConfig = () => {
 }
 
 export const updateSystemConfig = (data) => {
-  return request({ url: '/config/system', method: 'put', data })
+  return request({ url: '/config/system', method: 'post', data })
 }
 
 export const getConfirmValidationConfig = () => {

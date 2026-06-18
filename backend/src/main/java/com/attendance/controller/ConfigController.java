@@ -119,7 +119,7 @@ public class ConfigController {
         return Result.success(result);
     }
     
-    @PutMapping("/current-country")
+    @PostMapping("/current-country")
     public Result<Void> setCurrentCountry(@RequestBody Map<String, String> request) {
         requireAdmin();
         String country = request.get("country");
@@ -182,7 +182,7 @@ public class ConfigController {
         return Result.success(body);
     }
     
-    @PutMapping("/ai-prompt")
+    @PostMapping("/ai-prompt")
     public Result<Void> updateAiPrompt(@RequestBody Map<String, String> request) {
         requireAdmin();
         try {
@@ -203,7 +203,7 @@ public class ConfigController {
         return Result.success(configService.getFeishuConfig(country));
     }
     
-    @PutMapping("/feishu")
+    @PostMapping("/feishu")
     public Result<Void> updateFeishuConfig(@RequestBody Map<String, Object> request) {
         requireAdmin();
         try {
@@ -229,7 +229,7 @@ public class ConfigController {
         return Result.success(configService.getFieldMapping(country));
     }
     
-    @PutMapping("/field-mapping")
+    @PostMapping("/field-mapping")
     public Result<Void> updateFieldMapping(@RequestBody Map<String, Object> request) {
         requireAdmin();
         try {
@@ -245,7 +245,7 @@ public class ConfigController {
         }
     }
 
-    @PutMapping
+    @PostMapping("/update")
     public Result<Void> updateConfig(@RequestBody Map<String, String> request) {
         requireAdmin();
         String configKey = request.get("configKey");
@@ -259,7 +259,7 @@ public class ConfigController {
         return Result.success(null, "配置更新成功");
     }
 
-    @DeleteMapping("/{configKey}")
+    @PostMapping("/{configKey}/delete")
     public Result<Void> deleteConfig(@PathVariable String configKey) {
         requireAdmin();
         configService.deleteConfig(configKey);
@@ -352,7 +352,7 @@ public class ConfigController {
 
     /**
      * 夜班判定规则（任务展示/标记推断只读，任意登录用户可拉取）。
-     * 路径使用 /runtime/ 前缀，避免与 DELETE /config/{configKey} 单段路径冲突导致 405。
+     * 路径使用 /runtime/ 前缀，避免与 POST /config/{configKey}/delete 单段路径冲突导致 405。
      */
     @GetMapping("/runtime/night-shift")
     public Result<NightShiftConfigDTO> getNightShiftConfig(
@@ -360,7 +360,7 @@ public class ConfigController {
         return Result.success(nightShiftConfigService.getConfigForCountry(country));
     }
 
-    @PutMapping("/system")
+    @PostMapping("/system")
     public Result<SystemConfigDTO> updateSystemConfig(@Validated @RequestBody SystemConfigRequest request) {
         requireAdmin();
         pluginConfigService.updateSystemConfig(request);

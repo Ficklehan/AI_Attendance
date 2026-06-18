@@ -99,7 +99,7 @@ mybatis:
 **位置：** `ConfigController.setCurrentCountry`  
 **文件：** `backend/src/main/java/com/attendance/controller/ConfigController.java:101-112`
 
-**问题：** `PUT /config/current-country` 未调用 `requireAdmin()`，任何 authenticated 用户可修改全局 `current_country`（持久化到配置文件）。
+**问题：** `POST /config/current-country` 未调用 `requireAdmin()`，任何 authenticated 用户可修改全局 `current_country`（持久化到配置文件）。
 
 **影响：** 影响全员识别规则、飞书同步目标国家，造成业务混乱或数据写入错误国家的 Bitable。
 
@@ -306,7 +306,7 @@ mybatis:
 |---|--------|----------|
 | 1 | `GET /local/image/..%2F..%2Fetc%2Fpasswd` | 403/404 |
 | 2 | 普通用户 `GET /config/country-bundle` | 不含 appToken |
-| 3 | 普通用户 `PUT /config/current-country` | 403 |
+| 3 | 普通用户 `POST /config/current-country` | 403 |
 | 4 | 无 token `GET /tasks` | 401 |
 | 5 | 用户 A 访问用户 B 的 taskId | 403 |
 | 6 | 100 次连续 login 失败 | 429 或锁定 |

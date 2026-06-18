@@ -285,6 +285,7 @@ export default {
     "recognitionFailedTitle": "Błąd rozpoznawania",
     "recognitionRetry": "Ponów rozpoznawanie",
     "recognitionReupload": "Prześlij ponownie",
+    "recognitionFailureHint": "Ponów rozpoznawanie: uruchom ponownie na obrazach zapisanych na serwerze (przydatne po aktualizacji promptów). Prześlij ponownie: wyczyść wybór i wybierz pliki od nowa.",
     "recognitionError": "Błąd rozpoznawania",
     "workingCountry": "Kraj roboczy",
     "changeCountry": "Zmień konfigurację",

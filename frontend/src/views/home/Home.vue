@@ -367,7 +367,7 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted, onBeforeUnmount, watch } from 'vue'
+import { ref, computed, onMounted, onBeforeUnmount, watch, h } from 'vue'
 import { useRouter } from 'vue-router'
 import { useI18n } from 'vue-i18n'
 import { message, Modal as aModal } from 'ant-design-vue'
@@ -475,6 +475,7 @@ const applyRecordsFromTask = (taskRows) => {
 }
 
 const finishRecognitionSuccess = (result) => {
+  clearUploadSelection()
   applyRecordsFromTask(result.records)
   currentTaskId.value = result.taskId
   if (result.records.length > 0) {
@@ -487,6 +488,7 @@ const finishRecognitionSuccess = (result) => {
 }
 
 const showRecognitionFailure = (taskId, error) => {
+  clearUploadSelection()
   if (!taskId || stopPolling.value) {
     showHomeUploadError(error)
     return
@@ -498,11 +500,22 @@ const showRecognitionFailure = (taskId, error) => {
   })
   aModal.confirm({
     title: t('home.recognitionFailedTitle'),
-    content: reason,
+    content: h('div', [
+      h('p', { style: { marginBottom: '0' } }, reason),
+      h('p', {
+        style: {
+          marginTop: '12px',
+          marginBottom: '0',
+          color: 'rgba(0,0,0,0.55)',
+          fontSize: '13px',
+          lineHeight: '1.6',
+        },
+      }, t('home.recognitionFailureHint')),
+    ]),
     okText: t('home.recognitionRetry'),
     cancelText: t('home.recognitionReupload'),
     centered: true,
-    width: 420,
+    width: 480,
     onOk: () => {
       void runRecognitionPolling(taskId)
     },
@@ -606,13 +619,11 @@ const guideSteps = computed(() => [
 
 const resetState = () => {
   stopPolling.value = true
-  fileList.value.forEach(revokePreviewUrl)
-  fileList.value = []
+  clearUploadSelection()
   uploading.value = false
   submitting.value = false
   records.value = []
   currentTaskId.value = null
-  processedHashes.value = new Set()
   showResult.value = false
   previewVisible.value = false
   previewIndex.value = 0
@@ -855,6 +866,18 @@ const revokePreviewUrl = (file) => {
   if (file && file.url && file.url.startsWith('blob:')) URL.revokeObjectURL(file.url)
 }
 
+/** 识别结束后释放选图列表，便于立刻重选同一张图；识别进行中仍保留批次内去重。 */
+const clearUploadSelection = () => {
+  fileList.value.forEach(revokePreviewUrl)
+  fileList.value = []
+  processedHashes.value = new Set()
+  if (previewVisible.value) {
+    previewVisible.value = false
+    previewIndex.value = 0
+    previewTitle.value = ''
+  }
+}
+
 const handleFilePreview = (file) => {
   const target = fileList.value.find((item) => item.uid === file.uid) || file
   if (target.isPdf || (!target.url && !target.thumbUrl)) {
@@ -956,6 +979,7 @@ const handleUpload = async () => {
         showResult.value = true
         showRecognitionFailure(taskId, error)
       } else {
+        clearUploadSelection()
         showHomeUploadError(error)
       }
     }

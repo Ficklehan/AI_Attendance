@@ -248,7 +248,7 @@ const handleSave = async () => {
     const nightShift = buildPayload()
     const res = await request({
       url: '/config/system',
-      method: 'put',
+      method: 'post',
       data: { nightShift },
     })
     applyAdminConfig(res.data?.nightShift || nightShift)

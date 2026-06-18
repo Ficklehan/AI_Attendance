@@ -575,6 +575,7 @@ export default {
     "recognitionFailedTitle": "Recognition failed",
     "recognitionRetry": "Retry recognition",
     "recognitionReupload": "Upload again",
+    "recognitionFailureHint": "Retry recognition: re-run on the images already saved on the server (useful after updating prompts). Upload again: clear the selection and pick files again.",
     "recognitionError": "Recognition error",
     "workingCountry": "Working country",
     "changeCountry": "Change config",

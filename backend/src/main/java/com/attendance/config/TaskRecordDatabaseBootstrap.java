@@ -62,12 +62,31 @@ public class TaskRecordDatabaseBootstrap implements ApplicationRunner {
                     + "INDEX idx_dup (base_name, work_date, country_key, warehouse_key, agency_key)"
                     + ") ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");
             ensureTasksIndex();
+            ensureStatusEnteredAtColumn();
             ensureProgressRowCountColumn();
             ensureRecognitionCheckpointColumns();
             ensureSmartMarkColumn();
             log.info("task_records 表已就绪");
         } catch (Exception e) {
             log.error("创建 task_records 表失败", e);
+        }
+    }
+
+    private void ensureStatusEnteredAtColumn() {
+        try {
+            Integer cnt = jdbcTemplate.queryForObject(
+                    "SELECT COUNT(1) FROM information_schema.columns "
+                            + "WHERE table_schema = DATABASE() AND table_name = 'tasks' "
+                            + "AND column_name = 'status_entered_at'",
+                    Integer.class);
+            if (cnt == null || cnt == 0) {
+                jdbcTemplate.execute("ALTER TABLE tasks ADD COLUMN status_entered_at DATETIME NULL "
+                        + "COMMENT '进入当前 status 的时间' AFTER status");
+                jdbcTemplate.execute("UPDATE tasks SET status_entered_at = updated_at WHERE status_entered_at IS NULL");
+                log.info("tasks.status_entered_at 列已添加并回填");
+            }
+        } catch (Exception e) {
+            log.debug("status_entered_at 列可能已存在: {}", e.getMessage());
         }
     }
 

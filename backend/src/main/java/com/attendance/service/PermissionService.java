@@ -92,8 +92,11 @@ public class PermissionService {
         if (user == null || permissionKey == null) {
             return false;
         }
-        if (RECORD_CALIBRATE.equals(permissionKey) && "admin".equals(normalizeRole(user.getRole()))) {
-            return true;
+        String role = normalizeRole(user.getRole());
+        if ("admin".equals(role)) {
+            if (RECORD_CALIBRATE.equals(permissionKey) || REMINDER_CONFIG.equals(permissionKey)) {
+                return true;
+            }
         }
         Map<String, Boolean> perms = effectivePermissions(user);
         return Boolean.TRUE.equals(perms.get(permissionKey));

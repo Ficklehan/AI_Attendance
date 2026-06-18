@@ -8,6 +8,7 @@
         <result column="user_id" property="userId"/>
         <result column="file_key" property="fileKey"/>
         <result column="status" property="status"/>
+        <result column="status_entered_at" property="statusEnteredAt"/>
         <result column="sync_status" property="syncStatus"/>
         <result column="sync_error" property="syncError"/>
         <result column="prompt_country" property="promptCountry"/>
@@ -26,6 +27,16 @@
 
     <sql id="Base_Column_List">
         task_id, user_id, file_key, status, sync_status, sync_error, prompt_country,
+        raw_data, confirmed_data, image_urls, anomaly_summary, ai_raw_output, processed_by,
+        progress_row_count, recognition_checkpoint, recognition_heartbeat_at,
+        created_at, updated_at
+    </sql>
+
+    <!-- 含 status_entered_at；列由 TaskRecordDatabaseBootstrap 迁移添加 -->
+    <sql id="Base_Column_List_With_StatusEntered">
+        task_id, user_id, file_key, status,
+        COALESCE(status_entered_at, updated_at) AS status_entered_at,
+        sync_status, sync_error, prompt_country,
         raw_data, confirmed_data, image_urls, anomaly_summary, ai_raw_output, processed_by,
         progress_row_count, recognition_checkpoint, recognition_heartbeat_at,
         created_at, updated_at
@@ -208,10 +219,10 @@
     </select>
 
     <insert id="insertTask" parameterType="com.attendance.entity.Task">
-        INSERT INTO tasks (task_id, user_id, file_key, status, sync_status, prompt_country,
+        INSERT INTO tasks (task_id, user_id, file_key, status, status_entered_at, sync_status, prompt_country,
                           raw_data, confirmed_data, image_urls, anomaly_summary, ai_raw_output,
                           processed_by, created_at, updated_at)
-        VALUES (#{taskId}, #{userId}, #{fileKey}, #{status}, #{syncStatus}, #{promptCountry},
+        VALUES (#{taskId}, #{userId}, #{fileKey}, #{status}, NOW(), #{syncStatus}, #{promptCountry},
                 #{rawData}, #{confirmedData}, #{imageUrls}, #{anomalySummary}, #{aiRawOutput},
                 #{processedBy}, NOW(), NOW())
     </insert>
@@ -230,7 +241,7 @@
     </update>
 
     <update id="updateTaskStatus">
-        UPDATE tasks SET status = #{status}, updated_at = NOW()
+        UPDATE tasks SET status = #{status}, status_entered_at = NOW(), updated_at = NOW()
         WHERE task_id = #{taskId}
     </update>
 
@@ -240,6 +251,7 @@
             ai_raw_output = #{aiRawOutput},
             progress_row_count = #{progressRowCount},
             status = 'processed',
+            status_entered_at = NOW(),
             updated_at = NOW()
         WHERE task_id = #{taskId}
     </update>
@@ -263,7 +275,7 @@
 
     <update id="updateTaskConfirmedData">
         UPDATE tasks 
-        SET confirmed_data = #{confirmedData}, status = 'confirmed', updated_at = NOW()
+        SET confirmed_data = #{confirmedData}, status = 'confirmed', status_entered_at = NOW(), updated_at = NOW()
         WHERE task_id = #{taskId}
     </update>
 

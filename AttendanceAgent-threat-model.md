@@ -151,7 +151,7 @@ flowchart TB
 - **优先级：** Critical
 
 ### T-07 全局配置篡改（High）
-- **路径：** `PUT /config/current-country`
+- **路径：** `POST /config/current-country`
 - **影响：** 错误国家识别、错误 Bitable 写入
 - **现有控制：** 无 admin 校验
 - **优先级：** High

@@ -36,7 +36,7 @@ public class RoleDataScopeController {
         return Result.success(roleDataScopeService.getAllRoleScopes());
     }
 
-    @PutMapping("/roles/{role}")
+    @PostMapping("/roles/{role}")
     public Result<RoleDataScopeDTO> updateRoleScope(
             @PathVariable String role,
             @RequestBody RoleDataScopeUpdateRequest request) {

@@ -10,7 +10,7 @@ export const getRolePermissions = () => {
 export const updateRolePermissions = (data) => {
   return request({
     url: '/permissions/roles',
-    method: 'put',
+    method: 'post',
     data,
   })
 }

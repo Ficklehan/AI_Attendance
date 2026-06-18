@@ -1,6 +1,7 @@
 package com.attendance.service;
 
 import com.attendance.entity.ReminderRule;
+import com.attendance.entity.Task;
 import com.attendance.entity.User;
 
 import java.math.BigDecimal;
@@ -88,6 +89,58 @@ public final class ReminderMessageBuilder {
 
     public static String notificationTitle(ReminderRule rule, String locale) {
         return ReminderLocaleSupport.notificationTitlePrefix(locale) + rule.getName();
+    }
+
+    public static String aggregatedNotificationTitle(String locale, int ruleCount) {
+        return ReminderLocaleSupport.aggregatedNotificationTitle(locale, ruleCount);
+    }
+
+    public static String buildAggregatedBody(String locale,
+                                             User recipient,
+                                             boolean recipientIsOperator,
+                                             int totalTaskCount,
+                                             Map<String, ReminderRule> rulesById,
+                                             Map<String, List<Task>> tasksByRule,
+                                             Task latest,
+                                             LocalDateTime latestTime,
+                                             String creatorNames) {
+        String recipientName = displayName(recipient);
+        StringBuilder ruleLines = new StringBuilder();
+        for (Map.Entry<String, List<Task>> entry : tasksByRule.entrySet()) {
+            ReminderRule rule = rulesById.get(entry.getKey());
+            if (rule == null) {
+                continue;
+            }
+            String statusLabel = primaryStatusLabel(rule, locale);
+            String threshold = ReminderLocaleSupport.formatThreshold(
+                    rule.getIntervalValue(), rule.getIntervalUnit(), locale);
+            ruleLines.append("· ")
+                    .append(rule.getName())
+                    .append("：")
+                    .append(entry.getValue().size())
+                    .append(ReminderLocaleSupport.taskCountSuffix(locale))
+                    .append("（")
+                    .append(statusLabel)
+                    .append(" / ")
+                    .append(threshold)
+                    .append("）\n");
+        }
+        return ReminderLocaleSupport.buildAggregatedBody(
+                locale,
+                recipientName,
+                recipientIsOperator,
+                totalTaskCount,
+                tasksByRule.size(),
+                ruleLines.toString().trim(),
+                latest.getTaskId(),
+                latestTime,
+                creatorNames);
+    }
+
+    private static String primaryStatusLabel(ReminderRule rule, String locale) {
+        List<String> statuses = com.alibaba.fastjson.JSON.parseArray(rule.getTaskStatusesJson(), String.class);
+        String status = statuses != null && !statuses.isEmpty() ? statuses.get(0) : "processed";
+        return ReminderLocaleSupport.formatStatusLabel(status, locale);
     }
 
     public static LocalDateTime parseLatestTime(String value) {

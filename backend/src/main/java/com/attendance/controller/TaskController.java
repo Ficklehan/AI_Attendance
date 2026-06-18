@@ -123,7 +123,7 @@ public class TaskController {
         return Result.success(null, "任务确认成功");
     }
 
-    @DeleteMapping("/{taskId}")
+    @PostMapping("/{taskId}/delete")
     public Result<Void> deleteTask(@PathVariable String taskId) {
         taskService.deleteTask(taskId);
         auditLogService.log("TASK_DELETED", "task", taskId, null);

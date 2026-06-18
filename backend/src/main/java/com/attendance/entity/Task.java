@@ -7,6 +7,8 @@ public class Task {
     private String userId;
     private String fileKey;
     private String status;
+    /** 进入当前 status 的时间，提醒周期锚点 */
+    private LocalDateTime statusEnteredAt;
     private String syncStatus;
     private String syncError;
     private String promptCountry;
@@ -55,6 +57,14 @@ public class Task {
 
     public void setStatus(String status) {
         this.status = status;
+    }
+
+    public LocalDateTime getStatusEnteredAt() {
+        return statusEnteredAt;
+    }
+
+    public void setStatusEnteredAt(LocalDateTime statusEnteredAt) {
+        this.statusEnteredAt = statusEnteredAt;
     }
 
     public String getSyncStatus() {

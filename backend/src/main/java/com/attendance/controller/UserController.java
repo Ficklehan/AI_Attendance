@@ -54,7 +54,7 @@ public class UserController {
         return Result.success(userService.createUserByAdmin(request));
     }
 
-    @PutMapping("/{userId}")
+    @PostMapping("/{userId}/update")
     public Result<UserListDTO> updateUser(
             @PathVariable String userId,
             @Valid @RequestBody AdminUserUpdateRequest request) {
@@ -62,7 +62,7 @@ public class UserController {
         return Result.success(userService.updateUserByAdmin(userId, request));
     }
 
-    @PatchMapping("/{userId}/status")
+    @PostMapping("/{userId}/status")
     public Result<UserListDTO> updateUserStatus(
             @PathVariable String userId,
             @Valid @RequestBody AdminUserStatusRequest request) {
@@ -70,7 +70,7 @@ public class UserController {
         return Result.success(userService.updateUserStatusByAdmin(userId, request.getStatus()));
     }
 
-    @DeleteMapping("/{userId}")
+    @PostMapping("/{userId}/delete")
     public Result<Void> deleteUser(@PathVariable String userId) {
         adminAuthService.requireAdmin();
         userService.deleteUserByAdmin(userId);

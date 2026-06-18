@@ -41,12 +41,14 @@
 | 方法 | 路径 | 权限 |
 |------|------|------|
 | GET/POST | `/reminder-rules` | `reminderConfig` |
-| PUT/PATCH/DELETE | `/reminder-rules/{id}` | `reminderConfig` |
+| POST | `/reminder-rules/{id}/update` | `reminderConfig` |
+| POST | `/reminder-rules/{id}/enabled` | `reminderConfig` |
+| POST | `/reminder-rules/{id}/delete` | `reminderConfig` |
 | GET | `/notifications` | 登录用户 |
 | GET | `/notifications/unread-count` | 登录用户 |
-| PATCH | `/notifications/{id}/read` | 登录用户 |
+| POST | `/notifications/{id}/read` | 登录用户 |
 | POST | `/notifications/read-all` | 登录用户 |
-| GET/PUT | `/config/system` | admin（`notificationEnabled`） |
+| GET/POST | `/config/system` | admin（`notificationEnabled`） |
 
 ### P1.5 权限
 

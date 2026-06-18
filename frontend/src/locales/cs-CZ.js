@@ -285,6 +285,7 @@ export default {
     "recognitionFailedTitle": "Rozpoznávání selhalo",
     "recognitionRetry": "Zkusit rozpoznání znovu",
     "recognitionReupload": "Nahrát znovu",
+    "recognitionFailureHint": "Zkusit znovu: znovu rozpoznat obrázky uložené na serveru (vhodné po aktualizaci promptů). Nahrát znovu: vymazat výběr a znovu vybrat soubory.",
     "recognitionError": "Chyba rozpoznávání",
     "workingCountry": "Pracovní země",
     "changeCountry": "Změnit konfiguraci",

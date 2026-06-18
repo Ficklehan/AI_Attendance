@@ -9,9 +9,9 @@ export function createRole(data) {
 }
 
 export function updateRole(roleKey, data) {
-  return request.put(`/roles/${roleKey}`, data)
+  return request.post(`/roles/${roleKey}/update`, data)
 }
 
 export function deleteRole(roleKey) {
-  return request.delete(`/roles/${roleKey}`)
+  return request.post(`/roles/${roleKey}/delete`)
 }

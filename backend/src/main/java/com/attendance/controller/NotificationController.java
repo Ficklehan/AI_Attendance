@@ -37,13 +37,8 @@ public class NotificationController {
         return Result.success(body);
     }
 
-    @PatchMapping("/{id}/read")
-    public Result<NotificationReadResultDTO> markRead(@PathVariable String id) {
-        return Result.success(userNotificationService.markRead(id));
-    }
-
     @PostMapping("/{id}/read")
-    public Result<NotificationReadResultDTO> markReadPost(@PathVariable String id) {
+    public Result<NotificationReadResultDTO> markRead(@PathVariable String id) {
         return Result.success(userNotificationService.markRead(id));
     }
 

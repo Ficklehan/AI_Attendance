@@ -51,7 +51,7 @@ function updateCurrentCountry(country, app) {
   }
   return apiCall({
     url: '/config/current-country',
-    method: 'PUT',
+    method: 'POST',
     data: { country },
     timeout: 15000
   }).then((res) => {

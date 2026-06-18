@@ -13,15 +13,15 @@ export function createReminderRule(data) {
 }
 
 export function updateReminderRule(id, data) {
-  return request({ url: `/reminder-rules/${id}`, method: 'put', data })
+  return request({ url: `/reminder-rules/${id}/update`, method: 'post', data })
 }
 
 export function setReminderRuleEnabled(id, enabled) {
-  return request({ url: `/reminder-rules/${id}/enabled`, method: 'patch', data: { enabled } })
+  return request({ url: `/reminder-rules/${id}/enabled`, method: 'post', data: { enabled } })
 }
 
 export function deleteReminderRule(id) {
-  return request({ url: `/reminder-rules/${id}`, method: 'delete' })
+  return request({ url: `/reminder-rules/${id}/delete`, method: 'post' })
 }
 
 export function getDefaultReminderTemplate() {

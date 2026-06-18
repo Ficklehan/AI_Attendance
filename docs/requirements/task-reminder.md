@@ -173,12 +173,12 @@ user_notifications (
 |------|------|------|
 | GET | `/reminder-rules` | 规则列表（admin） |
 | POST | `/reminder-rules` | 创建规则 |
-| PUT | `/reminder-rules/{id}` | 更新规则 |
-| PATCH | `/reminder-rules/{id}/enabled` | 启用/停用 |
-| DELETE | `/reminder-rules/{id}` | 删除（软删或硬删，实现时定） |
+| POST | `/reminder-rules/{id}/update` | 更新规则 |
+| POST | `/reminder-rules/{id}/enabled` | 启用/停用 |
+| POST | `/reminder-rules/{id}/delete` | 删除（软删或硬删，实现时定） |
 | GET | `/notifications` | 当前用户站内消息分页 |
 | GET | `/notifications/unread-count` | 未读数 |
-| PATCH | `/notifications/{id}/read` | 标记已读 |
+| POST | `/notifications/{id}/read` | 标记已读 |
 | POST | `/notifications/read-all` | 全部已读 |
 
 调度：后端 `@Scheduled`，不暴露 HTTP。

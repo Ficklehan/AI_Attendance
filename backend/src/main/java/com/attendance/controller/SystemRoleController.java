@@ -30,14 +30,14 @@ public class SystemRoleController {
         return Result.success(systemRoleService.createRole(request));
     }
 
-    @PutMapping("/{roleKey}")
+    @PostMapping("/{roleKey}/update")
     public Result<SystemRole> updateRole(
             @PathVariable String roleKey,
             @Valid @RequestBody SystemRoleUpdateRequest request) {
         return Result.success(systemRoleService.updateRole(roleKey, request));
     }
 
-    @DeleteMapping("/{roleKey}")
+    @PostMapping("/{roleKey}/delete")
     public Result<Void> deleteRole(@PathVariable String roleKey) {
         systemRoleService.deleteRole(roleKey);
         return Result.success(null);

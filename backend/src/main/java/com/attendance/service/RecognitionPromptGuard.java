@@ -20,9 +20,10 @@ public class RecognitionPromptGuard {
     /** 识别与续写共用，替代原【硬性要求】+ HANDWRITING_MARK_RULE 重复段落 */
     public static final String API_OUTPUT_CONSTRAINT = "\n\n【输出约束·API】\n"
             + "· 每行合法JSON数组；禁表头占位/照抄示例；看不清???/\"\"，禁编造凑行\n"
+            + "· 先读表头定位列再填格，禁按固定左右位置猜；第6位AGENCE=供应商，第7位HORAIRES=班次，二者禁互换\n"
             + "· 先NO姓名再到离；名/工号???或空→到离必空\n"
             + "· SIGNATURE只填员工签名列(Firma等关键词列)单元格，禁表头字面量\n"
-            + "· 15字段顺序与标记/PAGE_NUM规则以正文为准";
+            + "· 15字段JSON输出顺序与标记/PAGE_NUM规则以正文为准";
 
     private static final Set<String> EXAMPLE_KEYS = new HashSet<>(Arrays.asList(
             "1|张三", "2|李四", "3|王五",

@@ -121,28 +121,41 @@ vim deploy/environments/production.yaml   # runtime.mode + public.host
 
 ## API文档
 
+HTTP 方法约定：**仅使用 GET 与 POST**。查询用 GET；创建、更新、删除等写操作用 POST，路径以动作后缀区分（如 `/update`、`/delete`），避免与同资源 GET 冲突。
+
 ### 认证接口
 
 | 接口 | 方法 | 说明 |
 |-----|------|------|
-| POST /attendance/api/auth/login | 登录 | 用户登录 |
-| POST /attendance/api/auth/register | 注册 | 用户注册 |
-| GET /attendance/api/auth/profile | 用户信息 | 获取当前用户信息 |
+| POST /attendance/api/auth/login | POST | 用户登录 |
+| POST /attendance/api/auth/register | POST | 用户注册 |
+| GET /attendance/api/auth/profile | GET | 获取当前用户信息 |
 
 ### 任务接口
 
 | 接口 | 方法 | 说明 |
 |-----|------|------|
-| GET /attendance/api/tasks | 列表 | 获取任务列表 |
-| GET /attendance/api/tasks/:id | 详情 | 获取任务详情 |
-| POST /attendance/api/tasks/:id/confirm | 确认 | 确认提交任务 |
-| POST /attendance/api/tasks/:id/retry-sync | 重试 | 重试飞书多维表格同步 |
+| GET /attendance/api/tasks | GET | 获取任务列表 |
+| GET /attendance/api/tasks/:id | GET | 获取任务详情 |
+| POST /attendance/api/tasks/:id/confirm | POST | 确认提交任务 |
+| POST /attendance/api/tasks/:id/delete | POST | 删除任务 |
+| POST /attendance/api/tasks/:id/retry-sync | POST | 重试飞书多维表格同步 |
+
+### 配置接口（节选）
+
+| 接口 | 方法 | 说明 |
+|-----|------|------|
+| GET /attendance/api/config | GET | 获取全部配置 |
+| POST /attendance/api/config/update | POST | 更新单项配置 |
+| POST /attendance/api/config/:key/delete | POST | 删除配置项 |
+| POST /attendance/api/config/current-country | POST | 设置当前工作国家 |
+| POST /attendance/api/config/system | POST | 更新系统配置 |
 
 ### 上传接口
 
 | 接口 | 方法 | 说明 |
 |-----|------|------|
-| POST /attendance/api/local/upload-stream | 上传 | SSE流式上传解析 |
+| POST /attendance/api/local/upload-stream | POST | SSE流式上传解析 |
 
 ## 开发指南
 

@@ -6,6 +6,7 @@ import org.springframework.core.io.ClassPathResource;
 
 import java.io.InputStream;
 import java.nio.charset.StandardCharsets;
+import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.LinkedHashMap;
@@ -141,6 +142,62 @@ public final class ReminderLocaleSupport {
 
     public static String viewTaskLabel(String locale) {
         return pickFromSection("viewTask", locale);
+    }
+
+    public static String aggregatedNotificationTitle(String locale, int ruleCount) {
+        String resolved = resolveLocaleKey(locale);
+        if ("zh-CN".equals(resolved)) {
+            return ruleCount > 1 ? "【考勤任务提醒】" : "【考勤提醒】";
+        }
+        return ruleCount > 1 ? "Attendance reminders" : "Attendance reminder";
+    }
+
+    public static String taskCountSuffix(String locale) {
+        return "zh-CN".equals(resolveLocaleKey(locale)) ? " 个任务" : " tasks";
+    }
+
+    public static String buildAggregatedBody(String locale,
+                                             String recipientName,
+                                             boolean recipientIsOperator,
+                                             int totalTaskCount,
+                                             int ruleCount,
+                                             String ruleSummaryLines,
+                                             String latestTaskId,
+                                             LocalDateTime latestTime,
+                                             String creatorNames) {
+        String resolved = resolveLocaleKey(locale);
+        String timeText = latestTime != null
+                ? latestTime.format(java.time.format.DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm"))
+                : "-";
+        if ("zh-CN".equals(resolved)) {
+            if (recipientIsOperator) {
+                return "【考勤待核对提醒】\n\n"
+                        + "您有 " + totalTaskCount + " 个任务需要处理"
+                        + (ruleCount > 1 ? "（涉及 " + ruleCount + " 条提醒规则）" : "")
+                        + "：\n\n"
+                        + ruleSummaryLines + "\n\n"
+                        + "最近任务：" + latestTaskId + "\n"
+                        + "进入状态：" + timeText + "\n\n"
+                        + "请登录系统及时完成处理。";
+            }
+            return "【考勤督办提醒】\n\n"
+                    + recipientName + "，您好\n\n"
+                    + "共有 " + totalTaskCount + " 个任务需要处理"
+                    + (ruleCount > 1 ? "（涉及 " + ruleCount + " 条提醒规则）" : "")
+                    + "：\n\n"
+                    + ruleSummaryLines + "\n"
+                    + "涉及操作者：" + creatorNames + "\n\n"
+                    + "最近任务：" + latestTaskId + "\n"
+                    + "进入状态：" + timeText + "\n\n"
+                    + "请关注并督促相关人员登录系统完成处理。";
+        }
+        return "You have " + totalTaskCount + " task(s) pending"
+                + (ruleCount > 1 ? " across " + ruleCount + " reminder rules" : "")
+                + ":\n\n"
+                + ruleSummaryLines + "\n\n"
+                + "Latest task: " + latestTaskId + "\n"
+                + "Status since: " + timeText + "\n\n"
+                + "Please sign in and complete the review.";
     }
 
     public static String nameSeparator(String locale) {

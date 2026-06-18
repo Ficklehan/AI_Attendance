@@ -10,7 +10,7 @@ export const taskApi = {
   getTaskList: (params) => request.get('/tasks', { params }),
   getTaskDetail: (taskId) => request.get(`/tasks/${taskId}`),
   confirmTask: (taskId, data) => request.post(`/tasks/${taskId}/confirm`, data),
-  deleteTask: (taskId) => request.delete(`/tasks/${taskId}`),
+  deleteTask: (taskId) => request.post(`/tasks/${taskId}/delete`),
   cancelTask: (taskId) => request.post(`/tasks/${taskId}/cancel`),
   getTaskStats: () => request.get('/tasks/stats')
 }
@@ -42,5 +42,5 @@ export const chatApi = {
 
 export const configApi = {
   getConfig: () => request.get('/config'),
-  updateConfig: (data) => request.put('/config', data)
+  updateConfig: (data) => request.post('/config/update', data)
 }
