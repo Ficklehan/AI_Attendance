@@ -75,6 +75,7 @@ public class ImageQualityConfigService {
         dto.setBlockUnknownFieldPercent(blockUnknown);
         dto.setBlockFewRowsMaxEffective(clamp(incoming.getBlockFewRowsMaxEffective(), 0, 20, dto.getBlockFewRowsMaxEffective()));
         dto.setBlockFewRowsUnknownPercent(clampPercent(incoming.getBlockFewRowsUnknownPercent(), dto.getBlockFewRowsUnknownPercent()));
+        dto.setBlockMalformedRowPercent(clampMalformedPercent(incoming.getBlockMalformedRowPercent(), dto.getBlockMalformedRowPercent()));
         dto.setWarnBlurRowPercent(warnBlur);
         dto.setWarnUnknownFieldPercent(warnUnknown);
         dto.setPostRecognitionQualityEnabled(incoming.isPostRecognitionQualityEnabled());
@@ -101,6 +102,14 @@ public class ImageQualityConfigService {
 
     private static int clampPercent(int value, int fallback) {
         if (value <= 0) {
+            return fallback;
+        }
+        return Math.min(100, value);
+    }
+
+    /** 0 表示关闭畸形行整单拦截 */
+    private static int clampMalformedPercent(int value, int fallback) {
+        if (value < 0) {
             return fallback;
         }
         return Math.min(100, value);

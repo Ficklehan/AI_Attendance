@@ -20,6 +20,9 @@ public class ImageQualityConfigDTO {
     private int blockFewRowsMaxEffective = 2;
     private int blockFewRowsUnknownPercent = 80;
 
+    /** 阻断：畸形解析行占比阈值（%），超过则整单识别失败 */
+    private int blockMalformedRowPercent = 10;
+
     /** 警告：模糊行占比阈值（%） */
     private int warnBlurRowPercent = 30;
     /** 警告：关键字段未知占比阈值（%） */
@@ -102,6 +105,14 @@ public class ImageQualityConfigDTO {
 
     public void setBlockFewRowsUnknownPercent(int blockFewRowsUnknownPercent) {
         this.blockFewRowsUnknownPercent = blockFewRowsUnknownPercent;
+    }
+
+    public int getBlockMalformedRowPercent() {
+        return blockMalformedRowPercent;
+    }
+
+    public void setBlockMalformedRowPercent(int blockMalformedRowPercent) {
+        this.blockMalformedRowPercent = blockMalformedRowPercent;
     }
 
     public int getWarnBlurRowPercent() {

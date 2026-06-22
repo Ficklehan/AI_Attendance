@@ -34,7 +34,7 @@ class ReminderSupportScheduleTest {
         LocalDateTime entered = LocalDateTime.of(2026, 6, 16, 14, 0, 0);
         LocalDateTime due = ReminderSupport.computeDueAtForPeriod(
                 entered, 1, new BigDecimal("1"), "day", 9);
-        assertEquals(LocalDateTime.of(2026, 6, 17, 14, 0, 0), due);
+        assertEquals(LocalDateTime.of(2026, 6, 18, 9, 0, 0), due);
     }
 
     @Test

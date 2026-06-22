@@ -3,6 +3,7 @@ package com.attendance.service;
 import com.alibaba.fastjson.JSONObject;
 import com.attendance.dto.ImageQualityAssessment;
 import com.attendance.dto.ImageQualityConfigDTO;
+import com.attendance.util.RecognizedRecordShapeSupport;
 import com.attendance.util.RowReadabilitySupport;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
@@ -124,6 +125,42 @@ public class RecognitionQualityGuard {
 
     public String describeUnreadableReason(List<JSONObject> records) {
         return "表格大量工号/姓名为 ??? 或 ILLEGIBLE，但到达/离开时间却被整齐填写，疑似模型臆测而非读图。请换更清晰照片重试。";
+    }
+
+    public boolean looksTooManyMalformedRecords(List<JSONObject> records) {
+        if (records == null || records.isEmpty()) {
+            return false;
+        }
+        ImageQualityConfigDTO config = imageQualityConfigService.getConfig();
+        if (config == null || !config.isEnabled() || !config.isPostRecognitionQualityEnabled()) {
+            return false;
+        }
+        int thresholdPercent = config.getBlockMalformedRowPercent();
+        if (thresholdPercent <= 0) {
+            return false;
+        }
+        double threshold = thresholdPercent / 100.0;
+        return RecognizedRecordShapeSupport.malformedRatio(records) > threshold;
+    }
+
+    public Map<String, Object> malformedRatioMessageArgs(List<JSONObject> records) {
+        Map<String, Object> args = new HashMap<>();
+        int recordCount = records != null ? records.size() : 0;
+        int malformedCount = 0;
+        if (records != null) {
+            for (JSONObject record : records) {
+                if (record != null && record.getBooleanValue(RecognizedRecordShapeSupport.PARSE_MALFORMED_KEY)) {
+                    malformedCount++;
+                }
+            }
+        }
+        ImageQualityConfigDTO config = imageQualityConfigService.getConfig();
+        int thresholdPercent = config != null ? config.getBlockMalformedRowPercent() : 10;
+        args.put("malformedCount", malformedCount);
+        args.put("recordCount", recordCount);
+        args.put("malformedPercent", Math.round(RecognizedRecordShapeSupport.malformedRatio(records) * 100));
+        args.put("thresholdPercent", thresholdPercent);
+        return args;
     }
 
     /**

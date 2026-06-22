@@ -61,6 +61,7 @@ public final class ErrorKeys {
     public static final String AI_INVALID_JSON = "errors.aiInvalidJson";
     public static final String AI_NO_PARSEABLE_RECORDS = "errors.aiNoParseableRecords";
     public static final String AI_FABRICATED = "errors.aiFabricated";
+    public static final String AI_MALFORMED_RECORDS = "errors.aiMalformedRecords";
     public static final String AI_UNREADABLE_TIMES = "errors.aiUnreadableTimes";
     public static final String AI_IMAGE_TOO_BLURRY = "errors.aiImageTooBlurry";
     public static final String UPLOAD_IMAGE_TOO_BLURRY = "errors.uploadImageTooBlurry";

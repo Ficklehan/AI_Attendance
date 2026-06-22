@@ -725,6 +725,7 @@ const getRecordAnomalyReasons = (record) => {
   if (!record || record.isDeleted) return []
   const mark = getDisplaySmartMark(record)
   const reasons = getEffectiveAnomalies(record).map((r) => translateAnomalyReason(r, t))
+  if (record._parseMalformed) reasons.push(t('taskEdit.parseMalformedShort'))
   if (markContains(mark, 'blurred')) reasons.push(t('taskEdit.blurredContent'))
   if (markContains(mark, 'handwriting')) reasons.push(t('taskEdit.handwrittenContent'))
   if (markContains(mark, 'absent')) reasons.push(t('taskEdit.absentReason'))
@@ -1026,6 +1027,7 @@ const anomalyAlerts = computed(() => {
 
 const getRowClassName = (record, index) => {
   if (!record || record?.isDeleted) return 'deleted-row'
+  if (record?._parseMalformed) return 'parse-malformed-row'
   const mark = getDisplaySmartMark(record)
   if (hasRequiredMissing(record)) return 'incomplete-row'
   if (markContains(mark, 'absent')) return 'absent-row'
@@ -1882,6 +1884,14 @@ const getDisplaySmartMark = (record) => {
 
   .ant-table-tbody > tr.incomplete-row:hover > td {
     background-color: $warning-light !important;
+  }
+
+  .ant-table-tbody > tr.parse-malformed-row td {
+    background-color: #fff1f0;
+  }
+
+  .ant-table-tbody > tr.parse-malformed-row:hover > td {
+    background-color: #ffe7e6 !important;
   }
 }
 </style>

@@ -227,6 +227,10 @@ const ANOMALY_CATEGORY_FALLBACK = {
       addItem('format', sameTimeLabel !== 'fieldFormat.sameTimeShort' ? sameTimeLabel : '到达与离开时间相同')
     }
 
+    if (record._parseMalformed) {
+      addItem('format', t('taskEdit.parseMalformedShort'))
+    }
+
     const duplicateMeta = getDuplicateMeta(record)
     if (duplicateMeta?.peers?.length) {
       addItem('duplicate', duplicateMeta.peers.join('、'))
@@ -271,6 +275,7 @@ const ANOMALY_CATEGORY_FALLBACK = {
     if (!record) return ''
     let rowClassName = ''
     if (record?.isDeleted) rowClassName = 'deleted-row'
+    else if (record?._parseMalformed) rowClassName = 'parse-malformed-row'
     else {
       const mark = getDisplaySmartMark(record)
       if (markContains(mark, 'absent')) rowClassName = 'absent-row'

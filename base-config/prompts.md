@@ -9,6 +9,7 @@
 【列定位】第6位AGENCE_INTERIMAIRE=供应商/中介(Agence/Agency/供应商/Interim)；第7位HORAIRES_DU_TRAVAIL=班次/工时(Horaires/Heures/Shift/MATIN/SOIR/时段如14:30-21:00)；二者严禁互换；HORAIRES禁填公司名；供应商分组标题(MANPOWER/STARTPEOPLE/JOB&TALENT等)→仅写AGENCE
 
 【数据】只输出真实行；看不清用???或""，禁猜测补全编造；勿把表头当数据；名/工号???或空→到离必空；每行单数组
+【JSON格式·强制】每行仅一个独立JSON数组、恰好15个双引号字段；行末必须以]结束再换行；严禁把多列拼成一串(如50ITALIAMILANO...)；严禁行与行粘连(如false["53")；续写新行必须以[开头
 · 时间→HH:MM(24h)：6h→06:00，6h30/6.30/630→06:30，18h30→18:30
 · 日期→YYYY-MM-DD：17/05/2026、17-05-2026、17-05-26→2026-05-17
 · 表头→Pays/Country/Paese；Entrepôt/Warehouse/Magazzino；NOM/Name→NOM_PRENOM；Agence/Agency/供应商→第6位AGENCE；Horaires/Heures/班次→第7位HORAIRES；含员工签名/SIGNATURE/Signature/Firma/Signatura/签名关键词列(可有说明文字，非Firma e conferma主管栏)→SIGNATURE；Observations/Remarks/Osservazioni
@@ -43,6 +44,7 @@
 【列定位】第6位AGENCE=供应商/中介(Agence d'intérimaire/Agency)；第7位HORAIRES=班次(Horaires du travail/Heures/MATIN/SOIR/22:00-06:00等)；二者严禁互换；FR表常按供应商分块，区块标题(MANPOWER/STARTPEOPLE/STAFFMATCH/JOB&TALENT等)→写AGENCE，员工行班次在Horaires列
 
 【数据】只输出真实行；看不清用???或""，禁猜测补全编造；勿把表头当数据；名/工号???或空→到离必空；每行单数组
+【JSON格式·强制】每行仅一个独立JSON数组、恰好15个双引号字段；行末必须以]结束再换行；严禁把多列拼成一串(如50ITALIAMILANO...)；严禁行与行粘连(如false["53")；续写新行必须以[开头
 · 时间→HH:MM(24h)：6h→06:00，6h30/6.30/630→06:30，18h30→18:30
 · 日期→YYYY-MM-DD：17/05/2026、17-05-2026、17-05-26→2026-05-17
 · 表头→Pays/Country；Entrepôt/Warehouse；NOM/Name→NOM_PRENOM；Agence/Agency/供应商→第6位AGENCE；Horaires/Heures/班次→第7位HORAIRES；含签名关键词列→SIGNATURE(非Firma e conferma)；Observations/Remarks/Osservazioni
@@ -75,6 +77,7 @@
 【列定位】第6位AGENCE=供应商/中介；第7位HORAIRES=班次/工时；先读表头禁按位置猜，二者严禁互换
 
 【数据】只输出真实行；看不清用???或""，禁猜测补全编造；勿把表头当数据；名/工号???或空→到离必空；每行单数组
+【JSON格式·强制】每行仅一个独立JSON数组、恰好15个双引号字段；行末必须以]结束再换行；严禁把多列拼成一串(如50ITALIAMILANO...)；严禁行与行粘连(如false["53")；续写新行必须以[开头
 · 时间→HH:MM(24h)：6h→06:00，6h30/6.30/630→06:30，18h30→18:30
 · 日期→YYYY-MM-DD：2026-05-17等规范为YYYY-MM-DD
 · 表头→Pays/Country；Entrepôt/Warehouse；含员工签名/SIGNATURE/Signature/Firma/签名关键词列→SIGNATURE；Observations/备注
@@ -107,6 +110,7 @@
 【列定位】第6位AGENCE=供应商/中介；第7位HORAIRES=班次/工时；先读表头禁按位置猜，二者严禁互换
 
 【数据】只输出真实行；看不清用???或""，禁猜测补全编造；勿把表头当数据；名/工号???或空→到离必空；每行单数组
+【JSON格式·强制】每行仅一个独立JSON数组、恰好15个双引号字段；行末必须以]结束再换行；严禁把多列拼成一串(如50ITALIAMILANO...)；严禁行与行粘连(如false["53")；续写新行必须以[开头
 · 时间→HH:MM(24h)：6h→06:00，6h30/630→06:30等德国写法
 · 日期→YYYY-MM-DD：DD.MM.YYYY(17.05.2026→2026-05-17)
 · 表头→Pays；Entrepot；含签名关键词列→SIGNATURE(非Firma e conferma)；Observations
@@ -139,6 +143,7 @@
 【列定位】第6位AGENCE=供应商/中介；第7位HORAIRES=班次/工时；先读表头禁按位置猜，二者严禁互换
 
 【数据】只输出真实行；看不清用???或""，禁猜测补全编造；勿把表头当数据；名/工号???或空→到离必空；每行单数组
+【JSON格式·强制】每行仅一个独立JSON数组、恰好15个双引号字段；行末必须以]结束再换行；严禁把多列拼成一串(如50ITALIAMILANO...)；严禁行与行粘连(如false["53")；续写新行必须以[开头
 · 时间→HH:MM(24h)：可读12h制(AM/PM)，输出须24h(08:00 AM→08:00)
 · 日期→YYYY-MM-DD：MM/DD/YYYY(05/17/2026→2026-05-17)
 · 表头→Pays/Country；Entrepot/Warehouse；含签名关键词列→SIGNATURE；Observations/Remarks
@@ -171,6 +176,7 @@
 【列定位】第6位AGENCE=供应商/中介；第7位HORAIRES=班次/工时；先读表头禁按位置猜，二者严禁互换
 
 【数据】只输出真实行；看不清用???或""，禁猜测补全编造；勿把表头当数据；名/工号???或空→到离必空；每行单数组
+【JSON格式·强制】每行仅一个独立JSON数组、恰好15个双引号字段；行末必须以]结束再换行；严禁把多列拼成一串(如50ITALIAMILANO...)；严禁行与行粘连(如false["53")；续写新行必须以[开头
 · 时间→HH:MM(24h)：6h→06:00，6h30/630→06:30，18h30→18:30
 · 日期→YYYY-MM-DD：17/05/2026、17-05-2026→2026-05-17
 · 表头→Pays；Entrepot；含签名关键词列→SIGNATURE；Observations
@@ -203,6 +209,7 @@
 【列定位】第6位AGENCE=供应商/中介；第7位HORAIRES=班次/工时；先读表头禁按位置猜，二者严禁互换
 
 【数据】只输出真实行；看不清用???或""，禁猜测补全编造；勿把表头当数据；名/工号???或空→到离必空；每行单数组
+【JSON格式·强制】每行仅一个独立JSON数组、恰好15个双引号字段；行末必须以]结束再换行；严禁把多列拼成一串(如50ITALIAMILANO...)；严禁行与行粘连(如false["53")；续写新行必须以[开头
 · 时间→HH:MM(24h)：6h→06:00，6h30/630→06:30，18h30→18:30
 · 日期→YYYY-MM-DD：17/05/2026、06/06/26→2026-06-06
 · 表头→Pays/Paese；Magazzino；Cognome Nome→NOM_PRENOM；含Firma/Signatura关键词列→SIGNATURE(非Firma e conferma responsabile主管栏)；Osservazioni
@@ -236,6 +243,7 @@
 【列定位】第6位AGENCE=供应商/中介；第7位HORAIRES=班次/工时；先读表头禁按位置猜，二者严禁互换
 
 【数据】只输出真实行；看不清用???或""，禁猜测补全编造；勿把表头当数据；名/工号???或空→到离必空；每行单数组
+【JSON格式·强制】每行仅一个独立JSON数组、恰好15个双引号字段；行末必须以]结束再换行；严禁把多列拼成一串(如50ITALIAMILANO...)；严禁行与行粘连(如false["53")；续写新行必须以[开头
 · 时间→HH:MM(24h)：6h→06:00，6h30/630→06:30，18h30→18:30
 · 日期→YYYY-MM-DD：17/05/2026→2026-05-17
 · 表头→Pays/País；Entrepot/Almacén；含Firma/签名关键词列→SIGNATURE；Observations/Observaciones

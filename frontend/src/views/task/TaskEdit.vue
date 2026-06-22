@@ -2521,6 +2521,16 @@ watch(headerFilters, () => {
       background-color: $warning-light !important;
     }
 
+    .ant-table-tbody > tr.parse-malformed-row {
+      td {
+        background-color: #fff1f0;
+      }
+    }
+
+    .ant-table-tbody > tr.parse-malformed-row:hover > td {
+      background-color: #ffe7e6 !important;
+    }
+
     .field-unreadable-cell,
     :deep(.field-unreadable-cell.ant-input),
     :deep(.field-unreadable-cell.ant-input-number) {

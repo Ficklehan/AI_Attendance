@@ -303,10 +303,11 @@ public final class ReminderSupport {
             return threshold;
         }
         LocalDateTime daySlot = threshold.toLocalDate().atTime(hour, 0);
-        if (threshold.isBefore(daySlot)) {
+        if (!threshold.isAfter(daySlot)) {
             return daySlot;
         }
-        return threshold;
+        // 达到滞后阈值已超过当天固定提醒时刻：推迟到下一天的固定时刻提醒
+        return daySlot.plusDays(1);
     }
 
     /**

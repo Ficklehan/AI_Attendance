@@ -113,6 +113,21 @@
               </a-form-item>
             </a-col>
           </a-row>
+            <a-row :gutter="16">
+            <a-col :span="12">
+              <a-form-item :label="t('settings.system.imageQualityBlockMalformed')">
+                <a-input-number
+                  v-model:value="form.blockMalformedRowPercent"
+                  :min="0"
+                  :max="100"
+                  addon-after="%"
+                  style="width: 100%"
+                  @change="markThresholdsCustom"
+                />
+                <p class="field-hint">{{ t('settings.system.imageQualityBlockMalformedHint') }}</p>
+              </a-form-item>
+            </a-col>
+          </a-row>
           <a-row :gutter="16">
             <a-col :span="12">
               <a-form-item :label="t('settings.system.imageQualityBlockFewRows')">
@@ -180,6 +195,7 @@ const RECOGNITION_STRICTNESS_MAP = {
   loose: {
     blockBlurRowPercent: 60,
     blockUnknownFieldPercent: 75,
+    blockMalformedRowPercent: 15,
     warnBlurRowPercent: 40,
     warnUnknownFieldPercent: 50,
     blockFewRowsMaxEffective: 3,
@@ -188,6 +204,7 @@ const RECOGNITION_STRICTNESS_MAP = {
   standard: {
     blockBlurRowPercent: 50,
     blockUnknownFieldPercent: 65,
+    blockMalformedRowPercent: 10,
     warnBlurRowPercent: 30,
     warnUnknownFieldPercent: 40,
     blockFewRowsMaxEffective: 2,
@@ -196,6 +213,7 @@ const RECOGNITION_STRICTNESS_MAP = {
   strict: {
     blockBlurRowPercent: 40,
     blockUnknownFieldPercent: 55,
+    blockMalformedRowPercent: 5,
     warnBlurRowPercent: 20,
     warnUnknownFieldPercent: 30,
     blockFewRowsMaxEffective: 2,

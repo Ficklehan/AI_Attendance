@@ -15,6 +15,7 @@ import com.attendance.util.RecordCountryDefaults;
 import com.attendance.util.RecordFeishuPrepareSupport;
 import com.attendance.util.RecognizedAgencyShiftCorrector;
 import com.attendance.util.RecognizedFieldSanitizer;
+import com.attendance.util.RecognizedRecordShapeSupport;
 import com.attendance.util.RecognizedTimeNormalizer;
 import com.attendance.util.RecognizedTextNormalizer;
 import com.attendance.util.RecognizedDateNormalizer;
@@ -480,6 +481,24 @@ public class AIParserService {
                 return;
             }
 
+            if (recognitionQualityGuard.looksTooManyMalformedRecords(extractedRecords)) {
+                double ratio = RecognizedRecordShapeSupport.malformedRatio(extractedRecords);
+                log.warn("拒绝畸形行过多的识别结果: malformedRatio={}%", Math.round(ratio * 100));
+                if (trace != null) {
+                    JSONObject meta = new JSONObject();
+                    meta.put("messageKey", ErrorKeys.AI_MALFORMED_RECORDS);
+                    meta.put("malformedRatio", ratio);
+                    meta.put("malformedCount", malformedCount(extractedRecords));
+                    meta.put("recordCount", extractedRecords.size());
+                    trace.step("malformed_ratio_rejected", meta);
+                }
+                callback.onError(new BusinessException(
+                        ErrorCode.AI_PARSE_ERROR,
+                        ErrorKeys.AI_MALFORMED_RECORDS,
+                        recognitionQualityGuard.malformedRatioMessageArgs(extractedRecords)));
+                return;
+            }
+
             ImageQualityAssessment imageQuality = recognitionQualityGuard.assessImageReadability(extractedRecords);
             if (imageQuality.isBlock()) {
                 log.warn("拒绝模糊图片识别结果: blur={}%, unknown={}%",
@@ -733,6 +752,7 @@ public class AIParserService {
         }
         String repaired = text.replaceAll("(?<![\\]])\\r?\\n\\s*\\[", "]\n[");
         repaired = repaired.trim();
+        repaired = RecognizedRecordShapeSupport.repairStickyRowBoundaries(repaired);
         if (repaired.startsWith("[") && !repaired.endsWith("]")) {
             int lastOpen = repaired.lastIndexOf('[');
             if (lastOpen >= 0 && findMatchingBracket(repaired, lastOpen) == -1) {
@@ -772,10 +792,31 @@ public class AIParserService {
         if (itemArray == null || itemArray.size() < 2) {
             return;
         }
+        List<JSONArray> expanded = RecognizedRecordShapeSupport.expandMergedRowArrays(itemArray);
+        boolean mergedSixteen = itemArray.size() == 16
+                && RecognizedRecordShapeSupport.looksLikeMergedBlob(String.valueOf(itemArray.get(0)));
+        JSONArray recoveredFirst = mergedSixteen
+                ? RecognizedRecordShapeSupport.trySplitMergedBlob(String.valueOf(itemArray.get(0)))
+                : null;
+        for (int i = 0; i < expanded.size(); i++) {
+            JSONArray candidate = expanded.get(i);
+            boolean recoveredFromMerge = mergedSixteen && i == 0 && recoveredFirst != null
+                    && candidate.toJSONString().equals(recoveredFirst.toJSONString());
+            pushSingleRecordArray(candidate, recoveredFromMerge, extractedRecords, seenRecords, callback);
+        }
+    }
+
+    private void pushSingleRecordArray(JSONArray itemArray, boolean recoveredFromMerge,
+                                       List<JSONObject> extractedRecords, Set<String> seenRecords,
+                                       ParseCallback callback) {
+        if (itemArray == null || itemArray.size() < 2) {
+            return;
+        }
         if (recognitionPromptGuard.isPromptExampleArray(itemArray)) {
             log.warn("跳过提示词示例或表头占位行，不作为识别结果: {}", itemArray.toJSONString());
             return;
         }
+        int rawFieldCount = itemArray.size();
         String itemNo = itemArray.size() > 0 ? String.valueOf(itemArray.get(0)) : "";
         String itemName = itemArray.size() > 1 ? String.valueOf(itemArray.get(1)) : "";
         String recordKey = buildRecordDedupKey(itemArray, itemNo, itemName);
@@ -786,6 +827,11 @@ public class AIParserService {
         if (recognitionPromptGuard.isPromptExampleRecord(normalized)) {
             log.warn("跳过提示词示例记录: {} - {}", normalized.getString("NO"), normalized.getString("NOM_PRENOM"));
             return;
+        }
+        if (recoveredFromMerge || RecognizedRecordShapeSupport.isNormalizedShapeMalformed(normalized, rawFieldCount)) {
+            String reason = recoveredFromMerge ? "merged_row_recovered" : "invalid_field_shape";
+            RecognizedRecordShapeSupport.markMalformed(normalized, reason);
+            log.warn("畸形行已保留并标记: NO={}, reason={}", normalized.getString("NO"), reason);
         }
         RecordCountryDefaults.applyMissingPays(normalized, workingCountryForPays.get());
         extractedRecords.add(normalized);
@@ -1280,5 +1326,18 @@ public class AIParserService {
         }
 
         return String.join(";", marks);
+    }
+
+    private static int malformedCount(List<JSONObject> records) {
+        if (records == null) {
+            return 0;
+        }
+        int count = 0;
+        for (JSONObject record : records) {
+            if (record != null && record.getBooleanValue(RecognizedRecordShapeSupport.PARSE_MALFORMED_KEY)) {
+                count++;
+            }
+        }
+        return count;
     }
 }
