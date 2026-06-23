@@ -24,7 +24,8 @@ export default {
       "unsigned": "Unsigned",
       "signedConfirmed": "Signed (confirmed)",
       "unsignedConfirmed": "Unsigned (confirmed)",
-      "signed": "Signed"
+      "signed": "Signed",
+      "manuallyAdded": "Manually added"
     },
     "missing": {
       "NO": "Worker ID not recognized",
@@ -755,7 +756,10 @@ export default {
     "collapseDetail": "Collapse details",
     "notDuplicate": "Not duplicate",
     "duplicateSuspect": "Possible duplicate: {names}",
-    "sourceTask": "Source task"
+    "sourceTask": "Source task",
+    "addManualRow": "Add row",
+    "addManualRowHint": "Manually add attendance rows missed by recognition",
+    "manualRowAdded": "Blank row added — complete the fields before submitting"
   },
   "config": {
     "title": "Configuration Management",

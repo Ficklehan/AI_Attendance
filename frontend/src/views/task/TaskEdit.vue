@@ -92,6 +92,17 @@
       <a-tabs v-model:active-key="activeTab" class="edit-tabs">
         <a-tab-pane key="edit" :tab="$t('taskEdit.editData')">
           <div class="table-toolbar">
+            <a-tooltip v-if="canShowSubmitBar" :title="$t('taskEdit.addManualRowHint')">
+              <a-button
+                type="dashed"
+                size="small"
+                class="table-toolbar__add-row"
+                @click="handleAddManualRecord"
+              >
+                <template #icon><PlusOutlined /></template>
+                {{ $t('taskEdit.addManualRow') }}
+              </a-button>
+            </a-tooltip>
             <TableColumnSettings
               :columns="configurableColumns"
               :hidden-keys="hiddenKeys"
@@ -570,7 +581,7 @@ import { ref, computed, shallowRef, onMounted, onUnmounted, watch, h, nextTick }
 import { useRoute, useRouter } from 'vue-router'
 import { useI18n } from 'vue-i18n'
 import { message, Modal as aModal } from 'ant-design-vue'
-import { DeleteOutlined, UndoOutlined, ExclamationCircleOutlined, FileImageOutlined, EyeOutlined, UploadOutlined, DownloadOutlined, QuestionCircleOutlined, LoadingOutlined } from '@ant-design/icons-vue'
+import { DeleteOutlined, UndoOutlined, ExclamationCircleOutlined, FileImageOutlined, EyeOutlined, UploadOutlined, DownloadOutlined, QuestionCircleOutlined, LoadingOutlined, PlusOutlined } from '@ant-design/icons-vue'
 import { getTaskDetail, getTaskProgress, confirmTask, deleteTask, retryFeishuSync, calibrateTaskRecord } from '@/api/task'
 import { useAuthStore } from '@/stores/auth'
 import { resolveTaskImageUrls, fileNameFromImageUrl } from '@/utils/imageUrl'
@@ -633,6 +644,7 @@ import {
 import { normalizeDate } from '@/utils/recognizedDateNormalizer'
 import { loadNightShiftRules } from '@/utils/nightShiftRules'
 import { isNonTimeFieldLabel } from '@/utils/recognizedTimeNormalizer'
+import { createManualTaskRecord } from '@/utils/manualTaskRecord'
 
 const { t } = useI18n()
 const route = useRoute()
@@ -1459,6 +1471,31 @@ const getFileName = (url) => {
   return name || t('taskEdit.unknownFile')
 }
 
+const handleAddManualRecord = () => {
+  if (!canShowSubmitBar.value) return
+  const draft = createManualTaskRecord({
+    taskId: taskId.value,
+    taskCountry: task.value?.promptCountry || getCachedWorkingCountry(),
+    existingRecords: records.value,
+  })
+  const normalized = prepareRecordPlaceholders(normalizeRecordPause(draft))
+  const signatureMark = computeSignatureMark(normalized)
+  normalized.SIGNATURE = signatureMark
+  normalized.CHECKER = signatureMark
+  records.value = [...records.value, normalized]
+  clearRowCache()
+  refreshDuplicateDecorations()
+  scheduleRequiredMissingCountUpdate(true)
+  scheduleAnomalyCountUpdate(true)
+  if (visibleRowCount.value < records.value.length) {
+    visibleRowCount.value = records.value.length
+  }
+  message.success(t('taskEdit.manualRowAdded'))
+  nextTick(() => {
+    tableLoadMoreSentinel.value?.scrollIntoView?.({ behavior: 'smooth', block: 'nearest' })
+  })
+}
+
 const toggleDelete = (record, index) => {
   if (isAbsentRow(record) && !record.isDeleted) {
     record._prevMark = record.SmartMark
@@ -1957,6 +1994,18 @@ watch(headerFilters, () => {
           flex: 1;
         }
       }
+    }
+  }
+
+  .table-toolbar {
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+    gap: 10px;
+    margin-bottom: 12px;
+
+    &__add-row {
+      margin-right: auto;
     }
   }
 
@@ -2529,6 +2578,16 @@ watch(headerFilters, () => {
 
     .ant-table-tbody > tr.parse-malformed-row:hover > td {
       background-color: #ffe7e6 !important;
+    }
+
+    .ant-table-tbody > tr.manual-added-row {
+      td {
+        background-color: #f0f7ff;
+      }
+    }
+
+    .ant-table-tbody > tr.manual-added-row:hover > td {
+      background-color: #e6f4ff !important;
     }
 
     .field-unreadable-cell,

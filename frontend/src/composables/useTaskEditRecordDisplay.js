@@ -43,6 +43,7 @@ function buildRowCacheKey(record, duplicatePeers) {
     record.SIGNATURE,
     record.isDeleted ? '1' : '0',
     record._duplicateConfirmedUnique ? '1' : '0',
+    record._manuallyAdded ? '1' : '0',
     Array.isArray(record._unreadableFields) ? record._unreadableFields.join('|') : '',
     anomalies,
     duplicatePeers || '',
@@ -276,6 +277,7 @@ const ANOMALY_CATEGORY_FALLBACK = {
     let rowClassName = ''
     if (record?.isDeleted) rowClassName = 'deleted-row'
     else if (record?._parseMalformed) rowClassName = 'parse-malformed-row'
+    else if (record?._manuallyAdded) rowClassName = 'manual-added-row'
     else {
       const mark = getDisplaySmartMark(record)
       if (markContains(mark, 'absent')) rowClassName = 'absent-row'

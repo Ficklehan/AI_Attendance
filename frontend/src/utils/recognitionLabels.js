@@ -325,6 +325,13 @@ export function buildRecordMarkTags(record, { getDisplayMark, isAbsentRow, t, ha
     label: translateSmartMarkPart(part, t),
     color: getMarkColorForPart(part),
   }))
+  if (record?._manuallyAdded) {
+    tags.unshift({
+      key: 'manually-added',
+      label: t('recognition.marks.manuallyAdded'),
+      color: 'blue',
+    })
+  }
   if (hasManualCalibration?.(record)) {
     tags.push({
       key: 'manual-calibration',

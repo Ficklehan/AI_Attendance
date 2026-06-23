@@ -121,6 +121,9 @@ public final class RowReadabilitySupport {
         if (record == null) {
             return false;
         }
+        if (Boolean.TRUE.equals(record.getBoolean("_manuallyAdded"))) {
+            return false;
+        }
         String smartMark = safe(record.getString("SmartMark"));
         if (containsAnyToken(smartMark, ABSENT_MARK_TOKENS)) {
             return true;

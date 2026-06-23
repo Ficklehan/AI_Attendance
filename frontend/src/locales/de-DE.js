@@ -23,7 +23,8 @@ export default {
       "deleted": "Gelöscht",
       "signedConfirmed": "Unterschrieben (bestätigt)",
       "unsignedConfirmed": "Nicht unterschrieben (bestätigt)",
-      "signed": "Unterschrieben"
+      "signed": "Unterschrieben",
+      "manuallyAdded": "Manuell hinzugefügt"
     },
     "missing": {
       "NO": "Personalnummer nicht erkannt",

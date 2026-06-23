@@ -24,7 +24,8 @@ export default {
       "unsigned": "未签字",
       "signedConfirmed": "已签字确认",
       "unsignedConfirmed": "未签字确认",
-      "signed": "已签字"
+      "signed": "已签字",
+      "manuallyAdded": "手动添加"
     },
     "missing": {
       "NO": "工号未识别",
@@ -755,7 +756,10 @@ export default {
     "collapseDetail": "收起明细",
     "notDuplicate": "非重名",
     "duplicateSuspect": "重名疑似：{names}",
-    "sourceTask": "来源任务"
+    "sourceTask": "来源任务",
+    "addManualRow": "添加行",
+    "addManualRowHint": "手动添加识别遗漏的考勤记录",
+    "manualRowAdded": "已添加空白行，请填写后提交"
   },
   "config": {
     "title": "配置中心",

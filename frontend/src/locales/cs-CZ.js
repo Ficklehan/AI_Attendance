@@ -23,7 +23,8 @@ export default {
       "deleted": "Smazané",
       "signedConfirmed": "Podepsáno (potvrzeno)",
       "unsignedConfirmed": "Nepodepsáno (potvrzeno)",
-      "signed": "Podepsáno"
+      "signed": "Podepsáno",
+      "manuallyAdded": "Ručně přidáno"
     },
     "missing": {
       "NO": "Ne rozpoznáno číslo",

@@ -23,7 +23,8 @@ export default {
       "deleted": "Supprimé",
       "signedConfirmed": "Signé (confirmé)",
       "unsignedConfirmed": "Non signé (confirmé)",
-      "signed": "Signé"
+      "signed": "Signé",
+      "manuallyAdded": "Ajout manuel"
     },
     "missing": {
       "NO": "N° employé non reconnu",

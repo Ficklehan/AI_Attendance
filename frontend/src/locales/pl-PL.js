@@ -23,7 +23,8 @@ export default {
       "deleted": "Usunięty",
       "signedConfirmed": "Podpisane (potwierdzone)",
       "unsignedConfirmed": "Brak podpisu (potwierdzone)",
-      "signed": "Podpisane"
+      "signed": "Podpisane",
+      "manuallyAdded": "Dodane ręcznie"
     },
     "missing": {
       "NO": "Nie rozpoznano numeru",

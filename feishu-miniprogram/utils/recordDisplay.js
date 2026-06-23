@@ -125,6 +125,7 @@ function getEffectiveSmartMark(record) {
 
 function isAbsentRow(record) {
   if (!record || record._restored || record.isDeleted) return false
+  if (record._manuallyAdded) return false
   const mark = getEffectiveSmartMark(record)
   if (mark.indexOf('未出勤') !== -1 || markContains(mark, 'absent')) return true
   const arrive = pickField(record, 'ARRIVEE', 'ArriveTime')

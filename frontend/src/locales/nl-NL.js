@@ -23,7 +23,8 @@ export default {
       "deleted": "Verwijderd",
       "signedConfirmed": "Getekend (bevestigd)",
       "unsignedConfirmed": "Niet getekend (bevestigd)",
-      "signed": "Getekend"
+      "signed": "Getekend",
+      "manuallyAdded": "Handmatig toegevoegd"
     },
     "missing": {
       "NO": "Werknemer-ID niet herkend",
