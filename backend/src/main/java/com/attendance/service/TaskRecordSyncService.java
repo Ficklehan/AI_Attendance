@@ -3,6 +3,7 @@ package com.attendance.service;
 import com.alibaba.fastjson.JSON;
 import com.alibaba.fastjson.JSONArray;
 import com.alibaba.fastjson.JSONObject;
+import com.attendance.config.CountryCatalog;
 import com.attendance.entity.Task;
 import com.attendance.entity.TaskRecord;
 import com.attendance.mapper.TaskMapper;
@@ -55,6 +56,10 @@ public class TaskRecordSyncService {
     @Transactional
     public void syncFromTask(Task task) {
         if (task == null || task.getTaskId() == null) {
+            return;
+        }
+        if (!"confirmed".equalsIgnoreCase(task.getStatus())) {
+            taskRecordMapper.deleteByTaskId(task.getTaskId());
             return;
         }
         String payload = TaskRecordPayloadResolver.resolvePayload(task);
@@ -117,12 +122,24 @@ public class TaskRecordSyncService {
         tr.setFileKey(task.getFileKey());
         tr.setImageUrls(task.getImageUrls());
         String name = RecordJsonSupport.pickJson(row, "NOM_PRENOM", "NOM", "NAME");
-        tr.setEmpNo(RecordJsonSupport.pickJson(row, "NO", "No", "no"));
+        tr.setLineNo(RecordJsonSupport.pickJson(row, "NO", "No", "no"));
+        Object employeeId = row.get("employeeId");
+        if (employeeId instanceof Number) {
+            tr.setEmployeeId(((Number) employeeId).longValue());
+        } else if (employeeId != null && !String.valueOf(employeeId).trim().isEmpty()) {
+            try {
+                tr.setEmployeeId(Long.parseLong(String.valueOf(employeeId).trim()));
+            } catch (NumberFormatException ignored) {
+                tr.setEmployeeId(null);
+            }
+        }
+        String employeeNo = RecordJsonSupport.pickJson(row, "employeeNo", "EMPLOYEE_NO");
+        tr.setEmployeeNo(employeeNo);
         tr.setEmpName(name);
         tr.setBaseName(RecordJsonSupport.stripSerialSuffix(name).toUpperCase(Locale.ROOT));
         String country = RecordJsonSupport.pickJson(row, "Pays", "Country", "PAYS");
         tr.setCountry(country);
-        tr.setCountryKey(RecordJsonSupport.upper(country));
+        tr.setCountryKey(CountryCatalog.normalizeCountryKey(country));
         String warehouse = RecordJsonSupport.pickJson(row, "Entrepot", "Entrepôt", "Warehouse");
         tr.setWarehouse(warehouse);
         tr.setWarehouseKey(RecordJsonSupport.upper(warehouse));

@@ -229,7 +229,8 @@ const ANOMALY_CATEGORY_FALLBACK = {
     }
 
     if (record._parseMalformed) {
-      addItem('format', t('taskEdit.parseMalformedShort'))
+      const malformedLabel = t('taskEdit.parseMalformedShort')
+      addItem('format', malformedLabel !== 'taskEdit.parseMalformedShort' ? malformedLabel : '结构异常')
     }
 
     const duplicateMeta = getDuplicateMeta(record)
@@ -275,7 +276,7 @@ const ANOMALY_CATEGORY_FALLBACK = {
     if (cached?.rowClassName != null) return cached.rowClassName
     if (!record) return ''
     let rowClassName = ''
-    if (record?.isDeleted) rowClassName = 'deleted-row'
+    if (record?.isDeleted || record?.deleted) rowClassName = 'deleted-row'
     else if (record?._parseMalformed) rowClassName = 'parse-malformed-row'
     else if (record?._manuallyAdded) rowClassName = 'manual-added-row'
     else {

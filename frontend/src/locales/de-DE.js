@@ -23,8 +23,7 @@ export default {
       "deleted": "Gelöscht",
       "signedConfirmed": "Unterschrieben (bestätigt)",
       "unsignedConfirmed": "Nicht unterschrieben (bestätigt)",
-      "signed": "Unterschrieben",
-      "manuallyAdded": "Manuell hinzugefügt"
+      "signed": "Unterschrieben"
     },
     "missing": {
       "NO": "Personalnummer nicht erkannt",
@@ -194,6 +193,8 @@ export default {
   "nav": {
     "home": "Startseite",
     "tasks": "Aufgaben",
+    "attendance": "Anwesenheit",
+    "employees": "Mitarbeiter",
     "taskRecords": "Anwesenheitsdatensätze",
     "config": "Konfiguration",
     "settings": "Einstellungen",
@@ -284,7 +285,6 @@ export default {
     "recognitionFailedTitle": "Erkennung fehlgeschlagen",
     "recognitionRetry": "Erkennung wiederholen",
     "recognitionReupload": "Erneut hochladen",
-    "recognitionFailureHint": "Erkennung wiederholen: bereits auf dem Server gespeicherte Bilder erneut erkennen (hilfreich nach Prompt-Aktualisierung). Erneut hochladen: Auswahl leeren und Dateien neu wählen.",
     "recognitionError": "Erkennungsfehler",
     "workingCountry": "Arbeitsland",
     "changeCountry": "Konfiguration ändern",
@@ -395,7 +395,6 @@ export default {
     "observations": "Bemerkungen",
     "anomalyCategoryRequired": "Pflichtfelder fehlen",
     "anomalyCategoryUnreadable": "Unleserlich",
-    "anomalyCategoryFormat": "Formatfehler",
     "anomalyCategoryDuplicate": "Doppelte Namen",
     "anomalyCategoryOther": "Sonstige Anomalien",
     "fieldUnreadableShort": "Unleserlich",

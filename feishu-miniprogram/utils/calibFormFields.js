@@ -12,6 +12,11 @@ const { getInvalidFormatFieldKeys, isArrivalDepartureSameTime } = require('./rec
 const { getFormatHintKeys } = require('./fieldFormatHints')
 const { normalizePauseMinutes } = require('./recordDisplay')
 const { formatCalibDisplayValue } = require('./calibrationHistory')
+const {
+  getPaysCountryOptionsForRegion,
+  formatCountryOptionLabel,
+  resolvePaysSelectCode,
+} = require('./paysCountryPicker')
 
 function buildCalibFormFields(draft, sourceRecord, options) {
   const opts = options || {}
@@ -19,6 +24,11 @@ function buildCalibFormFields(draft, sourceRecord, options) {
   const record = Object.assign({}, sourceRecord || {}, draft || {})
   const missingKeys = getMissingRequiredFieldKeys(record)
   const formatInvalidKeys = getInvalidFormatFieldKeys(record)
+  const isConfirmed = !!opts.isConfirmed
+  const taskWorkRegionCode = opts.taskWorkRegionCode || ''
+  const paysCountryOptions = getPaysCountryOptionsForRegion(taskWorkRegionCode)
+  const paysSelectCode = resolvePaysSelectCode(draft, taskWorkRegionCode, isConfirmed)
+  const paysLocked = !!taskWorkRegionCode
 
   return fieldKeys.map((key) => {
     const required = isConfiguredRequiredField(key)
@@ -53,6 +63,14 @@ function buildCalibFormFields(draft, sourceRecord, options) {
       formatPlaceholder,
       formatHint,
       inputType: key === 'PAUSE' ? 'number' : 'text',
+    }
+    if (key === 'Pays') {
+      field.inputType = 'country'
+      field.countryOptions = paysCountryOptions
+      field.countryCode = paysSelectCode
+      field.countryLabel = formatCountryOptionLabel(paysSelectCode, paysCountryOptions)
+      field.countryLocked = paysLocked
+      field.paysExpanded = !!opts.paysExpanded
     }
     if (opts.includeOriginal && sourceRecord) {
       field.originalDisplay = formatCalibDisplayValue(sourceRecord[key])

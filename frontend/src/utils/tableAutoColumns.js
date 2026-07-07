@@ -2,11 +2,17 @@
 
 const HEADER_TOOLBAR_WITH_FILTER = 88
 const HEADER_TOOLBAR_SORT_ONLY = 44
+const COMPACT_HEADER_TOOLBAR_WITH_FILTER = 38
+const COMPACT_HEADER_TOOLBAR_SORT_ONLY = 22
 const CELL_H_PADDING = 28
+const COMPACT_CELL_H_PADDING = 16
 
 const FIXED_WIDTH_KEYS = new Set(['action', 'operation'])
 
 const DEFAULT_MAX_BY_KEY = {
+  serialNo: 44,
+  NO: 96,
+  Pays: 84,
   NOM_PRENOM: 360,
   name: 360,
   Observations: 280,
@@ -17,6 +23,26 @@ const DEFAULT_MAX_BY_KEY = {
   AGENCE_INTERIMAIRE: 240,
   agency: 240,
   anomalyReasons: 260,
+}
+
+const COMPACT_MAX_BY_KEY = {
+  no: 72,
+  country: 76,
+  date: 108,
+  shift: 96,
+  arrival: 84,
+  departure: 84,
+  pauseMinutes: 72,
+}
+
+const COMPACT_MIN_BY_KEY = {
+  no: 56,
+  country: 60,
+  date: 88,
+  shift: 76,
+  arrival: 72,
+  departure: 72,
+  pauseMinutes: 56,
 }
 
 let measureCanvas
@@ -65,9 +91,19 @@ function sampleCellText(record, col, getCellSample) {
 }
 
 function headerToolbarWidth(col) {
-  if (col.searchField || col.filterType) return HEADER_TOOLBAR_WITH_FILTER
-  if (col._sortFn || col.sorter) return HEADER_TOOLBAR_SORT_ONLY
-  return 16
+  const compact = col.density === 'compact'
+  const hasFilter = !!(col.searchField || col.filterType)
+  const hasSort = !!(col._sortFn || col.sorter)
+  if (compact) {
+    let width = 8
+    if (hasSort) width += COMPACT_HEADER_TOOLBAR_SORT_ONLY
+    if (hasFilter) width += COMPACT_HEADER_TOOLBAR_WITH_FILTER
+    return width
+  }
+  let width = 16
+  if (hasSort) width += HEADER_TOOLBAR_SORT_ONLY
+  if (hasFilter) width += HEADER_TOOLBAR_WITH_FILTER
+  return width
 }
 
 /** 横向滚动宽度 = 各列 width 之和（Ant Design scroll.x 需数值，不能用 max-content） */
@@ -101,21 +137,33 @@ export function autoSizeTableColumns(columns, records, options = {}) {
       return { ...col, width, minWidth: width }
     }
 
-    const headerW = measureTextPx(titleText(col.title), font) + headerToolbarWidth(col) + CELL_H_PADDING
+    const isCompact = col.density === 'compact'
+    const cellPadding = isCompact ? COMPACT_CELL_H_PADDING : CELL_H_PADDING
+    const headerFont = isCompact
+      ? (options.compactHeaderFont ?? '600 11px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif')
+      : font
+    const compactBodyFont = options.compactBodyFont
+      ?? '11px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif'
+    const measureBodyFont = isCompact ? compactBodyFont : bodyFont
+
+    const headerW = measureTextPx(titleText(col.title), headerFont) + headerToolbarWidth(col) + cellPadding
     let contentW = headerW
 
     for (const row of sample) {
       const text = sampleCellText(row, col, getCellSample)
       if (text) {
-        contentW = Math.max(contentW, measureTextPx(text, bodyFont) + CELL_H_PADDING)
+        contentW = Math.max(contentW, measureTextPx(text, measureBodyFont) + cellPadding)
       }
     }
 
     const maxW = col.maxWidth
+      ?? (isCompact ? COMPACT_MAX_BY_KEY[col.key] : undefined)
       ?? DEFAULT_MAX_BY_KEY[col.key]
       ?? DEFAULT_MAX_BY_KEY[col.dataIndex]
-      ?? defaultMax
-    const minW = col.minWidth ?? defaultMin
+      ?? (isCompact ? 88 : defaultMax)
+    const minW = col.minWidth
+      ?? (isCompact ? COMPACT_MIN_BY_KEY[col.key] : undefined)
+      ?? (isCompact ? 36 : defaultMin)
     const width = Math.ceil(Math.min(maxW, Math.max(minW, contentW)))
 
     const next = { ...col, width, minWidth: width, ellipsis: false }

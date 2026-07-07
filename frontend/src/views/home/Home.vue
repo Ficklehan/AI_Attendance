@@ -263,42 +263,53 @@
                 <TableSortableHeader
                   :column="column"
                   :title="column.title"
+                  :resizable="isColumnResizable(column)"
                   @sort="onSorterToggle"
+                  @resize-start="(event) => startColumnResize(column, event)"
                 />
               </template>
-              <template #bodyCell="{ column, record, index }">
+              <template #bodyCell="{ column, record, index, text }">
                 <template v-if="column.key === 'serialNo'">
-                  <span class="cell-text cell-serial">{{ index + 1 }}</span>
+                  <CopyableCell :text="String(index + 1)" />
                 </template>
-                <template v-if="column.key === 'anomalyReasons'">
-                  <div v-if="getRecordAnomalyReasons(record).length > 0" class="inline-anomaly-tags">
-                    <TruncatedTag
-                      v-for="(reason, reasonIdx) in getRecordAnomalyReasons(record)"
-                      :key="reasonIdx"
-                      :text="reason"
-                      :color="getAnomalyTagColor(reason)"
-                      size="small"
-                    />
-                  </div>
+                <template v-else-if="column.key === 'anomalyReasons'">
+                  <CopyableCell
+                    v-if="getRecordAnomalyReasons(record).length > 0"
+                    :text="getRecordAnomalyReasons(record).join(', ')"
+                  >
+                    <div class="inline-anomaly-tags">
+                      <TruncatedTag
+                        v-for="(reason, reasonIdx) in getRecordAnomalyReasons(record)"
+                        :key="reasonIdx"
+                        :text="reason"
+                        :color="getAnomalyTagColor(reason)"
+                        size="small"
+                      />
+                    </div>
+                  </CopyableCell>
                   <span v-else class="cell-muted">&mdash;</span>
                 </template>
-                <template v-if="column.key === 'SmartMark'">
-                  <a-tag :color="getMarkColor(getDisplaySmartMark(record))" class="mark-tag">
-                    {{ translateSmartMark(getDisplaySmartMark(record), t) }}
-                  </a-tag>
+                <template v-else-if="column.key === 'SmartMark'">
+                  <CopyableCell :text="translateSmartMark(getDisplaySmartMark(record), t)">
+                    <a-tag :color="getMarkColor(getDisplaySmartMark(record))" class="mark-tag">
+                      {{ translateSmartMark(getDisplaySmartMark(record), t) }}
+                    </a-tag>
+                  </CopyableCell>
                 </template>
-                <template v-if="column.key === 'PAUSE'">
-                  <span class="cell-text">{{ formatPauseDisplay(record.PAUSE) }}</span>
+                <template v-else-if="column.key === 'PAUSE'">
+                  <CopyableCell :text="formatPauseDisplay(record.PAUSE)" />
                 </template>
-                <template v-if="column.key === 'SIGNATURE'">
-                  <a-tag
-                    :color="getSignatureMarkColor(getDisplaySignature(record.SIGNATURE, record))"
-                    class="signature-mark-tag"
-                  >
-                    {{ translateSignatureMark(getDisplaySignature(record.SIGNATURE, record), t) }}
-                  </a-tag>
+                <template v-else-if="column.key === 'SIGNATURE'">
+                  <CopyableCell :text="translateSignatureMark(getDisplaySignature(record.SIGNATURE, record), t)">
+                    <a-tag
+                      :color="getSignatureMarkColor(getDisplaySignature(record.SIGNATURE, record))"
+                      class="signature-mark-tag"
+                    >
+                      {{ translateSignatureMark(getDisplaySignature(record.SIGNATURE, record), t) }}
+                    </a-tag>
+                  </CopyableCell>
                 </template>
-                <template v-if="column.key === 'action'">
+                <template v-else-if="column.key === 'action'">
                   <div class="table-action-cell table-action-cell--icons table-action-cell--icons-1">
                     <span class="table-action-cell__slot">
                       <a-tooltip :title="record.isDeleted ? $t('common.undo') : $t('common.delete')">
@@ -322,6 +333,9 @@
                       </a-tooltip>
                     </span>
                   </div>
+                </template>
+                <template v-else-if="isCopyableTableColumn(column)">
+                  <CopyableCell :text="resolveTableCellCopyText(column, record, text ?? record[column.key])" />
                 </template>
               </template>
             </a-table>
@@ -402,16 +416,20 @@ import {
   calculateRecordStats,
 } from '@/utils/recognitionLabels'
 import { buildRecognitionTableColumns } from '@/utils/recognitionTableColumns'
+import { sumTableScrollX } from '@/utils/tableAutoColumns'
 import { useTableColumnSort } from '@/composables/useTableColumnSort'
 import { useAutoSizedColumns } from '@/composables/useAutoSizedColumns'
+import { useTableColumnResize } from '@/composables/useTableColumnResize'
 import { useTableBodyScrollY } from '@/composables/useTableBodyScrollY'
 import { useColumnFreeze } from '@/composables/useColumnFreeze'
 import TableColumnSettings from '@/components/TableColumnSettings.vue'
 import TableSortableHeader from '@/components/TableSortableHeader.vue'
+import CopyableCell from '@/components/CopyableCell.vue'
 import { hasRequiredMissing } from '@/utils/requiredRecordFields'
 import { isAbsentRow } from '@/utils/recordDisplay'
 import { formatCountryLabel } from '@/utils/countryLabels'
 import { translateErrorMessage, showHomeUploadError } from '@/utils/translateError'
+import { isCopyableTableColumn, resolveTableCellCopyText } from '@/utils/tableCopy'
 
 const router = useRouter()
 const { t, locale } = useI18n()
@@ -725,7 +743,10 @@ const getRecordAnomalyReasons = (record) => {
   if (!record || record.isDeleted) return []
   const mark = getDisplaySmartMark(record)
   const reasons = getEffectiveAnomalies(record).map((r) => translateAnomalyReason(r, t))
-  if (record._parseMalformed) reasons.push(t('taskEdit.parseMalformedShort'))
+  if (record._parseMalformed) {
+    const malformedLabel = t('taskEdit.parseMalformedShort')
+    reasons.push(malformedLabel !== 'taskEdit.parseMalformedShort' ? malformedLabel : '结构异常')
+  }
   if (markContains(mark, 'blurred')) reasons.push(t('taskEdit.blurredContent'))
   if (markContains(mark, 'handwriting')) reasons.push(t('taskEdit.handwrittenContent'))
   if (markContains(mark, 'absent')) reasons.push(t('taskEdit.absentReason'))
@@ -746,16 +767,12 @@ const cellStyle = (record) => {
 const baseColumns = computed(() => buildRecognitionTableColumns(t, { cellStyle }))
 const { columns: sortedColumns, onSorterToggle, sortRows } = useTableColumnSort(baseColumns, { customHeader: true })
 const tableRecords = computed(() => sortRows(records.value))
-const { columns: sizedColumns, scrollX } = useAutoSizedColumns(sortedColumns, tableRecords, { actionWidth: 50 })
-const { tableScroll, measure: measureHomeTableScroll } = useTableBodyScrollY(
-  homeTableAnchor,
-  scrollX,
-  { enabled: computed(() => records.value.length > 0) },
-)
-
-watch(showAnomalyDetail, () => {
-  measureHomeTableScroll()
-})
+const { columns: sizedColumns } = useAutoSizedColumns(sortedColumns, tableRecords, { actionWidth: 50 })
+const {
+  columns: resizedColumns,
+  isColumnResizable,
+  startColumnResize,
+} = useTableColumnResize('home-records', sizedColumns)
 const {
   frozenColumns: columns,
   hiddenKeys,
@@ -765,7 +782,17 @@ const {
   setFrozenKeys,
   showAllColumns,
   clearFrozenKeys,
-} = useColumnFreeze('home-records', sizedColumns, { defaultFrozen: ['serialNo', 'PAGE_NUM', 'NO'] })
+} = useColumnFreeze('home-records', resizedColumns, { defaultFrozen: ['serialNo', 'PAGE_NUM', 'NO'] })
+const scrollX = computed(() => sumTableScrollX(columns.value))
+const { tableScroll, measure: measureHomeTableScroll } = useTableBodyScrollY(
+  homeTableAnchor,
+  scrollX,
+  { enabled: computed(() => records.value.length > 0) },
+)
+
+watch(showAnomalyDetail, () => {
+  measureHomeTableScroll()
+})
 
 const totalSizeDisplay = computed(() => {
   const total = fileList.value.reduce((sum, file) => sum + (file.size || 0), 0)

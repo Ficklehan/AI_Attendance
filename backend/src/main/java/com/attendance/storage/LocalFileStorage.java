@@ -48,12 +48,7 @@ public class LocalFileStorage implements FileStorage {
 
     @Override
     public Optional<Path> resolveLocalPath(String fileKey) {
-        UploadPathSecurity.validateFileKey(fileKey);
-        Path file = uploadRoot.resolve(fileKey.trim()).normalize();
-        if (!file.startsWith(uploadRoot)) {
-            return Optional.empty();
-        }
-        return Optional.of(file);
+        return UploadPathSecurity.tryResolve(uploadRoot, fileKey);
     }
 
     @Override

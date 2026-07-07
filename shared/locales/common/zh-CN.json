@@ -23,7 +23,8 @@
       "unsigned": "未签字",
       "signedConfirmed": "已签字确认",
       "unsignedConfirmed": "未签字确认",
-      "signed": "已签字"
+      "signed": "已签字",
+      "manuallyAdded": "手动添加"
     },
     "missing": {
       "NO": "工号未识别",
@@ -63,12 +64,12 @@
     "fileNotFound": "文件不存在",
     "fileNotFoundWithKey": "文件不存在: {fileKey}",
     "imageInvalid": "图片文件无效",
-    "invalidFilePath": "非法文件路径",
+    "invalidFilePath": "无法访问原始图片（文件标识无效），请使用右上角「重新上传」重新拍照识别",
     "uploadImageTooSmall": "上传的图片无效或过小（{size} bytes），请重新拍照或换一张更清晰的图片",
     "imagesOnly": "只支持图片或 PDF 文件",
     "unrecognizedImageFormat": "无法识别文件格式，请使用 JPG/PNG 或 PDF",
-      "mimoNotConfigured": "未配置 MIMO API Key，无法调用真实 AI。请在 backend/.env 填写 MIMO_API_KEY 后重启后端",
-      "mimoUnavailable": "AI 识别服务暂时不可用（小米 MiMo 接口异常），请稍等 1～2 分钟后重试；若持续失败请联系管理员",
+    "mimoNotConfigured": "未配置 MIMO API Key，无法调用真实 AI。请在 backend/.env 填写 MIMO_API_KEY 后重启后端",
+    "mimoUnavailable": "AI 识别服务暂时不可用（小米 MiMo 接口异常），请稍等 1～2 分钟后重试；若持续失败请联系管理员",
     "aiPromptNotFound": "未找到识别提示词，请检查 base-config/prompts.md",
     "aiContinuePromptNotFound": "未找到继续输出提示词，请检查 base-config/prompts.md",
     "aiHeaderEcho": "模型把表头文字当成了数据（如「姓名」「供应商名称」），未能识别真实考勤行。请确认工作国家与表格匹配，并换更清晰的照片重试",
@@ -93,7 +94,11 @@
     "methodNotAllowed": "请求方法不支持",
     "systemError": "系统异常，请稍后重试",
     "requestFailed": "请求失败",
-    "networkError": "网络错误，请检查网络连接"
+    "networkError": "网络错误，请检查网络连接",
+    "imageQualityStatsRangeAllRows": "全部非删除行",
+    "imageQualityStatsRangeAttendanceOnly": "有效出勤行（排除未出勤）",
+    "imageQualityStatsRangeNamedRows": "有姓名或工号的行",
+    "imageQualityUnknownIncludeAbsent": "含未出勤行"
   },
   "common": {
     "cancel": "取消",

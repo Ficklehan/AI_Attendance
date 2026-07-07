@@ -8,8 +8,13 @@ import com.attendance.entity.User;
 import com.attendance.security.DataScopeContext;
 import com.attendance.security.TaskAccessService;
 import com.attendance.service.ConfigService;
+import com.attendance.service.ConfirmValidationService;
 import com.attendance.service.DataScopeService;
+import com.attendance.service.EmployeeService;
+import com.attendance.service.FeishuCountryConfigService;
 import com.attendance.service.FeishuSyncService;
+import com.attendance.service.NightShiftConfigService;
+import com.attendance.service.ReminderScheduleService;
 import com.attendance.service.TaskRecordSyncService;
 import com.attendance.service.TaskService;
 import com.attendance.util.RecordNoGenerator;
@@ -60,6 +65,27 @@ class TaskServiceTest {
 
     @Mock
     private ConfigService configService;
+
+    @Mock
+    private ConfirmValidationService confirmValidationService;
+
+    @Mock
+    private EmployeeService employeeService;
+
+    @Mock
+    private FeishuCountryConfigService feishuCountryConfigService;
+
+    @Mock
+    private NightShiftConfigService nightShiftConfigService;
+
+    @Mock
+    private ReminderScheduleService reminderScheduleService;
+
+    @Mock
+    private com.attendance.service.PermissionService permissionService;
+
+    @Mock
+    private com.attendance.service.UserNotificationService userNotificationService;
 
     @Mock
     private com.attendance.mapper.UserMapper userMapper;
@@ -184,6 +210,10 @@ class TaskServiceTest {
         user.setUsername("tester");
         when(userMapper.selectUserById("user001")).thenReturn(user);
         when(configService.getCurrentCountry()).thenReturn("DEFAULT");
+        when(nightShiftConfigService.getConfigForCountry(anyString())).thenReturn(null);
+        when(feishuCountryConfigService.isSyncEnabled(anyString())).thenReturn(false);
+        doNothing().when(confirmValidationService).validateConfirmRecords(anyList());
+        doNothing().when(employeeService).assignEmployeeOnConfirm(anyMap(), anyString());
 
         java.util.Map<String, Object> record = new java.util.HashMap<>();
         record.put("NOM_PRENOM", "Test User");
@@ -194,5 +224,50 @@ class TaskServiceTest {
 
         verify(taskMapper).updateTaskConfirmedData(eq("20260520_001"), anyString());
         verify(taskRecordSyncService).syncFromTaskId("20260520_001");
+    }
+
+    @Test
+    void deleteConfirmedTask_requiresReason() {
+        Task confirmed = new Task();
+        confirmed.setTaskId("20260520_001");
+        confirmed.setStatus("confirmed");
+        confirmed.setUserId("user001");
+        when(taskAccessService.requireOwnedTask("20260520_001")).thenReturn(confirmed);
+        when(taskAccessService.requireCurrentUserId()).thenReturn("user001");
+        when(userMapper.selectUserById("user001")).thenReturn(new User());
+        when(permissionService.hasPermission(any(), eq("taskDeleteConfirmed"))).thenReturn(true);
+
+        assertThrows(com.attendance.common.BusinessException.class, () -> {
+            taskService.deleteTask("20260520_001", "   ");
+        });
+    }
+
+    @Test
+    void deleteProcessedTask_allowsEmptyReason() {
+        Task processed = new Task();
+        processed.setTaskId("20260520_001");
+        processed.setStatus("processed");
+        processed.setUserId("user001");
+        when(taskAccessService.requireOwnedTask("20260520_001")).thenReturn(processed);
+
+        assertDoesNotThrow(() -> taskService.deleteTask("20260520_001", null));
+        verify(taskMapper).deleteTaskByTaskId("20260520_001");
+    }
+
+    @Test
+    void deleteConfirmedTask_requiresPermission() {
+        Task confirmed = new Task();
+        confirmed.setTaskId("20260520_001");
+        confirmed.setStatus("confirmed");
+        confirmed.setUserId("user001");
+        when(taskAccessService.requireOwnedTask("20260520_001")).thenReturn(confirmed);
+        when(taskAccessService.requireCurrentUserId()).thenReturn("user001");
+        when(userMapper.selectUserById("user001")).thenReturn(new User());
+        when(permissionService.hasPermission(org.mockito.ArgumentMatchers.any(), org.mockito.ArgumentMatchers.eq("taskDeleteConfirmed")))
+                .thenReturn(false);
+
+        assertThrows(com.attendance.common.BusinessException.class, () -> {
+            taskService.deleteTask("20260520_001", "duplicate upload");
+        });
     }
 }

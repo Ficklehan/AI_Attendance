@@ -1,7 +1,12 @@
 const App = getApp()
 const { isApiSuccess, getApiData, getApiMessage } = require('../../utils/response')
 const { t } = require('../../utils/i18n')
-const { isCountryConfigured, syncCountryConfig } = require('../../utils/preferences')
+const {
+  isCountryConfigured,
+  syncCountryConfig,
+  applyCountryFromUserInfo,
+  redirectToCountrySetupIfNeeded,
+} = require('../../utils/preferences')
 const { refreshApiBase, probeBackend, describeNetworkFailure } = require('../../utils/apiBase')
 const { apiCall } = require('../../utils/request')
 const { ensureFeishuLogin } = require('../../utils/feishuLogin')
@@ -117,6 +122,7 @@ Page({
 
           tt.setStorageSync('token', payload.token)
           tt.setStorageSync('userInfo', payload.userInfo)
+          applyCountryFromUserInfo(payload.userInfo, { app: App })
 
           tt.showToast({ title: t('login.loginSuccess'), icon: 'success' })
           setTimeout(() => { this.afterLogin() }, 1500)
@@ -140,16 +146,22 @@ Page({
   afterLogin: function () {
     const pendingReturn = consumePendingReturn()
     syncCountryConfig().then(() => {
+      if (pendingReturn && isCountryConfigured()) {
+        tt.redirectTo({ url: pendingReturn })
+        return
+      }
+      if (redirectToCountrySetupIfNeeded()) {
+        return
+      }
       if (pendingReturn) {
         tt.redirectTo({ url: pendingReturn })
         return
       }
-      if (!isCountryConfigured()) {
-        tt.redirectTo({ url: '/pages/settings/index?setup=1' })
-        return
-      }
       tt.switchTab({ url: '/pages/index/index' })
     }).catch(() => {
+      if (redirectToCountrySetupIfNeeded()) {
+        return
+      }
       if (pendingReturn) {
         tt.redirectTo({ url: pendingReturn })
         return

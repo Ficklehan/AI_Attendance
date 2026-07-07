@@ -45,11 +45,19 @@
         :scroll="{ x: scrollX }"
         class="audit-table rich-table-header"
       >
-        <template #bodyCell="{ column, record }">
+        <template #bodyCell="{ column, record, text }">
           <template v-if="column.key === 'action'">
-            <span :class="['action-tag', getActionClass(record.action)]">
-              {{ getActionText(record.action) }}
-            </span>
+            <CopyableCell :text="getActionText(record.action)">
+              <span :class="['action-tag', getActionClass(record.action)]">
+                {{ getActionText(record.action) }}
+              </span>
+            </CopyableCell>
+          </template>
+          <template v-else-if="column.key === 'details'">
+            <CopyableCell :text="formatDetails(record)" />
+          </template>
+          <template v-else-if="isCopyableTableColumn(column)">
+            <CopyableCell :text="resolveTableCellCopyText(column, record, text)" />
           </template>
         </template>
       </a-table>
@@ -76,10 +84,12 @@ import { ref, computed, onMounted } from 'vue'
 import { useI18n } from 'vue-i18n'
 import request from '@/api/index'
 import PageShell from '@/components/PageShell.vue'
+import CopyableCell from '@/components/CopyableCell.vue'
 import TableColumnSettings from '@/components/TableColumnSettings.vue'
 import { useTableColumnSort } from '@/composables/useTableColumnSort'
 import { useColumnFreeze } from '@/composables/useColumnFreeze'
 import { sumTableScrollX } from '@/utils/tableAutoColumns'
+import { isCopyableTableColumn, resolveTableCellCopyText } from '@/utils/tableCopy'
 
 const { t } = useI18n()
 
@@ -188,6 +198,32 @@ const getActionClass = (action) => {
     CHANGE_PASSWORD: 'action-tag--warning',
   }
   return classMap[action] || 'action-tag--default'
+}
+
+const formatDetails = (record) => {
+  if (!record?.details) return '—'
+  if (record.action === 'TASK_DELETED') {
+    try {
+      const data = typeof record.details === 'string' ? JSON.parse(record.details) : record.details
+      const parts = []
+      if (data.reason) {
+        parts.push(`${t('audit.deleteReason')}: ${data.reason}`)
+      }
+      if (data.taskStatus) {
+        parts.push(`${t('audit.deleteTaskStatus')}: ${data.taskStatus}`)
+      }
+      if (data.recordCount != null) {
+        parts.push(`${t('audit.deleteRecordCount')}: ${data.recordCount}`)
+      }
+      if (data.fileKey) {
+        parts.push(`${t('tasks.fileName')}: ${data.fileKey}`)
+      }
+      return parts.length ? parts.join(' · ') : record.details
+    } catch {
+      return record.details
+    }
+  }
+  return record.details
 }
 
 onMounted(() => {

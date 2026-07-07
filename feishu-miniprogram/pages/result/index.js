@@ -15,7 +15,7 @@ const {
   showRequiredValidationModal,
 } = require('../../utils/confirmValidationDisplay')
 const { formatRecognitionEngine } = require('../../utils/engineLabel')
-const { getCountryLabel } = require('../../utils/preferences')
+const { getCountryLabel, getCountry, syncCountryFromServer } = require('../../utils/preferences')
 const {
   buildTaskImageList,
   openImagePreview
@@ -31,6 +31,8 @@ const { loadNightShiftRules } = require('../../utils/nightShiftRules')
 const { loadConfirmValidationConfig } = require('../../utils/confirmValidationConfig')
 const { parseImageQualityWarning } = require('../../utils/recognitionUpload')
 const { resolveTaskRecordsJson } = require('../../shared-js/taskRecordPayload')
+const { resolveTaskWorkRegionBindingCode, resolveTaskWorkRegionDisplayCountryCode, resolveTaskWorkRegionHistoricalCountryCode, isTaskCountryFollowingWorking } = require('../../utils/taskWorkRegion')
+const { syncRecordPaysToTaskRegion } = require('../../utils/paysCountryPicker')
 
 const PAGE_SIZE = 20
 const { startAdaptivePoll } = require('../../utils/adaptivePoll')
@@ -57,6 +59,9 @@ Page({
     recognitionEngine: '',
     recognitionEngineLabel: '',
     promptCountryLabel: '',
+    workRegionDisplayLabel: '',
+    taskPromptCountry: '',
+    taskWorkRegionCode: '',
     taskInfo: {
       name: '',
       statusText: '',
@@ -125,9 +130,57 @@ Page({
   },
 
   onShow: function () {
-    this.refreshPageTexts()
-    if ((this.data.records || []).length) {
-      this.refreshDisplayRecords()
+    const confirmed = this.isTaskConfirmed()
+    const afterShow = () => {
+      this.refreshPageTexts()
+      this.refreshWorkRegionUi()
+      if ((this.data.records || []).length) {
+        this.refreshDisplayRecords()
+      }
+    }
+    if (confirmed) {
+      afterShow()
+      return
+    }
+    syncCountryFromServer().finally(afterShow)
+  },
+
+  buildTaskForRegion: function (task, promptCountry) {
+    return { ...(task || {}), promptCountry: promptCountry || (task && task.promptCountry) }
+  },
+
+  isTaskConfirmed: function () {
+    if (this.data.taskStatus === 'confirmed') return true
+    if (this._taskForRegion && this._taskForRegion.status === 'confirmed') return true
+    if (this.data.taskInfo && this.data.taskInfo.status === 'confirmed') return true
+    return false
+  },
+
+  resolveWorkRegionState: function (taskForRegion, records, isConfirmed) {
+    const workingCountry = getCountry()
+    const displayCode = isConfirmed
+      ? resolveTaskWorkRegionHistoricalCountryCode(taskForRegion, records || [])
+      : resolveTaskWorkRegionDisplayCountryCode(taskForRegion, workingCountry, records || [], false)
+    const taskWorkRegionCode = resolveTaskWorkRegionBindingCode(
+      taskForRegion,
+      workingCountry,
+      records || [],
+      isConfirmed
+    )
+    return {
+      workRegionDisplayLabel: displayCode ? getCountryLabel(displayCode) : '',
+      taskWorkRegionCode,
+    }
+  },
+
+  refreshWorkRegionUi: function () {
+    if (!this._taskForRegion) return
+    const isConfirmed = this.isTaskConfirmed()
+    this.setData(this.resolveWorkRegionState(this._taskForRegion, this.data.records || [], isConfirmed))
+    if (isTaskCountryFollowingWorking(this._taskForRegion) && (this.data.records || []).length) {
+      const regionCode = this.data.taskWorkRegionCode
+      const records = (this.data.records || []).map((record) => syncRecordPaysToTaskRegion(record, regionCode, false, 'processed'))
+      this.setData({ records }, () => this.refreshDisplayRecords())
     }
   },
 
@@ -195,7 +248,9 @@ Page({
         calibrationManualTag: t('calibration.manualTag'),
         calibrationExpand: t('calibration.viewHistory'),
         calibrationCollapse: t('result.duplicateCollapse'),
-        calibrationDetailTitle: t('calibration.historyTitle')
+        calibrationDetailTitle: t('calibration.historyTitle'),
+        addManualRow: t('result.addManualRow'),
+        addManualRowHint: t('result.addManualRowHint'),
       },
       submitCtaLabel: t('result.confirmSubmit')
     })
@@ -215,9 +270,11 @@ Page({
 
   applyRecordDraft: function (rowKey, draft) {
     if (!rowKey || !draft) return
+    const regionCode = this.data.taskWorkRegionCode
     const records = (this.data.records || []).map((r) => {
       if (r._rowKey !== rowKey) return r
-      const updated = { ...r, ...draft }
+      let updated = { ...r, ...draft }
+      updated = syncRecordPaysToTaskRegion(updated, regionCode, false, 'processed')
       refreshRecordNightShiftMark(updated)
       return updated
     })
@@ -390,9 +447,13 @@ Page({
         if (isApiSuccess(res.data)) {
           const task = getApiData(res.data) || {}
           const payload = resolveTaskRecordsJson(task)
-          const records = parseRecords(payload)
+          const isConfirmed = task.status === 'confirmed'
+          const records = parseRecords(payload, { isConfirmed })
           const engine = task.aiRawOutput || ''
           const promptCountry = engine.indexOf('mimo:') === 0 ? engine.slice(5) : (task.promptCountry || '')
+          const taskForRegion = this.buildTaskForRegion(task, promptCountry)
+          this._taskForRegion = taskForRegion
+          const workRegionState = this.resolveWorkRegionState(taskForRegion, records, isConfirmed)
           const imageListPromise = buildTaskImageList(task)
           imageListPromise.then((imageList) => {
             const qualityPatch = {}
@@ -411,6 +472,8 @@ Page({
               recognitionEngine: engine,
               recognitionEngineLabel: formatRecognitionEngine(engine, promptCountry),
               promptCountryLabel: promptCountry ? getCountryLabel(promptCountry) : '',
+              taskPromptCountry: promptCountry || '',
+              ...workRegionState,
               ...qualityPatch
             })
             this.loadTaskImages(imageList)
@@ -634,6 +697,30 @@ Page({
   toggleRecordsExpanded: function () {
     const recordsExpanded = !this.data.recordsExpanded
     this.setData({ recordsExpanded, visibleCount: PAGE_SIZE }, () => {
+      this.refreshDisplayRecords()
+    })
+  },
+
+  handleAddManualRecord: function () {
+    if (!this.data.canSubmit) return
+    tt.navigateTo({
+      url: `/pages/record-edit/index?taskId=${encodeURIComponent(this.data.taskId)}&mode=createManual`,
+    })
+  },
+
+  appendManualRecord: function (record) {
+    if (!record) return
+    const regionCode = this.data.taskWorkRegionCode
+    const synced = syncRecordPaysToTaskRegion(record, regionCode, false, 'processed')
+    const records = (this.data.records || []).concat(synced)
+    const visibleCount = Math.max(this.data.visibleCount, records.length)
+    this.setData({
+      records,
+      recordsExpanded: true,
+      visibleCount,
+    }, () => {
+      this.refreshStats()
+      this.refreshDuplicateHints()
       this.refreshDisplayRecords()
     })
   },

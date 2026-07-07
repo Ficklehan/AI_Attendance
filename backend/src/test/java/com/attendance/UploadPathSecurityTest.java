@@ -12,6 +12,7 @@ class UploadPathSecurityTest {
     @Test
     void acceptsValidUploadKey() {
         assertDoesNotThrow(() -> UploadPathSecurity.validateFileKey("20260603_0001.jpg"));
+        assertDoesNotThrow(() -> UploadPathSecurity.validateFileKey("20260603_001.jpg"));
     }
 
     @Test

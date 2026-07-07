@@ -123,11 +123,19 @@ function filterTasksByTab(tasks, tab) {
   return tasks
 }
 
-function parseRecords(rawData) {
+function parseRecords(rawData, options) {
   if (!rawData) return []
   try {
     const parsed = typeof rawData === 'string' ? JSON.parse(rawData) : rawData
     const list = Array.isArray(parsed) ? parsed : []
+    const isConfirmed = options && options.isConfirmed === true
+    const { sanitizeEntrepot } = require('./countries')
+    if (isConfirmed) {
+      return list.map((record) => ({
+        ...record,
+        Entrepot: sanitizeEntrepot(record && record.Entrepot),
+      }))
+    }
     const { getCountry } = require('./preferences')
     const { applyMissingPays } = require('./countries')
     const workingCountry = getCountry()

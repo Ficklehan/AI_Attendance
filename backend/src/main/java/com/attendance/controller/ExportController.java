@@ -2,6 +2,7 @@ package com.attendance.controller;
 
 import com.attendance.common.PageResult;
 import com.attendance.common.Result;
+import com.attendance.dto.request.AgencyBillingQuery;
 import com.attendance.dto.request.TaskQuery;
 import com.attendance.dto.response.ExportJobDTO;
 import com.attendance.dto.response.ExportSummaryDTO;
@@ -34,6 +35,14 @@ public class ExportController {
             query = new TaskQuery();
         }
         return Result.success(exportJobService.createEmployeeRecordsExport(query));
+    }
+
+    @PostMapping("/agency-billing")
+    public Result<ExportJobDTO> exportAgencyBilling(@RequestBody(required = false) AgencyBillingQuery query) {
+        if (query == null) {
+            query = new AgencyBillingQuery();
+        }
+        return Result.success(exportJobService.createAgencyBillingExport(query));
     }
 
     @GetMapping

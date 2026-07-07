@@ -35,6 +35,8 @@ public class LoginResponse {
         private String role;
         private String realName;
         private String workingCountry;
+        /** 用户个人配置的工作地区；null 表示使用全局默认 */
+        private String personalWorkingCountry;
         private java.util.Map<String, Boolean> permissions;
 
         public UserInfo() {
@@ -94,6 +96,14 @@ public class LoginResponse {
 
         public void setWorkingCountry(String workingCountry) {
             this.workingCountry = workingCountry;
+        }
+
+        public String getPersonalWorkingCountry() {
+            return personalWorkingCountry;
+        }
+
+        public void setPersonalWorkingCountry(String personalWorkingCountry) {
+            this.personalWorkingCountry = personalWorkingCountry;
         }
 
         public java.util.Map<String, Boolean> getPermissions() {

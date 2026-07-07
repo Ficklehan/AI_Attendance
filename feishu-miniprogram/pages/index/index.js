@@ -14,7 +14,8 @@ const {
   getCountry,
   getCountryLabel,
   isCountryConfigured,
-  syncCountryFromServer
+  syncCountryFromServer,
+  redirectToCountrySetupIfNeeded,
 } = require('../../utils/preferences')
 
 const HOME_TEXT_FALLBACK = {
@@ -89,6 +90,9 @@ Page({
 
   onShow: function () {
     syncCountryFromServer().finally(() => {
+      if (redirectToCountrySetupIfNeeded()) {
+        return
+      }
       this.refreshTexts()
       if (shouldReloadTaskData(this)) {
         this.loadTasks()

@@ -13,7 +13,9 @@
         <result column="task_status" property="taskStatus"/>
         <result column="file_key" property="fileKey"/>
         <result column="image_urls" property="imageUrls"/>
-        <result column="emp_no" property="empNo"/>
+        <result column="line_no" property="lineNo"/>
+        <result column="employee_id" property="employeeId"/>
+        <result column="employee_no" property="employeeNo"/>
         <result column="emp_name" property="empName"/>
         <result column="base_name" property="baseName"/>
         <result column="country" property="country"/>
@@ -37,7 +39,9 @@
 
     <sql id="RecordSelectColumns">
         tr.id, tr.task_id, tr.user_id, tr.row_key, tr.record_index, tr.deleted, tr.task_status,
-        tr.file_key, tr.image_urls, tr.emp_no, tr.emp_name, tr.base_name, tr.country, tr.country_key,
+        COALESCE(NULLIF(TRIM(tr.file_key), ''), t.file_key) AS file_key,
+        COALESCE(NULLIF(TRIM(tr.image_urls), ''), t.image_urls) AS image_urls,
+        tr.line_no, tr.employee_id, tr.employee_no, tr.emp_name, tr.base_name, tr.country, tr.country_key,
         tr.warehouse, tr.warehouse_key, tr.work_date, tr.agency, tr.agency_key, tr.shift,
         tr.arrival, tr.departure, tr.pause_minutes, tr.signature, tr.observations, tr.page_num,
         tr.smart_mark, tr.task_created_at,
@@ -47,10 +51,12 @@
     <sql id="RecordFromJoin">
         FROM task_records tr
         LEFT JOIN users u ON tr.user_id = u.id
+        LEFT JOIN tasks t ON tr.task_id = t.task_id
     </sql>
 
     <sql id="RecordScopeWhere">
         WHERE tr.deleted = 0
+        AND tr.task_status = 'confirmed'
         <if test="scope != null and !scope.allUsers">
             <choose>
                 <when test="(scope.ownerUserIds == null or scope.ownerUserIds.size() == 0) and !scope.recordDimensionFilter">
@@ -65,6 +71,61 @@
         </if>
         <if test="status != null and status != ''">
             AND tr.task_status = #{status}
+        </if>
+    </sql>
+
+    <!-- 中介账单：排除缺勤行（与 RowReadabilitySupport.isAbsentRow 对齐） -->
+    <sql id="AgencyBillingAbsentExclude">
+        AND NOT (
+            tr.smart_mark IS NOT NULL AND TRIM(tr.smart_mark) != '' AND (
+                tr.smart_mark LIKE '%未出勤%'
+                OR LOWER(tr.smart_mark) LIKE '%absent%'
+                OR LOWER(tr.smart_mark) LIKE '%ausente%'
+                OR LOWER(tr.smart_mark) LIKE '%abwesend%'
+                OR LOWER(tr.smart_mark) LIKE '%afwezig%'
+                OR LOWER(tr.smart_mark) LIKE '%nieobecny%'
+                OR LOWER(tr.smart_mark) LIKE '%nepřítom%'
+            )
+        )
+        AND NOT (
+            (tr.arrival IS NULL OR TRIM(tr.arrival) = '' OR tr.arrival = '???')
+            AND (tr.departure IS NULL OR TRIM(tr.departure) = '' OR tr.departure = '???')
+            AND (tr.employee_no IS NULL OR TRIM(tr.employee_no) = '' OR tr.employee_no = '???')
+            AND (tr.emp_name IS NULL OR TRIM(tr.emp_name) = '' OR tr.emp_name = '???')
+        )
+    </sql>
+
+    <sql id="AgencyBillingScopeWhere">
+        WHERE tr.deleted = 0
+        AND tr.task_status = 'confirmed'
+        <if test="scope != null and !scope.allUsers">
+            <choose>
+                <when test="(scope.ownerUserIds == null or scope.ownerUserIds.size() == 0) and !scope.recordDimensionFilter">
+                    AND 1=0
+                </when>
+                <otherwise>
+                    <include refid="com.attendance.mapper.ScopeFragments.RecordRowScopeGroup">
+                        <property name="tableAlias" value="tr"/>
+                    </include>
+                </otherwise>
+            </choose>
+        </if>
+        AND tr.work_date IS NOT NULL AND TRIM(tr.work_date) != ''
+        AND tr.work_date &gt;= #{startDate}
+        AND tr.work_date &lt;= #{endDate}
+        AND tr.agency_key IS NOT NULL AND TRIM(tr.agency_key) != ''
+        <include refid="AgencyBillingAbsentExclude"/>
+        <if test="regionCodes != null and regionCodes.size() > 0">
+            AND (
+                tr.country_key IN
+                <foreach collection="regionCodes" item="rc" open="(" separator="," close=")">#{rc}</foreach>
+                OR UPPER(TRIM(tr.country)) IN
+                <foreach collection="regionCodes" item="rc" open="(" separator="," close=")">#{rc}</foreach>
+            )
+        </if>
+        <if test="warehouseKeys != null and warehouseKeys.size() > 0">
+            AND tr.warehouse_key IN
+            <foreach collection="warehouseKeys" item="wk" open="(" separator="," close=")">#{wk}</foreach>
         </if>
     </sql>
 
@@ -142,7 +203,7 @@
                                     AND tr.task_status = #{cond.keyword}
                                 </when>
                                 <when test="cond.field == 'NO'">
-                                    AND tr.emp_no LIKE CONCAT('%', #{cond.keyword}, '%')
+                                    AND tr.line_no LIKE CONCAT('%', #{cond.keyword}, '%')
                                 </when>
                                 <when test="cond.field == 'NOM_PRENOM'">
                                     AND tr.emp_name LIKE CONCAT('%', #{cond.keyword}, '%')
@@ -190,7 +251,8 @@
                                     AND (
                                         tr.task_id LIKE CONCAT('%', #{cond.keyword}, '%')
                                         OR tr.file_key LIKE CONCAT('%', #{cond.keyword}, '%')
-                                        OR tr.emp_no LIKE CONCAT('%', #{cond.keyword}, '%')
+                                        OR tr.line_no LIKE CONCAT('%', #{cond.keyword}, '%')
+                                        OR tr.employee_no LIKE CONCAT('%', #{cond.keyword}, '%')
                                         OR tr.emp_name LIKE CONCAT('%', #{cond.keyword}, '%')
                                         OR tr.country LIKE CONCAT('%', #{cond.keyword}, '%')
                                         OR tr.warehouse LIKE CONCAT('%', #{cond.keyword}, '%')
@@ -223,14 +285,14 @@
     <insert id="batchInsert">
         INSERT INTO task_records (
             task_id, user_id, row_key, record_index, deleted, task_status, file_key, image_urls,
-            emp_no, emp_name, base_name, country, country_key, warehouse, warehouse_key, work_date,
+            line_no, employee_id, employee_no, emp_name, base_name, country, country_key, warehouse, warehouse_key, work_date,
             agency, agency_key, shift, arrival, departure, pause_minutes, signature, observations,
             page_num, smart_mark, task_created_at
         ) VALUES
         <foreach collection="rows" item="r" separator=",">
             (
                 #{r.taskId}, #{r.userId}, #{r.rowKey}, #{r.recordIndex}, #{r.deleted}, #{r.taskStatus},
-                #{r.fileKey}, #{r.imageUrls}, #{r.empNo}, #{r.empName}, #{r.baseName},
+                #{r.fileKey}, #{r.imageUrls}, #{r.lineNo}, #{r.employeeId}, #{r.employeeNo}, #{r.empName}, #{r.baseName},
                 #{r.country}, #{r.countryKey}, #{r.warehouse}, #{r.warehouseKey}, #{r.workDate},
                 #{r.agency}, #{r.agencyKey}, #{r.shift}, #{r.arrival}, #{r.departure},
                 #{r.pauseMinutes}, #{r.signature}, #{r.observations}, #{r.pageNum}, #{r.smartMark}, #{r.taskCreatedAt}
@@ -241,14 +303,14 @@
     <insert id="upsertBatch">
         INSERT INTO task_records (
             task_id, user_id, row_key, record_index, deleted, task_status, file_key, image_urls,
-            emp_no, emp_name, base_name, country, country_key, warehouse, warehouse_key, work_date,
+            line_no, employee_id, employee_no, emp_name, base_name, country, country_key, warehouse, warehouse_key, work_date,
             agency, agency_key, shift, arrival, departure, pause_minutes, signature, observations,
             page_num, smart_mark, task_created_at
         ) VALUES
         <foreach collection="rows" item="r" separator=",">
             (
                 #{r.taskId}, #{r.userId}, #{r.rowKey}, #{r.recordIndex}, #{r.deleted}, #{r.taskStatus},
-                #{r.fileKey}, #{r.imageUrls}, #{r.empNo}, #{r.empName}, #{r.baseName},
+                #{r.fileKey}, #{r.imageUrls}, #{r.lineNo}, #{r.employeeId}, #{r.employeeNo}, #{r.empName}, #{r.baseName},
                 #{r.country}, #{r.countryKey}, #{r.warehouse}, #{r.warehouseKey}, #{r.workDate},
                 #{r.agency}, #{r.agencyKey}, #{r.shift}, #{r.arrival}, #{r.departure},
                 #{r.pauseMinutes}, #{r.signature}, #{r.observations}, #{r.pageNum}, #{r.smartMark}, #{r.taskCreatedAt}
@@ -261,7 +323,9 @@
             task_status = VALUES(task_status),
             file_key = VALUES(file_key),
             image_urls = VALUES(image_urls),
-            emp_no = VALUES(emp_no),
+            line_no = VALUES(line_no),
+            employee_id = VALUES(employee_id),
+            employee_no = VALUES(employee_no),
             emp_name = VALUES(emp_name),
             base_name = VALUES(base_name),
             country = VALUES(country),
@@ -321,7 +385,8 @@
     <select id="selectDuplicateBaseline" resultType="map">
         SELECT tr.task_id AS sourceTaskId,
                tr.row_key AS rowKey,
-               tr.emp_no AS NO,
+               tr.line_no AS NO,
+               tr.employee_no AS EMPLOYEE_NO,
                tr.emp_name AS NOM_PRENOM,
                tr.base_name AS baseName,
                tr.country_key AS paysKey,
@@ -354,9 +419,15 @@
                 AND tr.user_id IN
                 <foreach collection="scope.ownerUserIds" item="uid" open="(" separator="," close=")">#{uid}</foreach>
             </if>
-            <if test="scope.countries != null and scope.countries.size() > 0">
-                AND tr.country_key IN
-                <foreach collection="scope.countries" item="cv" open="(" separator="," close=")">#{cv}</foreach>
+            <if test="scope.countryMatchTokens != null and scope.countryMatchTokens.size() > 0">
+                AND (
+                    tr.country_key IN
+                    <foreach collection="scope.countryMatchTokens" item="cv" open="(" separator="," close=")">#{cv}</foreach>
+                    OR UPPER(TRIM(tr.country)) IN
+                    <foreach collection="scope.countryMatchTokens" item="cv" open="(" separator="," close=")">#{cv}</foreach>
+                    OR UPPER(TRIM(t.prompt_country)) IN
+                    <foreach collection="scope.countryMatchTokens" item="cv" open="(" separator="," close=")">#{cv}</foreach>
+                )
             </if>
             <if test="scope.warehouses != null and scope.warehouses.size() > 0">
                 AND tr.warehouse_key IN
@@ -373,10 +444,17 @@
     <select id="countRecordsMatchingScope" resultType="long">
         SELECT COUNT(*)
         FROM task_records tr
+        INNER JOIN tasks t ON t.task_id = tr.task_id
         WHERE tr.task_id = #{taskId} AND tr.deleted = 0
-        <if test="countries != null and countries.size() > 0">
-            AND tr.country_key IN
-            <foreach collection="countries" item="cv" open="(" separator="," close=")">#{cv}</foreach>
+        <if test="countryMatchTokens != null and countryMatchTokens.size() > 0">
+            AND (
+                tr.country_key IN
+                <foreach collection="countryMatchTokens" item="cv" open="(" separator="," close=")">#{cv}</foreach>
+                OR UPPER(TRIM(tr.country)) IN
+                <foreach collection="countryMatchTokens" item="cv" open="(" separator="," close=")">#{cv}</foreach>
+                OR UPPER(TRIM(t.prompt_country)) IN
+                <foreach collection="countryMatchTokens" item="cv" open="(" separator="," close=")">#{cv}</foreach>
+            )
         </if>
         <if test="warehouses != null and warehouses.size() > 0">
             AND tr.warehouse_key IN
@@ -390,6 +468,28 @@
 
     <select id="countByTaskId" resultType="long">
         SELECT COUNT(*) FROM task_records WHERE task_id = #{taskId}
+    </select>
+
+    <select id="selectAgencyBillingSlimRows" resultType="com.attendance.dto.internal.AgencyBillingRow">
+        SELECT
+            tr.agency_key AS agencyKey,
+            tr.agency AS agency,
+            tr.warehouse_key AS warehouseKey,
+            tr.warehouse AS warehouse,
+            tr.country_key AS countryKey,
+            tr.country AS country,
+            tr.employee_no AS employeeNo,
+            tr.emp_name AS empName,
+            tr.work_date AS workDate,
+            tr.shift AS shift,
+            tr.arrival AS arrival,
+            tr.departure AS departure,
+            tr.pause_minutes AS pauseMinutes,
+            tr.observations AS observations,
+            tr.smart_mark AS smartMark
+        FROM task_records tr
+        <include refid="AgencyBillingScopeWhere"/>
+        ORDER BY tr.agency_key, tr.warehouse_key, tr.country_key, tr.employee_no, tr.emp_name, tr.work_date
     </select>
 
 </mapper>

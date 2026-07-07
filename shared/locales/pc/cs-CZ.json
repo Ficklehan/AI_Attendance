@@ -54,6 +54,8 @@
   "nav": {
     "home": "Domů",
     "tasks": "Úkoly",
+    "attendance": "Docházka",
+    "employees": "Zaměstnanci",
     "taskRecords": "Záznamy docházky",
     "config": "Nastavení",
     "settings": "Nastavení systému",

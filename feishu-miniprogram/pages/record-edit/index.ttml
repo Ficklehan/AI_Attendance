@@ -5,17 +5,46 @@
     <view class="form-body">
       <view tt:for="{{fields}}" tt:key="key" class="field-row">
         <text class="field-label">{{item.label}}</text>
-        <view class="field-input-shell {{item.missing ? 'is-required-empty' : ''}} {{item.formatInvalid ? 'is-format-invalid' : ''}}">
-          <input
-            class="field-input"
-            type="{{item.inputType || 'text'}}"
-            value="{{item.value}}"
-            placeholder="{{item.formatPlaceholder}}"
-            data-key="{{item.key}}"
-            bindinput="onFieldInput"
-          />
-        </view>
-        <text tt:if="{{item.formatInvalid && item.formatHint}}" class="field-format-hint">{{item.formatHint}}</text>
+
+        <block tt:if="{{item.inputType === 'country'}}">
+          <view
+            class="field-country-shell {{item.missing ? 'is-required-empty' : ''}} {{item.countryLocked ? 'is-locked' : ''}}"
+            bindtap="togglePaysCountry"
+            data-locked="{{item.countryLocked}}"
+          >
+            <text class="field-country-value">{{item.countryLabel}}</text>
+            <text class="field-country-chevron">{{item.countryLocked ? '🔒' : (item.paysExpanded ? '▲' : '▼')}}</text>
+          </view>
+          <view tt:if="{{item.paysExpanded && !item.countryLocked}}" class="field-country-options">
+            <view
+              tt:for="{{item.countryOptions}}"
+              tt:for-item="country"
+              tt:key="code"
+              class="field-country-option {{item.countryCode === country.code ? 'selected' : ''}}"
+              bindtap="onSelectPaysCountry"
+              data-code="{{country.code}}"
+            >
+              <text class="field-country-option-flag">{{country.flag}}</text>
+              <text class="field-country-option-name">{{country.name}}</text>
+              <text tt:if="{{item.countryCode === country.code}}" class="field-country-option-check">✓</text>
+            </view>
+          </view>
+          <text tt:if="{{item.countryLocked}}" class="field-country-hint">{{texts.paysLockedHint}}</text>
+        </block>
+
+        <block tt:else>
+          <view class="field-input-shell {{item.missing ? 'is-required-empty' : ''}} {{item.formatInvalid ? 'is-format-invalid' : ''}}">
+            <input
+              class="field-input"
+              type="{{item.inputType || 'text'}}"
+              value="{{item.value}}"
+              placeholder="{{item.formatPlaceholder}}"
+              data-key="{{item.key}}"
+              bindinput="onFieldInput"
+            />
+          </view>
+          <text tt:if="{{item.formatInvalid && item.formatHint}}" class="field-format-hint">{{item.formatHint}}</text>
+        </block>
       </view>
     </view>
   </scroll-view>

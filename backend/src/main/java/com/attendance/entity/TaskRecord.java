@@ -12,7 +12,9 @@ public class TaskRecord {
     private String taskStatus;
     private String fileKey;
     private String imageUrls;
-    private String empNo;
+    private String lineNo;
+    private Long employeeId;
+    private String employeeNo;
     private String empName;
     private String baseName;
     private String country;
@@ -105,12 +107,28 @@ public class TaskRecord {
         this.imageUrls = imageUrls;
     }
 
-    public String getEmpNo() {
-        return empNo;
+    public String getLineNo() {
+        return lineNo;
     }
 
-    public void setEmpNo(String empNo) {
-        this.empNo = empNo;
+    public void setLineNo(String lineNo) {
+        this.lineNo = lineNo;
+    }
+
+    public Long getEmployeeId() {
+        return employeeId;
+    }
+
+    public void setEmployeeId(Long employeeId) {
+        this.employeeId = employeeId;
+    }
+
+    public String getEmployeeNo() {
+        return employeeNo;
+    }
+
+    public void setEmployeeNo(String employeeNo) {
+        this.employeeNo = employeeNo;
     }
 
     public String getEmpName() {

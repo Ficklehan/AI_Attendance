@@ -1,5 +1,6 @@
 package com.attendance.mapper;
 
+import com.attendance.dto.internal.AgencyBillingRow;
 import com.attendance.entity.TaskRecord;
 import com.attendance.security.DataScopeContext;
 import org.apache.ibatis.annotations.Mapper;
@@ -44,7 +45,13 @@ public interface TaskRecordMapper {
     long countByTaskId(@Param("taskId") String taskId);
 
     long countRecordsMatchingScope(@Param("taskId") String taskId,
-                                   @Param("countries") List<String> countries,
+                                   @Param("countryMatchTokens") List<String> countryMatchTokens,
                                    @Param("warehouses") List<String> warehouses,
                                    @Param("agencies") List<String> agencies);
+
+    List<AgencyBillingRow> selectAgencyBillingSlimRows(@Param("scope") DataScopeContext scope,
+                                                       @Param("startDate") String startDate,
+                                                       @Param("endDate") String endDate,
+                                                       @Param("regionCodes") List<String> regionCodes,
+                                                       @Param("warehouseKeys") List<String> warehouseKeys);
 }

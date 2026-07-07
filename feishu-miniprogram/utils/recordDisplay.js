@@ -2,6 +2,7 @@
 
 const { displayFieldValue, isPlaceholderValue } = require('./fieldPlaceholder')
 const { t, tOr } = require('./i18n')
+const { formatPaysFieldDisplay } = require('./paysCountryPicker')
 const { hasManualCalibration, buildCalibrationHistoryUi } = require('./calibrationHistory')
 const {
   translateAnomalyReason,
@@ -463,7 +464,7 @@ function buildRecordFieldRows(record, ctx) {
   ]
 
   const contextRow = [
-    cell('Pays', 'result.fieldCountry', ctx.Pays, null),
+    cell('Pays', 'result.fieldCountry', ctx.Pays, ctx.paysDisplayText),
     cell('Entrepot', 'result.fieldWarehouse', ctx.Entrepot, null),
     cell('HORAIRES_DU_TRAVAIL', 'result.fieldShift', ctx.HORAIRES_DU_TRAVAIL, null),
     cell('AGENCE_INTERIMAIRE', 'result.fieldAgency', ctx.AGENCE_INTERIMAIRE, null),
@@ -482,6 +483,7 @@ function enrichRecord(record, index) {
   const DEPAR = pickField(record, 'DEPAR', 'DepartTime')
   const PAUSE = pickField(record, 'PAUSE')
   const Pays = pickField(record, 'Pays')
+  const paysDisplayText = formatPaysFieldDisplay(Pays)
   const Entrepot = pickField(record, 'Entrepot', 'Entrepôt')
   const HORAIRES_DU_TRAVAIL = pickField(record, 'HORAIRES_DU_TRAVAIL')
   const AGENCE_INTERIMAIRE = pickField(record, 'AGENCE_INTERIMAIRE')
@@ -569,6 +571,7 @@ function enrichRecord(record, index) {
       DEPAR,
       PAUSE,
       Pays,
+      paysDisplayText,
       Entrepot,
       HORAIRES_DU_TRAVAIL,
       AGENCE_INTERIMAIRE,
@@ -582,7 +585,7 @@ function enrichRecord(record, index) {
       signatureDisplayText
     }),
     subLine: [
-      Pays ? `${t('result.fieldCountry')}:${Pays}` : '',
+      Pays ? `${t('result.fieldCountry')}:${paysDisplayText}` : '',
       Entrepot ? `${t('result.fieldWarehouse')}:${Entrepot}` : '',
       HORAIRES_DU_TRAVAIL ? `${t('result.fieldShift')}:${HORAIRES_DU_TRAVAIL}` : '',
       AGENCE_INTERIMAIRE ? `${t('result.fieldAgency')}:${AGENCE_INTERIMAIRE}` : '',

@@ -1,0 +1,96 @@
+/** 任务详情 / 考勤记录：左侧数据 + 右侧图片对比栏 */
+.image-compare-layout {
+  display: flex;
+  align-items: flex-start;
+  gap: $space-5;
+  width: 100%;
+  min-width: 0;
+  min-height: calc(100vh - #{$header-height} - #{$space-8});
+  overflow: visible;
+
+  &__main {
+    flex: 1 1 0;
+    min-width: 0;
+    align-self: flex-start;
+  }
+
+  &__dock {
+    flex: 0 0 var(--image-dock-width, 44%);
+    width: var(--image-dock-width, 44%);
+    min-width: 0;
+    max-width: none;
+    display: flex;
+    flex-direction: column;
+    align-self: flex-start;
+    padding: 0;
+    position: sticky;
+    top: calc(#{$header-height} + #{$space-3});
+    height: var(--image-dock-height, calc(100vh - #{$header-height} - #{$space-3}));
+    max-height: var(--image-dock-height, calc(100vh - #{$header-height} - #{$space-3}));
+    min-height: 280px;
+    overflow: visible;
+    z-index: 4;
+
+    > .image-preview-dock {
+      flex: 1 1 0;
+      min-height: 0;
+      height: 100%;
+      max-height: 100%;
+      overflow: hidden;
+    }
+  }
+
+  &__resizer {
+    position: absolute;
+    left: -12px;
+    top: 0;
+    bottom: 0;
+    width: 24px;
+    cursor: col-resize;
+    z-index: 30;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    touch-action: none;
+    user-select: none;
+
+    &::before {
+      content: '';
+      position: absolute;
+      top: 4%;
+      bottom: 4%;
+      left: 50%;
+      width: 5px;
+      transform: translateX(-50%);
+      border-radius: $radius-full;
+      background: rgba($primary, 0.34);
+      box-shadow:
+        0 0 0 1px rgba($border, 0.9),
+        inset 0 0 0 1px rgba(255, 255, 255, 0.7);
+      transition: background $duration-fast $ease-smooth, box-shadow $duration-fast $ease-smooth;
+    }
+
+    &:hover::before,
+    &:active::before {
+      background: rgba($primary, 0.62);
+      box-shadow:
+        0 0 0 1px rgba($primary, 0.5),
+        0 0 0 5px rgba($primary, 0.14);
+    }
+  }
+
+  &__resizer-grip {
+    position: relative;
+    z-index: 1;
+    width: 8px;
+    height: 52px;
+    border-radius: $radius-full;
+    background:
+      radial-gradient(circle, rgba($text-secondary, 0.6) 1.3px, transparent 1.4px) center / 8px 7px repeat-y;
+    pointer-events: none;
+  }
+
+  &--dock-open {
+    gap: $space-5;
+  }
+}

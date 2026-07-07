@@ -35,21 +35,28 @@
         :loading="loading"
         row-key="id"
         :pagination="pagination"
+        class="rich-table-header"
         @change="handleTableChange"
       >
-        <template #bodyCell="{ column, record }">
+        <template #bodyCell="{ column, record, text }">
           <template v-if="column.key === 'role'">
-            <a-tag :color="record.role === 'admin' ? 'blue' : 'default'">
-              {{ roleNameMap[record.role] || record.role }}
-            </a-tag>
+            <CopyableCell :text="roleNameMap[record.role] || record.role">
+              <a-tag :color="record.role === 'admin' ? 'blue' : 'default'">
+                {{ roleNameMap[record.role] || record.role }}
+              </a-tag>
+            </CopyableCell>
           </template>
           <template v-else-if="column.key === 'workingCountry'">
-            <a-tag color="geekblue">{{ formatUserCountry(record) }}</a-tag>
+            <CopyableCell :text="formatUserCountry(record)">
+              <a-tag color="geekblue">{{ formatUserCountry(record) }}</a-tag>
+            </CopyableCell>
           </template>
           <template v-else-if="column.key === 'status'">
-            <a-tag :color="record.status === 'active' ? 'green' : 'red'">
-              {{ record.status === 'active' ? $t('settings.users.statusActive') : $t('settings.users.statusDisabled') }}
-            </a-tag>
+            <CopyableCell :text="record.status === 'active' ? $t('settings.users.statusActive') : $t('settings.users.statusDisabled')">
+              <a-tag :color="record.status === 'active' ? 'green' : 'red'">
+                {{ record.status === 'active' ? $t('settings.users.statusActive') : $t('settings.users.statusDisabled') }}
+              </a-tag>
+            </CopyableCell>
           </template>
           <template v-else-if="column.key === 'action'">
             <div class="table-action-cell table-action-cell--links table-action-cell--links-3">
@@ -103,6 +110,9 @@
                 </a-popconfirm>
               </span>
             </div>
+          </template>
+          <template v-else-if="isCopyableTableColumn(column)">
+            <CopyableCell :text="resolveTableCellCopyText(column, record, text)" />
           </template>
         </template>
       </a-table>
@@ -160,6 +170,7 @@ import { useI18n } from 'vue-i18n'
 import { message } from 'ant-design-vue'
 import { PlusOutlined } from '@ant-design/icons-vue'
 import PageShell from '@/components/PageShell.vue'
+import CopyableCell from '@/components/CopyableCell.vue'
 import TableColumnSettings from '@/components/TableColumnSettings.vue'
 import { useAuthStore } from '@/stores/auth'
 import { useCountryStore } from '@/stores/country'
@@ -168,6 +179,7 @@ import { listRoles } from '@/api/roles'
 import { withTableSorters, keyFieldSorter } from '@/utils/tableSort'
 import { useColumnFreeze } from '@/composables/useColumnFreeze'
 import { sumTableScrollX } from '@/utils/tableAutoColumns'
+import { isCopyableTableColumn, resolveTableCellCopyText } from '@/utils/tableCopy'
 import { formatCountryLabel } from '@/utils/countryLabels'
 import { setCachedWorkingCountry } from '@/utils/countryHeader'
 

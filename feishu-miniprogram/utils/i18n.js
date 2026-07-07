@@ -6,6 +6,17 @@ const DEFAULT_LOCALE = 'zh-CN'
 
 let currentLocale = DEFAULT_LOCALE
 
+function syncLocaleToApp(locale) {
+  try {
+    const app = getApp()
+    if (app && app.globalData) {
+      app.globalData.locale = locale
+    }
+  } catch (e) {
+    // ignore
+  }
+}
+
 function getLocale() {
   return currentLocale
 }
@@ -13,6 +24,7 @@ function getLocale() {
 function setLocale(locale, options = {}) {
   if (SUPPORTED_LOCALES.includes(locale)) {
     currentLocale = locale
+    syncLocaleToApp(locale)
   }
   if (!options.skipTabBar) {
     applyTabBarI18n()
@@ -49,6 +61,24 @@ function t(key, params) {
     })
   }
   return text
+}
+
+function countryI18nKey(code) {
+  if (!code || code === 'default') return 'country.default'
+  return `country.${String(code).trim().toUpperCase()}`
+}
+
+/** 与 PC countryLabels.translateCountryName 一致：按当前界面语言显示国名 */
+function translateCountryName(code, fallbackName) {
+  const key = countryI18nKey(code)
+  const text = t(key)
+  if (text && text !== key) return text
+  return fallbackName || code || ''
+}
+
+function formatCountryLabel(code, flag, fallbackName) {
+  const name = translateCountryName(code, fallbackName)
+  return flag ? `${flag} ${name}`.trim() : name
 }
 
 /** 翻译失败时返回 fallback，避免界面露出 i18n 键名 */
@@ -99,7 +129,7 @@ function getCountriesForPicker() {
   return options.map((c) => ({
     code: c.code,
     flag: c.flag,
-    name: t(c.code === 'default' ? 'country.default' : `country.${c.code}`)
+    name: translateCountryName(c.code, c.name)
   }))
 }
 
@@ -128,6 +158,9 @@ module.exports = {
   tOr,
   getLanguageOptions: getLanguageOptionsFixed,
   getCountriesForPicker,
+  translateCountryName,
+  formatCountryLabel,
+  countryI18nKey,
   applyTabBarI18n,
   localeToLanguageKey
 }

@@ -44,9 +44,33 @@ const routes = [
       },
       {
         path: 'task-records',
-        name: 'TaskRecords',
-        component: () => import('@/views/task/TaskRecords.vue'),
-        meta: { titleKey: 'nav.taskRecords' },
+        redirect: '/attendance/records',
+      },
+      {
+        path: 'attendance',
+        component: () => import('@/components/AttendanceLayout.vue'),
+        redirect: '/attendance/records',
+        meta: { titleKey: 'nav.attendance' },
+        children: [
+          {
+            path: 'records',
+            name: 'TaskRecords',
+            component: () => import('@/views/task/TaskRecords.vue'),
+            meta: { titleKey: 'attendance.menu.records' },
+          },
+          {
+            path: 'agency-bills',
+            name: 'AgencyBilling',
+            component: () => import('@/views/attendance/AgencyBilling.vue'),
+            meta: { titleKey: 'attendance.menu.agencyBills' },
+          },
+        ],
+      },
+      {
+        path: 'employees',
+        name: 'Employees',
+        component: () => import('@/views/employee/EmployeeManagement.vue'),
+        meta: { titleKey: 'nav.employees' },
       },
       {
         path: 'tasks/:taskId',

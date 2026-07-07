@@ -1,7 +1,6 @@
 /** 员工记录可校准字段（与后端 CALIBRATABLE_FIELDS 一致） */
 export const CALIBRATABLE_FIELDS = [
   'NO',
-  'Pays',
   'Entrepot',
   'NOM_PRENOM',
   'AGENCE_INTERIMAIRE',
@@ -16,7 +15,6 @@ export const CALIBRATABLE_FIELDS = [
 
 export const FIELD_LABEL_KEYS = {
   NO: 'taskEdit.workerNumber',
-  Pays: 'taskEdit.countryField',
   Entrepot: 'taskEdit.warehouse',
   NOM_PRENOM: 'taskEdit.name',
   AGENCE_INTERIMAIRE: 'taskEdit.agency',

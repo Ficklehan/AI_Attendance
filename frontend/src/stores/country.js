@@ -1,7 +1,8 @@
 import { defineStore } from 'pinia'
 import request from '@/api/index'
 import { useAuthStore } from '@/stores/auth'
-import { getCachedWorkingCountry, setCachedWorkingCountry } from '@/utils/countryHeader'
+import { getCachedWorkingCountry, setCachedWorkingCountry, markWorkingCountryConfigured } from '@/utils/countryHeader'
+import { hasPersonalWorkingCountry } from '@/utils/workingCountrySetup'
 import { loadNightShiftRules } from '@/utils/nightShiftRules'
 import { COUNTRY_FLAG_FALLBACK, DEFAULT_COUNTRY_FLAG, resolveCountryFlag } from '@/utils/countryCatalog'
 import { buildCountrySelectOption, formatCountryLabel, translateCountryName } from '@/utils/countryLabels'
@@ -13,6 +14,7 @@ export const useCountryStore = defineStore('country', {
     bundle: null,
     hydrated: false,
     loading: false,
+    setupRequired: false,
   }),
 
   getters: {
@@ -61,6 +63,7 @@ export const useCountryStore = defineStore('country', {
       }
       this.loading = true
       try {
+        const authStore = useAuthStore()
         const [optionsRes, countryRes] = await Promise.all([
           request({ url: '/config/country-options', method: 'get' }),
           request({ url: '/config/current-country', method: 'get' }),
@@ -68,9 +71,26 @@ export const useCountryStore = defineStore('country', {
         if (optionsRes?.data?.length) {
           this.options = optionsRes.data
         }
-        const country = countryRes?.data?.country || getCachedWorkingCountry()
+        const cached = getCachedWorkingCountry()
+        const userInfo = authStore.userInfo
+        const needsSetup = !hasPersonalWorkingCountry(userInfo)
+        this.setupRequired = needsSetup
+
+        let country = 'default'
+        if (needsSetup) {
+          country = cached && cached !== 'default' ? cached : 'default'
+        } else {
+          const effective = userInfo.personalWorkingCountry || userInfo.workingCountry
+            || countryRes?.data?.country
+            || 'default'
+          country = cached && cached !== 'default' ? cached : effective
+          markWorkingCountryConfigured()
+        }
+
         this.workingCountry = country
-        setCachedWorkingCountry(country)
+        if (!needsSetup && (!cached || cached === 'default')) {
+          setCachedWorkingCountry(country)
+        }
         await this.loadBundle()
         this.hydrated = true
         return country
@@ -103,12 +123,33 @@ export const useCountryStore = defineStore('country', {
           method: 'post',
           data: { country: code },
         })
+      } else {
+        await request({
+          url: '/auth/working-country',
+          method: 'post',
+          data: { country: code },
+        })
       }
       this.workingCountry = code
       setCachedWorkingCountry(code)
+      if (code && code !== 'default') {
+        markWorkingCountryConfigured()
+        this.setupRequired = false
+        if (authStore.userInfo) {
+          authStore.userInfo = {
+            ...authStore.userInfo,
+            personalWorkingCountry: code,
+            workingCountry: code,
+          }
+          localStorage.setItem('userInfo', JSON.stringify(authStore.userInfo))
+        }
+      }
       await this.loadBundle(code)
       loadNightShiftRules(true, code).catch(() => {})
       this.hydrated = true
+      if (authStore.isAuthenticated) {
+        await authStore.refreshPermissions(code)
+      }
       return code
     },
   },

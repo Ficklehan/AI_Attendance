@@ -1,4 +1,5 @@
 const STORAGE_KEY = 'attendance_working_country'
+const CONFIGURED_KEY = 'attendance_working_country_configured'
 
 let memoryCache = null
 
@@ -19,6 +20,18 @@ export function setCachedWorkingCountry(country) {
   const code = country && String(country).trim() ? String(country).trim() : 'default'
   memoryCache = code
   localStorage.setItem(STORAGE_KEY, code)
+}
+
+export function isWorkingCountryConfigured() {
+  return localStorage.getItem(CONFIGURED_KEY) === '1'
+}
+
+export function markWorkingCountryConfigured() {
+  localStorage.setItem(CONFIGURED_KEY, '1')
+}
+
+export function clearWorkingCountryConfigured() {
+  localStorage.removeItem(CONFIGURED_KEY)
 }
 
 export function buildAuthCountryHeaders() {

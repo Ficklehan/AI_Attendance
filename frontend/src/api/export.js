@@ -1,13 +1,18 @@
 import request from './index'
+import { withExportLocale } from '@/utils/exportLocale'
 import { getToken } from '@/utils/auth'
 import { API_BASE_PATH } from '@/constants/apiBase'
 
 export function createTaskListExport(query) {
-  return request.post('/exports/task-list', query || {})
+  return request.post('/exports/task-list', withExportLocale(query || {}))
 }
 
 export function createEmployeeRecordsExport(query) {
-  return request.post('/exports/employee-records', query || {})
+  return request.post('/exports/employee-records', withExportLocale(query || {}))
+}
+
+export function createAgencyBillingExport(query) {
+  return request.post('/exports/agency-billing', withExportLocale(query || {}))
 }
 
 export function listExportJobs(params) {

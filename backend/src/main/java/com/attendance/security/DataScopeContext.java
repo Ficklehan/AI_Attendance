@@ -14,9 +14,13 @@ public class DataScopeContext {
     private boolean allUsers;
     private List<String> ownerUserIds = Collections.emptyList();
     private List<String> countries = Collections.emptyList();
+    /** 展开后的国家匹配 token（含 CHINA、ITALIA 等历史别名），供 SQL IN 过滤 */
+    private List<String> countryMatchTokens = Collections.emptyList();
     private List<String> warehouses = Collections.emptyList();
     private List<String> agencies = Collections.emptyList();
+    private List<String> workRegions = Collections.emptyList();
     private boolean recordDimensionFilter;
+    private boolean employeeDimensionFilter;
     /** 当前登录用户 ID，用于识别中任务在尚无记录时的列表可见性 */
     private String viewerUserId;
 
@@ -51,6 +55,15 @@ public class DataScopeContext {
         refreshRecordDimensionFlag();
     }
 
+    public List<String> getCountryMatchTokens() {
+        return countryMatchTokens;
+    }
+
+    public void setCountryMatchTokens(List<String> countryMatchTokens) {
+        this.countryMatchTokens = countryMatchTokens != null
+                ? new ArrayList<>(countryMatchTokens) : Collections.emptyList();
+    }
+
     public List<String> getWarehouses() {
         return warehouses;
     }
@@ -69,8 +82,21 @@ public class DataScopeContext {
         refreshRecordDimensionFlag();
     }
 
+    public List<String> getWorkRegions() {
+        return workRegions;
+    }
+
+    public void setWorkRegions(List<String> workRegions) {
+        this.workRegions = workRegions != null ? new ArrayList<>(workRegions) : Collections.emptyList();
+        refreshEmployeeDimensionFlag();
+    }
+
     public boolean isRecordDimensionFilter() {
         return recordDimensionFilter;
+    }
+
+    public boolean isEmployeeDimensionFilter() {
+        return employeeDimensionFilter;
     }
 
     public boolean hasOwnerUserFilter() {
@@ -93,5 +119,9 @@ public class DataScopeContext {
         recordDimensionFilter = (countries != null && !countries.isEmpty())
                 || (warehouses != null && !warehouses.isEmpty())
                 || (agencies != null && !agencies.isEmpty());
+    }
+
+    private void refreshEmployeeDimensionFlag() {
+        employeeDimensionFilter = workRegions != null && !workRegions.isEmpty();
     }
 }

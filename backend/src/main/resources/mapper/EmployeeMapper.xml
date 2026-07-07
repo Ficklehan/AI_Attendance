@@ -1,0 +1,161 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+    "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.attendance.mapper.EmployeeMapper">
+
+    <resultMap id="EmployeeMap" type="com.attendance.entity.Employee">
+        <id column="id" property="id"/>
+        <result column="emp_no" property="empNo"/>
+        <result column="region_code" property="regionCode"/>
+        <result column="agency_key" property="agencyKey"/>
+        <result column="match_name" property="matchName"/>
+        <result column="display_name" property="displayName"/>
+        <result column="status" property="status"/>
+        <result column="first_created_at" property="firstCreatedAt"/>
+        <result column="last_attendance_date" property="lastAttendanceDate"/>
+        <result column="last_seen_at" property="lastSeenAt"/>
+        <result column="created_at" property="createdAt"/>
+        <result column="updated_at" property="updatedAt"/>
+    </resultMap>
+
+    <sql id="EmployeeScopeWhere">
+        WHERE e.status = 1
+        <if test="scope != null and !scope.allUsers">
+            <choose>
+                <when test="scope.workRegions == null or scope.workRegions.size() == 0">
+                    AND 1=0
+                </when>
+                <otherwise>
+                    AND e.region_code IN
+                    <foreach collection="scope.workRegions" item="wr" open="(" separator="," close=")">#{wr}</foreach>
+                </otherwise>
+            </choose>
+        </if>
+        <if test="regionCodes != null and regionCodes.size() > 0">
+            AND e.region_code IN
+            <foreach collection="regionCodes" item="rc" open="(" separator="," close=")">#{rc}</foreach>
+        </if>
+        <if test="keyword != null and keyword != ''">
+            AND (
+                e.emp_no LIKE CONCAT('%', #{keyword}, '%')
+                OR e.display_name LIKE CONCAT('%', #{keyword}, '%')
+                OR e.match_name LIKE CONCAT('%', #{keyword}, '%')
+                OR e.agency_key LIKE CONCAT('%', #{keyword}, '%')
+            )
+        </if>
+    </sql>
+
+    <select id="selectByIdentity" resultMap="EmployeeMap">
+        SELECT id, emp_no, region_code, agency_key, match_name, display_name, status,
+               first_created_at, last_attendance_date, last_seen_at, created_at, updated_at
+        FROM employees e
+        WHERE e.region_code = #{regionCode}
+          AND e.agency_key = #{agencyKey}
+          AND e.match_name = #{matchName}
+        LIMIT 1
+    </select>
+
+    <insert id="insertEmployee" useGeneratedKeys="true" keyProperty="id">
+        INSERT INTO employees (
+            emp_no, region_code, agency_key, match_name, display_name, status,
+            first_created_at, last_attendance_date, last_seen_at
+        ) VALUES (
+            #{empNo}, #{regionCode}, #{agencyKey}, #{matchName}, #{displayName}, #{status},
+            #{firstCreatedAt}, #{lastAttendanceDate}, #{lastSeenAt}
+        )
+    </insert>
+
+    <update id="updateLastSeen">
+        UPDATE employees
+        SET display_name = #{displayName},
+            last_attendance_date = #{lastAttendanceDate},
+            last_seen_at = #{lastSeenAt},
+            updated_at = CURRENT_TIMESTAMP
+        WHERE id = #{id}
+    </update>
+
+    <insert id="ensureSerialCounter">
+        INSERT INTO employee_serial_counters (region_code, next_seq)
+        VALUES (#{regionCode}, 1)
+        ON DUPLICATE KEY UPDATE region_code = region_code
+    </insert>
+
+    <update id="incrementSerialCounter">
+        UPDATE employee_serial_counters
+        SET next_seq = LAST_INSERT_ID(next_seq + 1)
+        WHERE region_code = #{regionCode}
+    </update>
+
+    <select id="selectLastInsertId" resultType="java.lang.Integer">
+        SELECT LAST_INSERT_ID()
+    </select>
+
+    <select id="countEmployees" resultType="long">
+        SELECT COUNT(*)
+        FROM employees e
+        <include refid="EmployeeScopeWhere"/>
+    </select>
+
+    <select id="selectEmployeePage" resultMap="EmployeeMap">
+        SELECT e.id, e.emp_no, e.region_code, e.agency_key, e.match_name, e.display_name, e.status,
+               e.first_created_at, e.last_attendance_date, e.last_seen_at, e.created_at, e.updated_at
+        FROM employees e
+        <include refid="EmployeeScopeWhere"/>
+        ORDER BY e.last_attendance_date DESC, e.emp_no ASC
+        LIMIT #{offset}, #{size}
+    </select>
+
+    <select id="selectWeeklyAttendanceRows" resultType="map">
+        SELECT tr.employee_id AS employeeId,
+               e.emp_no AS empNo,
+               e.display_name AS displayName,
+               e.region_code AS regionCode,
+               e.agency_key AS agencyKey,
+               tr.work_date AS workDate,
+               tr.arrival AS arrival,
+               tr.departure AS departure,
+               tr.pause_minutes AS pauseMinutes,
+               tr.smart_mark AS smartMark,
+               tr.deleted AS deleted
+        FROM task_records tr
+        INNER JOIN employees e ON tr.employee_id = e.id
+        WHERE tr.deleted = 0
+          AND tr.task_status = 'confirmed'
+          AND tr.employee_id IS NOT NULL
+          AND tr.work_date &gt;= #{startDate}
+          AND tr.work_date &lt;= #{endDate}
+        <if test="regionCodes != null and regionCodes.size() > 0">
+            AND e.region_code IN
+            <foreach collection="regionCodes" item="rc" open="(" separator="," close=")">#{rc}</foreach>
+        </if>
+        <if test="scope != null and !scope.allUsers">
+            <choose>
+                <when test="scope.workRegions == null or scope.workRegions.size() == 0">
+                    AND 1=0
+                </when>
+                <otherwise>
+                    AND e.region_code IN
+                    <foreach collection="scope.workRegions" item="wr" open="(" separator="," close=")">#{wr}</foreach>
+                </otherwise>
+            </choose>
+        </if>
+        ORDER BY e.emp_no, tr.work_date
+    </select>
+
+    <select id="selectDistinctWorkRegionOptions" resultType="map">
+        SELECT region_code AS value, region_code AS label
+        FROM (
+            SELECT DISTINCT UPPER(TRIM(prompt_country)) AS region_code
+            FROM tasks
+            WHERE prompt_country IS NOT NULL AND TRIM(prompt_country) != ''
+            UNION
+            SELECT DISTINCT region_code
+            FROM employees
+            WHERE region_code IS NOT NULL AND region_code != ''
+        ) t
+        WHERE region_code IS NOT NULL AND region_code != ''
+        ORDER BY region_code
+        LIMIT 200
+    </select>
+
+</mapper>

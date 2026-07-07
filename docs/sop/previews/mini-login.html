@@ -1,0 +1,45 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=390, initial-scale=1" />
+  <title>小程序 - 登录</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: -apple-system, "PingFang SC", sans-serif; width: 390px; margin: 0 auto; min-height: 844px; background: #fff; }
+    .hero { position: relative; height: 320px; overflow: hidden; }
+    .hero img { width: 100%; display: block; }
+    .hero-overlay { position: absolute; inset: 0; background: linear-gradient(180deg, rgba(28,26,46,.05), rgba(255,255,255,.85)); }
+    .caption { padding: 16px 20px 0; }
+    .kicker { font-size: 11px; letter-spacing: .12em; color: #2563EB; font-weight: 700; }
+    .title { font-size: 26px; font-weight: 800; margin: 8px 0; color: #1C1A2E; }
+    .subtitle { font-size: 14px; color: #73707F; line-height: 1.5; }
+    .card { margin: 20px 16px; padding: 20px; border-radius: 16px; background: #F8FAFC; border: 1px solid #EDEAEF; }
+    .card-title { font-size: 17px; font-weight: 700; margin-bottom: 8px; }
+    .card-desc { font-size: 13px; color: #73707F; line-height: 1.5; margin-bottom: 16px; }
+    .btn { background: linear-gradient(135deg, #2563EB, #3B82F6); color: #fff; text-align: center; padding: 14px; border-radius: 12px; font-weight: 600; box-shadow: 0 8px 20px rgba(37,99,235,.28); }
+    .pills { display: flex; flex-direction: column; gap: 8px; margin: 0 16px; }
+    .pill { font-size: 12px; color: #3D3952; background: #EFF6FF; padding: 10px 14px; border-radius: 10px; }
+  </style>
+</head>
+<body>
+  <div class="hero">
+    <img src="../../../feishu-miniprogram/assets/attendance-login-hero-vertical.png" alt="" />
+    <div class="hero-overlay"></div>
+  </div>
+  <div class="caption">
+    <div class="kicker">ATTENDANCE OPS</div>
+    <div class="title">AI 考勤助手</div>
+    <div class="subtitle">飞书授权登录，与 PC 端共享任务数据</div>
+  </div>
+  <div class="card">
+    <div class="card-title">飞书账号登录</div>
+    <div class="card-desc">请使用公司飞书账号授权，首次登录后自动关联考勤任务。</div>
+    <div class="btn">使用飞书登录</div>
+  </div>
+  <div class="pills" style="margin-top:16px">
+    <div class="pill">✓ 拍照上传考勤表，AI 自动识别</div>
+    <div class="pill">✓ 核对后同步至飞书多维表格</div>
+  </div>
+</body>
+</html>

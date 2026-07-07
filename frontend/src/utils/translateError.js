@@ -144,6 +144,31 @@ function resolveAiImageTooBlurryTitle(titleArgs, preview) {
   return { title: t('errors.aiImageTooBlurry', titleArgs), preview, key: 'errors.aiImageTooBlurry' }
 }
 
+function lookupFlatErrorMessage(messageKey) {
+  if (!messageKey || typeof messageKey !== 'string') return null
+  const fallback = i18n.global.fallbackLocale
+  const fallbackList = Array.isArray(fallback)
+    ? fallback
+    : (typeof fallback === 'object' && fallback ? Object.values(fallback).flat() : [])
+  const tryLocales = [
+    i18n.global.locale.value,
+    ...fallbackList,
+    'en-US',
+    'zh-CN',
+  ]
+  const seen = new Set()
+  for (const loc of tryLocales) {
+    const tag = typeof loc === 'string' ? loc : null
+    if (!tag || seen.has(tag)) continue
+    seen.add(tag)
+    const errors = i18n.global.getLocaleMessage(tag)?.errors
+    if (errors && typeof errors[messageKey] === 'string') {
+      return errors[messageKey]
+    }
+  }
+  return null
+}
+
 function resolveErrorParts(payload) {
   const { messageKey, messageArgs, message, code } = normalizePayload(payload)
   const t = i18n.global.t
@@ -151,6 +176,13 @@ function resolveErrorParts(payload) {
 
   let key = messageKey
   let args = enrichImageQualityArgs(messageArgs || {})
+
+  if (key && !key.startsWith('errors.') && key.includes('.')) {
+    const flat = lookupFlatErrorMessage(key)
+    if (flat) {
+      return { title: flat, preview: '', key: null }
+    }
+  }
 
   if (!key && message && message.startsWith('errors.') && te(message)) {
     key = message
@@ -163,6 +195,12 @@ function resolveErrorParts(payload) {
   }
   if (!key && message && LEGACY_EXACT[message]) {
     key = LEGACY_EXACT[message]
+  }
+  if (!key && message && message.includes('.') && !message.startsWith('errors.')) {
+    const flat = lookupFlatErrorMessage(message)
+    if (flat) {
+      return { title: flat, preview: '', key: null }
+    }
   }
 
   let preview = args.preview ? String(args.preview) : ''

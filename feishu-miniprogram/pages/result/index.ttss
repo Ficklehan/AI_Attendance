@@ -260,6 +260,51 @@
   font-weight: 600;
 }
 
+.result-page .result-manual-row-bar {
+  display: flex;
+  align-items: flex-start;
+  gap: 12rpx;
+  margin-top: 10rpx;
+  padding: 12rpx 14rpx;
+  border-radius: var(--radius-sm);
+  background: var(--surface-2);
+  border: 1rpx dashed var(--primary);
+}
+
+.result-page .result-manual-row-icon {
+  flex-shrink: 0;
+  width: 36rpx;
+  height: 36rpx;
+  line-height: 36rpx;
+  text-align: center;
+  border-radius: 8rpx;
+  background: var(--primary-light);
+  color: var(--primary);
+  font-size: 24rpx;
+  font-weight: 700;
+}
+
+.result-page .result-manual-row-copy {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 4rpx;
+}
+
+.result-page .result-manual-row-title {
+  font-size: 22rpx;
+  font-weight: 700;
+  color: var(--text-1);
+  line-height: 1.35;
+}
+
+.result-page .result-manual-row-hint {
+  font-size: 20rpx;
+  color: var(--text-3);
+  line-height: 1.45;
+}
+
 .result-page .image-quality-banner {
   margin-top: 8rpx;
   padding: 10rpx 14rpx;

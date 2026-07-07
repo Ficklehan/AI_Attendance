@@ -1,5 +1,6 @@
 package com.attendance.service;
 
+import com.attendance.config.CountryCatalog;
 import com.attendance.common.BusinessException;
 import com.attendance.common.ErrorCode;
 import com.attendance.common.ErrorKeys;
@@ -10,6 +11,7 @@ import com.attendance.mapper.TaskRecordMapper;
 import com.attendance.mapper.UserMapper;
 import com.attendance.security.DataScopeContext;
 import com.attendance.security.SecurityUtils;
+import com.attendance.util.CountryResolver;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
@@ -27,7 +29,7 @@ public class DataScopeService {
 
     private static final List<String> KNOWN_ROLES = Arrays.asList("admin", "user");
     private static final List<String> DIMENSIONS = Arrays.asList(
-            "owner_user", "country", "warehouse", "agency");
+            "owner_user", "country", "warehouse", "agency", "work_region");
 
     @Autowired
     private RoleDataScopeMapper roleDataScopeMapper;
@@ -73,6 +75,7 @@ public class DataScopeService {
         Set<String> countries = new LinkedHashSet<>();
         Set<String> warehouses = new LinkedHashSet<>();
         Set<String> agencies = new LinkedHashSet<>();
+        Set<String> workRegions = new LinkedHashSet<>();
 
         for (Map<String, String> row : rules) {
             if (row == null) {
@@ -95,7 +98,8 @@ public class DataScopeService {
                     }
                     break;
                 case "country":
-                    countries.add(trimmed);
+                    String countryCode = CountryCatalog.resolveCountryCodeFromPays(trimmed);
+                    countries.add(countryCode != null ? countryCode : CountryResolver.normalize(trimmed));
                     break;
                 case "warehouse":
                     warehouses.add(trimmed);
@@ -103,13 +107,33 @@ public class DataScopeService {
                 case "agency":
                     agencies.add(trimmed);
                     break;
+                case "work_region":
+                    String regionCode = CountryCatalog.resolveCountryCodeFromPays(trimmed);
+                    workRegions.add(regionCode != null ? regionCode : CountryResolver.normalize(trimmed));
+                    break;
                 default:
                     break;
             }
         }
 
         ctx.setOwnerUserIds(new ArrayList<>(owners));
-        ctx.setCountries(new ArrayList<>(countries));
+        Set<String> unifiedWorkCountries = new LinkedHashSet<>();
+        for (String code : countries) {
+            String normalized = CountryResolver.normalize(code);
+            if (normalized != null && !normalized.isEmpty()) {
+                unifiedWorkCountries.add(normalized);
+            }
+        }
+        for (String code : workRegions) {
+            String normalized = CountryResolver.normalize(code);
+            if (normalized != null && !normalized.isEmpty()) {
+                unifiedWorkCountries.add(normalized);
+            }
+        }
+        List<String> unifiedList = new ArrayList<>(unifiedWorkCountries);
+        ctx.setCountries(unifiedList);
+        ctx.setCountryMatchTokens(CountryCatalog.expandMatchTokens(unifiedList));
+        ctx.setWorkRegions(unifiedList);
         ctx.setWarehouses(new ArrayList<>(warehouses));
         ctx.setAgencies(new ArrayList<>(agencies));
         // restricted 但未配置任何规则时，默认仅能看本人数据（避免列表 SQL 退化为 AND 1=0）
@@ -142,8 +166,17 @@ public class DataScopeService {
             }
         }
         if (scope.isRecordDimensionFilter()) {
+            if (scope.getCountries() != null && !scope.getCountries().isEmpty()) {
+                String promptCountry = CountryCatalog.resolveCountryCodeFromPays(task.getPromptCountry());
+                if (promptCountry == null) {
+                    promptCountry = CountryResolver.normalize(task.getPromptCountry());
+                }
+                if (promptCountry != null && scope.getCountries().contains(promptCountry)) {
+                    return true;
+                }
+            }
             long matched = taskRecordMapper.countRecordsMatchingScope(
-                    task.getTaskId(), scope.getCountries(), scope.getWarehouses(), scope.getAgencies());
+                    task.getTaskId(), scope.getCountryMatchTokens(), scope.getWarehouses(), scope.getAgencies());
             return matched > 0;
         }
         return true;

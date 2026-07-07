@@ -2,7 +2,6 @@ package com.attendance.util;
 
 import org.apache.poi.ss.usermodel.Cell;
 import org.apache.poi.ss.usermodel.CellStyle;
-import org.apache.poi.ss.usermodel.Font;
 import org.apache.poi.ss.usermodel.Row;
 import org.apache.poi.ss.usermodel.Sheet;
 import org.apache.poi.xssf.streaming.SXSSFWorkbook;
@@ -20,6 +19,7 @@ public final class ExcelExportHelper {
             "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet";
 
     private static final DateTimeFormatter DT = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
+    private static final float DEFAULT_ROW_HEIGHT_POINTS = 18f;
 
     private ExcelExportHelper() {}
 
@@ -44,44 +44,61 @@ public final class ExcelExportHelper {
         private final Sheet sheet;
         private final Path path;
         private final CellStyle headerStyle;
+        private final CellStyle bodyStyle;
+        private final CellStyle totalRowStyle;
         private int rowNum;
+        private int columnCount;
         private long dataRows;
 
         private ExcelSheetWriter(Path path) {
             this.path = path;
             this.workbook = new SXSSFWorkbook(200);
             this.sheet = workbook.createSheet("Sheet1");
-            Font headerFont = workbook.createFont();
-            headerFont.setBold(true);
-            this.headerStyle = workbook.createCellStyle();
-            this.headerStyle.setFont(headerFont);
+            this.headerStyle = ExcelExportStyles.createHeaderStyle(workbook);
+            this.bodyStyle = ExcelExportStyles.createBodyStyle(workbook);
+            this.totalRowStyle = ExcelExportStyles.createTotalRowStyle(workbook);
             this.rowNum = 0;
+            this.columnCount = 0;
             this.dataRows = 0;
         }
 
         public void writeHeader(String... headers) {
-            if (headers == null || headers.length == 0) {
-                return;
-            }
-            Row row = sheet.createRow(rowNum++);
-            for (int i = 0; i < headers.length; i++) {
-                Cell cell = row.createCell(i);
-                cell.setCellValue(headers[i] != null ? headers[i] : "");
-                cell.setCellStyle(headerStyle);
+            writeCells(headerStyle, false, headers);
+            if (headers != null && headers.length > 0) {
+                columnCount = Math.max(columnCount, headers.length);
+                sheet.createFreezePane(0, rowNum - 1);
             }
         }
 
         public void writeRow(String... cells) {
+            writeCells(bodyStyle, true, cells);
+        }
+
+        public void writeTotalRow(String... cells) {
+            writeCells(totalRowStyle, false, cells);
+        }
+
+        public void writeBlankRow() {
+            Row row = sheet.createRow(rowNum++);
+            row.setHeightInPoints(10f);
+        }
+
+        private void writeCells(CellStyle style, boolean countAsData, String... cells) {
             if (cells == null || cells.length == 0) {
                 return;
             }
+            columnCount = Math.max(columnCount, cells.length);
             Row row = sheet.createRow(rowNum++);
+            row.setHeightInPoints(style == headerStyle ? 26f : DEFAULT_ROW_HEIGHT_POINTS);
             for (int i = 0; i < cells.length; i++) {
                 Cell cell = row.createCell(i);
                 String value = cells[i] != null ? cells[i] : "";
                 cell.setCellValue(value);
+                cell.setCellStyle(style);
             }
-            dataRows++;
+            if (countAsData) {
+                dataRows++;
+            }
         }
 
         public long getDataRowCount() {
@@ -90,8 +107,13 @@ public final class ExcelExportHelper {
 
         @Override
         public void close() throws IOException {
-            try (OutputStream out = Files.newOutputStream(path)) {
-                workbook.write(out);
+            try {
+                if (columnCount > 0) {
+                    ExcelExportStyles.fitColumns(sheet, columnCount, 6, 48);
+                }
+                try (OutputStream out = Files.newOutputStream(path)) {
+                    workbook.write(out);
+                }
             } finally {
                 workbook.dispose();
                 workbook.close();

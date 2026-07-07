@@ -23,8 +23,7 @@ export default {
       "deleted": "Supprimé",
       "signedConfirmed": "Signé (confirmé)",
       "unsignedConfirmed": "Non signé (confirmé)",
-      "signed": "Signé",
-      "manuallyAdded": "Ajout manuel"
+      "signed": "Signé"
     },
     "missing": {
       "NO": "N° employé non reconnu",
@@ -195,6 +194,8 @@ export default {
   "nav": {
     "home": "Accueil",
     "tasks": "Tâches",
+    "attendance": "Présence",
+    "employees": "Employés",
     "taskRecords": "Registres de présence",
     "config": "Configuration",
     "settings": "Paramètres",
@@ -276,7 +277,6 @@ export default {
     "recognitionFailedTitle": "Échec de la reconnaissance",
     "recognitionRetry": "Réessayer la reconnaissance",
     "recognitionReupload": "Téléverser à nouveau",
-    "recognitionFailureHint": "Réessayer : relancer la reconnaissance sur les images déjà enregistrées sur le serveur (utile après mise à jour des consignes). Téléverser à nouveau : vider la sélection et choisir de nouveaux fichiers.",
     "recognitionError": "Erreur de reconnaissance"
   },
   "tasks": {
@@ -573,7 +573,6 @@ export default {
     "observations": "Remarques",
     "anomalyCategoryRequired": "Champs obligatoires manquants",
     "anomalyCategoryUnreadable": "Illisible",
-    "anomalyCategoryFormat": "Anomalie de format",
     "anomalyCategoryDuplicate": "Noms en double",
     "anomalyCategoryOther": "Autres anomalies",
     "fieldUnreadableShort": "Illisible",

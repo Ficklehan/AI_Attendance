@@ -8,6 +8,9 @@ import org.springframework.core.annotation.Order;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Component;
 
+import java.util.List;
+import java.util.Map;
+
 /**
  * 确保 task_records 表存在（migration 007）。
  */
@@ -66,6 +69,8 @@ public class TaskRecordDatabaseBootstrap implements ApplicationRunner {
             ensureProgressRowCountColumn();
             ensureRecognitionCheckpointColumns();
             ensureSmartMarkColumn();
+            ensureAgencyBillingIndex();
+            backfillCountryKeys();
             log.info("task_records 表已就绪");
         } catch (Exception e) {
             log.error("创建 task_records 表失败", e);
@@ -147,6 +152,23 @@ public class TaskRecordDatabaseBootstrap implements ApplicationRunner {
         }
     }
 
+    private void ensureAgencyBillingIndex() {
+        try {
+            Integer cnt = jdbcTemplate.queryForObject(
+                    "SELECT COUNT(1) FROM information_schema.statistics "
+                            + "WHERE table_schema = DATABASE() AND table_name = 'task_records' "
+                            + "AND index_name = 'idx_billing_confirmed_date_agency'",
+                    Integer.class);
+            if (cnt == null || cnt == 0) {
+                jdbcTemplate.execute("ALTER TABLE task_records ADD INDEX idx_billing_confirmed_date_agency "
+                        + "(task_status, work_date, agency_key)");
+                log.info("task_records.idx_billing_confirmed_date_agency 已创建");
+            }
+        } catch (Exception e) {
+            log.debug("idx_billing_confirmed_date_agency 可能已存在: {}", e.getMessage());
+        }
+    }
+
     private void ensureTasksIndex() {
         try {
             Integer cnt = jdbcTemplate.queryForObject(
@@ -159,6 +181,72 @@ public class TaskRecordDatabaseBootstrap implements ApplicationRunner {
             }
         } catch (Exception e) {
             log.debug("tasks 组合索引可能已存在: {}", e.getMessage());
+        }
+    }
+
+    /**
+     * 将历史 task_records.country_key / tasks.prompt_country 归一化为目录国家代码。
+     * 仅执行一次；权限过滤同时保留别名 token 以兼容未回填行。
+     */
+    private void backfillCountryKeys() {
+        try {
+            Integer done = jdbcTemplate.queryForObject(
+                    "SELECT COUNT(1) FROM plugin_config WHERE config_key = 'country_key_backfill_v1'",
+                    Integer.class);
+            if (done != null && done > 0) {
+                return;
+            }
+        } catch (Exception e) {
+            log.debug("跳过 country_key 回填标记检查: {}", e.getMessage());
+            return;
+        }
+
+        int recordUpdates = 0;
+        try {
+            List<Map<String, Object>> pairs = jdbcTemplate.queryForList(
+                    "SELECT country, country_key FROM task_records "
+                            + "WHERE (country IS NOT NULL AND TRIM(country) != '') "
+                            + "OR (country_key IS NOT NULL AND TRIM(country_key) != '') "
+                            + "GROUP BY country, country_key");
+            for (Map<String, Object> row : pairs) {
+                String country = row.get("country") != null ? String.valueOf(row.get("country")).trim() : "";
+                String key = row.get("country_key") != null ? String.valueOf(row.get("country_key")).trim() : "";
+                String raw = !country.isEmpty() ? country : key;
+                if (raw.isEmpty()) {
+                    continue;
+                }
+                String normalized = CountryCatalog.normalizeCountryKey(raw);
+                if (normalized == null || normalized.equals(key)) {
+                    continue;
+                }
+                recordUpdates += jdbcTemplate.update(
+                        "UPDATE task_records SET country_key = ? "
+                                + "WHERE (country_key = ? OR (country_key IS NULL AND country = ?) OR country = ?) "
+                                + "AND (country_key IS NULL OR country_key != ?)",
+                        normalized, key, country, country, normalized);
+            }
+
+            List<String> promptCountries = jdbcTemplate.queryForList(
+                    "SELECT DISTINCT prompt_country FROM tasks "
+                            + "WHERE prompt_country IS NOT NULL AND TRIM(prompt_country) != ''",
+                    String.class);
+            for (String prompt : promptCountries) {
+                String normalized = CountryCatalog.normalizeCountryKey(prompt);
+                if (normalized == null || normalized.equalsIgnoreCase(prompt.trim())) {
+                    continue;
+                }
+                jdbcTemplate.update(
+                        "UPDATE tasks SET prompt_country = ? WHERE prompt_country = ?",
+                        normalized, prompt);
+            }
+
+            jdbcTemplate.update(
+                    "INSERT INTO plugin_config (config_key, config_value, config_type, description) "
+                            + "VALUES ('country_key_backfill_v1', 'done', 'string', '历史国家键归一化') "
+                            + "ON DUPLICATE KEY UPDATE config_value = VALUES(config_value)");
+            log.info("历史 country_key 回填完成: task_records 更新约 {} 行", recordUpdates);
+        } catch (Exception e) {
+            log.warn("历史 country_key 回填失败（权限过滤仍使用别名兼容）: {}", e.getMessage());
         }
     }
 }

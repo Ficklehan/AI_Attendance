@@ -1,0 +1,51 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=390, initial-scale=1" />
+  <title>小程序 - 任务列表</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: -apple-system, "PingFang SC", sans-serif; background: #F8FAFC; width: 390px; margin: 0 auto; }
+    .nav { height: 44px; display: flex; align-items: center; justify-content: center; font-weight: 600; background: #fff; }
+    .search { display: flex; gap: 8px; padding: 12px 16px; background: #fff; }
+    .search input { flex: 1; border: 1px solid #EDEAEF; border-radius: 10px; padding: 8px 12px; font-size: 14px; }
+    .search button { background: #2563EB; color: #fff; border: none; border-radius: 10px; padding: 0 14px; font-weight: 600; }
+    .tabs { display: flex; padding: 0 16px 12px; gap: 8px; background: #fff; border-bottom: 1px solid #EDEAEF; }
+    .tab { padding: 6px 12px; border-radius: 999px; font-size: 12px; background: #F8FAFC; color: #73707F; }
+    .tab.active { background: #EFF6FF; color: #2563EB; font-weight: 600; }
+    .hint { font-size: 11px; color: #A8A5B2; padding: 8px 16px; }
+    .card { margin: 10px 16px; background: #fff; border-radius: 12px; padding: 14px; border: 1px solid #EDEAEF; }
+    .row { display: flex; justify-content: space-between; align-items: center; }
+    .title { font-weight: 600; font-size: 14px; }
+    .meta { font-size: 11px; color: #73707F; margin-top: 4px; }
+    .badge { font-size: 11px; padding: 3px 8px; border-radius: 6px; font-weight: 600; }
+    .badge.review { background: #FFF9EC; color: #B45309; }
+    .badge.done { background: #EDFCF2; color: #15803D; }
+    .badge.proc { background: #EFF6FF; color: #2563EB; }
+    .tabbar { position: fixed; bottom: 0; left: 50%; transform: translateX(-50%); width: 390px; display: flex; background: #fff; border-top: 1px solid #EDEAEF; padding: 8px 0; }
+    .tb { flex: 1; text-align: center; font-size: 11px; color: #A8A5B2; }
+    .tb.active { color: #2563EB; }
+  </style>
+</head>
+<body>
+  <div class="nav">任务</div>
+  <div class="search"><input placeholder="搜索任务编号" value="" /><button>搜索</button></div>
+  <div class="tabs">
+    <div class="tab active">待核对</div>
+    <div class="tab">识别中</div>
+    <div class="tab">已完成</div>
+    <div class="tab">全部</div>
+  </div>
+  <div class="hint">左滑可删除 · 长按可多选</div>
+  <div class="card"><div class="row"><div><div class="title">20260618_003</div><div class="meta">今天 09:42 · 24 条</div></div><span class="badge review">待核对</span></div></div>
+  <div class="card"><div class="row"><div><div class="title">20260617_012</div><div class="meta">昨天 16:20 · 18 条</div></div><span class="badge review">待核对</span></div></div>
+  <div class="card"><div class="row"><div><div class="title">20260618_001</div><div class="meta">今天 08:15 · 31 条</div></div><span class="badge proc">识别中</span></div></div>
+  <div class="card"><div class="row"><div><div class="title">20260616_008</div><div class="meta">6月16日 · 已同步飞书</div></div><span class="badge done">已完成</span></div></div>
+  <div class="tabbar">
+    <div class="tb">识别</div>
+    <div class="tb active">● 任务</div>
+    <div class="tb">我的</div>
+  </div>
+</body>
+</html>

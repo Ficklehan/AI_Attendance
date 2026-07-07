@@ -116,6 +116,7 @@ $table-cell-padding-x: 10px;
   .ant-table-tbody > tr > td {
     border-bottom: 1px solid #f2f4f7;
     font-size: 13px;
+    user-select: text;
   }
 
   .ant-table-tbody > tr:hover > td {

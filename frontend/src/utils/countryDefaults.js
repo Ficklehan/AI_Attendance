@@ -22,6 +22,8 @@ const LOCAL_NAMES = {
   CZ: '捷克',
 }
 
+export { resolveCountryCodeFromPays } from './countryCatalog'
+
 export function defaultPaysLabel(countryCode) {
   if (!countryCode || countryCode === 'default') return ''
   const code = String(countryCode).trim().toUpperCase()
@@ -42,11 +44,16 @@ export function sanitizeEntrepot(value) {
   return sanitizeFieldValue(value)
 }
 
-export function applyMissingPays(record, workingCountryCode) {
+/** 将 Pays 设为当前工作国家（有有效工作国家时覆盖 AI 识别值）。 */
+export function applyWorkingCountryPays(record, workingCountryCode) {
   if (!record) return record
   const withWarehouse = { ...record, Entrepot: sanitizeEntrepot(record.Entrepot) }
-  if (!isMissingPays(withWarehouse.Pays)) return withWarehouse
   const defaultPays = defaultPaysLabel(workingCountryCode)
   if (!defaultPays) return withWarehouse
   return { ...withWarehouse, Pays: defaultPays }
+}
+
+/** @deprecated 使用 applyWorkingCountryPays */
+export function applyMissingPays(record, workingCountryCode) {
+  return applyWorkingCountryPays(record, workingCountryCode)
 }

@@ -1,6 +1,6 @@
 const { isApiSuccess, getApiData, getApiMessage } = require('./response')
 const { t } = require('./i18n')
-const { syncCountryConfig } = require('./preferences')
+const { syncCountryConfig, applyCountryFromUserInfo, redirectToCountrySetupIfNeeded } = require('./preferences')
 const { refreshApiBase, probeBackend } = require('./apiBase')
 const { apiCall } = require('./request')
 
@@ -98,11 +98,18 @@ function performFeishuLogin(app, silent) {
             app.globalData.userInfo = payload.userInfo
             tt.setStorageSync('token', payload.token)
             tt.setStorageSync('userInfo', payload.userInfo)
-            syncCountryConfig(app).catch(() => {})
-            if (!silent) {
-              tt.showToast({ title: t('login.loginSuccess'), icon: 'success' })
-            }
-            resolve(payload.token)
+            applyCountryFromUserInfo(payload.userInfo, { app })
+            syncCountryConfig(app)
+              .then(() => {
+                redirectToCountrySetupIfNeeded()
+              })
+              .catch(() => {})
+              .finally(() => {
+                if (!silent) {
+                  tt.showToast({ title: t('login.loginSuccess'), icon: 'success' })
+                }
+                resolve(payload.token)
+              })
           })
           .catch((err) => reject(err))
       },

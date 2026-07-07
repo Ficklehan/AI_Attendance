@@ -4,7 +4,7 @@ import com.alibaba.fastjson.JSONObject;
 import com.attendance.config.CountryCatalog;
 
 /**
- * 识别结果字段缺省值：Pays 未识别时回退为当前工作国家。
+ * 识别结果 Pays：默认使用当前工作国家，不再保留 AI 识别国别。
  */
 public final class RecordCountryDefaults {
 
@@ -31,13 +31,19 @@ public final class RecordCountryDefaults {
         return CountryCatalog.defaultPaysLabel(workingCountryCode);
     }
 
-    public static void applyMissingPays(JSONObject record, String workingCountryCode) {
-        if (record == null || !isMissingPays(record.getString("Pays"))) {
+    /** 将 Pays 设为当前工作国家（有有效工作国家时覆盖 AI 识别值）。 */
+    public static void applyWorkingCountryPays(JSONObject record, String workingCountryCode) {
+        if (record == null) {
             return;
         }
         String defaultPays = defaultPaysValue(workingCountryCode);
         if (defaultPays != null && !defaultPays.trim().isEmpty()) {
             record.put("Pays", defaultPays);
         }
+    }
+
+    /** @deprecated 使用 {@link #applyWorkingCountryPays} */
+    public static void applyMissingPays(JSONObject record, String workingCountryCode) {
+        applyWorkingCountryPays(record, workingCountryCode);
     }
 }

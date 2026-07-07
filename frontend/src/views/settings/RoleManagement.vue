@@ -69,16 +69,34 @@
                 <p class="tab-desc">{{ $t('settings.roles.adminFunctionalHint') }}</p>
               </div>
 
-              <div v-else class="perm-list">
-                <div v-for="def in PERM_DEFS" :key="def.key" class="perm-row">
-                  <span class="perm-label">{{ $t(def.nameKey) }}</span>
-                  <a-switch
-                    v-model:checked="rolePermissions[activeRoleKey][def.key]"
-                    :checked-children="$t('common.yes')"
-                    :un-checked-children="$t('common.no')"
+              <template v-else>
+                <div class="functional-country-row">
+                  <label class="dimension-label">{{ $t('settings.roles.functionalCountryLabel') }}</label>
+                  <a-select
+                    v-model:value="functionalCountry"
+                    :options="functionalCountryOptions"
+                    style="min-width: 220px"
                   />
                 </div>
-              </div>
+                <p v-if="functionalCountry !== '__default__'" class="tab-desc tab-desc--sub">
+                  {{ $t('settings.roles.functionalCountryHint') }}
+                </p>
+
+                <div class="perm-list">
+                  <div v-for="def in PERM_DEFS" :key="def.key" class="perm-row">
+                    <div class="perm-label-block">
+                      <span class="perm-label">{{ $t(def.nameKey) }}</span>
+                      <p v-if="def.hintKey" class="perm-hint">{{ $t(def.hintKey) }}</p>
+                    </div>
+                    <a-switch
+                      :checked="getFunctionalPerm(def.key)"
+                      :checked-children="$t('common.yes')"
+                      :un-checked-children="$t('common.no')"
+                      @update:checked="(val) => setFunctionalPerm(def.key, val)"
+                    />
+                  </div>
+                </div>
+              </template>
             </a-tab-pane>
 
             <a-tab-pane key="dataScope" :tab="$t('settings.roles.stepDataScope')">
@@ -96,7 +114,7 @@
                       {{ $t('settings.roles.refreshOptions') }}
                     </a-button>
                   </div>
-                  <p class="tab-desc tab-desc--sub">{{ $t('settings.roles.optionsFromBusinessData') }}</p>
+                  <p class="tab-desc tab-desc--sub">{{ $t('settings.roles.optionsFromCatalog') }}</p>
 
                   <div class="dimension-block">
                     <label class="dimension-label">{{ $t('settings.roles.dimOwnerUser') }}</label>
@@ -108,11 +126,12 @@
                   </div>
 
                   <div class="dimension-block">
-                    <label class="dimension-label">{{ $t('settings.roles.dimCountry') }}</label>
+                    <label class="dimension-label">{{ $t('settings.roles.dimWorkCountryRegion') }}</label>
+                    <p class="tab-desc tab-desc--sub dimension-inline-hint">{{ $t('settings.roles.dimWorkCountryRegionHint') }}</p>
                     <DimensionCheckboxPicker
-                      v-model="currentScope.rules.country"
-                      :options="countryOptions"
-                      :max-height="180"
+                      v-model="unifiedWorkCountrySelection"
+                      :options="catalogWorkCountryOptions"
+                      :max-height="220"
                     />
                   </div>
 
@@ -190,8 +209,10 @@ import DimensionCheckboxPicker from '@/components/DimensionCheckboxPicker.vue'
 import { getRoleDataScopes, updateRoleDataScope, getDataScopeDimensionOptions } from '@/api/dataScope'
 import { getRolePermissions, updateRolePermissions } from '@/api/permissions'
 import { listRoles, createRole, updateRole, deleteRole } from '@/api/roles'
+import { useCountryStore } from '@/stores/country'
 
 const { t } = useI18n()
+const countryStore = useCountryStore()
 const loading = ref(false)
 const saving = ref(false)
 const roleSaving = ref(false)
@@ -205,20 +226,29 @@ const PERM_DEFS = [
   { key: 'users', nameKey: 'settings.roles.capUsers' },
   { key: 'audit', nameKey: 'settings.roles.capAudit' },
   { key: 'recordCalibrate', nameKey: 'settings.roles.capRecordCalibrate' },
+  {
+    key: 'taskDeleteConfirmed',
+    nameKey: 'settings.roles.capTaskDeleteConfirmed',
+    hintKey: 'settings.roles.capTaskDeleteConfirmedHint',
+  },
   { key: 'reminderConfig', nameKey: 'settings.roles.capReminderConfig' },
 ]
 
 const systemRoles = ref([])
 const roleScopes = reactive({})
 const rolePermissions = reactive({})
+const roleCountryPermissions = reactive({})
 const selectedRoleKeys = ref(['user'])
 const activeTab = ref('functional')
+const functionalCountry = ref('__default__')
 
 const dimensionOptions = reactive({
   country: [],
   warehouse: [],
   agency: [],
   owner_user: [],
+  work_region: [],
+  work_country_region: [],
 })
 
 const createRoleOpen = ref(false)
@@ -231,6 +261,16 @@ const activeRole = computed(() => systemRoles.value.find((r) => r.roleKey === ac
 const currentScope = computed(() => roleScopes[activeRoleKey.value] || null)
 const isAdminRole = computed(() => activeRoleKey.value === 'admin')
 const canSaveCurrentRole = computed(() => !isAdminRole.value && !!currentScope.value?.editable)
+
+const functionalCountryOptions = computed(() => {
+  const options = [{ value: '__default__', label: t('settings.roles.functionalCountryDefault') }]
+  ;(countryStore.selectOptions || []).forEach((item) => {
+    const code = item.value || item.code
+    if (!code || code === 'default') return
+    options.push({ value: code, label: item.label || code })
+  })
+  return options
+})
 
 const formatOptionLabel = (value, label) => {
   const text = (label || value || '').trim()
@@ -275,9 +315,45 @@ const ownerUserOptions = computed(() =>
   )
 )
 
-const countryOptions = computed(() =>
-  mergePickerOptions(dimensionOptions.country, currentScope.value?.rules?.country)
-)
+const catalogWorkCountryOptions = computed(() => {
+  const fromStore = (countryStore.selectOptions || [])
+    .filter((item) => {
+      const code = item.value || item.code
+      return code && code !== 'default'
+    })
+    .map((item) => ({
+      value: item.value || item.code,
+      label: item.label || item.value || item.code,
+    }))
+  return mergePickerOptions(
+    fromStore.length ? fromStore : dimensionOptions.work_country_region,
+    unifiedWorkCountrySelection.value
+  )
+})
+
+const unifiedWorkCountrySelection = computed({
+  get() {
+    const rules = currentScope.value?.rules
+    if (!rules) return []
+    const merged = new Set(
+      [...(rules.country || []), ...(rules.work_region || [])]
+        .map((value) => String(value || '').trim().toUpperCase())
+        .filter(Boolean)
+    )
+    return Array.from(merged)
+  },
+  set(values) {
+    const rules = currentScope.value?.rules
+    if (!rules) return
+    const normalized = [...new Set(
+      (values || [])
+        .map((value) => String(value || '').trim().toUpperCase())
+        .filter(Boolean)
+    )]
+    rules.country = [...normalized]
+    rules.work_region = [...normalized]
+  },
+})
 
 const warehouseOptions = computed(() =>
   mergePickerOptions(dimensionOptions.warehouse, currentScope.value?.rules?.warehouse)
@@ -299,6 +375,7 @@ const emptyRules = () => ({
   country: [],
   warehouse: [],
   agency: [],
+  work_region: [],
 })
 
 const syncScopeState = (scopes) => {
@@ -314,6 +391,7 @@ const syncScopeState = (scopes) => {
         country: [...(rules.country || [])],
         warehouse: [...(rules.warehouse || [])],
         agency: [...(rules.agency || [])],
+        work_region: [...(rules.work_region || [])],
       },
     }
   })
@@ -323,21 +401,69 @@ const syncScopeState = (scopes) => {
 
 const syncPermissionState = (data) => {
   Object.keys(rolePermissions).forEach((key) => delete rolePermissions[key])
+  Object.keys(roleCountryPermissions).forEach((key) => delete roleCountryPermissions[key])
+  const roles = data?.roles || data || {}
+  const byCountry = data?.byCountry || {}
   systemRoles.value.forEach((role) => {
     const roleKey = role.roleKey
-    const source = data?.[roleKey] || {}
+    const source = roles?.[roleKey] || {}
     rolePermissions[roleKey] = {}
     PERM_DEFS.forEach((def) => {
       rolePermissions[roleKey][def.key] = !!source[def.key]
     })
+    const countryMap = byCountry?.[roleKey] || {}
+    roleCountryPermissions[roleKey] = {}
+    Object.entries(countryMap).forEach(([countryCode, perms]) => {
+      if (!countryCode || countryCode === 'default') return
+      roleCountryPermissions[roleKey][countryCode] = {}
+      PERM_DEFS.forEach((def) => {
+        roleCountryPermissions[roleKey][countryCode][def.key] = perms?.[def.key] !== undefined
+          ? !!perms[def.key]
+          : !!rolePermissions[roleKey][def.key]
+      })
+    })
   })
 }
 
+const ensureCountryPerms = (roleKey, countryCode) => {
+  if (!roleCountryPermissions[roleKey]) {
+    roleCountryPermissions[roleKey] = {}
+  }
+  if (!roleCountryPermissions[roleKey][countryCode]) {
+    roleCountryPermissions[roleKey][countryCode] = {}
+    PERM_DEFS.forEach((def) => {
+      roleCountryPermissions[roleKey][countryCode][def.key] = !!rolePermissions[roleKey]?.[def.key]
+    })
+  }
+}
+
+const getFunctionalPerm = (key) => {
+  const roleKey = activeRoleKey.value
+  if (functionalCountry.value === '__default__') {
+    return !!rolePermissions[roleKey]?.[key]
+  }
+  ensureCountryPerms(roleKey, functionalCountry.value)
+  const countryVal = roleCountryPermissions[roleKey][functionalCountry.value][key]
+  return countryVal !== undefined ? !!countryVal : !!rolePermissions[roleKey]?.[key]
+}
+
+const setFunctionalPerm = (key, checked) => {
+  const roleKey = activeRoleKey.value
+  if (functionalCountry.value === '__default__') {
+    rolePermissions[roleKey][key] = checked
+    return
+  }
+  ensureCountryPerms(roleKey, functionalCountry.value)
+  roleCountryPermissions[roleKey][functionalCountry.value][key] = checked
+}
+
 const applyDimensionOptions = (opts) => {
-  dimensionOptions.country = opts.country || []
+  dimensionOptions.country = opts.country || opts.work_country_region || []
+  dimensionOptions.work_country_region = opts.work_country_region || opts.country || []
   dimensionOptions.warehouse = opts.warehouse || []
   dimensionOptions.agency = opts.agency || []
   dimensionOptions.owner_user = opts.owner_user || []
+  dimensionOptions.work_region = opts.work_region || opts.work_country_region || []
 }
 
 const refreshDimensionOptions = async () => {
@@ -361,6 +487,7 @@ const loadData = async () => {
       getRoleDataScopes(),
       getRolePermissions(),
       getDataScopeDimensionOptions(),
+      countryStore.hydrate(),
     ])
 
     systemRoles.value = rolesRes.data || []
@@ -391,7 +518,12 @@ const handleSave = async () => {
   saving.value = true
   try {
     await Promise.all([
-      updateRolePermissions({ [roleKey]: { ...perms } }),
+      updateRolePermissions({
+        roles: { [roleKey]: { ...perms } },
+        byCountry: roleCountryPermissions[roleKey]
+          ? { [roleKey]: { ...roleCountryPermissions[roleKey] } }
+          : {},
+      }),
       updateRoleDataScope(roleKey, {
         scopeType: scope.scopeType,
         rules: scope.scopeType === 'restricted' ? { ...scope.rules } : emptyRules(),
@@ -554,6 +686,13 @@ onMounted(loadData)
   }
 }
 
+.functional-country-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 12px;
+}
+
 .perm-list {
   display: flex;
   flex-direction: column;
@@ -562,7 +701,7 @@ onMounted(loadData)
 
 .perm-row {
   display: flex;
-  align-items: center;
+  align-items: flex-start;
   justify-content: space-between;
   gap: 16px;
   padding: 10px 12px;
@@ -570,9 +709,21 @@ onMounted(loadData)
   background: rgba(0, 0, 0, 0.02);
 }
 
-.perm-label {
+.perm-label-block {
   flex: 1;
+  min-width: 0;
+}
+
+.perm-label {
+  display: block;
   font-size: 13px;
+}
+
+.perm-hint {
+  margin: 4px 0 0;
+  font-size: 12px;
+  line-height: 1.5;
+  color: $text-secondary;
 }
 
 .dimension-hint-row {
@@ -592,6 +743,10 @@ onMounted(loadData)
     font-size: 13px;
     font-weight: 500;
   }
+}
+
+.dimension-inline-hint {
+  margin: 0 0 8px;
 }
 
 .footer-hint {

@@ -89,10 +89,20 @@ function sanitizeEntrepot(value) {
   return trimmed
 }
 
+function applyWorkingCountryPays(record, workingCountryCode) {
+  if (!record) return record
+  const withWarehouse = { ...record, Entrepot: sanitizeEntrepot(record.Entrepot) }
+  const defaultPays = defaultPaysLabel(workingCountryCode)
+  if (!defaultPays) return withWarehouse
+  return { ...withWarehouse, Pays: defaultPays }
+}
+
 function applyMissingPays(record, workingCountryCode) {
   if (!record) return record
   const withWarehouse = { ...record, Entrepot: sanitizeEntrepot(record.Entrepot) }
-  if (!isMissingPays(withWarehouse.Pays)) return withWarehouse
+  if (!isMissingPays(record.Pays)) {
+    return withWarehouse
+  }
   const defaultPays = defaultPaysLabel(workingCountryCode)
   if (!defaultPays) return withWarehouse
   return { ...withWarehouse, Pays: defaultPays }
@@ -104,5 +114,8 @@ module.exports = {
   findCountry,
   mergeCountryOptions,
   defaultPaysLabel,
+  isMissingPays,
+  sanitizeEntrepot,
+  applyWorkingCountryPays,
   applyMissingPays
 }

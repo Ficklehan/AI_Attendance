@@ -22,7 +22,7 @@ export function getEffectiveSmartMark(record) {
  * 未出勤行：标记含 absent/未出勤，或到离皆空（已恢复行、手动添加行除外；已删除行单独处理）
  */
 export function isAbsentRow(record) {
-  if (!record || record._restored || record.isDeleted) return false
+  if (!record || record._restored || record.isDeleted || record.deleted) return false
   if (record._manuallyAdded) return false
   const mark = getEffectiveSmartMark(record)
   if (mark.includes('未出勤') || markContains(mark, 'absent')) return true

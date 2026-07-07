@@ -111,7 +111,7 @@
           <text class="result-task-name">{{taskInfo.name}}</text>
           <view class="result-header-sub">
             <text class="result-time">{{taskInfo.timeText}}</text>
-            <text tt:if="{{promptCountryLabel}}" class="pill pill-sm">{{promptCountryLabel}}</text>
+            <text tt:if="{{workRegionDisplayLabel}}" class="pill pill-sm">{{workRegionDisplayLabel}}</text>
           </view>
         </view>
         <view class="{{taskInfo.statusTag}}">{{taskInfo.statusText}}</view>
@@ -205,6 +205,17 @@
         >
           <text class="required-validation-text">{{requiredValidationBannerText}}</text>
           <text class="required-validation-link">{{texts.requiredValidationViewDetail}}</text>
+        </view>
+        <view
+          tt:if="{{canSubmit}}"
+          class="result-manual-row-bar"
+          bindtap="handleAddManualRecord"
+        >
+          <text class="result-manual-row-icon">＋</text>
+          <view class="result-manual-row-copy">
+            <text class="result-manual-row-title">{{texts.addManualRow}}</text>
+            <text class="result-manual-row-hint">{{texts.addManualRowHint}}</text>
+          </view>
         </view>
       </view>
       <view tt:if="{{issueRecords.length > 0}}" class="issue-panel">

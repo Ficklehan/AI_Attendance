@@ -33,7 +33,9 @@ public final class TaskRecordExportSupport {
             return new JSONObject();
         }
         JSONObject record = new JSONObject();
-        record.put("NO", row.getEmpNo());
+        record.put("NO", row.getLineNo());
+        record.put("employeeNo", row.getEmployeeNo());
+        record.put("EMPLOYEE_NO", row.getEmployeeNo());
         record.put("NOM_PRENOM", row.getEmpName());
         record.put("Pays", row.getCountry());
         record.put("Entrepot", row.getWarehouse());

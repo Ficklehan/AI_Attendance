@@ -3,12 +3,17 @@ package com.attendance.config;
 import com.attendance.util.CountryResolver;
 
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.LinkedHashMap;
+import java.util.LinkedHashSet;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
+import java.util.Set;
 
 /**
  * 与 PC 端 Config.vue 保持一致的国家列表（单一数据源）。
+ * 含历史 Pays / country_key 别名解析（如 ITALIA、CHINA → 目录代码）。
  */
 public final class CountryCatalog {
 
@@ -18,6 +23,7 @@ public final class CountryCatalog {
     public static final List<Map<String, String>> OPTIONS = buildOptions();
 
     private static final Map<String, String> PAYS_LABELS = buildPaysLabels();
+    private static final Map<String, String> LEGACY_ALIASES = buildLegacyAliases();
 
     private static Map<String, String> buildPaysLabels() {
         Map<String, String> map = new LinkedHashMap<>();
@@ -31,6 +37,29 @@ public final class CountryCatalog {
         map.put("ES", "Spain");
         map.put("CZ", "Czech Republic");
         return map;
+    }
+
+    private static Map<String, String> buildLegacyAliases() {
+        Map<String, String> map = new LinkedHashMap<>();
+        registerAliases(map, "CN", "CHINA", "PRC", "CHINE");
+        registerAliases(map, "FR", "FRANCE", "FRANCIA");
+        registerAliases(map, "DE", "GERMANY", "DEUTSCHLAND", "ALLEMAGNE");
+        registerAliases(map, "US", "USA", "UNITED STATES", "UNITEDSTATES", "AMERICA");
+        registerAliases(map, "PL", "POLAND", "POLSKA", "POLOGNE");
+        registerAliases(map, "NL", "NETHERLANDS", "HOLLAND", "PAYS-BAS", "PAYSBAS", "NEDERLAND");
+        registerAliases(map, "IT", "ITALY", "ITALIA", "ITALIE", "ITA");
+        registerAliases(map, "ES", "SPAIN", "ESPANA", "ESPAÑA", "ESPAGNE");
+        registerAliases(map, "CZ", "CZECH", "CZECHIA", "CZECH REPUBLIC", "CZECHREPUBLIC", "REPUBLIQUE TCHEQUE");
+        return map;
+    }
+
+    private static void registerAliases(Map<String, String> map, String code, String... aliases) {
+        for (String alias : aliases) {
+            if (alias == null || alias.trim().isEmpty()) {
+                continue;
+            }
+            map.put(normalizeToken(alias), code);
+        }
     }
 
     private static List<Map<String, String>> buildOptions() {
@@ -60,7 +89,7 @@ public final class CountryCatalog {
         if (code == null || code.trim().isEmpty()) {
             return false;
         }
-        String normalized = code.trim().toUpperCase();
+        String normalized = code.trim().toUpperCase(Locale.ROOT);
         return OPTIONS.stream().anyMatch(o -> o.get("code").equalsIgnoreCase(normalized));
     }
 
@@ -69,7 +98,7 @@ public final class CountryCatalog {
         if (countryCode == null || countryCode.trim().isEmpty() || "default".equalsIgnoreCase(countryCode.trim())) {
             return null;
         }
-        String normalized = countryCode.trim().toUpperCase();
+        String normalized = countryCode.trim().toUpperCase(Locale.ROOT);
         String mapped = PAYS_LABELS.get(normalized);
         if (mapped != null && !mapped.trim().isEmpty()) {
             return mapped;
@@ -81,14 +110,23 @@ public final class CountryCatalog {
                 .orElse(normalized);
     }
 
-    /** 从 Pays 列值（国名或代码）解析国家代码；无法识别时返回 null。 */
+    /**
+     * 从 Pays / country_key / prompt_country 等原始值解析目录国家代码；无法识别时返回 null。
+     */
     public static String resolveCountryCodeFromPays(String pays) {
         if (pays == null || pays.trim().isEmpty()) {
             return null;
         }
         String trimmed = pays.trim();
+        if ("default".equalsIgnoreCase(trimmed)) {
+            return "default";
+        }
         if (isSupported(trimmed)) {
             return CountryResolver.normalize(trimmed);
+        }
+        String legacy = LEGACY_ALIASES.get(normalizeToken(trimmed));
+        if (legacy != null) {
+            return legacy;
         }
         for (Map.Entry<String, String> entry : PAYS_LABELS.entrySet()) {
             if (entry.getValue().equalsIgnoreCase(trimmed)) {
@@ -106,5 +144,79 @@ public final class CountryCatalog {
             }
         }
         return null;
+    }
+
+    /**
+     * 写入 task_records.country_key 的标准化值：优先目录代码，否则保留大写原文。
+     */
+    public static String normalizeCountryKey(String raw) {
+        if (raw == null || raw.trim().isEmpty()) {
+            return null;
+        }
+        String resolved = resolveCountryCodeFromPays(raw);
+        if (resolved != null && !"default".equalsIgnoreCase(resolved)) {
+            return resolved;
+        }
+        return normalizeToken(raw);
+    }
+
+    /**
+     * 权限与查询过滤：将目录国家代码展开为可命中历史数据的匹配 token 集合。
+     */
+    public static List<String> expandMatchTokens(Collection<String> catalogCodes) {
+        LinkedHashSet<String> tokens = new LinkedHashSet<>();
+        if (catalogCodes == null) {
+            return new ArrayList<>();
+        }
+        for (String raw : catalogCodes) {
+            if (raw == null || raw.trim().isEmpty() || "default".equalsIgnoreCase(raw.trim())) {
+                continue;
+            }
+            String code = resolveCountryCodeFromPays(raw);
+            if (code == null && isSupported(raw)) {
+                code = CountryResolver.normalize(raw);
+            }
+            if (code == null) {
+                tokens.add(normalizeToken(raw));
+                continue;
+            }
+            addTokensForCode(tokens, code);
+        }
+        return new ArrayList<>(tokens);
+    }
+
+    private static void addTokensForCode(Set<String> tokens, String code) {
+        if (code == null || code.trim().isEmpty()) {
+            return;
+        }
+        String upperCode = code.trim().toUpperCase(Locale.ROOT);
+        tokens.add(upperCode);
+
+        String paysLabel = PAYS_LABELS.get(upperCode);
+        if (paysLabel != null) {
+            tokens.add(paysLabel);
+            tokens.add(normalizeToken(paysLabel));
+        }
+
+        for (Map<String, String> option : OPTIONS) {
+            if (upperCode.equalsIgnoreCase(option.get("code"))) {
+                String name = option.get("name");
+                if (name != null && !name.trim().isEmpty()) {
+                    tokens.add(name.trim());
+                    tokens.add(normalizeToken(name));
+                }
+                break;
+            }
+        }
+
+        for (Map.Entry<String, String> entry : LEGACY_ALIASES.entrySet()) {
+            if (upperCode.equalsIgnoreCase(entry.getValue())) {
+                tokens.add(entry.getKey());
+            }
+        }
+    }
+
+    private static String normalizeToken(String raw) {
+        return raw.trim().toUpperCase(Locale.ROOT);
     }
 }

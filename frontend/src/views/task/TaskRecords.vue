@@ -1,8 +1,10 @@
 <template>
   <div class="task-records-container page-inner">
+    <div class="image-compare-layout" :class="{ 'image-compare-layout--dock-open': previewDockOpen }">
+      <div class="image-compare-layout__main">
     <PageShell :title="$t('tasks.recordTitle')" :subtitle="$t('tasks.recordSubtitle')">
       <template #extra>
-        <a-button :loading="exporting" @click="handleExport">
+        <a-button :loading="exporting" @click="openExportModal">
           {{ $t('export.startExport') }}
         </a-button>
         <a-button @click="$router.push('/tasks')">{{ $t('taskEdit.backToList') }}</a-button>
@@ -53,7 +55,7 @@
 
       <div ref="recordsTableAnchor" class="table-body-scroll-anchor">
       <a-table
-        class="rich-table-header"
+        class="rich-table-header task-records-table"
         :columns="columns"
         :data-source="displayRecords"
         :loading="loading"
@@ -65,6 +67,7 @@
           <TableSortableHeader
             :column="column"
             :title="column.title"
+            compact
             @sort="onSorterToggle"
           >
             <template #extra>
@@ -91,51 +94,70 @@
             </template>
           </TableSortableHeader>
         </template>
-        <template #bodyCell="{ column, record, index }">
+        <template #bodyCell="{ column, record, index, text }">
           <template v-if="column.key === 'serialNo'">
-            <span class="cell-serial">{{ index + 1 }}</span>
+            <CopyableCell :text="String(index + 1)" />
           </template>
-          <template v-if="column.key === 'taskStatus'">
-            <a-tag :color="getStatusColor(record.taskStatus)">{{ getStatusText(record.taskStatus) }}</a-tag>
+          <template v-else-if="column.key === 'taskStatus'">
+            <CopyableCell :text="getStatusText(record.taskStatus)">
+              <a-tag :color="getStatusColor(record.taskStatus)">{{ getStatusText(record.taskStatus) }}</a-tag>
+            </CopyableCell>
           </template>
-          <template v-if="column.key === 'taskId'">
-            <a-button type="link" size="small" @click="openTask(record.taskId)">{{ record.taskId }}</a-button>
+          <template v-else-if="column.key === 'taskId'">
+            <CopyableCell :text="record.taskId">
+              <a-button type="link" size="small" @click="openTask(record.taskId)">{{ record.taskId }}</a-button>
+            </CopyableCell>
           </template>
-          <template v-if="column.key === 'imageUrls'">
+          <template v-else-if="column.key === 'imageUrls'">
             <a-button type="link" size="small" @click="previewImages(record)">{{ $t('tasks.imagePreview') }}</a-button>
           </template>
-          <template v-if="column.key === 'signature'">
-            <a-tag
-              :color="getSignatureMarkColor(getDisplaySignature(record.signature, record))"
-              class="signature-mark-tag"
-            >
-              {{ translateSignatureMark(getDisplaySignature(record.signature, record), t) }}
-            </a-tag>
-          </template>
-          <template v-if="column.key === 'pageNum'">
-            <span>{{ record.pageNum || '-' }}</span>
-          </template>
-          <template v-if="column.key === 'no'">
-            <span>{{ record.no || '-' }}</span>
-          </template>
-          <template v-if="column.key === 'workHours'">
-            <span>{{ record.workHours || calculateWorkHours(record) }}</span>
-          </template>
-          <template v-if="column.key === 'anomalyDescription'">
-            <span>{{ record.anomalyDescription || '-' }}</span>
-          </template>
-          <template v-if="column.key === 'smartMark'">
-            <a-space v-if="record.smartMark" wrap size="small" class="mark-tags">
+          <template v-else-if="column.key === 'signature'">
+            <CopyableCell :text="translateSignatureMark(getDisplaySignature(record.signature, record), t)">
               <a-tag
-                v-for="tag in buildRecordMarkTags(record, { getDisplayMark, isAbsentRow, t })"
-                :key="tag.key"
-                :color="tag.color"
-                class="mark-tag"
+                :color="getSignatureMarkColor(getDisplaySignature(record.signature, record))"
+                class="signature-mark-tag"
               >
-                {{ tag.label }}
+                {{ translateSignatureMark(getDisplaySignature(record.signature, record), t) }}
               </a-tag>
-            </a-space>
+            </CopyableCell>
+          </template>
+          <template v-else-if="column.key === 'pageNum'">
+            <CopyableCell :text="record.pageNum || '-'" />
+          </template>
+          <template v-else-if="column.key === 'no'">
+            <CopyableCell :text="record.no || '-'" />
+          </template>
+          <template v-else-if="column.key === 'workHours'">
+            <CopyableCell :text="record.workHours || calculateWorkHours(record)" />
+          </template>
+          <template v-else-if="column.key === 'anomalyDescription'">
+            <CopyableCell :text="record.anomalyDescription || '-'" />
+          </template>
+          <template v-else-if="column.key === 'smartMark'">
+            <CopyableCell
+              v-if="record.smartMark"
+              :text="buildRecordMarkTags(record, { getDisplayMark, isAbsentRow, t }).map((tag) => tag.label).join(', ')"
+            >
+              <a-space wrap size="small" class="mark-tags">
+                <a-tag
+                  v-for="tag in buildRecordMarkTags(record, { getDisplayMark, isAbsentRow, t })"
+                  :key="tag.key"
+                  :color="tag.color"
+                  class="mark-tag"
+                >
+                  {{ tag.label }}
+                </a-tag>
+              </a-space>
+            </CopyableCell>
             <span v-else class="cell-muted">-</span>
+          </template>
+          <template v-else-if="column.key === 'country'">
+            <CopyableCell :text="displayCountryField(record)">
+              {{ displayCountryField(record) || '-' }}
+            </CopyableCell>
+          </template>
+          <template v-else-if="isCopyableTableColumn(column)">
+            <CopyableCell :text="resolveTableCellCopyText(column, record, text)" />
           </template>
         </template>
       </a-table>
@@ -154,13 +176,42 @@
         />
       </div>
     </a-card>
+      </div>
+
+      <ImageCompareDockShell
+        v-if="previewDockOpen"
+        v-model:open="previewDockOpen"
+        v-model:index="previewCurrentIndex"
+        :images="previewImagesList"
+        :loading="previewFetching"
+        :title="$t('tasks.imagePreview')"
+        @fullscreen="openPreviewFullscreen"
+      />
+    </div>
 
     <ImagePreviewModal
-      v-model:open="previewVisible"
+      v-model:open="previewFullscreenOpen"
+      v-model:index="previewCurrentIndex"
       :images="previewImagesList"
-      :initial-index="previewCurrentIndex"
       :title="$t('tasks.imagePreview')"
     />
+
+    <a-modal
+      v-model:open="exportModalOpen"
+      :title="$t('export.optionsTitle')"
+      :confirm-loading="exporting"
+      :ok-text="$t('export.startExport')"
+      :cancel-text="$t('common.cancel')"
+      @ok="confirmExport"
+    >
+      <p class="export-options-desc">{{ $t('export.imageLinksHint') }}</p>
+      <a-checkbox v-model:checked="exportIncludeThumbnails">
+        {{ $t('export.includeThumbnails') }}
+      </a-checkbox>
+      <p v-if="exportIncludeThumbnails" class="export-options-warn">
+        {{ $t('export.includeThumbnailsHint') }}
+      </p>
+    </a-modal>
   </div>
 </template>
 
@@ -176,10 +227,14 @@ import { getEmployeeRecordList } from '@/api/task'
 import { createEmployeeRecordsExport } from '@/api/export'
 import { useExportCenter } from '@/composables/useExportCenter'
 import { resolveTaskImageUrls } from '@/utils/imageUrl'
+import { warmupOcrWorker } from '@/utils/imageAutoOrient'
 import PageShell from '@/components/PageShell.vue'
 import ImagePreviewModal from '@/components/ImagePreviewModal.vue'
+import ImageCompareDockShell from '@/components/ImageCompareDockShell.vue'
+import { useImageComparePreview } from '@/composables/useImageComparePreview'
 import TableSortableHeader from '@/components/TableSortableHeader.vue'
 import TableColumnSettings from '@/components/TableColumnSettings.vue'
+import CopyableCell from '@/components/CopyableCell.vue'
 import { useTableColumnSort } from '@/composables/useTableColumnSort'
 import { useAutoSizedColumns } from '@/composables/useAutoSizedColumns'
 import { useTableBodyScrollY } from '@/composables/useTableBodyScrollY'
@@ -208,13 +263,26 @@ import {
 import { calculateWorkHours } from '@/utils/workHours'
 import { isAbsentRow } from '@/utils/recordDisplay'
 import { compareTableValues } from '@/utils/tableSort'
+import { isCopyableTableColumn, resolveTableCellCopyText } from '@/utils/tableCopy'
+import { formatPaysFieldDisplay } from '@/utils/countryLabels'
+import { useCountryStore } from '@/stores/country'
+import { withColumnDensity } from '@/utils/tableColumnDensity'
 
 const { t } = useI18n()
 const router = useRouter()
+const countryStore = useCountryStore()
 const { openExportCenter, refreshExportSummary } = useExportCenter()
+
+const displayCountryField = (record) => {
+  const raw = record?.country
+  if (raw == null || raw === '') return ''
+  return formatPaysFieldDisplay(raw, countryStore.options)
+}
 
 const loading = ref(false)
 const exporting = ref(false)
+const exportModalOpen = ref(false)
+const exportIncludeThumbnails = ref(false)
 const records = ref([])
 const total = ref(0)
 const currentPage = ref(1)
@@ -227,9 +295,16 @@ const activeHeaderFilterField = ref('')
 const headerFilterDraft = ref('')
 const fieldDefs = computed(() => buildEmployeeRecordFieldDefs(t))
 const advancedFilters = ref({})
-const previewVisible = ref(false)
 const previewImagesList = ref([])
 const previewCurrentIndex = ref(0)
+const previewFetching = ref(false)
+let previewLoadToken = 0
+const {
+  dockOpen: previewDockOpen,
+  fullscreenOpen: previewFullscreenOpen,
+  openPreview: openPreviewPanel,
+  openFullscreen: openPreviewFullscreen,
+} = useImageComparePreview()
 
 const baseColumns = computed(() => [
   {
@@ -240,10 +315,11 @@ const baseColumns = computed(() => [
     align: 'center',
     sorter: false,
   },
-  ...fieldDefs.value.map((def) => ({
+  ...fieldDefs.value.map((def) => withColumnDensity({
     title: def.label,
     dataIndex: def.dataIndex,
     key: def.key,
+    density: def.density,
     ...(def.filterable === false
       ? {}
       : { searchField: def.field, filterType: def.filterType }),
@@ -310,14 +386,21 @@ const buildQueryFilters = () => {
 
 const buildExportFilters = () => JSON.stringify(buildQueryFilters())
 
-const handleExport = async () => {
+const openExportModal = () => {
+  exportIncludeThumbnails.value = false
+  exportModalOpen.value = true
+}
+
+const confirmExport = async () => {
   exporting.value = true
   try {
     await createEmployeeRecordsExport({
       status: filterStatus.value,
       filters: buildExportFilters(),
+      includeThumbnails: exportIncludeThumbnails.value,
     })
     message.success(t('export.queued'))
+    exportModalOpen.value = false
     await refreshExportSummary()
     openExportCenter()
   } catch (e) {
@@ -429,14 +512,32 @@ const openTask = (taskId) => {
 }
 
 const previewImages = async (record) => {
-  const urls = await resolveTaskImageUrls(record.imageUrls, record.fileKey)
-  if (!urls.length) {
-    message.warning(t('tasks.noImages'))
-    return
+  const token = ++previewLoadToken
+  const dockWasOpen = previewDockOpen.value
+  if (dockWasOpen) {
+    previewFetching.value = true
   }
-  previewImagesList.value = urls
-  previewCurrentIndex.value = 0
-  previewVisible.value = true
+  try {
+    const urls = await resolveTaskImageUrls(record.imageUrls, record.fileKey)
+    if (token !== previewLoadToken) return
+    if (!urls.length) {
+      message.warning(t('tasks.noImages'))
+      return
+    }
+    previewCurrentIndex.value = 0
+    previewImagesList.value = urls
+    if (!dockWasOpen) {
+      openPreviewPanel()
+    }
+  } catch (e) {
+    if (token === previewLoadToken) {
+      message.error(e?.message || t('common.error'))
+    }
+  } finally {
+    if (token === previewLoadToken) {
+      previewFetching.value = false
+    }
+  }
 }
 
 const getStatusText = (status) => {
@@ -479,6 +580,8 @@ const handleSizeChange = (_, size) => {
 
 onMounted(() => {
   advancedFilters.value = buildEmptyAdvancedFilters(fieldDefs.value)
+  warmupOcrWorker()
+  countryStore.hydrate()
   loadRecords()
 })
 </script>
@@ -585,6 +688,88 @@ onMounted(() => {
   margin-top: 16px;
   display: flex;
   justify-content: flex-end;
+}
+
+.task-records-table {
+  :deep(.ant-table-thead > tr > th) {
+    font-size: 11px;
+    vertical-align: middle !important;
+    text-align: left !important;
+    padding: 6px 8px !important;
+  }
+
+  :deep(.ant-table-thead > tr > th .ant-table-column-sorters),
+  :deep(.ant-table-thead > tr > th .ant-table-column-title) {
+    min-height: 30px;
+    align-items: center;
+    justify-content: flex-start;
+  }
+
+  :deep(.ant-table-thead > tr > th.ant-table-cell-align-center),
+  :deep(.ant-table-thead > tr > th.ant-table-cell-align-right) {
+    text-align: left !important;
+  }
+
+  :deep(.col-density-compact) {
+    padding: 4px 6px !important;
+    font-size: 12px;
+    line-height: 1.25;
+    font-variant-numeric: tabular-nums;
+  }
+
+  :deep(th.col-density-compact) {
+    overflow: visible !important;
+    padding: 5px 6px !important;
+    vertical-align: middle !important;
+
+    .ant-table-column-sorters,
+    .ant-table-column-title {
+      min-height: 30px;
+      overflow: visible;
+    }
+  }
+
+  :deep(td.col-density-compact) {
+    overflow: visible;
+
+    .copyable-cell {
+      width: 100%;
+      max-width: 100%;
+    }
+
+    .copyable-cell__content {
+      overflow: visible;
+      text-overflow: clip;
+      white-space: nowrap;
+      max-width: none;
+    }
+
+    .copyable-cell__btn {
+      width: 18px;
+      height: 18px;
+      font-size: 11px;
+    }
+  }
+
+  :deep(td.col-density-compact.ant-table-cell-align-center) {
+    .copyable-cell {
+      justify-content: center;
+    }
+  }
+}
+
+.export-options-desc {
+  margin-bottom: 12px;
+  color: rgba(0, 0, 0, 0.65);
+  line-height: 1.5;
+}
+
+.export-options-warn {
+  margin-top: 10px;
+  margin-bottom: 0;
+  color: rgba(0, 0, 0, 0.45);
+  font-size: 12px;
+  line-height: 1.5;
 }
 
 </style>

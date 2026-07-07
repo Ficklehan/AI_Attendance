@@ -25,10 +25,13 @@ public class ImageAccessSignatureService {
     private SigningSecretProvider signingSecretProvider;
 
     public Map<String, Object> sign(String fileKey, String userId) {
-        long exp = Instant.now().getEpochSecond() + TTL_SECONDS;
-        String sig = signPayload(fileKey, userId, exp);
+        return signWithExpiry(fileKey, userId, Instant.now().getEpochSecond() + TTL_SECONDS);
+    }
+
+    public Map<String, Object> signWithExpiry(String fileKey, String userId, long expEpochSecond) {
+        String sig = signPayload(fileKey, userId, expEpochSecond);
         Map<String, Object> result = new LinkedHashMap<>();
-        result.put("exp", exp);
+        result.put("exp", expEpochSecond);
         result.put("uid", userId);
         result.put("sig", sig);
         return result;
@@ -63,6 +66,11 @@ public class ImageAccessSignatureService {
 
     public String appendSignedQuery(String url, String fileKey, String userId) {
         Map<String, Object> parts = sign(fileKey, userId);
+        return appendSignedQueryWithExpiry(url, fileKey, userId, ((Number) parts.get("exp")).longValue());
+    }
+
+    public String appendSignedQueryWithExpiry(String url, String fileKey, String userId, long expEpochSecond) {
+        Map<String, Object> parts = signWithExpiry(fileKey, userId, expEpochSecond);
         String sep = url.contains("?") ? "&" : "?";
         return url + sep + "exp=" + parts.get("exp")
                 + "&uid=" + encode(parts.get("uid").toString())

@@ -66,7 +66,7 @@ Page({
           return
         }
         const payload = task.confirmedData || task.rawData
-        const records = parseRecords(payload)
+        const records = parseRecords(payload, { isConfirmed: task.status === 'confirmed' })
         const record = records.find((r) => r._rowKey === this.data.rowKey)
         if (!record) {
           tt.showToast({ title: t('calibration.recordNotFound'), icon: 'none' })

@@ -1,0 +1,61 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=390, initial-scale=1" />
+  <title>小程序 - 核对确认</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: -apple-system, "PingFang SC", sans-serif; background: #F8FAFC; width: 390px; margin: 0 auto; padding-bottom: 90px; }
+    .nav { height: 44px; display: flex; align-items: center; justify-content: center; font-weight: 600; background: #fff; border-bottom: 1px solid #EDEAEF; }
+    .banner { margin: 12px 16px; padding: 10px 12px; background: #FFF9EC; border: 1px solid #F7B731; border-radius: 10px; font-size: 12px; color: #8A6D1D; }
+    .stats { display: flex; gap: 8px; margin: 0 16px 12px; }
+    .stat { flex: 1; background: #fff; border-radius: 10px; padding: 10px; text-align: center; font-size: 11px; }
+    .stat b { display: block; font-size: 18px; color: #2563EB; }
+    .record { margin: 0 16px 12px; background: #fff; border-radius: 12px; padding: 12px; border: 1px solid #EDEAEF; }
+    .record.warn { border-color: #F7B731; background: #FFFBF0; }
+    .head { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 8px; }
+    .name { font-weight: 700; font-size: 15px; }
+    .tags { display: flex; gap: 4px; flex-wrap: wrap; margin-top: 4px; }
+    .tag { font-size: 10px; padding: 2px 6px; border-radius: 4px; background: #EFF6FF; color: #2563EB; }
+    .tag.warn { background: #FFF9EC; color: #B45309; }
+    .fields { display: grid; grid-template-columns: 1fr 1fr; gap: 6px 10px; font-size: 12px; }
+    .label { color: #73707F; }
+    .value { font-weight: 500; }
+    .value.miss { color: #F06565; }
+    .action { margin-top: 8px; font-size: 12px; color: #2563EB; }
+    .dock { position: fixed; bottom: 0; left: 50%; transform: translateX(-50%); width: 390px; padding: 12px 16px 24px; background: #fff; border-top: 1px solid #EDEAEF; }
+    .cta { background: linear-gradient(135deg, #2563EB, #3B82F6); color: #fff; text-align: center; padding: 14px; border-radius: 12px; font-weight: 600; }
+  </style>
+</head>
+<body>
+  <div class="nav">核对结果</div>
+  <div class="banner">⚠ 还有 2 条记录必填信息不完整，请补充后再确认</div>
+  <div class="stats">
+    <div class="stat"><b>24</b>总条数</div>
+    <div class="stat"><b style="color:#34C77B">22</b>有效</div>
+    <div class="stat"><b style="color:#F7B731">2</b>待修正</div>
+  </div>
+  <div class="record">
+    <div class="head"><div><div class="name">Jean Dupont 01</div><div class="tags"><span class="tag">正常</span></div></div><span style="font-size:11px;color:#73707F">#12</span></div>
+    <div class="fields">
+      <div><div class="label">日期</div><div class="value">2026-06-18</div></div>
+      <div><div class="label">仓库</div><div class="value">CDG1</div></div>
+      <div><div class="label">到达</div><div class="value">08:00</div></div>
+      <div><div class="label">离开</div><div class="value">17:30</div></div>
+    </div>
+    <div class="action">编辑此行 ›</div>
+  </div>
+  <div class="record warn">
+    <div class="head"><div><div class="name">Marie Martin</div><div class="tags"><span class="tag warn">看不清</span></div></div><span style="font-size:11px;color:#73707F">#13</span></div>
+    <div class="fields">
+      <div><div class="label">日期</div><div class="value">2026-06-18</div></div>
+      <div><div class="label">到达</div><div class="value miss">???</div></div>
+      <div><div class="label">离开</div><div class="value">17:00</div></div>
+      <div><div class="label">休息</div><div class="value">30</div></div>
+    </div>
+    <div class="action">编辑此行 ›</div>
+  </div>
+  <div class="dock"><div class="cta">确认提交（同步飞书）</div></div>
+</body>
+</html>

@@ -1,0 +1,774 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>GEU-AI 考勤识别助手 · 内部项目分享</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+SC:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
+  <style>
+    :root {
+      --bg: #f5f7fb;
+      --surface: #fff;
+      --text: #1a2332;
+      --muted: #56657a;
+      --line: #dde4ef;
+      --blue: #3b5bdb;
+      --blue-soft: #edf2ff;
+      --purple: #7048e8;
+      --green: #099268;
+      --green-soft: #e6fcf5;
+      --orange: #e67700;
+      --orange-soft: #fff4e6;
+      --red: #e03131;
+      --red-soft: #fff5f5;
+      --gutter-total: min(205px, 12vw);
+      --container: min(1715px, calc(100vw - var(--gutter-total)));
+      --radius: 12px;
+      --font: "Noto Sans SC", system-ui, sans-serif;
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    html { scroll-behavior: smooth; }
+    body {
+      font-family: var(--font);
+      background: var(--bg);
+      color: var(--text);
+      font-size: 16px;
+      line-height: 1.75;
+      -webkit-font-smoothing: antialiased;
+    }
+
+    /* 统一容器：左右留白合计不超过 205px */
+    .container {
+      width: var(--container);
+      margin-inline: auto;
+    }
+
+    section { padding: 56px 0; }
+    section.alt { background: var(--surface); border-block: 1px solid var(--line); }
+
+    /* —— 导航 —— */
+    .nav {
+      position: sticky; top: 0; z-index: 30;
+      background: rgba(255,255,255,.95);
+      backdrop-filter: blur(10px);
+      border-bottom: 1px solid var(--line);
+    }
+    .nav-inner {
+      display: flex; align-items: center; justify-content: space-between;
+      gap: 16px; padding-block: 14px;
+    }
+    .logo { font-weight: 800; color: var(--blue); font-size: 15px; }
+    .nav-links { display: flex; flex-wrap: wrap; gap: 2px; }
+    .nav a {
+      color: var(--muted); text-decoration: none; font-size: 13px; font-weight: 600;
+      padding: 6px 12px; border-radius: 6px;
+    }
+    .nav a:hover { background: var(--blue-soft); color: var(--blue); }
+
+    /* —— 排版系统 —— */
+    .sec-label {
+      font-size: 12px; font-weight: 700; color: var(--blue);
+      letter-spacing: .08em; margin-bottom: 8px;
+    }
+    .sec-title {
+      font-size: clamp(1.5rem, 2.2vw, 1.875rem);
+      font-weight: 800; line-height: 1.3; letter-spacing: -.02em;
+      margin-bottom: 12px;
+    }
+    .sec-desc {
+      font-size: 16px; color: var(--muted); line-height: 1.75;
+      max-width: 52em;
+    }
+    .sec-header { margin-bottom: 36px; padding-bottom: 24px; border-bottom: 1px solid var(--line); }
+    .sec-header .sec-desc { margin-top: 4px; }
+
+    .prose { font-size: 16px; line-height: 1.75; color: var(--text); }
+    .prose p + p { margin-top: 12px; }
+    .prose strong { font-weight: 700; }
+
+    .note {
+      margin: 28px 0; padding: 16px 20px; border-radius: var(--radius);
+      font-size: 15px; line-height: 1.7;
+    }
+    .note strong { font-weight: 700; }
+    .note.warn { background: var(--orange-soft); border-left: 3px solid var(--orange); color: #7a4a00; }
+    .note.good { background: var(--green-soft); border-left: 3px solid var(--green); color: #066649; }
+    .note.info { background: var(--blue-soft); border-left: 3px solid var(--blue); color: #1c3faa; }
+
+    .chip {
+      display: inline-block; font-size: 11px; font-weight: 700;
+      padding: 3px 8px; border-radius: 4px; margin-right: 4px;
+    }
+    .chip.pc { background: var(--blue-soft); color: var(--blue); }
+    .chip.mobile { background: #f3e8ff; color: var(--purple); }
+    .chip.admin { background: var(--orange-soft); color: var(--orange); }
+    .chip.core { background: var(--red-soft); color: var(--red); }
+
+    /* —— Hero —— */
+    .hero {
+      background: linear-gradient(135deg, #2b4acb, #5f3dc4 50%, #7048e8);
+      color: #fff; padding: 60px 0 68px;
+    }
+    .hero-grid {
+      display: grid; grid-template-columns: 1.1fr .9fr;
+      gap: 48px; align-items: start;
+    }
+    .hero-tag {
+      display: inline-block; font-size: 12px; font-weight: 600;
+      padding: 5px 12px; border-radius: 999px; margin-bottom: 16px;
+      background: rgba(255,255,255,.14); border: 1px solid rgba(255,255,255,.25);
+    }
+    .hero h1 {
+      font-size: clamp(2rem, 3.2vw, 2.75rem);
+      font-weight: 800; line-height: 1.15; letter-spacing: -.02em; margin-bottom: 16px;
+    }
+    .hero-lead { font-size: 17px; line-height: 1.75; opacity: .94; }
+    .hero-lead + .hero-lead { margin-top: 12px; opacity: .88; font-size: 16px; }
+    .hero-panel {
+      background: rgba(255,255,255,.1); border: 1px solid rgba(255,255,255,.2);
+      border-radius: var(--radius); padding: 22px 24px;
+    }
+    .hero-panel h2 { font-size: 13px; font-weight: 600; opacity: .85; margin-bottom: 16px; }
+    .hero-list { list-style: none; }
+    .hero-list li {
+      display: flex; justify-content: space-between; gap: 16px;
+      padding: 11px 0; border-bottom: 1px solid rgba(255,255,255,.12);
+      font-size: 15px;
+    }
+    .hero-list li:last-child { border-bottom: none; }
+    .hero-list strong { font-weight: 700; }
+    .hero-list span { font-size: 13px; opacity: .8; text-align: right; }
+
+    /* —— 三列卡片 —— */
+    .cols-3 { display: grid; grid-template-columns: repeat(3, 1fr); gap: 20px; }
+    .card {
+      background: var(--surface); border: 1px solid var(--line);
+      border-radius: var(--radius); padding: 22px 24px;
+    }
+    .card.accent { border-color: #ffc9c9; background: linear-gradient(180deg, #fffafa, #fff); }
+    .card h3 { font-size: 16px; font-weight: 700; margin-bottom: 8px; }
+    .card p { font-size: 15px; color: var(--muted); line-height: 1.7; }
+    .card .emoji { font-size: 26px; margin-bottom: 10px; }
+
+    /* —— 对比表 —— */
+    .table-wrap { overflow-x: auto; border-radius: var(--radius); border: 1px solid var(--line); }
+    table.data {
+      width: 100%; border-collapse: collapse; background: var(--surface); font-size: 15px;
+    }
+    table.data th, table.data td {
+      padding: 14px 18px; text-align: left; border-bottom: 1px solid var(--line); vertical-align: top;
+    }
+    table.data th { background: var(--blue-soft); color: var(--blue); font-weight: 700; font-size: 14px; }
+    table.data tr:last-child td { border-bottom: none; }
+    table.data td:first-child { font-weight: 600; white-space: nowrap; }
+    .txt-old { color: var(--red); }
+    .txt-new { color: var(--green); }
+
+    /* —— 流程步骤 —— */
+    .steps { display: grid; grid-template-columns: repeat(5, 1fr); gap: 12px; margin-bottom: 28px; }
+    .steps-item {
+      text-align: center; padding: 18px 14px;
+      background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius);
+    }
+    .steps-item .n {
+      width: 32px; height: 32px; margin: 0 auto 10px; border-radius: 50%;
+      background: linear-gradient(135deg, var(--blue), var(--purple));
+      color: #fff; font-weight: 800; font-size: 14px;
+      display: flex; align-items: center; justify-content: center;
+    }
+    .steps-item h4 { font-size: 15px; font-weight: 700; margin-bottom: 4px; }
+    .steps-item p { font-size: 13px; color: var(--muted); line-height: 1.5; }
+
+    /* —— AI 四道检查 —— */
+    .cols-2 { display: grid; grid-template-columns: repeat(2, 1fr); gap: 20px; }
+    .check-card {
+      background: var(--surface); border: 1px solid var(--line);
+      border-radius: var(--radius); padding: 22px 24px;
+    }
+    .check-card .tag {
+      display: inline-block; font-size: 11px; font-weight: 800;
+      padding: 3px 10px; border-radius: 999px; margin-bottom: 12px;
+    }
+    .check-card.l1 .tag { background: var(--red-soft); color: var(--red); }
+    .check-card.l2 .tag { background: var(--orange-soft); color: var(--orange); }
+    .check-card.l3 .tag { background: var(--blue-soft); color: var(--blue); }
+    .check-card.l4 .tag { background: var(--green-soft); color: var(--green); }
+    .check-card h3 { font-size: 17px; font-weight: 800; margin-bottom: 14px; }
+    .check-card ul { list-style: none; }
+    .check-card li {
+      font-size: 15px; color: var(--muted); line-height: 1.65;
+      padding: 7px 0; border-bottom: 1px solid var(--line);
+    }
+    .check-card li:last-child { border-bottom: none; }
+    .check-card li strong { color: var(--text); font-weight: 600; }
+
+    /* —— 界面截图（垂直排版：说明在上，图在下，图铺满内容区） —— */
+    .screens { display: flex; flex-direction: column; gap: 48px; }
+    .screen {
+      padding-bottom: 48px; border-bottom: 1px solid var(--line);
+    }
+    .screen:last-child { padding-bottom: 0; border-bottom: none; }
+    .screen-head { margin-bottom: 20px; }
+    .screen-head h3 { font-size: 18px; font-weight: 800; margin: 8px 0 10px; }
+    .screen-head .desc { font-size: 15px; color: var(--muted); line-height: 1.7; max-width: 56em; }
+    .point-list {
+      display: flex; flex-wrap: wrap; gap: 8px 20px;
+      margin-top: 14px; list-style: none;
+    }
+    .point-list li {
+      font-size: 14px; color: var(--muted); padding-left: 16px; position: relative;
+    }
+    .point-list li::before {
+      content: ""; position: absolute; left: 0; top: .55em;
+      width: 6px; height: 6px; border-radius: 50%; background: var(--blue);
+    }
+    .point-list li strong { color: var(--text); font-weight: 600; }
+
+    .figure {
+      border-radius: var(--radius); overflow: hidden;
+      border: 1px solid var(--line); background: #eef2f8;
+      text-align: center;
+    }
+    .figure.figure-wide {
+      overflow: visible;
+      text-align: left;
+    }
+    /* 超宽完整截图：缩放到容器宽度，HTML 内不横向滚动 */
+    .figure.figure-wide img {
+      display: block;
+      width: 100%;
+      height: auto;
+      max-width: 100%;
+    }
+    /* 普通截图：不放大超过原图像素 */
+    .figure:not(.figure-wide) img {
+      display: inline-block;
+      width: auto;
+      max-width: 100%;
+      height: auto;
+      vertical-align: top;
+    }
+    .figure figcaption {
+      padding: 10px 16px; font-size: 13px; color: var(--muted);
+      background: #f8fafc; border-top: 1px solid var(--line); text-align: center;
+    }
+
+    /* —— 多语言 —— */
+    .lang-list {
+      display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; margin: 24px 0;
+    }
+    .lang-list span {
+      display: flex; align-items: center; gap: 8px;
+      padding: 10px 14px; background: var(--surface);
+      border: 1px solid var(--line); border-radius: 8px;
+      font-size: 14px; font-weight: 600;
+    }
+    .lang-list small { display: block; font-size: 11px; font-weight: 500; color: var(--muted); }
+
+    /* —— 小程序四步 —— */
+    .mini-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 20px; }
+    .mini-card {
+      background: var(--surface); border: 1px solid var(--line);
+      border-radius: var(--radius); padding: 20px;
+      display: flex; flex-direction: column;
+    }
+    .mini-card.focus { border-color: #b197fc; background: linear-gradient(180deg, #faf5ff, #fff); }
+    .mini-card .label { font-size: 11px; font-weight: 800; color: var(--purple); margin-bottom: 6px; }
+    .mini-card h3 { font-size: 16px; font-weight: 700; margin-bottom: 8px; }
+    .mini-card p { font-size: 14px; color: var(--muted); line-height: 1.65; margin-bottom: 16px; flex: 1; }
+    .phone {
+      border-radius: 24px; border: 7px solid #1f2937; overflow: hidden;
+      background: #1f2937; max-width: 280px; margin: 0 auto; width: 100%;
+    }
+    .phone img {
+      display: block;
+      width: 100%;
+      height: auto;
+    }
+
+    /* —— 配置 & 价值 —— */
+    .admin-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 20px; }
+    .admin-item {
+      background: var(--surface); border: 1px solid var(--line);
+      border-radius: var(--radius); overflow: hidden;
+    }
+    .admin-item .text { padding: 18px 20px 12px; }
+    .admin-item h3 { font-size: 16px; font-weight: 700; margin-bottom: 6px; }
+    .admin-item p { font-size: 14px; color: var(--muted); line-height: 1.65; }
+    .admin-item img {
+      display: block;
+      width: auto;
+      max-width: 100%;
+      height: auto;
+      margin-inline: auto;
+    }
+
+    .value-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; }
+    .value-item {
+      background: var(--surface); border: 1px solid var(--line);
+      border-radius: var(--radius); padding: 20px 22px;
+    }
+    .value-item.hl { border-color: #91a7ff; background: linear-gradient(180deg, #fff, #f8faff); }
+    .value-item h3 { font-size: 15px; font-weight: 800; margin-bottom: 8px; }
+    .value-item p { font-size: 14px; color: var(--muted); line-height: 1.65; }
+
+    footer {
+      background: #111827; color: rgba(255,255,255,.7);
+      text-align: center; padding: 32px 0; font-size: 14px;
+    }
+    footer strong { color: #fff; }
+
+    @media (max-width: 1100px) {
+      .hero-grid, .cols-3, .cols-2, .mini-grid, .value-grid, .admin-grid, .lang-list { grid-template-columns: 1fr 1fr; }
+      .steps { grid-template-columns: repeat(3, 1fr); }
+    }
+    @media (max-width: 720px) {
+      .hero-grid, .cols-3, .cols-2, .mini-grid, .value-grid, .admin-grid, .lang-list, .steps { grid-template-columns: 1fr; }
+      .nav-links { display: none; }
+    }
+  </style>
+</head>
+<body>
+
+<nav class="nav">
+  <div class="container nav-inner">
+    <div class="logo">GEU-AI 考勤识别助手</div>
+    <div class="nav-links">
+      <a href="#pain">痛点</a>
+      <a href="#flow">流程</a>
+      <a href="#i18n">多语言</a>
+      <a href="#ai">AI 检查</a>
+      <a href="#pc">PC 端</a>
+      <a href="#mobile">小程序</a>
+      <a href="#admin">配置</a>
+      <a href="#result">效果</a>
+    </div>
+  </div>
+</nav>
+
+<header class="hero">
+  <div class="container hero-grid">
+    <div>
+      <div class="hero-tag">GEU 内部分享 · 法 / 意 / 荷 劳务外包考勤</div>
+      <h1>GEU-AI 考勤识别助手</h1>
+      <p class="hero-lead">
+        欧洲仓库外包工仍在<strong>纸质签到表</strong>上签字——劳工局来查，纸必须拿得出来。
+        难的是区域 HR 要把照片里的字<strong>一行行抄进飞书表</strong>：法文表头、手写姓名、夜班时间，抄错一行就影响发工资。
+      </p>
+      <p class="hero-lead">
+        系统定位：<strong>AI 读表，人把关，确认后写飞书。</strong>让人从「抄表员」变成「审表员」。
+      </p>
+    </div>
+    <aside class="hero-panel">
+      <h2>一线最关心的几件事</h2>
+      <ul class="hero-list">
+        <li><strong>拍照就能读</strong><span>不用回办公室逐格敲字</span></li>
+        <li><strong>有问题会标红</strong><span>看不清、缺字段、重名一眼看见</span></li>
+        <li><strong>点确认才入账</strong><span>AI 结果 ≠ 最终工资数据</span></li>
+        <li><strong>8 种界面语言</strong><span>PC 与小程序都能切换</span></li>
+      </ul>
+    </aside>
+  </div>
+</header>
+
+<!-- 01 痛点 -->
+<section id="pain">
+  <div class="container">
+    <header class="sec-header">
+      <div class="sec-label">01 · 为什么要做</div>
+      <h2 class="sec-title">GEU 欧洲仓考勤，卡在哪？</h2>
+      <p class="sec-desc">纸表合规少不了，但纸表没法直接进薪资系统。过去靠各国家区域同事手工整理——France / Italy / Netherlands 表样不同、语言不同，越忙越容易抄错。</p>
+    </header>
+
+    <div class="note warn">
+      <strong>一句话痛点：</strong>现场 5 分钟拍完签到表，区域 HR 可能要花 40 分钟对着照片往飞书里敲——法国表是法文、荷兰表是荷文，同一个人这周在 FR 仓、下周在 NL 仓，规则还不一样。
+    </div>
+
+    <div class="cols-3" style="margin-top:28px">
+      <div class="card accent">
+        <div class="emoji">🇫🇷</div>
+        <h3>法国仓 · 法文签到表</h3>
+        <p>表头常见 <em>Nom et Prénom、Arrivée、Départ、Pause</em>。手写多、中介公司多，姓名、到离时间、休息分钟最容易错。</p>
+      </div>
+      <div class="card accent">
+        <div class="emoji">🇮🇹</div>
+        <h3>意大利仓 · 表样与工时规则</h3>
+        <p>现场拍照发微信群，办公室再录入。高峰期一天多张表，漏一行往往到月底对账才发现。</p>
+      </div>
+      <div class="card accent">
+        <div class="emoji">🇳🇱</div>
+        <h3>荷兰仓 · 多仓库并行</h3>
+        <p>荷文/英文混排，同一批外包工轮换仓库。以前靠 Excel 中转，和飞书表字段对不上时还要二次加工。</p>
+      </div>
+    </div>
+
+    <div class="table-wrap" style="margin-top:32px">
+      <table class="data">
+        <thead><tr><th>环节</th><th>以前</th><th>现在</th></tr></thead>
+        <tbody>
+          <tr><td>合规留底</td><td class="txt-old">纸质表 + 照片，散落各处</td><td class="txt-new">原图与识别记录绑定，随时能翻</td></tr>
+          <tr><td>录入飞书</td><td class="txt-old">对着照片手敲每一行</td><td class="txt-new">AI 先读，人改有问题的几行</td></tr>
+          <tr><td>发现问题</td><td class="txt-old">发工资、对账时才发现</td><td class="txt-new">识别完就标：看不清 / 缺字段 / 重名</td></tr>
+          <tr><td>现场 vs 办公室</td><td class="txt-old">微信传图，PC 再录，经常断档</td><td class="txt-new">小程序拍完，办公室 PC 接着审</td></tr>
+          <tr><td>界面语言</td><td class="txt-old">只有中文，本地 HR 上手难</td><td class="txt-new">PC / 小程序均支持 8 种语言</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+</section>
+
+<!-- 02 流程 -->
+<section id="flow" class="alt">
+  <div class="container">
+    <header class="sec-header">
+      <div class="sec-label">02 · 日常怎么用</div>
+      <h2 class="sec-title">从拍照到进飞书，五步走完</h2>
+      <p class="sec-desc">仓库文员现场拍，HR 办公室审，点「确认提交」才写入飞书——没点确认，不算正式考勤数据。</p>
+    </header>
+
+    <div class="steps">
+      <div class="steps-item"><div class="n">1</div><h4>拍签到表</h4><p>选国家 · 上传照片</p></div>
+      <div class="steps-item"><div class="n">2</div><h4>AI 读表</h4><p>几十秒出结果</p></div>
+      <div class="steps-item"><div class="n">3</div><h4>对着改</h4><p>重点看标黄标红行</p></div>
+      <div class="steps-item"><div class="n">4</div><h4>确认提交</h4><p>缺必填会拦住</p></div>
+      <div class="steps-item"><div class="n">5</div><h4>写飞书</h4><p>自动同步，失败可重试</p></div>
+    </div>
+
+    <div class="note good">
+      <strong>真实场景：</strong>法国仓 40 人签到表，以前抄 30～40 分钟；现在 AI 半分钟读完，通常只需盯 3～5 行有问题的——看不清姓名、没填 Pause、重名的 Mohamed。
+    </div>
+
+    <div class="cols-3" style="margin-top:28px">
+      <div class="card"><h3>👷 仓库文员</h3><p>飞书小程序拍照上传，下班前审完提交，不用等 HR 上班再抄。</p></div>
+      <div class="card"><h3>🏢 区域 HR</h3><p>PC 打开任务列表，批量处理「待核对」，导出 Excel 留档。</p></div>
+      <div class="card"><h3>⚙️ 总部运营</h3><p>按国家配 AI 提示词和飞书字段映射，法/意/荷各一套，改配置不用发版。</p></div>
+    </div>
+  </div>
+</section>
+
+<!-- 03 多语言 -->
+<section id="i18n">
+  <div class="container">
+    <header class="sec-header">
+      <div class="sec-label">03 · 多语言支持</div>
+      <h2 class="sec-title">PC 与飞书小程序，都支持 8 种界面语言</h2>
+      <p class="sec-desc">GEU 各国有本地 HR、仓库文员和现场主管——不一定习惯中文界面。PC 端和飞书小程序使用同一套翻译资源，菜单、按钮、提示、错误信息、国家名称等都会随语言切换。</p>
+    </header>
+
+    <div class="note info">
+      <strong>和「读表语言」是两回事：</strong>界面语言决定你看什么文字；工作国家（France / Italy / Netherlands）决定 AI 按哪国规则读纸质签到表。法国本地同事可以把界面切成 Français，同时继续用法国读表规则处理法文签到表。
+    </div>
+
+    <div class="lang-list">
+      <span>🇨🇳 简体中文<small>zh-CN</small></span>
+      <span>🇺🇸 English<small>en-US</small></span>
+      <span>🇫🇷 Français<small>fr-FR</small></span>
+      <span>🇳🇱 Nederlands<small>nl-NL</small></span>
+      <span>🇨🇿 Čeština<small>cs-CZ</small></span>
+      <span>🇵🇱 Polski<small>pl-PL</small></span>
+      <span>🇩🇪 Deutsch<small>de-DE</small></span>
+      <span>🇪🇸 Español<small>es-ES</small></span>
+    </div>
+
+    <div class="cols-2">
+      <div class="card">
+        <span class="chip pc">PC 端</span>
+        <h3 style="margin-top:10px">顶部导航 · 地球图标切换语言</h3>
+        <p style="margin-top:8px;font-size:15px;color:var(--muted);line-height:1.7">点右上角地球图标选择界面语言，偏好会记住。覆盖导航菜单、表格列名、按钮、弹窗、校验提示及国家名称本地化。</p>
+      </div>
+      <div class="card">
+        <span class="chip mobile">飞书小程序</span>
+        <h3 style="margin-top:10px">我的 → 设置 · 切换界面语言</h3>
+        <p style="margin-top:8px;font-size:15px;color:var(--muted);line-height:1.7">仓库文员在「我的 → 设置」中切换界面语言，当前页面文案即时更新，底部 Tab 栏名称也会一起变。与 PC 端同一套 8 种语言，术语统一。</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- 04 AI -->
+<section id="ai" class="alt">
+  <div class="container">
+    <header class="sec-header">
+      <div class="sec-label">04 · AI 到底帮了什么</div>
+      <h2 class="sec-title">四道自动检查，不是「识别完就入账」</h2>
+      <p class="sec-desc">大模型图看不清时爱「猜」时间——考勤一旦猜错，发工资和应对劳工局都麻烦。原则：看不清就空着或标 ???，宁可让人填，也不让 AI 编。</p>
+    </header>
+
+    <div class="cols-2">
+      <div class="check-card l1">
+        <span class="tag">第一道 · 图能不能读</span>
+        <h3>太糊、太假，整单打回</h3>
+        <ul>
+          <li><strong>图太糊：</strong>上传前拦截，提示重拍</li>
+          <li><strong>抄了示例行：</strong>把配置样例当真人 → 整单失败</li>
+          <li><strong>表头变员工：</strong>「Nom et Prénom」被读成人名 → 丢掉</li>
+          <li><strong>姓名全 ??? 时间却整齐：</strong>怀疑瞎编 → 不让过</li>
+        </ul>
+      </div>
+      <div class="check-card l2">
+        <span class="tag">第二道 · 先看哪几行</span>
+        <h3>异常行高亮，正常行不用逐行盯</h3>
+        <ul>
+          <li><strong>黄/橙条提醒：</strong>「还有 XX 条无法确认」</li>
+          <li><strong>行内标原因：</strong>缺姓名、看不清时间、重名</li>
+          <li><strong>统计条：</strong>正常 / 模糊 / 夜班 / 缺勤各多少</li>
+          <li><strong>左图右表：</strong>看不清必须对原图</li>
+        </ul>
+      </div>
+      <div class="check-card l3">
+        <span class="tag">第三道 · 确认时硬拦</span>
+        <h3>该填的没填完，提交不了</h3>
+        <ul>
+          <li><strong>姓名、日期、到、离、休息</strong> 缺一项都不行</li>
+          <li><strong>到离时间一样：</strong>0 工时不能当出勤</li>
+          <li><strong>划掉/未出勤行：</strong>自动放宽</li>
+          <li><strong>小程序和 PC 规则一致</strong></li>
+        </ul>
+      </div>
+      <div class="check-card l4">
+        <span class="tag">第四道 · 写飞书时</span>
+        <h3>该跳过的行不写进去</h3>
+        <ul>
+          <li><strong>纸上划掉的人：</strong>不同步飞书</li>
+          <li><strong>未出勤：</strong>记人但不乱写工时</li>
+          <li><strong>同步失败：</strong>可点重试</li>
+          <li><strong>确认后改单行：</strong>要填原因，留审计</li>
+        </ul>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- 05 PC -->
+<section id="pc">
+  <div class="container">
+    <header class="sec-header">
+      <div class="sec-label">05 · PC 端界面</div>
+      <h2 class="sec-title">区域 HR 办公室怎么审表</h2>
+      <p class="sec-desc">每个功能页：先看文字说明，再看下方完整截图。图片按页面宽度等比展示，无需左右滑动。右上角可切换 8 种界面语言。</p>
+    </header>
+
+    <div class="screens">
+      <article class="screen">
+        <div class="screen-head">
+          <span class="chip pc">PC</span><span class="chip">上传入口</span>
+          <h3>① 首页 · 选国家再传图</h3>
+          <p class="desc">日常由仓库文员在飞书小程序拍照上传；区域 HR 也可在 PC 端上传补录。先选工作国家，系统按该国规则读表。</p>
+          <ul class="point-list">
+            <li><strong>国家选择器</strong> France / Italy / Netherlands</li>
+            <li><strong>上传区</strong> 拖入照片或 PDF</li>
+            <li><strong>三步进度</strong> 上传 → AI 识别 → 确认写飞书</li>
+          </ul>
+        </div>
+        <figure class="figure">
+          <img src="assets/02-home-upload.png" alt="首页上传" loading="lazy" decoding="async" />
+          <figcaption>创建识别任务</figcaption>
+        </figure>
+      </article>
+
+      <article class="screen">
+        <div class="screen-head">
+          <span class="chip pc">PC</span><span class="chip">任务管理</span>
+          <h3>② 任务列表 · 今天还有哪些没审完</h3>
+          <p class="desc">所有识别任务集中在这里，按状态筛选，快速找到待处理项。</p>
+          <ul class="point-list">
+            <li><strong>状态筛选</strong> 待核对 / 已完成 / 同步失败</li>
+            <li><strong>国家/仓库</strong> 法意荷任务可混排搜索</li>
+            <li><strong>待核对</strong> = 还没点确认、还没进飞书</li>
+          </ul>
+        </div>
+        <figure class="figure">
+          <img src="assets/03-tasks-list.png" alt="任务列表" loading="lazy" decoding="async" />
+          <figcaption>任务状态总览</figcaption>
+        </figure>
+      </article>
+
+      <article class="screen">
+        <div class="screen-head">
+          <span class="chip pc">PC</span><span class="chip core">核心页面</span>
+          <h3>③ 任务详情 · 核对页（花时间最多）</h3>
+          <p class="desc">区域 HR 的主战场：顶部黄条汇总异常条目，下方为<strong>完整展开的核对表格</strong>（所有列已在截图中展开，无需左右滑动）。</p>
+          <ul class="point-list">
+            <li><strong>黄条异常汇总</strong> 识别异常条数及具体姓名、原因</li>
+            <li><strong>全部列可见</strong> 工号、仓库、日期、供应商、班次、签到签退、核对结果、异常说明、操作等</li>
+            <li><strong>核对结果 / 异常说明</strong> 已过审、未审核及缺卡、多刷卡等标签</li>
+            <li><strong>操作列</strong> 点「校对」逐行修改后确认提交</li>
+          </ul>
+        </div>
+        <figure class="figure figure-wide">
+          <img
+            src="assets/04-task-review-detail.png"
+            alt="任务详情核对页（完整表格）"
+            width="5190"
+            height="2786"
+            loading="eager"
+            decoding="async"
+          />
+          <figcaption>任务详情核对页高清原图 · 页面内等比展示，无需横向滚动</figcaption>
+        </figure>
+      </article>
+
+      <article class="screen">
+        <div class="screen-head">
+          <span class="chip pc">PC</span><span class="chip">历史查询</span>
+          <h3>④ 考勤记录 · 已确认数据怎么查</h3>
+          <p class="desc">跨任务汇总所有已确认考勤。月底对账或备查时按人、按天、按仓库筛选。</p>
+          <ul class="point-list">
+            <li><strong>筛选条件</strong> 姓名、日期范围、仓库</li>
+            <li><strong>只显示已确认</strong> 的数据，和待核对任务分开</li>
+          </ul>
+        </div>
+        <figure class="figure">
+          <img src="assets/05-task-records.png" alt="考勤记录" loading="lazy" decoding="async" />
+          <figcaption>历史考勤查询</figcaption>
+        </figure>
+      </article>
+    </div>
+  </div>
+</section>
+
+<!-- 06 小程序 -->
+<section id="mobile" class="alt">
+  <div class="container">
+    <header class="sec-header">
+      <div class="sec-label">06 · 飞书小程序界面</div>
+      <h2 class="sec-title">仓库文员在仓库就能办完</h2>
+      <p class="sec-desc">仓库文员用飞书小程序拍照上传、核对提交，不用回办公室开电脑。和 PC 同一账号、同一套多语言，HR 在办公室能接着审。</p>
+    </header>
+
+    <div class="mini-grid">
+      <div class="mini-card">
+        <div class="label">Step 1</div>
+        <h3>选国家 · 拍照</h3>
+        <p>确认今天算 FR 还是 NL，避免用错读表规则。太糊的图上传前提示重拍。</p>
+        <div class="phone"><img src="assets/12-mini-home.png" alt="小程序工作台" loading="lazy" decoding="async" /></div>
+      </div>
+      <div class="mini-card">
+        <div class="label">Step 2</div>
+        <h3>AI 读表中</h3>
+        <p>进度条显示进行到哪步，不用干等黑屏。一般几十秒出结果。</p>
+        <div class="phone"><img src="assets/13-mini-processing.png" alt="识别中" loading="lazy" decoding="async" /></div>
+      </div>
+      <div class="mini-card focus">
+        <div class="label">Step 3 · 核心</div>
+        <h3>识别结果 · 先看异常行</h3>
+        <p>异常行排前面，正常的折叠。点一行改姓名/时间，没问题就确认提交。</p>
+        <div class="phone"><img src="assets/14-mini-result.png" alt="识别结果" loading="lazy" decoding="async" /></div>
+      </div>
+      <div class="mini-card">
+        <div class="label">Step 4</div>
+        <h3>任务列表</h3>
+        <p>待核对数量角标和 PC 一致，避免「现场以为交了、办公室没收到」。</p>
+        <div class="phone"><img src="assets/15-mini-tasks.png" alt="任务列表" loading="lazy" decoding="async" /></div>
+      </div>
+    </div>
+
+    <div class="note info" style="margin-top:32px">
+      <strong>多语言入口：</strong>小程序底部「我的」→ 设置 → 界面语言，支持 8 种语言；切换后识别页、任务列表、底部 Tab 名称即时更新。
+    </div>
+  </div>
+</section>
+
+<!-- 07 配置 -->
+<section id="admin">
+  <div class="container">
+    <header class="sec-header">
+      <div class="sec-label">07 · 后台配置</div>
+      <h2 class="sec-title">法 / 意 / 荷 各配各的，不用改代码</h2>
+      <p class="sec-desc">各国表头语言不同、飞书多维表字段不同——在设置里按国家维护即可。</p>
+    </header>
+
+    <div class="admin-grid">
+      <div class="admin-item">
+        <div class="text">
+          <span class="chip admin">管理员</span>
+          <h3>AI 读表配置</h3>
+          <p>按国家维护提示词、图片清晰度门槛、样例行防抄规则。</p>
+        </div>
+        <img src="assets/07-settings-ai.png" alt="AI配置" loading="lazy" decoding="async" />
+      </div>
+      <div class="admin-item">
+        <div class="text">
+          <span class="chip admin">管理员</span>
+          <h3>飞书多维表映射</h3>
+          <p>各国 Bitable 字段对应关系、同步开关。</p>
+        </div>
+        <img src="assets/08-settings-feishu.png" alt="飞书配置" loading="lazy" decoding="async" />
+      </div>
+      <div class="admin-item">
+        <div class="text">
+          <span class="chip admin">管理员</span>
+          <h3>待核对提醒</h3>
+          <p>任务太久没人审，自动提醒负责人。</p>
+        </div>
+        <img src="assets/09-settings-reminders.png" alt="提醒配置" loading="lazy" decoding="async" />
+      </div>
+      <div class="admin-item">
+        <div class="text">
+          <span class="chip admin">管理员</span>
+          <h3>账号与权限</h3>
+          <p>区域 HR、仓库文员、管理员的访问范围。</p>
+        </div>
+        <img src="assets/10-settings-users.png" alt="用户管理" loading="lazy" decoding="async" />
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- 08 效果 -->
+<section id="result" class="alt">
+  <div class="container">
+    <header class="sec-header">
+      <div class="sec-label">08 · 上线后的变化</div>
+      <h2 class="sec-title">对 GEU 欧洲劳务外包考勤，意味着什么？</h2>
+    </header>
+
+    <div class="value-grid">
+      <div class="value-item hl">
+        <h3>⏱ 少抄表，多审表</h3>
+        <p>AI 吃掉 90% 抄写活，人主要处理看不清、缺字段、重名。</p>
+      </div>
+      <div class="value-item hl">
+        <h3>📋 纸表还在，合规还在</h3>
+        <p>纸质签到表、照片原件都留着，劳工局来查有据可查。</p>
+      </div>
+      <div class="value-item hl">
+        <h3>🇫🇷🇮🇹🇳🇱 三国一套系统</h3>
+        <p>法文表、意大利表、荷兰表各自配置，不用每国维护 Excel 模板。</p>
+      </div>
+      <div class="value-item">
+        <h3>📱 现场办公室不断档</h3>
+        <p>仓库拍完，HR PC 接着审，不用微信传图再录一遍。</p>
+      </div>
+      <div class="value-item">
+        <h3>🛡 不怕 AI 乱编</h3>
+        <p>看不清不猜、提交前硬校验、划掉的行不写飞书。</p>
+      </div>
+      <div class="value-item">
+        <h3>🔔 审不完有人催</h3>
+        <p>任务一直「待核对」会提醒负责人，避免识别了没人收尾。</p>
+      </div>
+      <div class="value-item hl">
+        <h3>🌐 本地同事看得懂</h3>
+        <p>PC 与小程序均支持 8 种界面语言，法国/荷兰本地 HR 和仓库文员无需依赖中文也能操作。</p>
+      </div>
+    </div>
+
+    <div class="note info" style="margin-top:32px">
+      <strong>一句话总结：</strong>GEU 欧洲外包工考勤，纸表不丢、线上也要有——这个系统把「对着照片抄飞书多维表」变成「AI 读 + 人审 + 一键录入」；线上记录随时可查，关联原图满足审查。
+    </div>
+  </div>
+</section>
+
+<footer>
+  <div class="container">
+    <p><strong>GEU-AI 考勤识别助手</strong> · 内部业务分享材料</p>
+    <p style="margin-top:6px">适用：GEU 法国 / 意大利 / 荷兰 等区域劳务外包仓库考勤</p>
+  </div>
+</footer>
+
+</body>
+</html>

@@ -32,6 +32,8 @@ public final class ErrorKeys {
     public static final String CONFIRMED_DATA_EMPTY = "errors.confirmedDataEmpty";
     public static final String CONFIRM_REQUIRED_FIELDS_MISSING = "errors.confirmRequiredFieldsMissing";
     public static final String CONFIRMED_TASK_CANNOT_DELETE = "errors.confirmedTaskCannotDelete";
+    public static final String DELETE_REASON_REQUIRED = "errors.deleteReasonRequired";
+    public static final String TASK_DELETE_CONFIRMED_PERMISSION_DENIED = "errors.taskDeleteConfirmedPermissionDenied";
     public static final String TASK_ALREADY_CANCELLED = "errors.taskAlreadyCancelled";
     public static final String CONFIRMED_TASK_CANNOT_CANCEL = "errors.confirmedTaskCannotCancel";
     public static final String TASK_NOT_CONFIRMED = "errors.taskNotConfirmed";

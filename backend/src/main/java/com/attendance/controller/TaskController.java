@@ -4,6 +4,7 @@ import com.attendance.common.PageResult;
 import com.attendance.common.Result;
 import com.attendance.dto.request.CalibrateRecordRequest;
 import com.attendance.dto.request.ConfirmTaskRequest;
+import com.attendance.dto.request.DeleteTaskRequest;
 import com.attendance.dto.request.TaskQuery;
 import com.attendance.dto.response.EmployeeRecordDTO;
 import com.attendance.dto.response.TaskListDTO;
@@ -124,9 +125,10 @@ public class TaskController {
     }
 
     @PostMapping("/{taskId}/delete")
-    public Result<Void> deleteTask(@PathVariable String taskId) {
-        taskService.deleteTask(taskId);
-        auditLogService.log("TASK_DELETED", "task", taskId, null);
+    public Result<Void> deleteTask(@PathVariable String taskId,
+                                   @Valid @RequestBody DeleteTaskRequest request) {
+        Map<String, Object> auditDetails = taskService.deleteTask(taskId, request.getReason());
+        auditLogService.log("TASK_DELETED", "task", taskId, auditDetails);
         return Result.success(null, "任务删除成功");
     }
     

@@ -23,8 +23,7 @@ export default {
       "deleted": "Usunięty",
       "signedConfirmed": "Podpisane (potwierdzone)",
       "unsignedConfirmed": "Brak podpisu (potwierdzone)",
-      "signed": "Podpisane",
-      "manuallyAdded": "Dodane ręcznie"
+      "signed": "Podpisane"
     },
     "missing": {
       "NO": "Nie rozpoznano numeru",
@@ -196,6 +195,8 @@ export default {
   "nav": {
     "home": "Strona główna",
     "tasks": "Zadania",
+    "attendance": "Obecność",
+    "employees": "Pracownicy",
     "taskRecords": "Rejestry obecności",
     "config": "Konfiguracja",
     "settings": "Ustawienia",
@@ -286,7 +287,6 @@ export default {
     "recognitionFailedTitle": "Błąd rozpoznawania",
     "recognitionRetry": "Ponów rozpoznawanie",
     "recognitionReupload": "Prześlij ponownie",
-    "recognitionFailureHint": "Ponów rozpoznawanie: uruchom ponownie na obrazach zapisanych na serwerze (przydatne po aktualizacji promptów). Prześlij ponownie: wyczyść wybór i wybierz pliki od nowa.",
     "recognitionError": "Błąd rozpoznawania",
     "workingCountry": "Kraj roboczy",
     "changeCountry": "Zmień konfigurację",
@@ -389,7 +389,6 @@ export default {
     "requiredFieldMissingShort": "Brak wymaganych pól",
     "anomalyCategoryRequired": "Brak wymaganych pól",
     "anomalyCategoryUnreadable": "Nieczytelne",
-    "anomalyCategoryFormat": "Błąd formatu",
     "anomalyCategoryDuplicate": "Zduplikowane nazwiska",
     "anomalyCategoryOther": "Inne anomalie",
     "fieldUnreadableShort": "Nieczytelne",

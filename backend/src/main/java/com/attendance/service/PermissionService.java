@@ -2,10 +2,13 @@ package com.attendance.service;
 
 import com.alibaba.fastjson.JSON;
 import com.alibaba.fastjson.JSONObject;
+import com.attendance.config.CountryCatalog;
 import com.attendance.common.BusinessException;
 import com.attendance.common.ErrorCode;
 import com.attendance.common.ErrorKeys;
 import com.attendance.config.ConfigPathResolver;
+import com.attendance.dto.request.RolePermissionsUpdateRequest;
+import com.attendance.dto.response.RolePermissionsBundleDTO;
 import com.attendance.entity.SystemRole;
 import com.attendance.entity.User;
 import com.attendance.mapper.SystemRoleMapper;
@@ -29,7 +32,9 @@ public class PermissionService {
 
     private static final Logger log = LoggerFactory.getLogger(PermissionService.class);
     private static final String PERMISSIONS_FILE = "permissions.json";
+    private static final String PERMISSIONS_BY_COUNTRY_FILE = "permissions-by-country.json";
     public static final String RECORD_CALIBRATE = "recordCalibrate";
+    public static final String TASK_DELETE_CONFIRMED = "taskDeleteConfirmed";
     public static final String REMINDER_CONFIG = "reminderConfig";
 
     @Autowired
@@ -41,8 +46,31 @@ public class PermissionService {
     @Autowired
     private SystemRoleMapper systemRoleMapper;
 
+    @Autowired
+    private MarkdownConfigService markdownConfigService;
+
+    public RolePermissionsBundleDTO getRolePermissionsBundle() {
+        RolePermissionsBundleDTO bundle = new RolePermissionsBundleDTO();
+        bundle.setRoles(getRolePermissions());
+        bundle.setByCountry(loadByCountryAll());
+        return bundle;
+    }
+
     public Map<String, Map<String, Boolean>> getRolePermissions() {
         return loadAll();
+    }
+
+    public void updateRolePermissionsBundle(RolePermissionsUpdateRequest request) {
+        adminAuthService.requireAdmin();
+        if (request == null) {
+            throw new BusinessException(400, ErrorKeys.VALIDATION_FAILED);
+        }
+        if (request.getRoles() != null && !request.getRoles().isEmpty()) {
+            updateRolePermissions(request.getRoles());
+        }
+        if (request.getByCountry() != null) {
+            updateCountryRolePermissions(request.getByCountry());
+        }
     }
 
     public void updateRolePermissions(Map<String, Map<String, Boolean>> body) {
@@ -78,14 +106,80 @@ public class PermissionService {
         }
     }
 
+    public void updateCountryRolePermissions(Map<String, Map<String, Map<String, Boolean>>> body) {
+        adminAuthService.requireAdmin();
+        Map<String, Map<String, Map<String, Boolean>>> merged = loadByCountryAll();
+        if (body != null) {
+            for (Map.Entry<String, Map<String, Map<String, Boolean>>> roleEntry : body.entrySet()) {
+                String role = normalizeRole(roleEntry.getKey());
+                if ("admin".equals(role)) {
+                    continue;
+                }
+                if (systemRoleMapper.selectByKey(role) == null) {
+                    throw new BusinessException(400, ErrorKeys.VALIDATION_FAILED,
+                            Collections.singletonMap("detail", "unknown role: " + role));
+                }
+                Map<String, Map<String, Boolean>> incomingCountries = roleEntry.getValue();
+                if (incomingCountries == null) {
+                    merged.remove(role);
+                    continue;
+                }
+                Map<String, Map<String, Boolean>> roleCountries = merged.computeIfAbsent(role, k -> new LinkedHashMap<>());
+                for (Map.Entry<String, Map<String, Boolean>> countryEntry : incomingCountries.entrySet()) {
+                    String country = normalizeCountryCode(countryEntry.getKey());
+                    if (country == null) {
+                        continue;
+                    }
+                    Map<String, Boolean> incoming = countryEntry.getValue();
+                    if (incoming == null || incoming.isEmpty()) {
+                        roleCountries.remove(country);
+                        continue;
+                    }
+                    Map<String, Boolean> defaults = defaultRole(role);
+                    Map<String, Boolean> next = new LinkedHashMap<>(defaults);
+                    for (Map.Entry<String, Boolean> perm : incoming.entrySet()) {
+                        if (perm.getKey() != null && perm.getValue() != null) {
+                            next.put(perm.getKey(), perm.getValue());
+                        }
+                    }
+                    roleCountries.put(country, next);
+                }
+                if (roleCountries.isEmpty()) {
+                    merged.remove(role);
+                }
+            }
+        }
+        try {
+            saveByCountryAll(merged);
+        } catch (IOException e) {
+            log.error("保存 permissions-by-country.json 失败", e);
+            throw new BusinessException(ErrorCode.PERMISSION_DENIED, ErrorKeys.SYSTEM_ERROR);
+        }
+    }
+
     public Map<String, Boolean> effectivePermissions(User user) {
+        return effectivePermissions(user, resolveWorkingCountryCode(user));
+    }
+
+    public Map<String, Boolean> effectivePermissions(User user, String workingCountryCode) {
         if (user == null || user.getRole() == null) {
             return Collections.emptyMap();
         }
         String role = normalizeRole(user.getRole());
         Map<String, Map<String, Boolean>> all = loadAll();
         Map<String, Boolean> rolePerms = all.getOrDefault(role, defaultRole(role));
-        return new LinkedHashMap<>(rolePerms);
+        Map<String, Boolean> effective = new LinkedHashMap<>(rolePerms);
+        applyCountryOverrides(effective, role, workingCountryCode, loadByCountryAll());
+        if ("admin".equals(role)) {
+            effective.put(RECORD_CALIBRATE, true);
+            effective.put(TASK_DELETE_CONFIRMED, true);
+            effective.put(REMINDER_CONFIG, true);
+            effective.put("aiConfig", true);
+            effective.put("feishuConfig", true);
+            effective.put("users", true);
+            effective.put("audit", true);
+        }
+        return effective;
     }
 
     public boolean hasPermission(User user, String permissionKey) {
@@ -94,7 +188,9 @@ public class PermissionService {
         }
         String role = normalizeRole(user.getRole());
         if ("admin".equals(role)) {
-            if (RECORD_CALIBRATE.equals(permissionKey) || REMINDER_CONFIG.equals(permissionKey)) {
+            if (RECORD_CALIBRATE.equals(permissionKey)
+                    || TASK_DELETE_CONFIRMED.equals(permissionKey)
+                    || REMINDER_CONFIG.equals(permissionKey)) {
                 return true;
             }
         }
@@ -144,6 +240,108 @@ public class PermissionService {
         }
     }
 
+    private void applyCountryOverrides(Map<String, Boolean> effective, String role, String workingCountryCode,
+                                       Map<String, Map<String, Map<String, Boolean>>> byCountry) {
+        String country = normalizeCountryCode(workingCountryCode);
+        if (country == null || effective == null || byCountry == null) {
+            return;
+        }
+        Map<String, Map<String, Boolean>> roleCountries = byCountry.get(role);
+        if (roleCountries == null) {
+            return;
+        }
+        Map<String, Boolean> countryPerms = roleCountries.get(country);
+        if (countryPerms == null || countryPerms.isEmpty()) {
+            return;
+        }
+        for (Map.Entry<String, Boolean> entry : countryPerms.entrySet()) {
+            if (entry.getKey() != null && entry.getValue() != null) {
+                effective.put(entry.getKey(), entry.getValue());
+            }
+        }
+    }
+
+    private String resolveWorkingCountryCode(User user) {
+        if (user != null && user.getWorkingCountry() != null) {
+            String fromUser = normalizeCountryCode(user.getWorkingCountry());
+            if (fromUser != null) {
+                return fromUser;
+            }
+        }
+        if (markdownConfigService != null) {
+            return normalizeCountryCode(markdownConfigService.getCurrentCountry());
+        }
+        return null;
+    }
+
+    private static String normalizeCountryCode(String raw) {
+        if (raw == null) {
+            return null;
+        }
+        String trimmed = raw.trim();
+        if (trimmed.isEmpty() || "default".equalsIgnoreCase(trimmed)) {
+            return null;
+        }
+        String resolved = CountryCatalog.resolveCountryCodeFromPays(trimmed);
+        if (resolved != null && !"default".equalsIgnoreCase(resolved)) {
+            return resolved;
+        }
+        String upper = trimmed.toUpperCase(java.util.Locale.ROOT);
+        return CountryCatalog.isSupported(upper) ? upper : null;
+    }
+
+    private Map<String, Map<String, Map<String, Boolean>>> loadByCountryAll() {
+        Path file = configPathResolver.resolveFile(PERMISSIONS_BY_COUNTRY_FILE);
+        if (!Files.isRegularFile(file)) {
+            return new LinkedHashMap<>();
+        }
+        try {
+            String json = new String(Files.readAllBytes(file), StandardCharsets.UTF_8);
+            JSONObject root = JSON.parseObject(json);
+            if (root == null || root.isEmpty()) {
+                return new LinkedHashMap<>();
+            }
+            Map<String, Map<String, Map<String, Boolean>>> result = new LinkedHashMap<>();
+            for (String roleKey : root.keySet()) {
+                JSONObject roleObj = root.getJSONObject(roleKey);
+                if (roleObj == null || roleObj.isEmpty()) {
+                    continue;
+                }
+                Map<String, Map<String, Boolean>> countries = new LinkedHashMap<>();
+                for (String countryKey : roleObj.keySet()) {
+                    String country = normalizeCountryCode(countryKey);
+                    if (country == null) {
+                        continue;
+                    }
+                    JSONObject permObj = roleObj.getJSONObject(countryKey);
+                    if (permObj == null) {
+                        continue;
+                    }
+                    Map<String, Boolean> perms = new LinkedHashMap<>();
+                    for (String permKey : permObj.keySet()) {
+                        perms.put(permKey, permObj.getBooleanValue(permKey));
+                    }
+                    countries.put(country, perms);
+                }
+                if (!countries.isEmpty()) {
+                    result.put(normalizeRole(roleKey), countries);
+                }
+            }
+            return result;
+        } catch (Exception e) {
+            log.error("读取 permissions-by-country.json 失败", e);
+            return new LinkedHashMap<>();
+        }
+    }
+
+    private void saveByCountryAll(Map<String, Map<String, Map<String, Boolean>>> data) throws IOException {
+        Path file = configPathResolver.resolveFile(PERMISSIONS_BY_COUNTRY_FILE);
+        Files.createDirectories(file.getParent());
+        String json = JSON.toJSONString(data != null ? data : Collections.emptyMap(), true);
+        Files.write(file, json.getBytes(StandardCharsets.UTF_8));
+        log.info("已保存 role permissions by country: {}", file);
+    }
+
     private Map<String, Map<String, Boolean>> loadAll() {
         Path file = configPathResolver.resolveFile(PERMISSIONS_FILE);
         if (!Files.isRegularFile(file)) {
@@ -170,6 +368,7 @@ public class PermissionService {
                 }
                 if ("admin".equals(role)) {
                     map.put(RECORD_CALIBRATE, true);
+                    map.put(TASK_DELETE_CONFIRMED, true);
                     map.put("aiConfig", true);
                     map.put("feishuConfig", true);
                     map.put("users", true);
@@ -215,6 +414,7 @@ public class PermissionService {
             m.put("users", true);
             m.put("audit", true);
             m.put(RECORD_CALIBRATE, true);
+            m.put(TASK_DELETE_CONFIRMED, true);
             m.put(REMINDER_CONFIG, true);
         } else {
             m.put("tasks", true);
@@ -224,6 +424,7 @@ public class PermissionService {
             m.put("users", false);
             m.put("audit", false);
             m.put(RECORD_CALIBRATE, false);
+            m.put(TASK_DELETE_CONFIRMED, false);
             m.put(REMINDER_CONFIG, false);
         }
         return m;

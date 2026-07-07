@@ -1,5 +1,6 @@
 const FREEZE_PREFIX = 'attendance:column-freeze:'
 const HIDDEN_PREFIX = 'attendance:column-hidden:'
+const WIDTH_PREFIX = 'attendance:column-widths:'
 
 export function getColumnKey(col) {
   if (!col) return ''
@@ -96,4 +97,42 @@ export function formatColumnTitle(title) {
   if (typeof title === 'string' || typeof title === 'number') return String(title)
   if (Array.isArray(title)) return title.map(formatColumnTitle).join('')
   return String(title)
+}
+
+export function loadColumnWidths(storageId) {
+  if (!storageId || typeof localStorage === 'undefined') return {}
+  try {
+    const raw = localStorage.getItem(WIDTH_PREFIX + storageId)
+    if (!raw) return {}
+    const parsed = JSON.parse(raw)
+    if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) return {}
+    const widths = {}
+    for (const [key, value] of Object.entries(parsed)) {
+      const num = Number(value)
+      if (key && Number.isFinite(num) && num > 0) widths[String(key)] = num
+    }
+    return widths
+  } catch {
+    return {}
+  }
+}
+
+export function saveColumnWidths(storageId, widths) {
+  if (!storageId || typeof localStorage === 'undefined') return
+  try {
+    localStorage.setItem(WIDTH_PREFIX + storageId, JSON.stringify(widths || {}))
+  } catch {
+    /* ignore quota */
+  }
+}
+
+export function applyUserColumnWidths(columns = [], userWidths = {}, nonResizableKeys = new Set()) {
+  if (!columns?.length || !userWidths || !Object.keys(userWidths).length) return columns
+  return columns.map((col) => {
+    const key = getColumnKey(col)
+    if (!key || nonResizableKeys.has(key)) return col
+    const width = userWidths[key]
+    if (!Number.isFinite(width) || width <= 0) return col
+    return { ...col, width, minWidth: width }
+  })
 }

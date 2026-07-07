@@ -1,11 +1,12 @@
 const { findCountry } = require('./countries')
-const { t } = require('./i18n')
+const { t, formatCountryLabel } = require('./i18n')
 const { translateApiError } = require('./translateError')
 const {
   fetchCountryOptions,
   fetchCurrentCountry,
   updateCurrentCountry
 } = require('./configApi')
+const { needsWorkingCountrySetup, hasPersonalWorkingCountry } = require('./workingCountrySetup')
 
 const STORAGE_COUNTRY = 'currentCountry'
 const STORAGE_COUNTRY_CONFIGURED = 'countryConfigured'
@@ -16,8 +17,17 @@ function getCountry() {
   return (app && app.globalData.currentCountry) || tt.getStorageSync(STORAGE_COUNTRY) || ''
 }
 
+function getUserInfoSafe() {
+  const app = getAppSafe()
+  return (app && app.globalData.userInfo) || tt.getStorageSync('userInfo') || null
+}
+
 function isCountryConfigured() {
-  return !!getCountry() && !!tt.getStorageSync(STORAGE_COUNTRY_CONFIGURED)
+  const userInfo = getUserInfoSafe()
+  if (hasPersonalWorkingCountry(userInfo)) {
+    return true
+  }
+  return !!getCountry() && !!tt.getStorageSync(STORAGE_COUNTRY_CONFIGURED) && getCountry() !== 'default'
 }
 
 function getAppSafe() {
@@ -38,10 +48,15 @@ function applyCountryLocally(code, app) {
 }
 
 function getCountryLabel(code) {
-  const key = code === 'default' ? 'country.default' : `country.${code}`
-  const label = t(key)
   const item = findCountry(code)
-  return item ? `${item.flag} ${label}` : label
+  return formatCountryLabel(code, item && item.flag, item && item.name)
+}
+
+function applyCountryFromUserInfo(userInfo, options = {}) {
+  if (!userInfo || needsWorkingCountrySetup(userInfo)) return
+  const code = userInfo.personalWorkingCountry || userInfo.workingCountry
+  if (!code || code === 'default') return
+  applyCountryLocally(code, options.app)
 }
 
 function saveCountry(code, options = {}) {
@@ -49,6 +64,18 @@ function saveCountry(code, options = {}) {
 
   const applyLocal = () => {
     applyCountryLocally(code, app)
+    if (app && app.globalData.userInfo) {
+      app.globalData.userInfo = {
+        ...app.globalData.userInfo,
+        personalWorkingCountry: code,
+        workingCountry: code,
+      }
+      try {
+        tt.setStorageSync('userInfo', app.globalData.userInfo)
+      } catch (e) {
+        // ignore
+      }
+    }
     if (!options.silent) {
       tt.showToast({ title: t('settings.countrySaved'), icon: 'success' })
     }
@@ -101,6 +128,7 @@ function loadPreferences(app) {
   if (locale) {
     const { setLocale } = require('./i18n')
     setLocale(locale, { skipTabBar: true })
+    app.globalData.locale = locale
   }
 }
 
@@ -120,10 +148,18 @@ function syncCountryConfig(app) {
 }
 
 function ensureCountryConfigured() {
-  if (!isCountryConfigured()) {
-    tt.navigateTo({ url: '/pages/settings/index?setup=1' })
+  if (!needsWorkingCountrySetup(getUserInfoSafe()) && isCountryConfigured()) {
+    return true
+  }
+  tt.redirectTo({ url: '/pages/settings/index?setup=1' })
+  return false
+}
+
+function redirectToCountrySetupIfNeeded() {
+  if (!needsWorkingCountrySetup(getUserInfoSafe()) && isCountryConfigured()) {
     return false
   }
+  tt.redirectTo({ url: '/pages/settings/index?setup=1' })
   return true
 }
 
@@ -141,5 +177,7 @@ module.exports = {
   syncCountryFromServer,
   syncCountryConfig,
   ensureCountryConfigured,
-  fetchCountryOptions
+  redirectToCountrySetupIfNeeded,
+  fetchCountryOptions,
+  applyCountryFromUserInfo
 }

@@ -52,7 +52,11 @@ export default {
     "placeholder": "请选择国家",
     "apply": "设为工作国家",
     "manageConfig": "管理国家配置",
-    "saved": "工作国家已更新"
+    "saved": "工作国家已更新",
+    "setupTitle": "请选择工作国家",
+    "setupDesc": "首次使用需选择工作国家，用于识别模板、权限范围与飞书同步配置。",
+    "setupPlaceholder": "请选择国家/地区",
+    "setupConfirm": "确认并继续"
   },
   "errors": {
     "loginRequired": "请先登录",
@@ -71,7 +75,7 @@ export default {
     "fileNotFound": "文件不存在",
     "fileNotFoundWithKey": "文件不存在: {fileKey}",
     "imageInvalid": "图片文件无效",
-    "invalidFilePath": "非法文件路径",
+    "invalidFilePath": "无法访问原始图片（文件标识无效），请使用右上角「重新上传」重新拍照识别",
     "uploadImageTooSmall": "上传的图片无效或过小（{size} bytes），请重新拍照或换一张更清晰的图片",
     "imagesOnly": "只支持图片或 PDF 文件",
     "unrecognizedImageFormat": "无法识别文件格式，请使用 JPG/PNG 或 PDF",
@@ -83,7 +87,6 @@ export default {
     "aiInvalidJson": "模型返回了无法解析的 JSON 行，请换更清晰图片重试。",
     "aiNoParseableRecords": "模型未返回可解析的考勤 JSON 行，请换更清晰图片重试。",
     "aiFabricated": "识别结果含多条提示词示例行（非图中真实数据），请换更清晰、完整的考勤表照片重试",
-    "aiMalformedRecords": "识别结果中有 {malformedPercent}% 的行格式异常（超过 {thresholdPercent}% 阈值），请换更清晰照片或重试识别。",
     "aiUnreadableTimes": "表格大量工号/姓名为 ??? 或无法辨认，但到达/离开时间却被整齐填写，疑似模型臆测。请换更清晰照片重试",
     "aiImageTooBlurry": "照片不够清晰，无法可靠识别考勤表。请正对表格、光线充足处重新拍摄，或换一张更清楚的照片。",
     "aiImageTooBlurryBlurRows": "照片不够清晰：约 {blurPercent}% 的考勤行看不清楚（字迹模糊，或姓名、工号难以辨认）。请正对表格、在光线充足处重新拍摄，避免手抖和反光。",
@@ -103,6 +106,10 @@ export default {
     "systemError": "系统异常，请稍后重试",
     "requestFailed": "请求失败",
     "networkError": "网络错误，请检查网络连接",
+    "imageQualityStatsRangeAllRows": "全部非删除行",
+    "imageQualityStatsRangeAttendanceOnly": "有效出勤行（排除未出勤）",
+    "imageQualityStatsRangeNamedRows": "有姓名或工号的行",
+    "imageQualityUnknownIncludeAbsent": "含未出勤行",
     "adminRequired": "需要管理员权限",
     "cannotDisableSelf": "不能禁用当前登录账号",
     "cannotDeleteSelf": "不能删除当前登录账号",
@@ -157,7 +164,12 @@ export default {
     "sortDesc": "降序",
     "filterColumn": "筛选",
     "serialNumber": "序号",
-    "gotIt": "知道了"
+    "gotIt": "知道了",
+    "close": "关闭",
+    "copy": "复制",
+    "copied": "已复制",
+    "copyFailed": "复制失败",
+    "undo": "撤销"
   },
   "validation": {
     "required": "{field} 必填",
@@ -204,7 +216,12 @@ export default {
     "statusPending": "排队中",
     "statusRunning": "导出中",
     "statusCompleted": "已完成",
-    "statusFailed": "失败"
+    "statusFailed": "失败",
+    "optionsTitle": "导出选项",
+    "imageLinksHint": "导出文件中的图片列将包含可访问的链接。",
+    "includeThumbnails": "嵌入缩略图",
+    "includeThumbnailsHint": "文件体积会明显增大，仅建议在需要离线查看图片时勾选。",
+    "typeAgencyBilling": "中介供应商结算"
   },
   "notification": {
     "title": "消息中心",
@@ -224,12 +241,14 @@ export default {
   "nav": {
     "home": "首页",
     "tasks": "任务列表",
+    "attendance": "考勤",
     "config": "配置管理",
     "settings": "设置",
     "audit": "审计日志",
     "service": "服务管理",
     "taskRecords": "考勤记录",
-    "taskEdit": "任务编辑"
+    "taskEdit": "任务编辑",
+    "employees": "员工管理"
   },
   "settings": {
     "title": "系统设置",
@@ -305,13 +324,13 @@ export default {
       "imageQualityBlockHint": "超过以下比例时拒绝保存识别结果。",
       "imageQualityBlockBlur": "模糊行占比 ≥",
       "imageQualityBlockUnknown": "关键字段未知率 ≥",
-      "imageQualityBlockMalformed": "畸形解析行占比 ≥",
-      "imageQualityBlockMalformedHint": "超过该比例时整单识别失败并提示重试；设为 0 表示不拦截。",
       "imageQualityBlockFewRows": "有效行数 ≤",
       "imageQualityBlockFewRowsUnknown": "且未知率 ≥",
       "imageQualityWarnSection": "识别后警告",
       "imageQualityWarnBlur": "模糊行占比 ≥",
-      "imageQualityWarnUnknown": "关键字段未知率 ≥"
+      "imageQualityWarnUnknown": "关键字段未知率 ≥",
+      "imageQualityBlockMalformed": "结构异常行占比 ≥",
+      "imageQualityBlockMalformedHint": "识别结果中字段结构明显异常（如缺列、错位）的行占比超过阈值时拦截保存。"
     },
     "reminders": {
       "title": "任务提醒规则",
@@ -437,6 +456,7 @@ export default {
       "dimCountry": "国家",
       "dimWarehouse": "仓库",
       "dimAgency": "中介机构",
+      "dimWorkRegion": "工作地区（员工）",
       "selfOnly": "仅本人（__self__）",
       "searchOptions": "搜索筛选项",
       "selectAll": "全选当前",
@@ -468,7 +488,15 @@ export default {
       "capUsers": "用户与角色管理",
       "capAudit": "查看审计日志",
       "capRecordCalibrate": "已确认任务员工考勤记录校准",
-      "capReminderConfig": "任务提醒规则配置"
+      "capReminderConfig": "任务提醒规则配置",
+      "functionalCountryLabel": "配置范围",
+      "functionalCountryDefault": "全局默认",
+      "functionalCountryHint": "以下开关仅对所选工作国家生效；未单独配置的国家使用全局默认权限。",
+      "dimWorkCountryRegion": "工作国家 / 工作地区",
+      "dimWorkCountryRegionHint": "匹配记录国家（Pays）、任务工作地区或员工工作地区，满足任一即可（OR）。",
+      "optionsFromCatalog": "国家/地区选项来自系统国家目录，与历史业务数据无关。",
+      "capTaskDeleteConfirmed": "删除已确认任务",
+      "capTaskDeleteConfirmedHint": "允许删除已确认任务；操作须填写删除原因并记入审计日志。"
     }
   },
   "calibration": {
@@ -579,11 +607,11 @@ export default {
     "recognitionFailedTitle": "识别失败",
     "recognitionRetry": "重试识别",
     "recognitionReupload": "重新上传",
-    "recognitionFailureHint": "「重试识别」：使用服务端已保存的原图重新识别（适合测试提示词更新）。「重新上传」：清空当前选择后重新选取文件。",
     "recognitionError": "识别出错",
     "workingCountry": "当前工作国家",
     "changeCountry": "更改配置",
-    "pdfNoPreview": "PDF 文件暂不支持预览"
+    "pdfNoPreview": "PDF 文件暂不支持预览",
+    "recognitionFailureHint": "可尝试重试识别，或重新上传更清晰的考勤表照片。"
   },
   "tasks": {
     "title": "任务列表",
@@ -646,7 +674,8 @@ export default {
     "deleteConfirm": "确定要删除任务 {taskId} 吗？此操作不可恢复。",
     "batchDelete": "批量删除 ({count})",
     "batchDeleteConfirm": "确定要删除选中的 {count} 个任务吗？任务及图片将被永久删除，此操作不可恢复。",
-    "batchDeleteSuccess": "已删除 {count} 个任务"
+    "batchDeleteSuccess": "已删除 {count} 个任务",
+    "viewImage": "查看图片"
   },
   "table": {
     "columnSettings": "列设置",
@@ -655,7 +684,8 @@ export default {
     "showAllColumns": "全部显示",
     "freezeColumns": "冻结列",
     "freezeColumnsHint": "勾选后从左侧连续冻结，横向滚动时保持可见",
-    "freezeReset": "清除冻结"
+    "freezeReset": "清除冻结",
+    "resizeColumn": "拖动调整列宽"
   },
   "taskEdit": {
     "title": "任务详情",
@@ -701,7 +731,6 @@ export default {
     "requiredFieldMissingShort": "必填字段缺失",
     "anomalyCategoryRequired": "必填缺失",
     "anomalyCategoryUnreadable": "看不清",
-    "anomalyCategoryFormat": "格式异常",
     "anomalyCategoryDuplicate": "重名",
     "anomalyCategoryOther": "其他异常",
     "fieldUnreadableShort": "看不清",
@@ -725,10 +754,23 @@ export default {
     "absentLabel": "未出勤",
     "deletedLabel": "已删除",
     "blurredContent": "内容模糊",
-    "parseMalformedShort": "解析格式异常",
     "handwrittenContent": "手写内容",
     "absentReason": "未出勤",
     "workerNumber": "NO",
+    "employeeNo": "系统ID",
+    "workRegionContextTitle": "工作地区",
+    "workRegionContextSummary": "本任务按 {region} 识别，「{column}」列由国家目录展示，不可手改。",
+    "workRegionContextStep1": "国家由任务工作地区决定，不可在表格中修改",
+    "workRegionContextStep2": "需要更换国家/地区：点击右上角「重新上传」，在首页选择正确工作地区后重新识别",
+    "workRegionMismatchBadge": "{count} 行不一致",
+    "workRegionPaysColumnHint": "当前工作地区为 {region}，国家不可手改",
+    "workRegionPaysPlaceholder": "如 {code}",
+    "workRegionBanner": "任务工作地区：{region}",
+    "workRegionBannerHint": "本任务在上传识别时绑定了工作地区。表内「国家」列自动对应该地区，不可手动修改。",
+    "workRegionMismatchHint": "存在历史识别数据与任务工作地区不一致，请重新上传并选择正确工作地区后识别。",
+    "addManualRow": "添加行",
+    "addManualRowHint": "在表格末尾追加一条空白考勤记录，便于手动补录",
+    "manualRowAdded": "已添加空白行",
     "pageNumber": "页码",
     "countryField": "国家",
     "warehouse": "仓库",
@@ -757,9 +799,14 @@ export default {
     "notDuplicate": "非重名",
     "duplicateSuspect": "重名疑似：{names}",
     "sourceTask": "来源任务",
-    "addManualRow": "添加行",
-    "addManualRowHint": "手动添加识别遗漏的考勤记录",
-    "manualRowAdded": "已添加空白行，请填写后提交"
+    "paysLockedHint": "国家由任务工作地区决定，不可手改；如需更换请重新上传识别",
+    "autoOrient": "自动摆正",
+    "autoOrientOn": "开",
+    "autoOrientOff": "关",
+    "autoOrienting": "正在摆正…",
+    "previewFullscreen": "全屏查看",
+    "previewResizeHint": "拖动边缘调整预览区宽度",
+    "parseMalformedShort": "结构异常"
   },
   "config": {
     "title": "配置中心",
@@ -989,7 +1036,32 @@ export default {
     "pageSize": "{size} 条/页",
     "currentPage": "第 {page} 页",
     "noLogs": "暂无审计日志",
-    "loadingFailed": "加载审计日志失败"
+    "loadingFailed": "加载审计日志失败",
+    "deleteReason": "删除原因",
+    "deleteRecordCount": "记录数",
+    "deleteTaskStatus": "任务状态"
+  },
+  "employees": {
+    "title": "员工管理",
+    "subtitle": "系统ID、工作地区与周考勤看板",
+    "tabList": "员工列表",
+    "tabWeekly": "周考勤",
+    "searchPlaceholder": "搜索工号、姓名、中介",
+    "regionFilter": "工作地区",
+    "isoWeekPlaceholder": "2026-W25",
+    "prevWeek": "上一周",
+    "nextWeek": "下一周",
+    "backfill": "历史回填",
+    "backfillDone": "已回填 {tasks} 个任务、{records} 条记录",
+    "colEmpNo": "系统ID",
+    "colName": "姓名",
+    "colRegion": "工作地区",
+    "colAgency": "中介",
+    "colFirstCreated": "首次建档",
+    "colLastAttendance": "最近出勤",
+    "regionFilterPlaceholder": "筛选工作地区",
+    "backfillConfirmTitle": "执行历史回填？",
+    "backfillConfirmContent": "将从历史已确认任务中补建员工档案与关联关系，可能耗时数分钟。是否继续？"
   },
   "messages": {
     "systemError": "系统异常，请稍后重试",
@@ -1001,5 +1073,47 @@ export default {
     "confirmLogout": "确定要退出登录吗？",
     "profileFeature": "个人中心功能开发中",
     "notifications": "消息通知"
+  },
+  "attendance": {
+    "menu": {
+      "records": "考勤记录",
+      "agencyBills": "中介结算"
+    },
+    "agencyBills": {
+      "title": "中介供应商结算",
+      "subtitle": "按日期范围汇总各中介、仓库的人力与工时",
+      "prevWeek": "上一周",
+      "nextWeek": "下一周",
+      "rangeLimitHint": "查询范围最多 {max} 天",
+      "rangeTooLong": "日期范围不能超过 {max} 天",
+      "dateRequired": "请选择日期范围",
+      "viewReleve": "查看明细",
+      "period": "结算周期",
+      "footerSummary": "共 {count} 人，合计 {hours} 工时",
+      "expandHint": "点击行末按钮可展开每日出勤明细",
+      "headcount": "人数",
+      "attendanceDays": "出勤天数",
+      "totalHours": "总工时",
+      "hours": "工时",
+      "detailTitle": "结算明细",
+      "detailTotal": "共 {total} 人",
+      "colDate": "日期",
+      "colShift": "班次",
+      "colArrival": "到达",
+      "colDeparture": "离开",
+      "colBreak": "休息",
+      "colObservations": "备注"
+    }
+  },
+  "taskDelete": {
+    "title": "删除任务",
+    "confirmedImpactTitle": "删除已确认任务",
+    "confirmedImpactDesc": "该任务已确认并可能已同步飞书。删除后需填写原因，任务及相关记录将从系统中移除。",
+    "simpleConfirmTitle": "确认删除任务？",
+    "simpleConfirmDesc": "删除后任务及识别结果将不可恢复。",
+    "batchCount": "批量数量",
+    "reason": "删除原因",
+    "reasonPlaceholder": "请说明删除原因，便于审计追溯…",
+    "reasonRequired": "请填写删除原因"
   }
 }

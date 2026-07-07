@@ -156,41 +156,47 @@
             </template>
           </TableSortableHeader>
         </template>
-        <template #bodyCell="{ column, record, index }">
+        <template #bodyCell="{ column, record, index, text }">
           <template v-if="column.key === 'serialNo'">
-            <span class="cell-serial">{{ (currentPage - 1) * pageSize + index + 1 }}</span>
+            <CopyableCell :text="String((currentPage - 1) * pageSize + index + 1)" />
           </template>
-          <template v-if="column.key === 'taskId'">
-            <a-button type="link" size="small" class="task-id-link" @click="handleView(record)">
-              {{ record.taskId }}
-            </a-button>
+          <template v-else-if="column.key === 'taskId'">
+            <CopyableCell :text="record.taskId">
+              <a-button type="link" size="small" class="task-id-link" @click="handleView(record)">
+                {{ record.taskId }}
+              </a-button>
+            </CopyableCell>
           </template>
-          <template v-if="column.key === 'status'">
-            <div class="status-cell">
-              <a-tag :color="getStatusColor(record.status)" class="status-tag">
-                {{ getStatusText(record.status) }}
-                <span v-if="record.status === 'processing' && record.progressRowCount">
-                  · {{ record.progressRowCount }}
-                </span>
-              </a-tag>
-              <a-tag
-                v-if="record.status === 'confirmed' && record.syncStatus && record.syncStatus !== 'none'"
-                :color="getSyncStatusColor(record.syncStatus)"
-                class="sync-tag"
-              >
-                {{ getSyncStatusText(record.syncStatus) }}
-              </a-tag>
-            </div>
+          <template v-else-if="column.key === 'status'">
+            <CopyableCell :text="getStatusCopyText(record)">
+              <div class="status-cell">
+                <a-tag :color="getStatusColor(record.status)" class="status-tag">
+                  {{ getStatusText(record.status) }}
+                  <span v-if="record.status === 'processing' && record.progressRowCount">
+                    · {{ record.progressRowCount }}
+                  </span>
+                </a-tag>
+                <a-tag
+                  v-if="record.status === 'confirmed' && record.syncStatus && record.syncStatus !== 'none'"
+                  :color="getSyncStatusColor(record.syncStatus)"
+                  class="sync-tag"
+                >
+                  {{ getSyncStatusText(record.syncStatus) }}
+                </a-tag>
+              </div>
+            </CopyableCell>
           </template>
-          <template v-if="column.key === 'fileKey'">
-            <div class="file-cell" @click="previewImages(record)">
-              <FileImageOutlined class="file-icon" />
-              <span class="file-name">{{ record.fileKey }}</span>
-              <span v-if="getImageCount(record) > 1" class="image-count">({{ getImageCount(record) }} {{ $t('tasks.images') }})</span>
-              <EyeOutlined class="preview-icon" />
-            </div>
+          <template v-else-if="column.key === 'fileKey'">
+            <CopyableCell :text="record.fileKey" block>
+              <div class="file-cell">
+                <FileImageOutlined class="file-icon file-cell__preview" @click="previewImages(record)" />
+                <span class="file-name">{{ record.fileKey }}</span>
+                <span v-if="getImageCount(record) > 1" class="image-count">({{ getImageCount(record) }} {{ $t('tasks.images') }})</span>
+                <EyeOutlined class="preview-icon file-cell__preview" @click="previewImages(record)" />
+              </div>
+            </CopyableCell>
           </template>
-          <template v-if="column.key === 'action'">
+          <template v-else-if="column.key === 'action'">
             <div class="table-action-cell table-action-cell--icons table-action-cell--icons-2">
               <span class="table-action-cell__slot">
                 <a-button type="text" size="small" @click="handleView(record)" class="view-btn">
@@ -199,7 +205,7 @@
               </span>
               <span class="table-action-cell__slot">
                 <a-button
-                  v-if="record.status !== 'confirmed'"
+                  v-if="canDeleteRecord(record)"
                   type="text"
                   danger
                   size="small"
@@ -210,6 +216,9 @@
                 </a-button>
               </span>
             </div>
+          </template>
+          <template v-else-if="isCopyableTableColumn(column)">
+            <CopyableCell :text="resolveTableCellCopyText(column, record, text)" />
           </template>
         </template>
       </a-table>
@@ -235,6 +244,15 @@
       :initial-index="previewCurrentIndex"
       :title="$t('tasks.imagePreview')"
     />
+
+    <TaskDeleteModal
+      v-model:open="deleteModalOpen"
+      :task-id="deleteModalTaskId"
+      :confirmed="deleteModalConfirmed"
+      :batch-count="deleteModalBatchCount"
+      :submitting="deleteSubmitting"
+      @submit="handleDeleteSubmit"
+    />
   </div>
 </template>
 
@@ -242,7 +260,7 @@
 import { computed, ref, onMounted, onBeforeUnmount, watch } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import { useI18n } from 'vue-i18n'
-import { message, Modal } from 'ant-design-vue'
+import { message } from 'ant-design-vue'
 import { 
   PlusOutlined, 
   SearchOutlined, 
@@ -258,6 +276,9 @@ import { useExportCenter } from '@/composables/useExportCenter'
 import { resolveTaskImageUrls } from '@/utils/imageUrl'
 import PageShell from '@/components/PageShell.vue'
 import ImagePreviewModal from '@/components/ImagePreviewModal.vue'
+import TaskDeleteModal from '@/components/TaskDeleteModal.vue'
+import CopyableCell from '@/components/CopyableCell.vue'
+import { useAuthStore } from '@/stores/auth'
 import TableSortableHeader from '@/components/TableSortableHeader.vue'
 import TableHeaderFilter from '@/components/TableHeaderFilter.vue'
 import FieldFilterControl from '@/components/FieldFilterControl.vue'
@@ -274,10 +295,14 @@ import {
   parseFilterValue,
   serializeFilterValue,
 } from '@/utils/fieldFilterValue'
+import { isCopyableTableColumn, resolveTableCellCopyText } from '@/utils/tableCopy'
+
+const BATCH_SELECTABLE_STATUSES = new Set(['processed', 'failed'])
 
 const router = useRouter()
 const route = useRoute()
 const { t } = useI18n()
+const authStore = useAuthStore()
 const { openExportCenter, refreshExportSummary } = useExportCenter()
 
 const tasks = ref([])
@@ -298,14 +323,42 @@ const previewImagesList = ref([])
 const previewCurrentIndex = ref(0)
 const selectedRowKeys = ref([])
 const batchDeleting = ref(false)
+const deleteModalOpen = ref(false)
+const deleteModalTaskId = ref('')
+const deleteModalConfirmed = ref(false)
+const deleteModalBatchCount = ref(1)
+const deleteSubmitting = ref(false)
+const pendingDeleteTaskIds = ref([])
+
+const canDeleteConfirmedTask = computed(() => authStore.canDeleteConfirmedTask)
+
+const canDeleteRecord = (record) => {
+  if (!record) return false
+  if (record.status === 'confirmed') {
+    return canDeleteConfirmedTask.value
+  }
+  return true
+}
+
+const isBatchSelectable = (record) => record && BATCH_SELECTABLE_STATUSES.has(record.status)
+
+const pruneSelectedRowKeys = () => {
+  selectedRowKeys.value = selectedRowKeys.value.filter((id) => {
+    const row = tasks.value.find((item) => item.taskId === id)
+    return row && isBatchSelectable(row)
+  })
+}
 
 const rowSelection = computed(() => ({
   selectedRowKeys: selectedRowKeys.value,
   onChange: (keys) => {
-    selectedRowKeys.value = keys
+    selectedRowKeys.value = keys.filter((id) => {
+      const row = tasks.value.find((item) => item.taskId === id)
+      return row && isBatchSelectable(row)
+    })
   },
   getCheckboxProps: (record) => ({
-    disabled: record.status === 'confirmed',
+    disabled: !isBatchSelectable(record),
   }),
 }))
 
@@ -445,6 +498,7 @@ const loadTasks = async (options = {}) => {
     ])
     tasks.value = listRes.data.records || []
     total.value = listRes.data.total || 0
+    pruneSelectedRowKeys()
     syncProcessingPoll()
   } catch (error) {
     if (!silent) {
@@ -510,33 +564,50 @@ const previewImages = async (record) => {
 const handleBatchDelete = () => {
   const keys = selectedRowKeys.value.filter((id) => {
     const row = tasks.value.find((item) => item.taskId === id)
-    return row && row.status !== 'confirmed'
+    return row && canDeleteRecord(row)
   })
   if (!keys.length) {
     message.warning(t('taskEdit.deleteNotAllowed'))
     return
   }
-  Modal.confirm({
-    title: t('tasks.batchDelete', { count: keys.length }),
-    content: t('tasks.batchDeleteConfirm', { count: keys.length }),
-    okText: t('common.delete'),
-    cancelText: t('common.cancel'),
-    okType: 'danger',
-    onOk: async () => {
-      batchDeleting.value = true
-      try {
-        await Promise.all(keys.map((id) => deleteTask(id)))
-        message.success(t('tasks.batchDeleteSuccess', { count: keys.length }))
-        selectedRowKeys.value = []
-        loadTasks()
-      } catch (error) {
-        message.error(t('messages.systemError'))
-        console.error(error)
-      } finally {
-        batchDeleting.value = false
-      }
-    },
-  })
+  const hasConfirmed = keys.some((id) => tasks.value.find((item) => item.taskId === id)?.status === 'confirmed')
+  pendingDeleteTaskIds.value = keys
+  deleteModalTaskId.value = keys.length === 1 ? keys[0] : ''
+  deleteModalConfirmed.value = hasConfirmed
+  deleteModalBatchCount.value = keys.length
+  deleteModalOpen.value = true
+}
+
+const handleDeleteSubmit = async (reason) => {
+  const ids = pendingDeleteTaskIds.value.length
+    ? [...pendingDeleteTaskIds.value]
+    : (deleteModalTaskId.value ? [deleteModalTaskId.value] : [])
+  if (!ids.length) return
+
+  deleteSubmitting.value = true
+  batchDeleting.value = ids.length > 1
+  try {
+    await Promise.all(ids.map((id) => {
+      const row = tasks.value.find((item) => item.taskId === id)
+      const needsReason = row?.status === 'confirmed'
+      return deleteTask(id, needsReason ? reason : undefined)
+    }))
+    message.success(
+      ids.length > 1
+        ? t('tasks.batchDeleteSuccess', { count: ids.length })
+        : t('tasks.deleteSuccess')
+    )
+    selectedRowKeys.value = selectedRowKeys.value.filter((id) => !ids.includes(id))
+    deleteModalOpen.value = false
+    pendingDeleteTaskIds.value = []
+    loadTasks()
+  } catch (error) {
+    message.error(t('messages.systemError'))
+    console.error(error)
+  } finally {
+    deleteSubmitting.value = false
+    batchDeleting.value = false
+  }
 }
 
 const handleFilter = () => {
@@ -617,27 +688,16 @@ const handleView = (record) => {
   router.push(`/tasks/${record.taskId}`)
 }
 
-const handleDelete = async (record) => {
-  if (record.status === 'confirmed') {
+const handleDelete = (record) => {
+  if (!canDeleteRecord(record)) {
     message.warning(t('taskEdit.deleteNotAllowed'))
     return
   }
-  try {
-    await Modal.confirm({
-      title: t('common.delete'),
-      content: t('tasks.deleteConfirm'),
-      okText: t('common.confirm'),
-      cancelText: t('common.cancel'),
-      onOk: async () => {
-        await deleteTask(record.taskId)
-        message.success(t('tasks.deleteSuccess'))
-        selectedRowKeys.value = selectedRowKeys.value.filter((id) => id !== record.taskId)
-        loadTasks()
-      },
-    })
-  } catch (error) {
-    console.error(t('messages.systemError'), error)
-  }
+  pendingDeleteTaskIds.value = [record.taskId]
+  deleteModalTaskId.value = record.taskId
+  deleteModalConfirmed.value = record.status === 'confirmed'
+  deleteModalBatchCount.value = 1
+  deleteModalOpen.value = true
 }
 
 const getStatusColor = (status) => {
@@ -680,6 +740,17 @@ const getSyncStatusText = (syncStatus) => {
   return map[syncStatus] || syncStatus
 }
 
+const getStatusCopyText = (record) => {
+  const parts = [getStatusText(record.status)]
+  if (record.status === 'processing' && record.progressRowCount) {
+    parts.push(String(record.progressRowCount))
+  }
+  if (record.status === 'confirmed' && record.syncStatus && record.syncStatus !== 'none') {
+    parts.push(getSyncStatusText(record.syncStatus))
+  }
+  return parts.join(' · ')
+}
+
 const applyRouteQuery = () => {
   const status = typeof route.query.status === 'string' ? route.query.status : ''
   if (status) {
@@ -688,7 +759,14 @@ const applyRouteQuery = () => {
   }
 }
 
-onMounted(() => {
+onMounted(async () => {
+  if (!authStore.userInfo?.permissions?.taskDeleteConfirmed && authStore.isAdmin) {
+    try {
+      await authStore.fetchUserInfo()
+    } catch {
+      /* ignore */
+    }
+  }
   applyRouteQuery()
   loadTasks()
 })
@@ -916,12 +994,18 @@ watch(() => route.path, (newPath, oldPath) => {
       display: flex;
       align-items: center;
       gap: 6px;
-      cursor: pointer;
-      color: $primary;
-      
-      &:hover {
+      color: $text-strong;
+      min-width: 0;
+      flex: 1;
+
+      &__preview {
+        cursor: pointer;
         color: $primary;
-        text-decoration: underline;
+        flex-shrink: 0;
+
+        &:hover {
+          color: $primary;
+        }
       }
       
       .file-icon {
@@ -933,6 +1017,7 @@ watch(() => route.path, (newPath, oldPath) => {
         overflow: hidden;
         text-overflow: ellipsis;
         white-space: nowrap;
+        user-select: text;
       }
       
       .image-count {

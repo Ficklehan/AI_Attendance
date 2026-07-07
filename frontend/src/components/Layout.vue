@@ -13,16 +13,53 @@
         </div>
 
         <nav class="nav">
-          <router-link
-            v-for="item in menuItems"
-            :key="item.path"
-            :to="item.path"
-            class="nav__item"
-            :class="{ 'nav__item--active': activeMenu === item.path }"
-          >
-            <component :is="item.icon" class="nav__icon" />
-            <span>{{ $t(item.labelKey) }}</span>
-          </router-link>
+          <template v-for="item in menuItems" :key="item.key || item.path">
+            <a-popover
+              v-if="item.children"
+              trigger="hover"
+              placement="bottomLeft"
+              :arrow="false"
+              :mouse-enter-delay="0.08"
+              :mouse-leave-delay="0.12"
+              overlay-class-name="nav-submenu-popover"
+            >
+              <template #content>
+                <div class="nav-submenu-panel">
+                  <router-link
+                    v-for="child in item.children"
+                    :key="child.path"
+                    :to="child.path"
+                    class="nav-submenu__item"
+                    :class="{ 'nav-submenu__item--active': isChildActive(child.path) }"
+                  >
+                    <component :is="child.icon" class="nav-submenu__icon" />
+                    <span>{{ $t(child.labelKey) }}</span>
+                  </router-link>
+                </div>
+              </template>
+              <div
+                class="nav__item nav__item--group"
+                :class="{ 'nav__item--active': isNavGroupActive(item) }"
+                role="button"
+                tabindex="0"
+                @click="goNavGroup(item)"
+                @keydown.enter="goNavGroup(item)"
+              >
+                <component :is="item.icon" class="nav__icon" />
+                <span>{{ $t(item.labelKey) }}</span>
+                <DownOutlined class="nav__chevron" />
+              </div>
+            </a-popover>
+            <router-link
+              v-else
+              :to="item.path"
+              class="nav__item"
+              :class="{ 'nav__item--active': activeMenu === item.path }"
+            >
+              <component :is="item.icon" class="nav__icon" />
+              <span>{{ $t(item.labelKey) }}</span>
+            </router-link>
+          </template>
         </nav>
       </div>
 
@@ -171,6 +208,7 @@
     <ExportJobDrawer v-model:open="exportDrawerOpen" />
     <NotificationDrawer v-model:open="notificationDrawerOpen" @read="refreshUnreadCount" />
     <ChangePasswordModal v-model:open="changePasswordOpen" />
+    <WorkingCountrySetupModal v-model:open="workingCountrySetupOpen" @saved="onWorkingCountrySetupSaved" />
   </a-layout>
 </template>
 
@@ -185,7 +223,9 @@ import { buildCountrySelectOption, formatCountryLabel } from '@/utils/countryLab
 import { message, Modal } from 'ant-design-vue'
 import {
   CalendarOutlined,
+  FileTextOutlined,
   HomeOutlined,
+  TeamOutlined,
   UnorderedListOutlined,
   SettingOutlined,
   UserOutlined,
@@ -199,6 +239,8 @@ import {
 import ExportJobDrawer from '@/components/ExportJobDrawer.vue'
 import NotificationDrawer from '@/components/NotificationDrawer.vue'
 import ChangePasswordModal from '@/components/ChangePasswordModal.vue'
+import WorkingCountrySetupModal from '@/components/WorkingCountrySetupModal.vue'
+import { needsWorkingCountrySetup } from '@/utils/workingCountrySetup'
 import { useExportCenter, startSummaryPolling, stopSummaryPolling } from '@/composables/useExportCenter'
 import { getUnreadCount } from '@/api/notification'
 
@@ -215,6 +257,7 @@ const countryPopoverVisible = ref(false)
 const countryDraft = ref('default')
 const countrySaving = ref(false)
 const changePasswordOpen = ref(false)
+const workingCountrySetupOpen = ref(false)
 const notificationDrawerOpen = ref(false)
 const unreadCount = ref(0)
 let unreadPollTimer = null
@@ -271,7 +314,17 @@ const menuItems = computed(() => {
   const items = [
     { path: '/home', labelKey: 'nav.home', icon: HomeOutlined },
     { path: '/tasks', labelKey: 'nav.tasks', icon: UnorderedListOutlined },
-    { path: '/task-records', labelKey: 'nav.taskRecords', icon: CalendarOutlined },
+    {
+      key: 'attendance',
+      path: '/attendance/records',
+      labelKey: 'nav.attendance',
+      icon: CalendarOutlined,
+      children: [
+        { path: '/attendance/records', labelKey: 'attendance.menu.records', icon: CalendarOutlined },
+        { path: '/attendance/agency-bills', labelKey: 'attendance.menu.agencyBills', icon: FileTextOutlined },
+      ],
+    },
+    { path: '/employees', labelKey: 'nav.employees', icon: TeamOutlined },
   ]
   if (authStore.isAdmin) {
     items.push({ path: '/settings/ai', labelKey: 'nav.settings', icon: SettingOutlined })
@@ -283,6 +336,22 @@ const activeMenu = computed(() => {
   if (route.path.startsWith('/settings')) return '/settings/ai'
   return route.path
 })
+
+function isChildActive(path) {
+  return route.path === path || route.path.startsWith(`${path}/`)
+}
+
+function isNavGroupActive(item) {
+  if (!item.children) return false
+  return item.children.some((child) => isChildActive(child.path))
+}
+
+function goNavGroup(item) {
+  const target = item.children?.find((child) => isChildActive(child.path))?.path || item.path
+  if (route.path !== target) {
+    router.push(target)
+  }
+}
 
 const applyWorkingCountry = async () => {
   if (!countryDraft.value) {
@@ -335,6 +404,25 @@ const handleMenuClick = ({ key }) => {
   }
 }
 
+const onWorkingCountrySetupSaved = () => {
+  workingCountrySetupOpen.value = false
+}
+
+const ensureWorkingCountrySetup = async () => {
+  if (!authStore.isAuthenticated) return
+  try {
+    if (authStore.userInfo && authStore.userInfo.personalWorkingCountry === undefined) {
+      await authStore.fetchUserInfo()
+    }
+    await countryStore.hydrate(true)
+    if (needsWorkingCountrySetup(authStore.userInfo) || countryStore.setupRequired) {
+      workingCountrySetupOpen.value = true
+    }
+  } catch (error) {
+    console.error('检查工作国家配置失败:', error)
+  }
+}
+
 onMounted(async () => {
   const savedLocale = localStorage.getItem('locale')
   if (savedLocale && ['zh-CN', 'en-US', 'fr-FR', 'nl-NL', 'cs-CZ', 'pl-PL', 'de-DE', 'es-ES'].includes(savedLocale)) {
@@ -343,7 +431,7 @@ onMounted(async () => {
   }
   if (authStore.isAuthenticated) {
     try {
-      await countryStore.hydrate()
+      await ensureWorkingCountrySetup()
     } catch (error) {
       console.error('加载工作国家失败:', error)
     }
@@ -508,6 +596,69 @@ watch(() => [route.meta.titleKey, locale.value], updateDocumentTitle, { immediat
   &__icon {
     font-size: 16px;
   }
+
+  &__chevron {
+    font-size: 10px;
+    margin-left: 2px;
+    opacity: 0.55;
+    transition: transform $duration-fast $ease-smooth;
+  }
+
+  &__item--group {
+    cursor: pointer;
+    user-select: none;
+
+    &:hover .nav__chevron {
+      opacity: 0.85;
+    }
+  }
+}
+
+.nav-submenu-popover {
+  :deep(.ant-popover-inner) {
+    padding: 6px;
+    border-radius: $radius-lg;
+    box-shadow: $shadow-lg;
+  }
+
+  :deep(.ant-popover-arrow) {
+    display: none;
+  }
+}
+
+.nav-submenu-panel {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 168px;
+}
+
+.nav-submenu__item {
+  display: flex;
+  align-items: center;
+  gap: $space-2;
+  padding: 8px 12px;
+  border-radius: $radius-md;
+  text-decoration: none;
+  color: $text-secondary;
+  font-size: $font-size-base;
+  font-weight: $font-weight-medium;
+  transition: background $duration-fast $ease-smooth, color $duration-fast $ease-smooth;
+
+  &:hover {
+    color: $text-strong;
+    background: $bg-hover;
+  }
+
+  &--active {
+    color: $primary;
+    background: $primary-light;
+    font-weight: $font-weight-semibold;
+  }
+}
+
+.nav-submenu__icon {
+  font-size: 15px;
 }
 
 // ── Header Button ──

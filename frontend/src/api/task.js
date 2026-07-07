@@ -46,10 +46,15 @@ export const confirmTask = (taskId, data) => {
   })
 }
 
-export const deleteTask = (taskId) => {
+export const deleteTask = (taskId, reason) => {
+  const payload = {}
+  if (reason != null && String(reason).trim() !== '') {
+    payload.reason = String(reason).trim()
+  }
   return request({
     url: `/tasks/${taskId}/delete`,
     method: 'post',
+    data: payload,
   })
 }
 

@@ -7,16 +7,18 @@
 		"users":true,
 		"audit":true,
 		"recordCalibrate":true,
+		"taskDeleteConfirmed":true,
 		"reminderConfig":true
 	},
 	"user":{
 		"tasks":true,
 		"country":true,
-		"aiConfig":true,
-		"feishuConfig":true,
-		"users":true,
-		"audit":true,
-		"recordCalibrate":true,
-		"reminderConfig":true
+		"aiConfig":false,
+		"feishuConfig":false,
+		"users":false,
+		"audit":false,
+		"recordCalibrate":false,
+		"taskDeleteConfirmed":false,
+		"reminderConfig":false
 	}
 }

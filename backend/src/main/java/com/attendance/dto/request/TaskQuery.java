@@ -11,6 +11,18 @@ public class TaskQuery {
     private String listScopeUserId;
     /** Server-only: when true, list/export includes all users (admin). */
     private Boolean allUsersScope;
+    /** 考勤记录导出：是否在 Excel 中嵌入考勤图片缩略图（默认 false，仅导出原图链接） */
+    private Boolean includeThumbnails;
+    /** 导出表头语言，与 PC 端 locale 一致，如 zh-CN、en-US */
+    private String locale;
+
+    public String getLocale() {
+        return locale;
+    }
+
+    public void setLocale(String locale) {
+        this.locale = locale;
+    }
 
     public String getStatus() {
         return status;
@@ -78,5 +90,13 @@ public class TaskQuery {
 
     public void setAllUsersScope(Boolean allUsersScope) {
         this.allUsersScope = allUsersScope;
+    }
+
+    public Boolean getIncludeThumbnails() {
+        return includeThumbnails;
+    }
+
+    public void setIncludeThumbnails(Boolean includeThumbnails) {
+        this.includeThumbnails = includeThumbnails;
     }
 }

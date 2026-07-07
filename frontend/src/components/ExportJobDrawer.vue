@@ -67,7 +67,7 @@
           </div>
           <div v-if="job.fileName" class="export-item__file">{{ job.fileName }}</div>
           <div v-if="job.status === 'failed' && job.errorMessage" class="export-item__error">
-            {{ job.errorMessage }}
+            {{ formatJobError(job.errorMessage) }}
           </div>
           <div class="export-item__actions">
             <a-button
@@ -102,6 +102,7 @@ import {
 } from '@/api/export'
 import { useExportCenter } from '@/composables/useExportCenter'
 import { startAdaptivePoll } from '@/utils/adaptivePoll'
+import { translateApiError } from '@/utils/translateError'
 
 const props = defineProps({
   open: { type: Boolean, default: false },
@@ -145,7 +146,16 @@ const hasDismissible = computed(() =>
 const typeLabel = (type) => {
   if (type === 'task_list') return t('export.typeTaskList')
   if (type === 'employee_records') return t('export.typeEmployeeRecords')
+  if (type === 'agency_billing') return t('export.typeAgencyBilling')
   return type
+}
+
+const formatJobError = (message) => {
+  if (!message) return ''
+  if (message.startsWith('errors.')) {
+    return translateApiError({ messageKey: message })
+  }
+  return message
 }
 
 const statusLabel = (status) => {

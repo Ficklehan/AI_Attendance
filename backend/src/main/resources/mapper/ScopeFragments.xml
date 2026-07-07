@@ -16,11 +16,27 @@
         </if>
     </sql>
 
-    <sql id="RecordDimensionKeysIn">
-        <if test="scope.countries != null and scope.countries.size() > 0">
-            AND ${tableAlias}.country_key IN
-            <foreach collection="scope.countries" item="cv" open="(" separator="," close=")">#{cv}</foreach>
+    <sql id="WorkCountryRegionKeysIn">
+        <if test="scope.countryMatchTokens != null and scope.countryMatchTokens.size() > 0">
+            AND (
+                ${tableAlias}.country_key IN
+                <foreach collection="scope.countryMatchTokens" item="cv" open="(" separator="," close=")">#{cv}</foreach>
+                OR UPPER(TRIM(${tableAlias}.country)) IN
+                <foreach collection="scope.countryMatchTokens" item="cv" open="(" separator="," close=")">#{cv}</foreach>
+                OR EXISTS (
+                    SELECT 1 FROM tasks t_wcr
+                    WHERE t_wcr.task_id = ${tableAlias}.task_id
+                      AND UPPER(TRIM(t_wcr.prompt_country)) IN
+                    <foreach collection="scope.countryMatchTokens" item="cv" open="(" separator="," close=")">#{cv}</foreach>
+                )
+            )
         </if>
+    </sql>
+
+    <sql id="RecordDimensionKeysIn">
+        <include refid="com.attendance.mapper.ScopeFragments.WorkCountryRegionKeysIn">
+            <property name="tableAlias" value="${tableAlias}"/>
+        </include>
         <if test="scope.warehouses != null and scope.warehouses.size() > 0">
             AND ${tableAlias}.warehouse_key IN
             <foreach collection="scope.warehouses" item="wv" open="(" separator="," close=")">#{wv}</foreach>
@@ -37,7 +53,7 @@
         </if>
     </sql>
 
-    <!-- 任务列表：任一子记录命中维度即可见该任务 -->
+    <!-- 任务列表：任一子记录命中维度，或任务工作地区命中，即可见该任务 -->
     <sql id="TaskDimensionScopeExists">
         <if test="scope.recordDimensionFilter">
             AND (
@@ -48,6 +64,10 @@
                         <property name="tableAlias" value="tr_ds"/>
                     </include>
                 )
+                <if test="scope.countryMatchTokens != null and scope.countryMatchTokens.size() > 0">
+                    OR UPPER(TRIM(${taskTableAlias}.prompt_country)) IN
+                    <foreach collection="scope.countryMatchTokens" item="cv" open="(" separator="," close=")">#{cv}</foreach>
+                </if>
                 <if test="scope.viewerUserId != null and scope.viewerUserId != ''">
                     OR ${taskTableAlias}.user_id = #{scope.viewerUserId}
                 </if>

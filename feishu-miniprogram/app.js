@@ -1,4 +1,4 @@
-const { loadPreferences, syncCountryConfig, getCountry } = require('./utils/preferences')
+const { loadPreferences, syncCountryConfig, getCountry, redirectToCountrySetupIfNeeded } = require('./utils/preferences')
 const { loadNightShiftRules } = require('./utils/nightShiftRules')
 const { applyTabBarI18n, setLocale, DEFAULT_LOCALE } = require('./utils/i18n')
 const { COUNTRIES } = require('./utils/countries')
@@ -43,7 +43,11 @@ App({
     const userInfo = tt.getStorageSync('userInfo')
     if (token) {
       this.globalData.token = token
-      syncCountryConfig(this).catch((err) => {
+      syncCountryConfig(this).then(() => {
+        if (userInfo) {
+          redirectToCountrySetupIfNeeded()
+        }
+      }).catch((err) => {
         console.warn('启动时同步国家配置失败', err)
       })
     }

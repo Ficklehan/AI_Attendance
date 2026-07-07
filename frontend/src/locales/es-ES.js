@@ -23,8 +23,7 @@ export default {
       "deleted": "Eliminado",
       "signedConfirmed": "Firmado (confirmado)",
       "unsignedConfirmed": "Sin firma (confirmado)",
-      "signed": "Firmado",
-      "manuallyAdded": "Añadido manualmente"
+      "signed": "Firmado"
     },
     "missing": {
       "NO": "N.º de empleado no reconocido",
@@ -196,6 +195,8 @@ export default {
   "nav": {
     "home": "Inicio",
     "tasks": "Tareas",
+    "attendance": "Asistencia",
+    "employees": "Empleados",
     "config": "Configuración",
     "audit": "Registro de auditoría",
     "service": "Servicio",
@@ -286,7 +287,6 @@ export default {
     "recognitionFailedTitle": "Error de reconocimiento",
     "recognitionRetry": "Reintentar reconocimiento",
     "recognitionReupload": "Subir de nuevo",
-    "recognitionFailureHint": "Reintentar: volver a reconocer las imágenes ya guardadas en el servidor (útil tras actualizar las instrucciones). Subir de nuevo: borrar la selección y elegir archivos otra vez.",
     "recognitionError": "Error de reconocimiento",
     "workingCountry": "País de trabajo",
     "changeCountry": "Cambiar configuración",
@@ -384,7 +384,6 @@ export default {
     "requiredFieldMissingShort": "Faltan campos obligatorios",
     "anomalyCategoryRequired": "Faltan campos obligatorios",
     "anomalyCategoryUnreadable": "Ilegible",
-    "anomalyCategoryFormat": "Error de formato",
     "anomalyCategoryDuplicate": "Nombres duplicados",
     "anomalyCategoryOther": "Otras anomalías",
     "fieldUnreadableShort": "Ilegible",

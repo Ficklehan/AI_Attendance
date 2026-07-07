@@ -6,8 +6,10 @@ const {
   saveCountry,
   saveLocale,
   isCountryConfigured,
-  syncCountryConfig
+  syncCountryConfig,
+  redirectToCountrySetupIfNeeded,
 } = require('../../utils/preferences')
+const { needsWorkingCountrySetup } = require('../../utils/workingCountrySetup')
 
 Page({
   data: {
@@ -44,22 +46,37 @@ Page({
     this.setData({ loading: true })
     syncCountryConfig().finally(() => {
       const currentCountry = getCountry() || App.globalData.currentCountry || ''
-      const locale = getLocale()
-      const languageOptions = getLanguageOptions()
       const selectedCountry = currentCountry || (this.data.isSetup ? '' : 'default')
       this.setData({
         loading: false,
-        texts: this.buildTexts(),
-        countries: getCountriesForPicker(),
-        languages: languageOptions,
         selectedCountry,
-        selectedLocale: locale,
         currentCountry,
-        currentCountryLabel: currentCountry ? getCountryLabel(currentCountry) : '',
-        currentLocaleLabel: (languageOptions.find((item) => item.value === locale) || {}).label || locale
+        ...this.buildLocalizedState(currentCountry)
       })
       tt.setNavigationBarTitle({ title: t('settings.title') })
     })
+  },
+
+  buildLocalizedState: function (currentCountry) {
+    const locale = getLocale()
+    const languageOptions = getLanguageOptions()
+    const countries = getCountriesForPicker().filter((item) => (
+      !this.data.isSetup || (item.code && item.code !== 'default')
+    ))
+    return {
+      texts: this.buildTexts(),
+      countries,
+      languages: languageOptions,
+      selectedLocale: locale,
+      currentCountryLabel: currentCountry ? getCountryLabel(currentCountry) : '',
+      currentLocaleLabel: (languageOptions.find((item) => item.value === locale) || {}).label || locale
+    }
+  },
+
+  refreshLocalizedLabels: function () {
+    const currentCountry = this.data.currentCountry || getCountry() || ''
+    this.setData(this.buildLocalizedState(currentCountry))
+    tt.setNavigationBarTitle({ title: t('settings.title') })
   },
 
   buildTexts: function () {
@@ -84,7 +101,11 @@ Page({
   },
 
   toggleCountryOptions: function () {
-    this.setData({ showCountryOptions: !this.data.showCountryOptions })
+    const next = !this.data.showCountryOptions
+    if (next) {
+      this.refreshLocalizedLabels()
+    }
+    this.setData({ showCountryOptions: next })
   },
 
   toggleLanguageOptions: function () {
@@ -98,22 +119,15 @@ Page({
   onSelectLanguage: function (e) {
     const value = e.currentTarget.dataset.value
     saveLocale(value)
-    const languageOptions = getLanguageOptions()
     this.setData({ selectedLocale: value })
-    this.setData({
-      texts: this.buildTexts(),
-      countries: getCountriesForPicker(),
-      languages: languageOptions,
-      currentLocaleLabel: (languageOptions.find((item) => item.value === value) || {}).label || value
-    })
-    tt.setNavigationBarTitle({ title: t('settings.title') })
+    this.refreshLocalizedLabels()
     tt.showToast({ title: t('settings.languageSaved'), icon: 'success' })
   },
 
   onSave: function () {
     if (this.data.saving || this.data.loading) return
     const { selectedCountry, selectedLocale, isSetup } = this.data
-    if (!selectedCountry) {
+    if (!selectedCountry || selectedCountry === 'default') {
       tt.showToast({ title: t('settings.mustSelectCountry'), icon: 'none' })
       return
     }
@@ -150,5 +164,13 @@ Page({
     }
 
     applySave()
+  },
+
+  onBackPress: function () {
+    if (this.data.isSetup && needsWorkingCountrySetup()) {
+      tt.showToast({ title: t('settings.mustSelectCountry'), icon: 'none' })
+      return true
+    }
+    return false
   }
 })

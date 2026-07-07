@@ -54,6 +54,8 @@
   "nav": {
     "home": "Accueil",
     "tasks": "Tâches",
+    "attendance": "Présence",
+    "employees": "Employés",
     "taskRecords": "Registres de présence",
     "config": "Configuration",
     "settings": "Paramètres",

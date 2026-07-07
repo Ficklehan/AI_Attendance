@@ -20,6 +20,9 @@ import com.attendance.security.SecurityUtils;
 import com.attendance.util.CountryResolver;
 import com.attendance.util.ExcelExportHelper;
 import com.attendance.util.ExcelExportHelper.ExcelSheetWriter;
+import com.attendance.util.EmployeeRecordExportImages;
+import com.attendance.util.EmployeeRecordExcelWriter;
+import com.attendance.util.ExportLocaleSupport;
 import com.attendance.mapper.UserMapper;
 import com.attendance.security.TaskAccessService;
 import com.attendance.util.RecordFeishuPrepareSupport;
@@ -48,6 +51,8 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.io.IOException;
 import java.time.LocalDate;
+import java.time.LocalDateTime;
+import java.time.ZoneId;
 import java.time.format.DateTimeFormatter;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -109,7 +114,13 @@ public class TaskService {
     private FileStorage fileStorage;
 
     @Autowired
+    private EmployeeRecordExportImages employeeRecordExportImages;
+
+    @Autowired
     private ConfirmValidationService confirmValidationService;
+
+    @Autowired
+    private EmployeeService employeeService;
 
     @Autowired
     private UserNotificationService userNotificationService;
@@ -122,7 +133,7 @@ public class TaskService {
     private ReminderScheduleService reminderScheduleService;
 
     private static final String[] CALIBRATABLE_FIELDS = {
-            "NO", "Pays", "Entrepot", "NOM_PRENOM", "AGENCE_INTERIMAIRE", "HORAIRES_DU_TRAVAIL",
+            "NO", "Entrepot", "NOM_PRENOM", "AGENCE_INTERIMAIRE", "HORAIRES_DU_TRAVAIL",
             "Date", "ARRIVEE", "DEPAR", "PAUSE", "SIGNATURE", "Observations"
     };
 
@@ -233,7 +244,7 @@ public class TaskService {
         task.setStatus("processing");
         task.setSyncStatus("none");
         if (promptCountry != null && !promptCountry.trim().isEmpty()) {
-            task.setPromptCountry(promptCountry.trim());
+            task.setPromptCountry(com.attendance.util.CountryResolver.normalize(promptCountry.trim()));
         }
         taskMapper.insertTask(task);
         return task;
@@ -466,6 +477,11 @@ public class TaskService {
             }
         }
         confirmValidationService.validateConfirmRecords(data);
+
+        String confirmRegionCode = resolveConfirmCountry(countryCode, task);
+        for (Map<String, Object> record : data) {
+            employeeService.assignEmployeeOnConfirm(record, confirmRegionCode);
+        }
 
         for (Map<String, Object> record : data) {
             RecordFeishuPrepareSupport.prepareRecord(record);
@@ -710,16 +726,35 @@ public class TaskService {
     }
 
     @Transactional
-    public void deleteTask(String taskId) {
+    public Map<String, Object> deleteTask(String taskId, String reason) {
         Task task = taskAccessService.requireOwnedTask(taskId);
+        String trimmedReason = reason != null ? reason.trim() : "";
         if ("confirmed".equals(task.getStatus())) {
-            throw new BusinessException(ErrorCode.TASK_STATUS_ERROR, ErrorKeys.CONFIRMED_TASK_CANNOT_DELETE);
+            if (trimmedReason.isEmpty()) {
+                throw new BusinessException(400, ErrorKeys.DELETE_REASON_REQUIRED);
+            }
+            String currentUserId = taskAccessService.requireCurrentUserId();
+            User operator = userMapper.selectUserById(currentUserId);
+            if (!permissionService.hasPermission(operator, PermissionService.TASK_DELETE_CONFIRMED)) {
+                throw new BusinessException(ErrorCode.PERMISSION_DENIED, ErrorKeys.TASK_DELETE_CONFIRMED_PERMISSION_DENIED);
+            }
         }
+
+        Map<String, Object> auditDetails = new LinkedHashMap<>();
+        auditDetails.put("reason", trimmedReason);
+        auditDetails.put("taskStatus", task.getStatus());
+        auditDetails.put("fileKey", task.getFileKey());
+        auditDetails.put("syncStatus", task.getSyncStatus());
+        String payload = TaskRecordPayloadResolver.resolvePayload(task);
+        auditDetails.put("recordCount", countJsonArrayRows(payload));
+
         deleteTaskUploadFiles(task);
         taskRecordSyncService.deleteByTaskId(taskId);
         userNotificationService.deleteByTaskId(taskId);
         taskMapper.deleteTaskByTaskId(taskId);
-        log.info("删除任务: taskId={}", taskId);
+        cancelReminderSchedulesForTask(taskId);
+        log.info("删除任务: taskId={}, status={}, reasonLength={}", taskId, task.getStatus(), trimmedReason.length());
+        return auditDetails;
     }
 
     private void deleteTaskUploadFiles(Task task) {
@@ -1065,8 +1100,9 @@ public class TaskService {
     }
 
     public long exportTaskListToExcel(DataScopeContext scope, String status, String keyword, String searchField,
-                                      ExcelSheetWriter writer) throws IOException {
-        writer.writeHeader("任务ID", "文件名", "状态", "飞书同步", "同步错误", "操作人", "创建时间");
+                                      ExcelSheetWriter writer, String locale) throws IOException {
+        String resolvedLocale = ExportLocaleSupport.resolveLocale(locale);
+        writer.writeHeader(ExportLocaleSupport.headers(resolvedLocale, "taskList.headers"));
         long count = 0;
         int offset = 0;
         final int batchSize = 500;
@@ -1079,7 +1115,7 @@ public class TaskService {
                 writer.writeRow(
                         ExcelExportHelper.cell(task.getTaskId()),
                         ExcelExportHelper.cell(task.getFileKey()),
-                        ExcelExportHelper.cell(task.getStatus()),
+                        ExcelExportHelper.cell(ExportLocaleSupport.formatTaskStatus(resolvedLocale, task.getStatus())),
                         ExcelExportHelper.cell(task.getSyncStatus()),
                         ExcelExportHelper.cell(task.getSyncError()),
                         ExcelExportHelper.cell(task.getUserName()),
@@ -1102,7 +1138,7 @@ public class TaskService {
     /**
      * 单任务导出：从 tasks.confirmed_data / raw_data JSON 写入 Excel（任务编辑页下载）
      */
-    public void writeTaskJsonRecordsToExcel(Task task, ExcelSheetWriter writer) throws IOException {
+    public void writeTaskJsonRecordsToExcel(Task task, ExcelSheetWriter writer, String locale) throws IOException {
         if (task == null) {
             throw new BusinessException(ErrorCode.TASK_NOT_FOUND, ErrorKeys.TASK_NOT_FOUND);
         }
@@ -1110,8 +1146,9 @@ public class TaskService {
         if (data == null || data.trim().isEmpty()) {
             throw new BusinessException(ErrorCode.TASK_NOT_FOUND, ErrorKeys.NO_EXPORT_DATA);
         }
+        String resolvedLocale = ExportLocaleSupport.resolveLocale(locale);
         JSONArray records = JSON.parseArray(data);
-        writer.writeHeader(TASK_JSON_EXPORT_HEADERS);
+        writer.writeHeader(ExportLocaleSupport.headers(resolvedLocale, "taskJson.headers"));
         if (records != null) {
             for (int i = 0; i < records.size(); i++) {
                 JSONObject record = records.getJSONObject(i);
@@ -1139,11 +1176,11 @@ public class TaskService {
         }
     }
 
-    public Path createTaskExportTempFile(String taskId) throws IOException {
+    public Path createTaskExportTempFile(String taskId, String locale) throws IOException {
         Task task = getTaskForCurrentUser(taskId);
         Path tempFile = Files.createTempFile("attendance-export-", ".xlsx");
         try (ExcelSheetWriter writer = ExcelExportHelper.open(tempFile)) {
-            writeTaskJsonRecordsToExcel(task, writer);
+            writeTaskJsonRecordsToExcel(task, writer, locale);
         } catch (Exception e) {
             try {
                 Files.deleteIfExists(tempFile);
@@ -1161,16 +1198,55 @@ public class TaskService {
         return tempFile;
     }
 
-    public long exportEmployeeRecordsToExcel(DataScopeContext scope, String status, String keyword, String searchField,
-                                             String filters, ExcelSheetWriter writer) throws IOException {
-        writer.writeHeader("任务ID", "操作人", "任务状态", "创建时间", "文件名",
-                "页码", "NO", "姓名", "国家", "仓库", "日期", "中介机构", "班次",
-                "到达时间", "离开时间", "休息(分钟)", "出勤工时", "员工签名", "备注", "异常说明", "标记");
+    private static final String[] EMPLOYEE_RECORD_EXPORT_BASE_HEADERS = {
+            "任务ID", "操作人", "任务状态", "创建时间", "文件名",
+            "页码", "NO", "姓名", "国家", "仓库", "日期", "中介机构", "班次",
+            "到达时间", "离开时间", "休息(分钟)", "出勤工时", "员工签名", "备注", "异常说明", "标记"
+    };
+
+    private static final int EMPLOYEE_RECORD_BASE_COLUMN_COUNT = EMPLOYEE_RECORD_EXPORT_BASE_HEADERS.length;
+
+    public long exportEmployeeRecordsToExcel(DataScopeContext scope, TaskQuery query, Path outputFile,
+                                             String exportUserId, LocalDateTime linkExpiresAt) throws IOException {
+        boolean includeThumbnails = query != null && Boolean.TRUE.equals(query.getIncludeThumbnails());
+        String status = query != null ? query.getStatus() : null;
+        String keyword = query != null ? query.getKeyword() : null;
+        String searchField = query != null ? query.getSearchField() : null;
+        String filters = query != null ? query.getFilters() : null;
+        long expEpoch = linkExpiresAt != null
+                ? linkExpiresAt.atZone(ZoneId.systemDefault()).toEpochSecond()
+                : LocalDateTime.now().plusDays(7).atZone(ZoneId.systemDefault()).toEpochSecond();
+        String resolvedLocale = query != null ? ExportLocaleSupport.resolveLocale(query.getLocale()) : ExportLocaleSupport.defaultLocale();
+
+        try (EmployeeRecordExcelWriter writer = EmployeeRecordExcelWriter.open(
+                outputFile, includeThumbnails, EMPLOYEE_RECORD_BASE_COLUMN_COUNT,
+                ExportLocaleSupport.text(resolvedLocale, "sheet.attendanceRecords"))) {
+            writer.writeHeader(buildEmployeeRecordExportHeaders(resolvedLocale));
+            return writeEmployeeRecordExportRows(
+                    scope, status, keyword, searchField, filters, writer, exportUserId, expEpoch, includeThumbnails);
+        }
+    }
+
+    private String[] buildEmployeeRecordExportHeaders(String locale) {
+        String[] base = ExportLocaleSupport.headers(locale, "employeeRecords.headers");
+        String[] headers = new String[base.length + 2];
+        System.arraycopy(base, 0, headers, 0, base.length);
+        headers[base.length] = ExportLocaleSupport.text(locale, "employeeRecords.colImages");
+        headers[base.length + 1] = ExportLocaleSupport.text(locale, "employeeRecords.colLinks");
+        return headers;
+    }
+
+    private long writeEmployeeRecordExportRows(DataScopeContext scope, String status, String keyword,
+                                               String searchField, String filters,
+                                               EmployeeRecordExcelWriter writer,
+                                               String exportUserId, long expEpoch, boolean includeThumbnails)
+            throws IOException {
         List<Map<String, String>> conditionList = parseFilters(searchField, keyword, filters);
         long count = 0;
         int offset = 0;
         final int batchSize = 500;
         Map<String, Map<String, JSONObject>> taskRowCache = new HashMap<>();
+        Map<String, List<String>> taskImageKeysCache = new HashMap<>();
         while (true) {
             List<TaskRecord> rows = taskRecordMapper.selectForExport(scope, status, conditionList, offset, batchSize);
             if (rows == null || rows.isEmpty()) {
@@ -1178,28 +1254,22 @@ public class TaskService {
             }
             for (TaskRecord row : rows) {
                 EmployeeRecordDTO dto = toEmployeeRecord(row, taskRowCache);
-                writer.writeRow(
-                        ExcelExportHelper.cell(dto.getTaskId()),
-                        ExcelExportHelper.cell(dto.getUserName()),
-                        ExcelExportHelper.cell(dto.getTaskStatus()),
-                        ExcelExportHelper.cell(dto.getCreatedAt()),
-                        ExcelExportHelper.cell(dto.getFileKey()),
-                        ExcelExportHelper.cell(dto.getPageNum()),
-                        ExcelExportHelper.cell(dto.getNo()),
-                        ExcelExportHelper.cell(dto.getName()),
-                        ExcelExportHelper.cell(dto.getCountry()),
-                        ExcelExportHelper.cell(dto.getWarehouse()),
-                        ExcelExportHelper.cell(dto.getDate()),
-                        ExcelExportHelper.cell(dto.getAgency()),
-                        ExcelExportHelper.cell(dto.getShift()),
-                        ExcelExportHelper.cell(dto.getArrival()),
-                        ExcelExportHelper.cell(dto.getDeparture()),
-                        ExcelExportHelper.cell(dto.getPauseMinutes()),
-                        ExcelExportHelper.cell(dto.getWorkHours()),
-                        ExcelExportHelper.cell(dto.getSignature()),
-                        ExcelExportHelper.cell(dto.getObservations()),
-                        ExcelExportHelper.cell(dto.getAnomalyDescription()),
-                        ExcelExportHelper.cell(dto.getSmartMark()));
+                List<String> imageKeys = resolveExportImageKeys(row, dto, taskImageKeysCache);
+                List<String> imageUrls = employeeRecordExportImages.buildSignedImageUrls(
+                        imageKeys, exportUserId, expEpoch);
+                String[] baseCells = toEmployeeRecordExportCells(dto);
+                List<EmployeeRecordExportImages.ExportImage> exportImages = new ArrayList<>();
+                if (includeThumbnails) {
+                    int limit = Math.min(imageKeys.size(), employeeRecordExportImages.getMaxThumbnailsPerRow());
+                    for (int i = 0; i < limit; i++) {
+                        EmployeeRecordExportImages.ExportImage image =
+                                employeeRecordExportImages.readExportImage(imageKeys.get(i));
+                        if (image != null) {
+                            exportImages.add(image);
+                        }
+                    }
+                }
+                writer.writeRecordRow(baseCells, imageUrls, exportImages);
                 count++;
             }
             offset += rows.size();
@@ -1208,6 +1278,47 @@ public class TaskService {
             }
         }
         return count;
+    }
+
+    private List<String> resolveExportImageKeys(TaskRecord row, EmployeeRecordDTO dto,
+                                                Map<String, List<String>> taskImageKeysCache) {
+        List<String> keys = employeeRecordExportImages.collectImageKeys(dto.getImageUrls(), dto.getFileKey());
+        if (!keys.isEmpty()) {
+            return keys;
+        }
+        if (row == null || RecordJsonSupport.isBlank(row.getTaskId())) {
+            return keys;
+        }
+        return taskImageKeysCache.computeIfAbsent(row.getTaskId(), taskId -> {
+            Task task = taskMapper.selectTaskByTaskId(taskId);
+            return task != null ? parseImageUrlList(task) : Collections.emptyList();
+        });
+    }
+
+    private String[] toEmployeeRecordExportCells(EmployeeRecordDTO dto) {
+        return new String[] {
+                ExcelExportHelper.cell(dto.getTaskId()),
+                ExcelExportHelper.cell(dto.getUserName()),
+                ExcelExportHelper.cell(dto.getTaskStatus()),
+                ExcelExportHelper.cell(dto.getCreatedAt()),
+                ExcelExportHelper.cell(dto.getFileKey()),
+                ExcelExportHelper.cell(dto.getPageNum()),
+                ExcelExportHelper.cell(dto.getNo()),
+                ExcelExportHelper.cell(dto.getName()),
+                ExcelExportHelper.cell(dto.getCountry()),
+                ExcelExportHelper.cell(dto.getWarehouse()),
+                ExcelExportHelper.cell(dto.getDate()),
+                ExcelExportHelper.cell(dto.getAgency()),
+                ExcelExportHelper.cell(dto.getShift()),
+                ExcelExportHelper.cell(dto.getArrival()),
+                ExcelExportHelper.cell(dto.getDeparture()),
+                ExcelExportHelper.cell(dto.getPauseMinutes()),
+                ExcelExportHelper.cell(dto.getWorkHours()),
+                ExcelExportHelper.cell(dto.getSignature()),
+                ExcelExportHelper.cell(dto.getObservations()),
+                ExcelExportHelper.cell(dto.getAnomalyDescription()),
+                ExcelExportHelper.cell(dto.getSmartMark()),
+        };
     }
 
     public Map<String, Object> checkDuplicateNamesAgainstConfirmed(String taskId,

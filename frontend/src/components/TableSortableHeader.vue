@@ -6,6 +6,7 @@
       {
         'table-sortable-header--has-filter': hasFilter,
         'table-sortable-header--has-sort': sortable,
+        'table-sortable-header--compact': compact,
       },
     ]"
   >
@@ -39,6 +40,14 @@
     <div v-if="hasFilter" class="table-sortable-header__trailing">
       <slot name="extra" />
     </div>
+
+    <button
+      v-if="resizable"
+      type="button"
+      class="table-sortable-header__resize-handle"
+      :aria-label="t('table.resizeColumn')"
+      @pointerdown.stop.prevent="emit('resize-start', $event)"
+    />
   </div>
 </template>
 
@@ -51,9 +60,11 @@ import { columnIsSortable, nextSortOrder } from '@/utils/tableSort'
 const props = defineProps({
   column: { type: Object, required: true },
   title: { type: [String, Number, Object], default: '' },
+  compact: { type: Boolean, default: false },
+  resizable: { type: Boolean, default: false },
 })
 
-const emit = defineEmits(['sort'])
+const emit = defineEmits(['sort', 'resize-start'])
 const slots = useSlots()
 const { t } = useI18n()
 
@@ -241,6 +252,116 @@ $icon-gap: 4px;
 
   .anticon {
     font-size: 13px;
+  }
+}
+
+$table-compact-icon-size: 18px;
+
+.table-sortable-header--compact {
+  min-height: 30px;
+  gap: 2px;
+  align-items: center;
+
+  .table-sortable-header__leading,
+  .table-sortable-header__trailing {
+    position: static;
+    top: auto;
+    left: auto;
+    right: auto;
+    transform: none;
+    flex: 0 0 auto;
+    margin-top: 0;
+  }
+
+  .table-sortable-header__title {
+    position: static;
+    top: auto;
+    left: auto;
+    right: auto;
+    transform: none;
+    flex: 1 1 auto;
+    width: auto;
+    min-width: 0;
+    padding: 0 !important;
+    pointer-events: auto;
+    justify-content: flex-start;
+  }
+
+  .table-sortable-header__title-text {
+    white-space: normal;
+    word-break: break-word;
+    line-height: 1.2;
+    font-size: 11px;
+    text-align: left;
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+  }
+
+  &.table-sortable-header--align-center .table-sortable-header__title,
+  &.table-sortable-header--align-right .table-sortable-header__title {
+    justify-content: flex-start;
+  }
+
+  &.table-sortable-header--align-center .table-sortable-header__title-text,
+  &.table-sortable-header--align-right .table-sortable-header__title-text {
+    text-align: left;
+  }
+
+  .table-sortable-header__icon-btn {
+    width: $table-compact-icon-size;
+    height: $table-compact-icon-size;
+    border-radius: 4px;
+  }
+
+  .table-sortable-header__sort-arrows {
+    font-size: 8px;
+    line-height: 0.62;
+  }
+
+  .table-sortable-header__trailing :deep(.table-header-filter-btn) {
+    width: $table-compact-icon-size !important;
+    height: $table-compact-icon-size !important;
+    min-width: $table-compact-icon-size !important;
+    border-radius: 4px !important;
+
+    .anticon {
+      font-size: 11px;
+    }
+  }
+}
+
+.table-sortable-header__resize-handle {
+  position: absolute;
+  top: 0;
+  right: -4px;
+  z-index: 3;
+  width: 8px;
+  height: 100%;
+  margin: 0;
+  padding: 0;
+  border: none;
+  background: transparent;
+  cursor: col-resize;
+  touch-action: none;
+
+  &::after {
+    content: '';
+    position: absolute;
+    top: 18%;
+    bottom: 18%;
+    left: 50%;
+    width: 2px;
+    transform: translateX(-50%);
+    border-radius: 1px;
+    background: transparent;
+    transition: background 0.15s ease;
+  }
+
+  &:hover::after,
+  &:focus-visible::after {
+    background: rgba(22, 119, 255, 0.55);
   }
 }
 </style>

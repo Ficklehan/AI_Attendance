@@ -10,7 +10,7 @@ export const taskApi = {
   getTaskList: (params) => request.get('/tasks', { params }),
   getTaskDetail: (taskId) => request.get(`/tasks/${taskId}`),
   confirmTask: (taskId, data) => request.post(`/tasks/${taskId}/confirm`, data),
-  deleteTask: (taskId) => request.post(`/tasks/${taskId}/delete`),
+  deleteTask: (taskId, reason) => request.post(`/tasks/${taskId}/delete`, { reason }),
   cancelTask: (taskId) => request.post(`/tasks/${taskId}/cancel`),
   getTaskStats: () => request.get('/tasks/stats')
 }

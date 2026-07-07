@@ -61,6 +61,7 @@ public class AuthController {
     public Result<User> getProfile() {
         User user = userService.getCurrentUser();
         user.setPasswordHash(null);
+        user.setPersonalWorkingCountry(userService.getPersonalWorkingCountry(user));
         user.setWorkingCountry(userService.resolveWorkingCountryForUser(user));
         return Result.success(user);
     }
@@ -70,6 +71,15 @@ public class AuthController {
         userService.changePassword(request.getOldPassword(), request.getNewPassword());
         auditLogService.log("CHANGE_PASSWORD", "user", null, null);
         return Result.success(null, "密码修改成功");
+    }
+
+    @PostMapping("/working-country")
+    public Result<Map<String, String>> updateWorkingCountry(@RequestBody Map<String, String> request) {
+        String country = request != null ? request.get("country") : null;
+        String effective = userService.updateCurrentUserWorkingCountry(country);
+        Map<String, String> body = new HashMap<>();
+        body.put("country", effective);
+        return Result.success(body, "工作地区已更新");
     }
 
     @PostMapping("/logout")

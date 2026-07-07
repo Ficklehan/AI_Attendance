@@ -1,0 +1,64 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=390, initial-scale=1" />
+  <title>小程序 - 识别首页</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: -apple-system, "PingFang SC", "Helvetica Neue", sans-serif; background: #F8FAFC; color: #1C1A2E; width: 390px; margin: 0 auto; }
+    .nav { height: 44px; display: flex; align-items: center; justify-content: center; font-weight: 600; background: #fff; border-bottom: 1px solid #EDEAEF; }
+    .hero { margin: 16px; padding: 20px; border-radius: 16px; background: linear-gradient(160deg, #1D4ED8 0%, #2563EB 45%, #60A5FA 100%); color: #fff; position: relative; overflow: hidden; min-height: 140px; }
+    .hero-title { font-size: 22px; font-weight: 700; margin-bottom: 8px; }
+    .hero-chips { font-size: 12px; opacity: .92; }
+    .hero-art { position: absolute; right: 8px; bottom: 0; width: 110px; opacity: .95; }
+    .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin: 0 16px 16px; }
+    .tile { background: #fff; border-radius: 14px; padding: 16px 12px; text-align: center; box-shadow: 0 2px 8px rgba(28,26,46,.06); }
+    .tile-icon { width: 44px; height: 44px; margin: 0 auto 10px; border-radius: 12px; background: linear-gradient(135deg, #2563EB, #3B82F6); display: flex; align-items: center; justify-content: center; color: #fff; font-size: 22px; }
+    .tile-title { font-weight: 600; font-size: 15px; }
+    .tile-desc { font-size: 12px; color: #73707F; margin-top: 4px; }
+    .flow { display: flex; justify-content: center; gap: 8px; margin: 0 16px 16px; font-size: 12px; color: #73707F; }
+    .flow .active { color: #2563EB; font-weight: 600; }
+    .status { margin: 0 16px 80px; background: #fff; border-radius: 14px; padding: 16px; }
+    .status-title { font-weight: 600; margin-bottom: 12px; }
+    .metrics { display: flex; text-align: center; }
+    .metric { flex: 1; }
+    .metric-num { font-size: 24px; font-weight: 700; color: #2563EB; }
+    .metric-label { font-size: 12px; color: #73707F; margin-top: 4px; }
+    .dock { position: fixed; bottom: 0; left: 50%; transform: translateX(-50%); width: 390px; padding: 12px 16px 24px; background: linear-gradient(180deg, transparent, #F8FAFC 30%, #F8FAFC); }
+    .cta { background: linear-gradient(135deg, #2563EB, #3B82F6); color: #fff; text-align: center; padding: 14px; border-radius: 12px; font-weight: 600; box-shadow: 0 8px 20px rgba(37,99,235,.28); }
+    .tabbar { display: flex; border-top: 1px solid #EDEAEF; background: #fff; padding: 8px 0 4px; margin-top: 8px; }
+    .tab { flex: 1; text-align: center; font-size: 11px; color: #2563EB; }
+    .tab.muted { color: #A8A5B2; }
+  </style>
+</head>
+<body>
+  <div class="nav">识别</div>
+  <div class="hero">
+    <div class="hero-title">拍照识别考勤表</div>
+    <div class="hero-chips">法国 FR · 简体中文 · <u>更改</u></div>
+    <img class="hero-art" src="../../../feishu-miniprogram/assets/attendance-workbench-hero.png" alt="" />
+  </div>
+  <div class="grid">
+    <div class="tile"><div class="tile-icon">📷</div><div class="tile-title">拍照</div><div class="tile-desc">打开相机拍摄</div></div>
+    <div class="tile"><div class="tile-icon">🖼</div><div class="tile-title">从相册选择</div><div class="tile-desc">JPG / PNG</div></div>
+  </div>
+  <div class="flow"><span class="active">拍摄</span><span>→</span><span>核对</span><span>→</span><span>提交</span></div>
+  <div class="status">
+    <div class="status-title">任务概览</div>
+    <div class="metrics">
+      <div class="metric"><div class="metric-num">1</div><div class="metric-label">识别中</div></div>
+      <div class="metric"><div class="metric-num" style="color:#F7B731">3</div><div class="metric-label">待核对</div></div>
+      <div class="metric"><div class="metric-num" style="color:#34C77B">12</div><div class="metric-label">已完成</div></div>
+    </div>
+  </div>
+  <div class="dock">
+    <div class="cta">去核对 (3)</div>
+    <div class="tabbar">
+      <div class="tab">● 识别</div>
+      <div class="tab muted">任务</div>
+      <div class="tab muted">我的</div>
+    </div>
+  </div>
+</body>
+</html>

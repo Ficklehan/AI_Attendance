@@ -54,6 +54,8 @@
   "nav": {
     "home": "Startseite",
     "tasks": "Aufgaben",
+    "attendance": "Anwesenheit",
+    "employees": "Mitarbeiter",
     "taskRecords": "Anwesenheitsdatensätze",
     "config": "Konfiguration",
     "settings": "Einstellungen",

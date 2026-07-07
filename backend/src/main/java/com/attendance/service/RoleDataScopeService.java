@@ -1,5 +1,6 @@
 package com.attendance.service;
 
+import com.attendance.config.CountryCatalog;
 import com.attendance.common.BusinessException;
 import com.attendance.common.ErrorKeys;
 import com.attendance.dto.request.RoleDataScopeUpdateRequest;
@@ -24,7 +25,7 @@ import java.util.stream.Collectors;
 public class RoleDataScopeService {
 
     private static final List<String> DIMENSIONS = Arrays.asList(
-            "owner_user", "country", "warehouse", "agency");
+            "owner_user", "country", "warehouse", "agency", "work_region");
 
     @Autowired
     private RoleDataScopeMapper roleDataScopeMapper;
@@ -93,6 +94,13 @@ public class RoleDataScopeService {
                                     java.util.Collections.singletonMap("detail", "invalid owner_user: " + value));
                         }
                     }
+                    if ("country".equals(dimension) || "work_region".equals(dimension)) {
+                        String resolved = CountryCatalog.resolveCountryCodeFromPays(value);
+                        value = resolved != null ? resolved : com.attendance.util.CountryResolver.normalize(value);
+                        if (value == null || value.isEmpty() || "default".equalsIgnoreCase(value)) {
+                            continue;
+                        }
+                    }
                     roleDataScopeMapper.insertRule(normalized, dimension, value);
                 }
             }
@@ -103,14 +111,34 @@ public class RoleDataScopeService {
     public Map<String, List<DimensionOptionDTO>> getDimensionOptions() {
         adminAuthService.requireAdmin();
         Map<String, List<DimensionOptionDTO>> options = new LinkedHashMap<>();
-        options.put("country", toDimensionOptions(roleDataScopeMapper.selectDistinctCountryOptions()));
+        options.put("work_country_region", workCountryCatalogOptions());
+        options.put("country", workCountryCatalogOptions());
         options.put("warehouse", toDimensionOptions(roleDataScopeMapper.selectDistinctWarehouseOptions()));
         options.put("agency", toDimensionOptions(roleDataScopeMapper.selectDistinctAgencyOptions()));
         options.put("owner_user", userMapper.selectUserList(0, 500, null).stream()
                 .map(u -> new DimensionOptionDTO(u.getId(),
                         buildOwnerUserLabel(u.getRealName(), u.getUsername(), u.getEmail(), u.getId())))
                 .collect(Collectors.toList()));
+        options.put("work_region", workCountryCatalogOptions());
         return options;
+    }
+
+    private static List<DimensionOptionDTO> workCountryCatalogOptions() {
+        List<DimensionOptionDTO> list = new ArrayList<>();
+        for (Map<String, String> option : CountryCatalog.OPTIONS) {
+            if (option == null) {
+                continue;
+            }
+            String code = trimToNull(option.get("code"));
+            if (code == null || "default".equalsIgnoreCase(code)) {
+                continue;
+            }
+            String flag = trimToNull(option.get("flag"));
+            String name = trimToNull(option.get("name"));
+            String label = (flag != null ? flag + " " : "") + (name != null ? name : code);
+            list.add(new DimensionOptionDTO(code, label.trim()));
+        }
+        return list;
     }
 
     private RoleDataScopeDTO loadRoleScope(String role) {

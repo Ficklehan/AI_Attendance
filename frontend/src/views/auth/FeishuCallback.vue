@@ -14,6 +14,7 @@ import { useAuthStore } from '@/stores/auth'
 import { message } from 'ant-design-vue'
 import { setToken } from '@/utils/auth'
 import request from '@/api/index'
+import { setCachedWorkingCountry } from '@/utils/countryHeader'
 
 const router = useRouter()
 const authStore = useAuthStore()
@@ -42,6 +43,12 @@ onMounted(async () => {
 
     setToken(data.token)
     localStorage.setItem('userInfo', JSON.stringify(userInfo))
+
+    if (userInfo?.personalWorkingCountry) {
+      setCachedWorkingCountry(userInfo.personalWorkingCountry)
+    } else {
+      setCachedWorkingCountry('default')
+    }
 
     message.success('飞书登录成功')
 

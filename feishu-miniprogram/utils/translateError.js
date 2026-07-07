@@ -87,7 +87,11 @@ function translateApiError(payload, fallback) {
   if (message && message.includes('模拟识别')) return t('upload.simulatedRecognition')
   if (message && message.includes('识别结果为空')) return t('upload.emptyResult')
   if (message && message.includes('识别超时')) return t('upload.recognizeTimeout')
-  if (message && message.includes('同步失败')) return t('settings.countrySyncFail')
+  if (message && message.startsWith('HTTP ')) {
+    const status = Number(message.slice(5))
+    if (status === 404) return t('errors.apiNotFound')
+    if (status === 403 || status === 401) return t('errors.accessDenied')
+  }
   return message || fb
 }
 

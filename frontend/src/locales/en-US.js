@@ -52,7 +52,11 @@ export default {
     "placeholder": "Select a country",
     "apply": "Set as working country",
     "manageConfig": "Manage country config",
-    "saved": "Working country updated"
+    "saved": "Working country updated",
+    "setupTitle": "Select your work country",
+    "setupDesc": "Choose a work country for recognition templates, access scope, and Feishu sync settings.",
+    "setupPlaceholder": "Select country/region",
+    "setupConfirm": "Confirm and continue"
   },
   "errors": {
     "loginRequired": "Please login first",
@@ -71,7 +75,7 @@ export default {
     "fileNotFound": "File not found",
     "fileNotFoundWithKey": "File not found: {fileKey}",
     "imageInvalid": "Invalid image file",
-    "invalidFilePath": "Invalid file path",
+    "invalidFilePath": "Cannot access the original image (invalid file reference). Use Re-upload (top right) to capture and recognize again.",
     "uploadImageTooSmall": "Uploaded image is invalid or too small ({size} bytes). Please retake or choose a clearer photo",
     "imagesOnly": "Only image or PDF files are supported",
     "unrecognizedImageFormat": "Unrecognized file format. Please use JPG, PNG, or PDF",
@@ -83,7 +87,6 @@ export default {
     "aiInvalidJson": "The model returned JSON lines that could not be parsed. Try a clearer image.",
     "aiNoParseableRecords": "The model did not return parsable attendance JSON rows. Try a clearer image.",
     "aiFabricated": "Results contain multiple prompt example rows, not real sheet data. Upload a clearer, complete attendance sheet",
-    "aiMalformedRecords": "{malformedPercent}% of rows have malformed format (above {thresholdPercent}% threshold). Upload a clearer image or retry recognition.",
     "aiUnreadableTimes": "Many names/IDs are unreadable but times look filled in uniformly — likely guessed. Upload a clearer photo",
     "aiImageTooBlurry": "The photo is not clear enough to read the attendance sheet reliably. Retake it straight-on with good lighting, or upload a sharper image.",
     "aiImageTooBlurryBlurRows": "The photo is not clear enough: about {blurPercent}% of attendance rows are hard to read (blurry handwriting or unclear names/IDs). Retake straight-on with good light and avoid camera shake.",
@@ -103,6 +106,10 @@ export default {
     "systemError": "System error, please try again later",
     "requestFailed": "Request failed",
     "networkError": "Network error, please check your connection",
+    "imageQualityStatsRangeAllRows": "All non-deleted rows",
+    "imageQualityStatsRangeAttendanceOnly": "Effective attendance rows (exclude absent)",
+    "imageQualityStatsRangeNamedRows": "Rows with name or employee ID",
+    "imageQualityUnknownIncludeAbsent": "Including absent rows",
     "adminRequired": "Administrator access required",
     "cannotDisableSelf": "You cannot disable your own account",
     "cannotDeleteSelf": "You cannot delete your own account",
@@ -157,7 +164,12 @@ export default {
     "sortDesc": "Descending",
     "filterColumn": "Filter",
     "serialNumber": "#",
-    "gotIt": "Got it"
+    "gotIt": "Got it",
+    "close": "Close",
+    "copy": "Copy",
+    "copied": "Copied",
+    "copyFailed": "Copy failed",
+    "undo": "Undo"
   },
   "validation": {
     "required": "{field} is required",
@@ -204,7 +216,12 @@ export default {
     "statusPending": "Queued",
     "statusRunning": "Running",
     "statusCompleted": "Completed",
-    "statusFailed": "Failed"
+    "statusFailed": "Failed",
+    "optionsTitle": "Export options",
+    "imageLinksHint": "Image columns in the export will contain accessible links.",
+    "includeThumbnails": "Embed thumbnails",
+    "includeThumbnailsHint": "File size will increase significantly; enable only when offline image viewing is needed.",
+    "typeAgencyBilling": "Agency billing"
   },
   "notification": {
     "title": "Notifications",
@@ -224,12 +241,14 @@ export default {
   "nav": {
     "home": "Home",
     "tasks": "Tasks",
+    "attendance": "Attendance",
     "config": "Configuration",
     "settings": "Settings",
     "audit": "Audit Logs",
     "service": "Service",
     "taskRecords": "Attendance Records",
-    "taskEdit": "Task Edit"
+    "taskEdit": "Task Edit",
+    "employees": "Employees"
   },
   "settings": {
     "title": "Settings",
@@ -305,13 +324,13 @@ export default {
       "imageQualityBlockHint": "Reject saving recognition results when ratios exceed these limits.",
       "imageQualityBlockBlur": "Blurry row rate ≥",
       "imageQualityBlockUnknown": "Unknown critical field rate ≥",
-      "imageQualityBlockMalformed": "Malformed parse row rate ≥",
-      "imageQualityBlockMalformedHint": "Fail the whole recognition when this ratio is exceeded; set 0 to disable.",
       "imageQualityBlockFewRows": "Effective rows ≤",
       "imageQualityBlockFewRowsUnknown": "and unknown rate ≥",
       "imageQualityWarnSection": "Post-recognition warning",
       "imageQualityWarnBlur": "Blurry row rate ≥",
-      "imageQualityWarnUnknown": "Unknown critical field rate ≥"
+      "imageQualityWarnUnknown": "Unknown critical field rate ≥",
+      "imageQualityBlockMalformed": "Malformed row ratio ≥",
+      "imageQualityBlockMalformedHint": "Block saving when too many rows have clearly malformed structure (missing columns, misaligned fields)."
     },
     "reminders": {
       "title": "Task reminder rules",
@@ -437,6 +456,7 @@ export default {
       "dimCountry": "Country",
       "dimWarehouse": "Warehouse",
       "dimAgency": "Agency",
+      "dimWorkRegion": "Work region (employees)",
       "selfOnly": "Self only (__self__)",
       "searchOptions": "Search options",
       "selectAll": "Select all",
@@ -468,7 +488,15 @@ export default {
       "capUsers": "User and role management",
       "capAudit": "View audit logs",
       "capRecordCalibrate": "Calibrate confirmed employee attendance records",
-      "capReminderConfig": "Task reminder rule configuration"
+      "capReminderConfig": "Task reminder rule configuration",
+      "functionalCountryLabel": "Configuration scope",
+      "functionalCountryDefault": "Global default",
+      "functionalCountryHint": "The toggles below apply only to the selected work country; other countries use the global default.",
+      "dimWorkCountryRegion": "Work country / region",
+      "dimWorkCountryRegionHint": "Matches record country (Pays), task work region, or employee work region (OR).",
+      "optionsFromCatalog": "Country/region options come from the system catalog, not historical business data.",
+      "capTaskDeleteConfirmed": "Delete confirmed tasks",
+      "capTaskDeleteConfirmedHint": "Allows deleting confirmed tasks; a reason is required and logged in the audit trail."
     }
   },
   "calibration": {
@@ -579,11 +607,11 @@ export default {
     "recognitionFailedTitle": "Recognition failed",
     "recognitionRetry": "Retry recognition",
     "recognitionReupload": "Upload again",
-    "recognitionFailureHint": "Retry recognition: re-run on the images already saved on the server (useful after updating prompts). Upload again: clear the selection and pick files again.",
     "recognitionError": "Recognition error",
     "workingCountry": "Working country",
     "changeCountry": "Change config",
-    "pdfNoPreview": "PDF preview is not available"
+    "pdfNoPreview": "PDF preview is not available",
+    "recognitionFailureHint": "You can retry recognition or re-upload a clearer attendance photo."
   },
   "tasks": {
     "title": "Task List",
@@ -646,7 +674,8 @@ export default {
     "deleteConfirm": "Are you sure you want to delete task {taskId}? This action cannot be undone.",
     "batchDelete": "Delete selected ({count})",
     "batchDeleteConfirm": "Delete {count} selected task(s)? Tasks and images will be permanently removed. This cannot be undone.",
-    "batchDeleteSuccess": "Deleted {count} task(s)"
+    "batchDeleteSuccess": "Deleted {count} task(s)",
+    "viewImage": "View image"
   },
   "table": {
     "columnSettings": "Columns",
@@ -655,7 +684,8 @@ export default {
     "showAllColumns": "Show all",
     "freezeColumns": "Freeze columns",
     "freezeColumnsHint": "Freeze consecutive columns from the left; they stay visible when scrolling horizontally",
-    "freezeReset": "Clear freeze"
+    "freezeReset": "Clear freeze",
+    "resizeColumn": "Drag to resize column"
   },
   "taskEdit": {
     "title": "Task Details",
@@ -701,7 +731,6 @@ export default {
     "requiredFieldMissingShort": "Required fields missing",
     "anomalyCategoryRequired": "Required fields missing",
     "anomalyCategoryUnreadable": "Unreadable",
-    "anomalyCategoryFormat": "Format issue",
     "anomalyCategoryDuplicate": "Duplicate names",
     "anomalyCategoryOther": "Other anomalies",
     "fieldUnreadableShort": "Unreadable",
@@ -725,10 +754,23 @@ export default {
     "absentLabel": "Absent",
     "deletedLabel": "Deleted",
     "blurredContent": "Content blurred",
-    "parseMalformedShort": "Parse format issue",
     "handwrittenContent": "Handwritten content",
     "absentReason": "Absent",
     "workerNumber": "NO",
+    "employeeNo": "System ID",
+    "workRegionContextTitle": "Work region",
+    "workRegionContextSummary": "This task was recognized under {region}. The \"{column}\" column shows the country catalog entry and cannot be edited manually.",
+    "workRegionContextStep1": "Country is determined by the task work region and cannot be edited in the table",
+    "workRegionContextStep2": "To change country/region: click Re-upload (top right), pick the correct work region on the home page, then recognize again",
+    "workRegionMismatchBadge": "{count} row(s) mismatch",
+    "workRegionPaysColumnHint": "Current work region: {region}; country is locked",
+    "workRegionPaysPlaceholder": "e.g. {code}",
+    "workRegionBanner": "Task work region: {region}",
+    "workRegionBannerHint": "This task was created under a work region. The Pays column in each row matches that region automatically and cannot be edited manually.",
+    "workRegionMismatchHint": "Some legacy rows do not match the task work region. Re-upload and select the correct work region before recognizing again.",
+    "addManualRow": "Add row",
+    "addManualRowHint": "Append a blank attendance row at the end for manual entry",
+    "manualRowAdded": "Blank row added",
     "pageNumber": "Page",
     "countryField": "Country",
     "warehouse": "Warehouse",
@@ -757,9 +799,14 @@ export default {
     "notDuplicate": "Not duplicate",
     "duplicateSuspect": "Possible duplicate: {names}",
     "sourceTask": "Source task",
-    "addManualRow": "Add row",
-    "addManualRowHint": "Manually add attendance rows missed by recognition",
-    "manualRowAdded": "Blank row added — complete the fields before submitting"
+    "paysLockedHint": "Country follows the task work region and cannot be edited. Re-upload to change it.",
+    "autoOrient": "Auto straighten",
+    "autoOrientOn": "On",
+    "autoOrientOff": "Off",
+    "autoOrienting": "Straightening…",
+    "previewFullscreen": "Fullscreen",
+    "previewResizeHint": "Drag the edge to resize the preview panel",
+    "parseMalformedShort": "Malformed"
   },
   "config": {
     "title": "Configuration Management",
@@ -989,7 +1036,32 @@ export default {
     "pageSize": "{size} items/page",
     "currentPage": "Page {page}",
     "noLogs": "No audit logs yet",
-    "loadingFailed": "Failed to load audit logs"
+    "loadingFailed": "Failed to load audit logs",
+    "deleteReason": "Delete reason",
+    "deleteRecordCount": "Record count",
+    "deleteTaskStatus": "Task status"
+  },
+  "employees": {
+    "title": "Employees",
+    "subtitle": "System IDs, work regions, and weekly attendance",
+    "tabList": "Employee list",
+    "tabWeekly": "Weekly board",
+    "searchPlaceholder": "Search ID, name, agency",
+    "regionFilter": "Work region",
+    "isoWeekPlaceholder": "2026-W25",
+    "prevWeek": "Previous week",
+    "nextWeek": "Next week",
+    "backfill": "Backfill history",
+    "backfillDone": "Backfilled {tasks} tasks, {records} records",
+    "colEmpNo": "System ID",
+    "colName": "Name",
+    "colRegion": "Region",
+    "colAgency": "Agency",
+    "colFirstCreated": "First created",
+    "colLastAttendance": "Last attendance",
+    "regionFilterPlaceholder": "Filter by work region",
+    "backfillConfirmTitle": "Run historical backfill?",
+    "backfillConfirmContent": "Rebuild employee profiles from historical confirmed tasks. This may take several minutes. Continue?"
   },
   "messages": {
     "systemError": "System error, please try again later",
@@ -1001,5 +1073,47 @@ export default {
     "confirmLogout": "Are you sure you want to logout?",
     "profileFeature": "Profile feature is under development",
     "notifications": "Notifications"
+  },
+  "attendance": {
+    "menu": {
+      "records": "Attendance records",
+      "agencyBills": "Agency billing"
+    },
+    "agencyBills": {
+      "title": "Agency billing",
+      "subtitle": "Summarize headcount and hours by agency and warehouse for a date range",
+      "prevWeek": "Previous week",
+      "nextWeek": "Next week",
+      "rangeLimitHint": "Maximum range: {max} days",
+      "rangeTooLong": "Date range cannot exceed {max} days",
+      "dateRequired": "Please select a date range",
+      "viewReleve": "View details",
+      "period": "Period",
+      "footerSummary": "{count} people, {hours} total hours",
+      "expandHint": "Use the action at row end to expand daily attendance details",
+      "headcount": "Headcount",
+      "attendanceDays": "Attendance days",
+      "totalHours": "Total hours",
+      "hours": "Hours",
+      "detailTitle": "Billing details",
+      "detailTotal": "{total} people",
+      "colDate": "Date",
+      "colShift": "Shift",
+      "colArrival": "Arrival",
+      "colDeparture": "Departure",
+      "colBreak": "Break",
+      "colObservations": "Remarks"
+    }
+  },
+  "taskDelete": {
+    "title": "Delete task",
+    "confirmedImpactTitle": "Delete confirmed task",
+    "confirmedImpactDesc": "This task is confirmed and may have been synced to Feishu. A reason is required; the task and related records will be removed.",
+    "simpleConfirmTitle": "Delete this task?",
+    "simpleConfirmDesc": "This cannot be undone. The task and recognition results will be permanently removed.",
+    "batchCount": "Batch count",
+    "reason": "Delete reason",
+    "reasonPlaceholder": "Explain why this task is being deleted (for audit)…",
+    "reasonRequired": "Delete reason is required"
   }
 }

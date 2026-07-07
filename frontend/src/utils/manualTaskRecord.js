@@ -24,7 +24,6 @@ export function createManualTaskRecord({ taskId, taskCountry, existingRecords = 
   const rowKey = `${taskId}-manual-${Date.now()}-${manualCount + 1}`
 
   const pays = defaultPaysLabel(taskCountry)
-    || pickMostCommon(existingRecords.map((row) => row?.Pays))
   const entrepot = pickMostCommon(existingRecords.map((row) => row?.Entrepot))
   const date = pickMostCommon(existingRecords.map((row) => row?.Date))
   const agency = pickMostCommon(existingRecords.map((row) => row?.AGENCE_INTERIMAIRE))

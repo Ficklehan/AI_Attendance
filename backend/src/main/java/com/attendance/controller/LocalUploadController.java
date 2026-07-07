@@ -590,7 +590,7 @@ public class LocalUploadController {
                 }
             }
         } catch (BusinessException e) {
-            response.sendError(HttpServletResponse.SC_NOT_FOUND, e.getMessage());
+            response.sendError(HttpServletResponse.SC_NOT_FOUND);
         }
     }
 
@@ -616,14 +616,23 @@ public class LocalUploadController {
     }
 
     @GetMapping("/export/{taskId}/xlsx")
-    public void exportXlsx(@PathVariable String taskId, HttpServletResponse response) throws IOException {
+    public void exportXlsx(@PathVariable String taskId,
+                           @RequestParam(value = "locale", required = false) String locale,
+                           HttpServletResponse response) throws IOException {
         java.nio.file.Path tempFile = null;
         try {
-            tempFile = taskService.createTaskExportTempFile(taskId);
+            tempFile = taskService.createTaskExportTempFile(taskId, locale);
             response.setContentType(ExcelExportHelper.CONTENT_TYPE);
             response.setHeader("Content-Disposition",
                     "attachment;filename=\"attendance_" + taskId + ".xlsx\"");
             Files.copy(tempFile, response.getOutputStream());
+        } catch (BusinessException e) {
+            if (!response.isCommitted()) {
+                response.resetBuffer();
+                response.setStatus(HttpServletResponse.SC_BAD_REQUEST);
+                response.setContentType("application/json;charset=UTF-8");
+                response.getWriter().write(JSON.toJSONString(com.attendance.common.Result.error(e)));
+            }
         } finally {
             if (tempFile != null) {
                 try {

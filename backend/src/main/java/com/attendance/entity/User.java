@@ -14,6 +14,8 @@ public class User {
     private String employeeId;
     /** 工作地区代码；null 或 default 表示使用系统默认 */
     private String workingCountry;
+    /** 个人工作地区（仅 API 响应，非数据库字段） */
+    private String personalWorkingCountry;
     private String status;
     private LocalDateTime lastLoginAt;
     private LocalDateTime createdAt;
@@ -99,6 +101,14 @@ public class User {
 
     public void setWorkingCountry(String workingCountry) {
         this.workingCountry = workingCountry;
+    }
+
+    public String getPersonalWorkingCountry() {
+        return personalWorkingCountry;
+    }
+
+    public void setPersonalWorkingCountry(String personalWorkingCountry) {
+        this.personalWorkingCountry = personalWorkingCountry;
     }
 
     public String getStatus() {

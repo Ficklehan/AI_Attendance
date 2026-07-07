@@ -1,12 +1,19 @@
 import { defineStore } from 'pinia'
 import { getToken, setToken, removeToken } from '@/utils/auth'
 import { getUserInfo, login as loginApi } from '@/api/auth'
-import { setCachedWorkingCountry } from '@/utils/countryHeader'
+import { getMyPermissions } from '@/api/permissions'
+import { getCachedWorkingCountry, setCachedWorkingCountry, clearWorkingCountryConfigured } from '@/utils/countryHeader'
+import { hasPersonalWorkingCountry } from '@/utils/workingCountrySetup'
 
 function syncWorkingCountryFromUserInfo(userInfo) {
-  if (userInfo?.workingCountry) {
-    setCachedWorkingCountry(userInfo.workingCountry)
+  if (!userInfo) return
+  if (hasPersonalWorkingCountry(userInfo)) {
+    setCachedWorkingCountry(userInfo.personalWorkingCountry || userInfo.workingCountry)
+    return
   }
+  const cached = getCachedWorkingCountry()
+  if (cached && cached !== 'default') return
+  setCachedWorkingCountry('default')
 }
 
 export const useAuthStore = defineStore('auth', {
@@ -34,6 +41,10 @@ export const useAuthStore = defineStore('auth', {
     realName: (state) => state.userInfo?.realName || '',
     isAdmin: (state) => state.roles.includes('admin'),
     canCalibrateRecord: (state) => state.userInfo?.permissions?.recordCalibrate === true,
+    canDeleteConfirmedTask: (state) => {
+      if (state.roles.includes('admin')) return true
+      return state.userInfo?.permissions?.taskDeleteConfirmed === true
+    },
   },
 
   actions: {
@@ -68,6 +79,24 @@ export const useAuthStore = defineStore('auth', {
       this.roles = []
       removeToken()
       localStorage.removeItem('userInfo')
+      clearWorkingCountryConfigured()
+      setCachedWorkingCountry('default')
+    },
+
+    async refreshPermissions(workingCountry) {
+      if (!this.userInfo) return null
+      try {
+        const country = workingCountry || getCachedWorkingCountry()
+        const response = await getMyPermissions(country !== 'default' ? country : undefined)
+        if (response?.data) {
+          this.userInfo = { ...this.userInfo, permissions: response.data }
+          localStorage.setItem('userInfo', JSON.stringify(this.userInfo))
+        }
+        return this.userInfo?.permissions
+      } catch (error) {
+        console.error('刷新权限失败:', error)
+        return this.userInfo?.permissions
+      }
     },
   },
 })

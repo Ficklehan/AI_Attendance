@@ -131,6 +131,21 @@ public class UserService {
         log.info("用户修改密码成功: userId={}", userId);
     }
 
+    @Transactional
+    public String updateCurrentUserWorkingCountry(String country) {
+        User user = getCurrentUser();
+        String trimmed = country == null ? "" : country.trim();
+        if (trimmed.isEmpty() || "default".equalsIgnoreCase(trimmed)) {
+            user.setWorkingCountry(null);
+        } else {
+            user.setWorkingCountry(normalizeWorkingCountry(country));
+        }
+        userMapper.updateUser(user);
+        String effective = resolveWorkingCountryForUser(user);
+        log.info("用户更新工作地区: userId={}, request={}, effective={}", user.getId(), country, effective);
+        return effective;
+    }
+
     public User findByFeishuUserId(String feishuUserId) {
         return userMapper.selectUserByFeishuUserId(feishuUserId);
     }
@@ -369,6 +384,7 @@ public class UserService {
         userInfo.setRole(user.getRole());
         userInfo.setRealName(user.getRealName());
         userInfo.setWorkingCountry(resolveWorkingCountryForUser(user));
+        userInfo.setPersonalWorkingCountry(getPersonalWorkingCountry(user));
         userInfo.setPermissions(permissionService.effectivePermissions(user));
 
         LoginResponse response = new LoginResponse();
@@ -376,6 +392,19 @@ public class UserService {
         response.setUserInfo(userInfo);
 
         return response;
+    }
+
+    /** 用户个人工作地区；未单独配置时返回 null（表示全局默认）。 */
+    public String getPersonalWorkingCountry(User user) {
+        if (user == null) {
+            return null;
+        }
+        String personal = user.getWorkingCountry();
+        if (personal == null || personal.trim().isEmpty()) {
+            return null;
+        }
+        String normalized = CountryResolver.normalize(personal.trim());
+        return "default".equalsIgnoreCase(normalized) ? null : normalized;
     }
 
     /** 用户有效工作地区：个人配置优先，否则系统默认。 */

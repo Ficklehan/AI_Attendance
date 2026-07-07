@@ -23,7 +23,8 @@
       "unsigned": "Unsigned",
       "signedConfirmed": "Signed (confirmed)",
       "unsignedConfirmed": "Unsigned (confirmed)",
-      "signed": "Signed"
+      "signed": "Signed",
+      "manuallyAdded": "Manually added"
     },
     "missing": {
       "NO": "Worker ID not recognized",
@@ -63,12 +64,12 @@
     "fileNotFound": "File not found",
     "fileNotFoundWithKey": "File not found: {fileKey}",
     "imageInvalid": "Invalid image file",
-    "invalidFilePath": "Invalid file path",
+    "invalidFilePath": "Cannot access the original image (invalid file reference). Use Re-upload (top right) to capture and recognize again.",
     "uploadImageTooSmall": "Uploaded image is invalid or too small ({size} bytes). Please retake or choose a clearer photo",
     "imagesOnly": "Only image or PDF files are supported",
     "unrecognizedImageFormat": "Unrecognized file format. Please use JPG, PNG, or PDF",
-      "mimoNotConfigured": "MIMO API Key is not configured. Set MIMO_API_KEY in backend/.env and restart the backend",
-      "mimoUnavailable": "AI recognition is temporarily unavailable (MiMo API error). Wait 1–2 minutes and try again; contact your admin if it persists",
+    "mimoNotConfigured": "MIMO API Key is not configured. Set MIMO_API_KEY in backend/.env and restart the backend",
+    "mimoUnavailable": "AI recognition is temporarily unavailable (MiMo API error). Wait 1–2 minutes and try again; contact your admin if it persists",
     "aiPromptNotFound": "Recognition prompt not found. Check base-config/prompts.md",
     "aiContinuePromptNotFound": "Continue prompt not found. Check base-config/prompts.md",
     "aiHeaderEcho": "The model returned column headers (e.g. name/supplier) as data instead of real rows. Check the working country and upload a clearer photo",
@@ -93,7 +94,11 @@
     "methodNotAllowed": "HTTP method not allowed",
     "systemError": "System error, please try again later",
     "requestFailed": "Request failed",
-    "networkError": "Network error, please check your connection"
+    "networkError": "Network error, please check your connection",
+    "imageQualityStatsRangeAllRows": "All non-deleted rows",
+    "imageQualityStatsRangeAttendanceOnly": "Effective attendance rows (exclude absent)",
+    "imageQualityStatsRangeNamedRows": "Rows with name or employee ID",
+    "imageQualityUnknownIncludeAbsent": "Including absent rows"
   },
   "common": {
     "cancel": "Cancel",

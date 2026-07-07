@@ -23,8 +23,7 @@ export default {
       "deleted": "Smazané",
       "signedConfirmed": "Podepsáno (potvrzeno)",
       "unsignedConfirmed": "Nepodepsáno (potvrzeno)",
-      "signed": "Podepsáno",
-      "manuallyAdded": "Ručně přidáno"
+      "signed": "Podepsáno"
     },
     "missing": {
       "NO": "Ne rozpoznáno číslo",
@@ -196,6 +195,8 @@ export default {
   "nav": {
     "home": "Domů",
     "tasks": "Úkoly",
+    "attendance": "Docházka",
+    "employees": "Zaměstnanci",
     "taskRecords": "Záznamy docházky",
     "config": "Nastavení",
     "settings": "Nastavení systému",
@@ -286,7 +287,6 @@ export default {
     "recognitionFailedTitle": "Rozpoznávání selhalo",
     "recognitionRetry": "Zkusit rozpoznání znovu",
     "recognitionReupload": "Nahrát znovu",
-    "recognitionFailureHint": "Zkusit znovu: znovu rozpoznat obrázky uložené na serveru (vhodné po aktualizaci promptů). Nahrát znovu: vymazat výběr a znovu vybrat soubory.",
     "recognitionError": "Chyba rozpoznávání",
     "workingCountry": "Pracovní země",
     "changeCountry": "Změnit konfiguraci",
@@ -389,7 +389,6 @@ export default {
     "requiredFieldMissingShort": "Chybí povinná pole",
     "anomalyCategoryRequired": "Chybí povinná pole",
     "anomalyCategoryUnreadable": "Nečitelné",
-    "anomalyCategoryFormat": "Chyba formátu",
     "anomalyCategoryDuplicate": "Duplicitní jména",
     "anomalyCategoryOther": "Jiné anomálie",
     "fieldUnreadableShort": "Nečitelné",

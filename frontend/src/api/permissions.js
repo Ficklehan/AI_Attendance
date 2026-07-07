@@ -15,9 +15,10 @@ export const updateRolePermissions = (data) => {
   })
 }
 
-export const getMyPermissions = () => {
+export const getMyPermissions = (country) => {
   return request({
     url: '/permissions/me',
     method: 'get',
+    params: country ? { country } : undefined,
   })
 }

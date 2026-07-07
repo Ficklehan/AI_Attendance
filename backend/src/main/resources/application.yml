@@ -44,6 +44,8 @@ upload:
 export:
   path: ./exports
   retention-days: 7
+  # Excel 中考勤原图超链接的公网/API 根地址（含 context-path），生产请设 EXPORT_PUBLIC_BASE_URL
+  public-base-url: ${EXPORT_PUBLIC_BASE_URL:http://localhost:8080/attendance/api}
 
 feishu:
   app-id: ${FEISHU_APP_ID:}

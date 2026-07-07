@@ -23,8 +23,7 @@ export default {
       "deleted": "Verwijderd",
       "signedConfirmed": "Getekend (bevestigd)",
       "unsignedConfirmed": "Niet getekend (bevestigd)",
-      "signed": "Getekend",
-      "manuallyAdded": "Handmatig toegevoegd"
+      "signed": "Getekend"
     },
     "missing": {
       "NO": "Werknemer-ID niet herkend",
@@ -194,6 +193,8 @@ export default {
   "nav": {
     "home": "Home",
     "tasks": "Taken",
+    "attendance": "Aanwezigheid",
+    "employees": "Medewerkers",
     "taskRecords": "Aanwezigheidsrecords",
     "config": "Configuratie",
     "settings": "Instellingen",
@@ -284,7 +285,6 @@ export default {
     "recognitionFailedTitle": "Herkenning mislukt",
     "recognitionRetry": "Herkenning opnieuw proberen",
     "recognitionReupload": "Opnieuw uploaden",
-    "recognitionFailureHint": "Herkenning opnieuw: opnieuw herkennen met afbeeldingen die al op de server staan (handig na het bijwerken van prompts). Opnieuw uploaden: selectie wissen en bestanden opnieuw kiezen.",
     "recognitionError": "Herkenningsfout",
     "workingCountry": "Werkland",
     "changeCountry": "Configuratie wijzigen",
@@ -395,7 +395,6 @@ export default {
     "observations": "Opmerkingen",
     "anomalyCategoryRequired": "Verplichte velden ontbreken",
     "anomalyCategoryUnreadable": "Onleesbaar",
-    "anomalyCategoryFormat": "Formaatfout",
     "anomalyCategoryDuplicate": "Dubbele namen",
     "anomalyCategoryOther": "Overige afwijkingen",
     "fieldUnreadableShort": "Onleesbaar",

@@ -39,7 +39,7 @@ function extractTimeTokens(raw) {
       if (!match) return null
       const hours = parseInt(match[1], 10)
       const minutes = parseInt(match[2], 10)
-      if ((hours === 24 && minutes >= 0 && minutes <= 59) || (hours >= 0 && hours <= 23 && minutes >= 0 && minutes <= 59)) {
+      if (hours >= 0 && hours <= 23 && minutes >= 0 && minutes <= 59) {
         return { hours, minutes, raw: token }
       }
       return null

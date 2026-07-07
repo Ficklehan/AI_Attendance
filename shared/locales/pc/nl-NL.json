@@ -54,6 +54,8 @@
   "nav": {
     "home": "Home",
     "tasks": "Taken",
+    "attendance": "Aanwezigheid",
+    "employees": "Medewerkers",
     "taskRecords": "Aanwezigheidsrecords",
     "config": "Configuratie",
     "settings": "Instellingen",
