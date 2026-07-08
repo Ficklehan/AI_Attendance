@@ -59,8 +59,8 @@ function verifyToken(app) {
       if (isApiSuccess(res.data)) {
         const user = getApiData(res.data)
         if (user) {
-          app.globalData.userInfo = user
-          tt.setStorageSync('userInfo', user)
+          app.globalData.userInfo = Object.assign({}, app.globalData.userInfo || {}, user)
+          tt.setStorageSync('userInfo', app.globalData.userInfo)
         }
         return token
       }

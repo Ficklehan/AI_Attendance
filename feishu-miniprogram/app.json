@@ -60,6 +60,6 @@
   },
   "newFramework": {
     "enabled": true,
-    "minimumSupportedVersion": "5.12"
+    "minimumSupportedVersion": "6.2"
   }
 }

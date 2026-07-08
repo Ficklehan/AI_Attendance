@@ -10,6 +10,13 @@
     </PageShell>
 
     <a-card class="surface-card" :bordered="false">
+      <a-alert
+        type="info"
+        show-icon
+        class="user-role-hint"
+        :message="$t('settings.users.rolesHintTitle')"
+        :description="$t('settings.users.rolesHintDesc')"
+      />
       <div class="table-toolbar">
         <a-input-search
           v-model:value="searchKeyword"
@@ -40,10 +47,16 @@
       >
         <template #bodyCell="{ column, record, text }">
           <template v-if="column.key === 'role'">
-            <CopyableCell :text="roleNameMap[record.role] || record.role">
-              <a-tag :color="record.role === 'admin' ? 'blue' : 'default'">
-                {{ roleNameMap[record.role] || record.role }}
-              </a-tag>
+            <CopyableCell :text="displayUserRoles(record)">
+              <a-space wrap size="small">
+                <a-tag
+                  v-for="roleKey in userRoleKeys(record)"
+                  :key="roleKey"
+                  :color="roleKey === 'admin' ? 'blue' : 'default'"
+                >
+                  {{ roleNameMap[roleKey] || roleKey }}
+                </a-tag>
+              </a-space>
             </CopyableCell>
           </template>
           <template v-else-if="column.key === 'workingCountry'">
@@ -122,41 +135,77 @@
       v-model:open="modalOpen"
       :title="editingId ? $t('settings.users.editTitle') : $t('settings.users.createTitle')"
       :confirm-loading="saving"
+      width="640px"
+      destroy-on-close
       @ok="submitForm"
+      @after-close="resetFormValidation"
     >
-      <a-form layout="vertical" :model="form">
-        <a-form-item v-if="!editingId" :label="$t('auth.username')" required>
-          <a-input v-model:value="form.username" />
+      <a-form
+        ref="formRef"
+        layout="vertical"
+        :model="form"
+        :rules="formRules"
+        class="user-form"
+      >
+        <div class="form-section-title">{{ $t('settings.users.formSectionProfile') }}</div>
+        <a-row :gutter="16">
+          <a-col :span="12">
+            <a-form-item :label="$t('settings.users.realName')" name="realName">
+              <a-input v-model:value="form.realName" :placeholder="$t('settings.users.realNamePlaceholder')" />
+            </a-form-item>
+          </a-col>
+          <a-col :span="12">
+            <a-form-item :label="$t('settings.users.employeeId')" name="employeeId">
+              <a-input v-model:value="form.employeeId" :placeholder="$t('settings.users.employeeIdPlaceholder')" />
+            </a-form-item>
+          </a-col>
+        </a-row>
+
+        <div class="form-section-title">{{ $t('settings.users.formSectionAccount') }}</div>
+        <a-form-item v-if="!editingId" :label="$t('auth.username')" name="username">
+          <a-input v-model:value="form.username" :placeholder="$t('settings.users.usernamePlaceholder')" />
         </a-form-item>
-        <a-form-item :label="$t('settings.users.email')" required>
-          <a-input v-model:value="form.email" />
+        <a-form-item :label="$t('settings.users.email')" name="email">
+          <a-input v-model:value="form.email" type="email" :placeholder="$t('settings.users.emailPlaceholder')" />
         </a-form-item>
-        <a-form-item :label="$t('auth.password')" :required="!editingId">
-          <a-input-password v-model:value="form.password" :placeholder="editingId ? $t('settings.users.passwordKeep') : ''" />
-        </a-form-item>
-        <a-form-item :label="$t('settings.users.realName')">
-          <a-input v-model:value="form.realName" />
-        </a-form-item>
-        <a-form-item :label="$t('settings.users.employeeId')">
-          <a-input v-model:value="form.employeeId" />
-        </a-form-item>
-        <a-form-item :label="$t('settings.users.feishuUserId')" :help="$t('settings.users.feishuUserIdHint')">
-          <a-input v-model:value="form.feishuUserId" :placeholder="$t('settings.users.feishuUserIdPlaceholder')" allow-clear />
-        </a-form-item>
-        <a-form-item :label="$t('settings.users.workingCountry')" :help="$t('settings.users.workingCountryHint')">
-          <a-select
-            v-model:value="form.workingCountry"
-            :options="countryOptions"
-            show-search
-            :filter-option="filterCountryOption"
-            allow-clear
-            :placeholder="$t('settings.users.workingCountryPlaceholder')"
+        <a-form-item :label="$t('auth.password')" name="password" :required="!editingId">
+          <a-input-password
+            v-model:value="form.password"
+            :placeholder="editingId ? $t('settings.users.passwordKeep') : $t('settings.users.passwordPlaceholder')"
           />
         </a-form-item>
-        <a-form-item :label="$t('settings.users.role')">
-          <a-select v-model:value="form.role" :options="roleOptions" />
+
+        <div class="form-section-title">{{ $t('settings.users.formSectionBinding') }}</div>
+        <a-form-item :label="$t('settings.users.feishuUserId')" name="feishuUserId" :help="$t('settings.users.feishuUserIdHint')">
+          <a-input v-model:value="form.feishuUserId" :placeholder="$t('settings.users.feishuUserIdPlaceholder')" allow-clear />
         </a-form-item>
-        <a-form-item v-if="editingId" :label="$t('common.status')">
+
+        <div class="form-section-title">{{ $t('settings.users.formSectionAccess') }}</div>
+        <a-row :gutter="16">
+          <a-col :span="12">
+            <a-form-item :label="$t('settings.users.workingCountry')" name="workingCountry" :help="$t('settings.users.workingCountryHint')">
+              <a-select
+                v-model:value="form.workingCountry"
+                :options="countryOptions"
+                show-search
+                :filter-option="filterCountryOption"
+                allow-clear
+                :placeholder="$t('settings.users.workingCountryPlaceholder')"
+              />
+            </a-form-item>
+          </a-col>
+          <a-col :span="12">
+            <a-form-item :label="$t('settings.users.role')" name="roles">
+              <a-select
+                v-model:value="form.roles"
+                mode="multiple"
+                :options="roleOptions"
+                :placeholder="$t('settings.users.rolesPlaceholder')"
+              />
+            </a-form-item>
+          </a-col>
+        </a-row>
+        <a-form-item v-if="editingId" :label="$t('common.status')" name="status">
           <a-select v-model:value="form.status" :options="statusOptions" />
         </a-form-item>
       </a-form>
@@ -165,7 +214,7 @@
 </template>
 
 <script setup>
-import { computed, onMounted, reactive, ref } from 'vue'
+import { computed, nextTick, onMounted, reactive, ref } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { message } from 'ant-design-vue'
 import { PlusOutlined } from '@ant-design/icons-vue'
@@ -192,6 +241,7 @@ const loading = ref(false)
 const saving = ref(false)
 const modalOpen = ref(false)
 const editingId = ref('')
+const formRef = ref(null)
 const page = ref(1)
 const pageSize = ref(20)
 const total = ref(0)
@@ -205,7 +255,7 @@ const form = reactive({
   employeeId: '',
   feishuUserId: '',
   workingCountry: 'default',
-  role: 'user',
+  roles: ['user'],
   status: 'active',
 })
 
@@ -241,6 +291,15 @@ const roleNameMap = computed(() => {
   return map
 })
 
+const userRoleKeys = (record) => {
+  if (Array.isArray(record?.roles) && record.roles.length) return record.roles
+  return record?.role ? [record.role] : ['user']
+}
+
+const displayUserRoles = (record) => userRoleKeys(record)
+  .map((key) => roleNameMap.value[key] || key)
+  .join(', ')
+
 const fetchRoles = async () => {
   try {
     const res = await listRoles()
@@ -255,13 +314,79 @@ const statusOptions = computed(() => [
   { value: 'disabled', label: t('settings.users.statusDisabled') },
 ])
 
+const requiredRule = (labelKey) => ({
+  required: true,
+  whitespace: true,
+  message: t('validation.required', { field: t(labelKey) }),
+  trigger: 'blur',
+})
+
+const formRules = computed(() => {
+  const rules = {
+    realName: [requiredRule('settings.users.realName')],
+    email: [
+      {
+        validator: (_rule, value) => {
+          const v = (value || '').trim()
+          if (!v) return Promise.resolve()
+          const ok = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(v)
+          if (!ok) {
+            return Promise.reject(
+              new Error(t('validation.invalidFormat', { field: t('settings.users.email') })),
+            )
+          }
+          return Promise.resolve()
+        },
+        trigger: 'blur',
+      },
+    ],
+  }
+  if (!editingId.value) {
+    rules.username = [
+      requiredRule('auth.username'),
+      {
+        min: 2,
+        max: 64,
+        message: t('validation.minLength', { field: t('auth.username'), min: 2 }),
+        trigger: 'blur',
+      },
+    ]
+    rules.password = [
+      requiredRule('auth.password'),
+      {
+        min: 6,
+        max: 64,
+        message: t('validation.minLength', { field: t('auth.password'), min: 6 }),
+        trigger: 'blur',
+      },
+    ]
+  } else {
+    rules.password = [
+      {
+        validator: (_rule, value) => {
+          if (!value || value.length >= 6) return Promise.resolve()
+          return Promise.reject(
+            new Error(t('validation.minLength', { field: t('auth.password'), min: 6 })),
+          )
+        },
+        trigger: 'blur',
+      },
+    ]
+  }
+  return rules
+})
+
+const resetFormValidation = () => {
+  formRef.value?.clearValidate()
+}
+
 const baseColumns = computed(() => withTableSorters([
   { title: t('auth.username'), dataIndex: 'username', key: 'username' },
   { title: t('settings.users.email'), dataIndex: 'email', key: 'email' },
   { title: t('settings.users.realName'), dataIndex: 'realName', key: 'realName' },
   { title: t('settings.users.workingCountry'), key: 'workingCountry', width: 140, sorter: keyFieldSorter('workingCountry') },
   { title: t('settings.users.feishuUserId'), dataIndex: 'feishuUserId', key: 'feishuUserId', ellipsis: true, width: 140 },
-  { title: t('settings.users.role'), key: 'role', width: 100, sorter: keyFieldSorter('role') },
+  { title: t('settings.users.role'), key: 'role', width: 180, sorter: keyFieldSorter('role') },
   { title: t('common.status'), key: 'status', width: 100, sorter: keyFieldSorter('status') },
   { title: t('common.operation'), key: 'action', width: 220, align: 'center', fixed: 'right' },
 ]))
@@ -324,7 +449,7 @@ const resetForm = () => {
   form.employeeId = ''
   form.feishuUserId = ''
   form.workingCountry = 'default'
-  form.role = 'user'
+  form.roles = ['user']
   form.status = 'active'
 }
 
@@ -357,6 +482,7 @@ const openCreate = () => {
   editingId.value = ''
   resetForm()
   modalOpen.value = true
+  nextTick(resetFormValidation)
 }
 
 const openEdit = (record) => {
@@ -368,22 +494,27 @@ const openEdit = (record) => {
   form.employeeId = record.employeeId || ''
   form.feishuUserId = record.feishuUserId || ''
   form.workingCountry = record.workingCountry || 'default'
-  form.role = record.role || 'user'
+  form.roles = userRoleKeys(record)
   form.status = record.status || 'active'
   modalOpen.value = true
+  nextTick(resetFormValidation)
 }
 
 const submitForm = async () => {
+  const valid = await formRef.value?.validate().catch(() => false)
+  if (!valid) return
+
   saving.value = true
   try {
+    const realName = form.realName.trim()
     if (editingId.value) {
       const payload = {
-        email: form.email,
-        realName: form.realName,
-        employeeId: form.employeeId,
+        email: form.email?.trim() || '',
+        realName,
+        employeeId: form.employeeId?.trim() || '',
         feishuUserId: form.feishuUserId,
         workingCountry: form.workingCountry === 'default' ? '' : form.workingCountry,
-        role: form.role,
+        roles: form.roles?.length ? form.roles : ['user'],
         status: form.status,
       }
       if (form.password) payload.password = form.password
@@ -393,17 +524,19 @@ const submitForm = async () => {
         setCachedWorkingCountry(effective)
         countryStore.workingCountry = effective
         await countryStore.loadBundle(effective)
+        await authStore.fetchUserInfo()
+        await authStore.refreshPermissions(effective !== 'default' ? effective : undefined)
       }
       message.success(t('settings.users.updated'))
     } else {
       await createUser({
-        username: form.username,
-        email: form.email,
+        username: form.username.trim(),
+        email: form.email?.trim() || '',
         password: form.password,
-        realName: form.realName,
-        employeeId: form.employeeId,
+        realName,
+        employeeId: form.employeeId?.trim() || '',
         workingCountry: form.workingCountry === 'default' ? '' : form.workingCountry,
-        role: form.role,
+        roles: form.roles?.length ? form.roles : ['user'],
       })
       message.success(t('settings.users.created'))
     }
@@ -432,5 +565,30 @@ onMounted(async () => {
 
 .user-search {
   width: min(360px, 100%);
+}
+
+.user-role-hint {
+  margin-bottom: 16px;
+}
+
+.user-form :deep(.ant-form-item) {
+  margin-bottom: 16px;
+}
+
+.user-form :deep(.ant-form-item:last-child) {
+  margin-bottom: 0;
+}
+
+.form-section-title {
+  margin: 4px 0 12px;
+  font-size: 13px;
+  font-weight: 600;
+  color: rgba(0, 0, 0, 0.65);
+}
+
+.form-section-title:not(:first-child) {
+  margin-top: 8px;
+  padding-top: 12px;
+  border-top: 1px solid rgba(0, 0, 0, 0.06);
 }
 </style>

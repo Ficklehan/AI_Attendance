@@ -163,6 +163,7 @@ const statusLabel = (status) => {
     pending: t('export.statusPending'),
     running: t('export.statusRunning'),
     completed: t('export.statusCompleted'),
+    downloaded: t('export.statusDownloaded'),
     failed: t('export.statusFailed'),
   }
   return map[status] || status
@@ -173,6 +174,7 @@ const statusColor = (status) => {
     pending: 'default',
     running: 'processing',
     completed: 'success',
+    downloaded: 'default',
     failed: 'error',
   }
   return map[status] || 'default'
@@ -239,16 +241,25 @@ const handleClearAll = () => {
   })
 }
 
-const handleDownload = async (job) => {
-  downloadingId.value = job.id
-  try {
-    await downloadExportJob(job.id, job.fileName)
-    message.success(t('export.downloadStarted'))
-  } catch (e) {
-    message.error(t('export.downloadFailed'))
-  } finally {
-    downloadingId.value = ''
-  }
+const handleDownload = (job) => {
+  Modal.confirm({
+    title: t('export.downloadConfirmTitle'),
+    content: t('export.downloadConfirmContent'),
+    okText: t('export.download'),
+    cancelText: t('common.cancel'),
+    onOk: async () => {
+      downloadingId.value = job.id
+      try {
+        await downloadExportJob(job.id, job.fileName)
+        message.success(t('export.downloadSuccess'))
+        await fetchJobs(false)
+      } catch (e) {
+        message.error(t('export.downloadFailed'))
+      } finally {
+        downloadingId.value = ''
+      }
+    },
+  })
 }
 
 const startPolling = () => {

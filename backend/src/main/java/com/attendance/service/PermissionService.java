@@ -16,6 +16,7 @@ import com.attendance.security.AdminAuthService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.context.annotation.Lazy;
 import org.springframework.stereotype.Service;
 
 import java.io.IOException;
@@ -25,6 +26,7 @@ import java.nio.file.Path;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.LinkedHashMap;
+import java.util.List;
 import java.util.Map;
 
 @Service
@@ -36,6 +38,7 @@ public class PermissionService {
     public static final String RECORD_CALIBRATE = "recordCalibrate";
     public static final String TASK_DELETE_CONFIRMED = "taskDeleteConfirmed";
     public static final String REMINDER_CONFIG = "reminderConfig";
+    public static final String EMPLOYEES = "employees";
 
     @Autowired
     private ConfigPathResolver configPathResolver;
@@ -45,6 +48,10 @@ public class PermissionService {
 
     @Autowired
     private SystemRoleMapper systemRoleMapper;
+
+    @Autowired
+    @Lazy
+    private UserRoleService userRoleService;
 
     @Autowired
     private MarkdownConfigService markdownConfigService;
@@ -162,22 +169,37 @@ public class PermissionService {
     }
 
     public Map<String, Boolean> effectivePermissions(User user, String workingCountryCode) {
-        if (user == null || user.getRole() == null) {
+        if (user == null) {
             return Collections.emptyMap();
         }
-        String role = normalizeRole(user.getRole());
+        List<String> roles = userRoleService.getRoleKeysForUserId(user.getId());
+        if (roles.contains("admin")) {
+            Map<String, Boolean> adminPerms = new LinkedHashMap<>(defaultRole("admin"));
+            adminPerms.put(RECORD_CALIBRATE, true);
+            adminPerms.put(TASK_DELETE_CONFIRMED, true);
+            adminPerms.put(REMINDER_CONFIG, true);
+            adminPerms.put("aiConfig", true);
+            adminPerms.put("feishuConfig", true);
+            adminPerms.put("users", true);
+            adminPerms.put("audit", true);
+            adminPerms.put(EMPLOYEES, true);
+            return adminPerms;
+        }
         Map<String, Map<String, Boolean>> all = loadAll();
-        Map<String, Boolean> rolePerms = all.getOrDefault(role, defaultRole(role));
-        Map<String, Boolean> effective = new LinkedHashMap<>(rolePerms);
-        applyCountryOverrides(effective, role, workingCountryCode, loadByCountryAll());
-        if ("admin".equals(role)) {
-            effective.put(RECORD_CALIBRATE, true);
-            effective.put(TASK_DELETE_CONFIRMED, true);
-            effective.put(REMINDER_CONFIG, true);
-            effective.put("aiConfig", true);
-            effective.put("feishuConfig", true);
-            effective.put("users", true);
-            effective.put("audit", true);
+        Map<String, Boolean> effective = new LinkedHashMap<>();
+        for (String role : roles) {
+            Map<String, Boolean> rolePerms = all.getOrDefault(normalizeRole(role), defaultRole(role));
+            for (Map.Entry<String, Boolean> entry : rolePerms.entrySet()) {
+                if (entry.getKey() != null && Boolean.TRUE.equals(entry.getValue())) {
+                    effective.put(entry.getKey(), true);
+                }
+            }
+        }
+        for (String role : roles) {
+            Map<String, Boolean> defaults = defaultRole(role);
+            for (String key : defaults.keySet()) {
+                effective.putIfAbsent(key, false);
+            }
         }
         return effective;
     }
@@ -186,8 +208,7 @@ public class PermissionService {
         if (user == null || permissionKey == null) {
             return false;
         }
-        String role = normalizeRole(user.getRole());
-        if ("admin".equals(role)) {
+        if (userRoleService.userHasRole(user.getId(), "admin")) {
             if (RECORD_CALIBRATE.equals(permissionKey)
                     || TASK_DELETE_CONFIRMED.equals(permissionKey)
                     || REMINDER_CONFIG.equals(permissionKey)) {
@@ -269,7 +290,8 @@ public class PermissionService {
             }
         }
         if (markdownConfigService != null) {
-            return normalizeCountryCode(markdownConfigService.getCurrentCountry());
+            return normalizeCountryCode(
+                    CountryCatalog.resolveGlobalDefaultCountry(markdownConfigService.getCurrentCountry()));
         }
         return null;
     }
@@ -374,6 +396,7 @@ public class PermissionService {
                     map.put("users", true);
                     map.put("audit", true);
                     map.put(REMINDER_CONFIG, true);
+                    map.put(EMPLOYEES, true);
                 }
                 result.put(role, map);
             }
@@ -416,6 +439,7 @@ public class PermissionService {
             m.put(RECORD_CALIBRATE, true);
             m.put(TASK_DELETE_CONFIRMED, true);
             m.put(REMINDER_CONFIG, true);
+            m.put(EMPLOYEES, true);
         } else {
             m.put("tasks", true);
             m.put("country", true);
@@ -426,6 +450,7 @@ public class PermissionService {
             m.put(RECORD_CALIBRATE, false);
             m.put(TASK_DELETE_CONFIRMED, false);
             m.put(REMINDER_CONFIG, false);
+            m.put(EMPLOYEES, true);
         }
         return m;
     }

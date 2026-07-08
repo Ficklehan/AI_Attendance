@@ -76,6 +76,7 @@
     "aiInvalidJson": "模型返回了无法解析的 JSON 行，请换更清晰图片重试。",
     "aiNoParseableRecords": "模型未返回可解析的考勤 JSON 行，请换更清晰图片重试。",
     "aiFabricated": "识别结果含多条提示词示例行（非图中真实数据），请换更清晰、完整的考勤表照片重试",
+    "aiMalformedRecords": "识别结果中有 {malformedPercent}% 的行结构异常（{malformedCount}/{recordCount} 行），超过拦截阈值 {thresholdPercent}%。请换更清晰、完整的考勤表照片重试",
     "aiUnreadableTimes": "表格大量工号/姓名为 ??? 或无法辨认，但到达/离开时间却被整齐填写，疑似模型臆测。请换更清晰照片重试",
     "aiImageTooBlurry": "照片不够清晰，无法可靠识别考勤表。请正对表格、光线充足处重新拍摄，或换一张更清楚的照片。",
     "aiImageTooBlurryBlurRows": "照片不够清晰：约 {blurPercent}% 的考勤行看不清楚（字迹模糊，或姓名、工号难以辨认）。请正对表格、在光线充足处重新拍摄，避免手抖和反光。",
@@ -104,7 +105,8 @@
     "cancel": "取消",
     "save": "保存",
     "loading": "加载中...",
-    "search": "搜索"
+    "search": "搜索",
+    "retry": "重试"
   },
   "validation": {
     "required": "{field} 必填",

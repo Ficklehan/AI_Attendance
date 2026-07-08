@@ -9,7 +9,16 @@
 | `prompts.md` | 识别提示词 Markdown 源；空库时可导入 DB | 配置页保存 → 写入 `recognition_prompt`；或直接编辑后重启（见 `attendance.prompt.*`） |
 | `feishu.md` | 各国飞书多维表 App Token、Table ID、字段映射 | 编辑后重启或触发配置重载；PC「设置 → 飞书配置」 |
 | `countries.md` | 国家元数据（时区、名称）；解析有效国家列表 | 一般只读参考；生效国家以 `feishu.md` / `prompts.md` 章节为准 |
-| `permissions.json` | 角色权限：`admin` / `user` 各功能开关 | PC「设置 → 权限管理」保存 |
+| `permissions.json` | 角色权限：`admin` / `user` / 自定义角色各功能开关 | PC「设置 → 权限管理」保存 |
+| `permissions-by-country.json` | **按国家覆盖**部分权限（如 `recordCalibrate`） | PC 权限管理「按国家」页保存 |
+
+### 权限合并优先级（与 `PermissionService` 一致）
+
+1. **`admin` 角色** — 代码层强制拥有全部能力（含 `recordCalibrate`、角色管理等）
+2. **`permissions.json`** — 角色默认功能开关（`user` / `test` / 自定义 `role_key`）
+3. **`permissions-by-country.json`** — 仅覆盖列出的国家 + 权限键；未列出的国家回退到第 2 层
+
+小程序与 PC 业务校验规则以 `shared/js` 为单源；权限只控制菜单与 API 入口，不替代服务端校验。
 
 内置标准提示词副本（只读参考）：`backend/src/main/resources/canonical/prompts.md`。
 

@@ -55,7 +55,19 @@ public final class TaskRecordPayloadResolver {
             return toJsonArray(conf);
         }
 
-        boolean hasStableKeys = hasRowKey(raw) || hasRowKey(conf);
+        boolean rawHasKeys = hasRowKey(raw);
+        boolean confHasKeys = hasRowKey(conf);
+
+        // 识别原始数据通常无 _rowKey，确认提交会带上前端 _rowKey；键无法对齐时按行序合并，避免 raw+confirmed 双倍行
+        if (!rawHasKeys && confHasKeys && raw.size() == conf.size()) {
+            List<JSONObject> byIndex = new ArrayList<>(raw.size());
+            for (int i = 0; i < raw.size(); i++) {
+                byIndex.add(mergeObjects(raw.get(i), conf.get(i)));
+            }
+            return toJsonArray(byIndex);
+        }
+
+        boolean hasStableKeys = rawHasKeys || confHasKeys;
         if (!hasStableKeys && raw.size() == conf.size()) {
             List<JSONObject> byIndex = new ArrayList<>(raw.size());
             for (int i = 0; i < raw.size(); i++) {

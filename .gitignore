@@ -64,6 +64,12 @@ deploy/secrets.env
 deploy/rendered/*
 !deploy/rendered/*.example
 
+# --- 本地开发守护日志（scripts/run-dev-daemon.sh）---
+logs/
+
+# --- Playwright CLI 调试产物 ---
+.playwright-cli/
+
 # --- 临时文件 ---
 *.tmp
 *.temp

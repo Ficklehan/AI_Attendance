@@ -102,7 +102,7 @@
                 <a-button type="primary" block :loading="countrySaving" @click="applyWorkingCountry">
                   {{ $t('country.apply') }}
                 </a-button>
-                <a-button v-if="authStore.isAdmin" type="link" block @click="goCountryConfig">
+                <a-button v-if="canManageCountryConfig" type="link" block @click="goCountryConfig">
                   {{ $t('country.manageConfig') }}
                 </a-button>
               </div>
@@ -208,6 +208,7 @@
     <ExportJobDrawer v-model:open="exportDrawerOpen" />
     <NotificationDrawer v-model:open="notificationDrawerOpen" @read="refreshUnreadCount" />
     <ChangePasswordModal v-model:open="changePasswordOpen" />
+    <ProfileModal v-model:open="profileOpen" />
     <WorkingCountrySetupModal v-model:open="workingCountrySetupOpen" @saved="onWorkingCountrySetupSaved" />
   </a-layout>
 </template>
@@ -239,10 +240,16 @@ import {
 import ExportJobDrawer from '@/components/ExportJobDrawer.vue'
 import NotificationDrawer from '@/components/NotificationDrawer.vue'
 import ChangePasswordModal from '@/components/ChangePasswordModal.vue'
+import ProfileModal from '@/components/ProfileModal.vue'
 import WorkingCountrySetupModal from '@/components/WorkingCountrySetupModal.vue'
+import { hasCapability } from '@/utils/permissions'
 import { needsWorkingCountrySetup } from '@/utils/workingCountrySetup'
+import { isSessionValidated } from '@/utils/sessionState'
 import { useExportCenter, startSummaryPolling, stopSummaryPolling } from '@/composables/useExportCenter'
+import { useWorkingCountryPicker } from '@/composables/useWorkingCountryPicker'
+import { hasAnySettingsAccess, firstAccessibleSettingsPath } from '@/utils/settingsAccess'
 import { getUnreadCount } from '@/api/notification'
+import { LANGUAGE_OPTIONS } from '@/constants/languageOptions'
 
 const route = useRoute()
 const router = useRouter()
@@ -257,7 +264,9 @@ const countryPopoverVisible = ref(false)
 const countryDraft = ref('default')
 const countrySaving = ref(false)
 const changePasswordOpen = ref(false)
+const profileOpen = ref(false)
 const workingCountrySetupOpen = ref(false)
+const { openRequest } = useWorkingCountryPicker()
 const notificationDrawerOpen = ref(false)
 const unreadCount = ref(0)
 let unreadPollTimer = null
@@ -279,6 +288,11 @@ watch(
   { immediate: true }
 )
 
+watch(openRequest, () => {
+  countryDraft.value = countryStore.workingCountry || 'default'
+  countryPopoverVisible.value = true
+})
+
 const localizedCountryOptions = computed(() => {
   void locale.value
   return (countryStore.options || []).map((item) => buildCountrySelectOption(item))
@@ -299,16 +313,9 @@ const countryButtonTooltip = computed(() => {
   return `${t('country.title')}: ${localizedWorkingCountryLabel.value}`
 })
 
-const languageOptions = [
-  { value: 'zh-CN', label: '简体中文', flag: '🇨🇳' },
-  { value: 'en-US', label: 'English', flag: '🇺🇸' },
-  { value: 'fr-FR', label: 'Français', flag: '🇫🇷' },
-  { value: 'nl-NL', label: 'Nederlands', flag: '🇳🇱' },
-  { value: 'cs-CZ', label: 'Čeština', flag: '🇨🇿' },
-  { value: 'pl-PL', label: 'Polski', flag: '🇵🇱' },
-  { value: 'de-DE', label: 'Deutsch', flag: '🇩🇪' },
-  { value: 'es-ES', label: 'Español', flag: '🇪🇸' },
-]
+const canManageCountryConfig = computed(() => hasCapability(authStore, 'aiConfig'))
+
+const languageOptions = LANGUAGE_OPTIONS
 
 const menuItems = computed(() => {
   const items = [
@@ -324,16 +331,26 @@ const menuItems = computed(() => {
         { path: '/attendance/agency-bills', labelKey: 'attendance.menu.agencyBills', icon: FileTextOutlined },
       ],
     },
-    { path: '/employees', labelKey: 'nav.employees', icon: TeamOutlined },
+    { path: '/employees', labelKey: 'nav.employees', icon: TeamOutlined, permission: 'employees' },
   ]
-  if (authStore.isAdmin) {
-    items.push({ path: '/settings/ai', labelKey: 'nav.settings', icon: SettingOutlined })
+  const filtered = items.filter((item) => {
+    if (!item.permission) return true
+    return hasCapability(authStore, item.permission)
+  })
+  if (hasAnySettingsAccess(authStore)) {
+    filtered.push({
+      path: firstAccessibleSettingsPath(authStore) || '/settings/ai',
+      labelKey: 'nav.settings',
+      icon: SettingOutlined,
+    })
   }
-  return items
+  return filtered
 })
 
+const settingsMenuPath = computed(() => firstAccessibleSettingsPath(authStore) || '/settings/ai')
+
 const activeMenu = computed(() => {
-  if (route.path.startsWith('/settings')) return '/settings/ai'
+  if (route.path.startsWith('/settings')) return settingsMenuPath.value
   return route.path
 })
 
@@ -365,6 +382,7 @@ const applyWorkingCountry = async () => {
     message.success(t('country.saved'))
   } catch (error) {
     console.error('设置工作国家失败:', error)
+    message.error(error?.message || t('country.saveFailed'))
   } finally {
     countrySaving.value = false
   }
@@ -372,7 +390,7 @@ const applyWorkingCountry = async () => {
 
 const goCountryConfig = () => {
   countryPopoverVisible.value = false
-  if (authStore.isAdmin) {
+  if (canManageCountryConfig.value) {
     router.push('/settings/ai')
   }
 }
@@ -398,7 +416,7 @@ const handleMenuClick = ({ key }) => {
       },
     })
   } else if (key === 'profile') {
-    message.info(t('messages.profileFeature'))
+    profileOpen.value = true
   } else if (key === 'changePassword') {
     changePasswordOpen.value = true
   }
@@ -411,15 +429,17 @@ const onWorkingCountrySetupSaved = () => {
 const ensureWorkingCountrySetup = async () => {
   if (!authStore.isAuthenticated) return
   try {
-    if (authStore.userInfo && authStore.userInfo.personalWorkingCountry === undefined) {
+    if (!isSessionValidated()) {
       await authStore.fetchUserInfo()
     }
     await countryStore.hydrate(true)
-    if (needsWorkingCountrySetup(authStore.userInfo) || countryStore.setupRequired) {
+    if (needsWorkingCountrySetup(authStore.userInfo)) {
       workingCountrySetupOpen.value = true
     }
-  } catch (error) {
-    console.error('检查工作国家配置失败:', error)
+  } catch {
+    if (!authStore.isAuthenticated) {
+      router.push('/login')
+    }
   }
 }
 

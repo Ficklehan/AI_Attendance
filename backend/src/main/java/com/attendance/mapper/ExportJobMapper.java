@@ -36,4 +36,6 @@ public interface ExportJobMapper {
                         @Param("filePath") String filePath,
                         @Param("rowCount") long rowCount,
                         @Param("errorMessage") String errorMessage);
+
+    int markDownloaded(@Param("id") String id, @Param("userId") String userId);
 }

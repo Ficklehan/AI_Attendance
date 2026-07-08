@@ -33,6 +33,7 @@ public class LoginResponse {
         private String username;
         private String email;
         private String role;
+        private java.util.List<String> roles;
         private String realName;
         private String workingCountry;
         /** 用户个人配置的工作地区；null 表示使用全局默认 */
@@ -80,6 +81,14 @@ public class LoginResponse {
 
         public void setRole(String role) {
             this.role = role;
+        }
+
+        public java.util.List<String> getRoles() {
+            return roles;
+        }
+
+        public void setRoles(java.util.List<String> roles) {
+            this.roles = roles;
         }
 
         public String getRealName() {

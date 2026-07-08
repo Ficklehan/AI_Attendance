@@ -42,7 +42,8 @@ public interface EmployeeMapper {
     List<Map<String, Object>> selectWeeklyAttendanceRows(@Param("scope") DataScopeContext scope,
                                                            @Param("regionCodes") List<String> regionCodes,
                                                            @Param("startDate") String startDate,
-                                                           @Param("endDate") String endDate);
+                                                           @Param("endDate") String endDate,
+                                                           @Param("keyword") String keyword);
 
     List<Map<String, String>> selectDistinctWorkRegionOptions();
 }

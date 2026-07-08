@@ -74,6 +74,7 @@
     "aiInvalidJson": "Neplatný JSON od modelu. Shrnutí: {preview}",
     "aiNoParseableRecords": "Model nevrátil analyzovatelné JSON řádky. Shrnutí: {preview}",
     "aiFabricated": "Výsledky vypadají vymyšleně",
+    "aiMalformedRecords": "{malformedPercent} % řádků má neplatnou strukturu ({malformedCount}/{recordCount}), nad prahem {thresholdPercent} %. Nahrajte jasnější fotografii.",
     "aiUnreadableTimes": "Mnoho ??? u jmen, ale časy vyplněny",
     "validationFailed": "Validace selhala: {detail}",
     "missingParameter": "Chybí parametr: {name}",

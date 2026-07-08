@@ -1,5 +1,14 @@
 import { defineStore } from 'pinia'
-import { getToken, setToken, removeToken } from '@/utils/auth'
+import {
+  getToken,
+  setToken,
+  removeToken,
+  getStoredUserInfo,
+  setStoredUserInfo,
+  removeStoredUserInfo,
+  touchActivity,
+} from '@/utils/auth'
+import { resetSessionValidation } from '@/utils/sessionState'
 import { getUserInfo, login as loginApi } from '@/api/auth'
 import { getMyPermissions } from '@/api/permissions'
 import { getCachedWorkingCountry, setCachedWorkingCountry, clearWorkingCountryConfigured } from '@/utils/countryHeader'
@@ -18,20 +27,14 @@ function syncWorkingCountryFromUserInfo(userInfo) {
 
 export const useAuthStore = defineStore('auth', {
   state: () => {
-    let userInfo = null
-    try {
-      const userInfoStr = localStorage.getItem('userInfo')
-      if (userInfoStr) {
-        userInfo = JSON.parse(userInfoStr)
-      }
-    } catch (e) {
-      console.error('Failed to parse userInfo from localStorage', e)
-    }
+    const userInfo = getStoredUserInfo()
     
     return {
       token: getToken() || '',
       userInfo,
-      roles: userInfo?.role ? [userInfo.role] : [],
+    roles: userInfo?.roles?.length
+      ? [...userInfo.roles]
+      : (userInfo?.role ? [userInfo.role] : []),
     }
   },
 
@@ -45,6 +48,10 @@ export const useAuthStore = defineStore('auth', {
       if (state.roles.includes('admin')) return true
       return state.userInfo?.permissions?.taskDeleteConfirmed === true
     },
+    canAccessEmployees: (state) => {
+      if (state.roles.includes('admin')) return true
+      return state.userInfo?.permissions?.employees === true
+    },
   },
 
   actions: {
@@ -52,9 +59,12 @@ export const useAuthStore = defineStore('auth', {
       const response = await loginApi(credentials)
       this.token = response.data.token
       this.userInfo = response.data.userInfo
-      this.roles = response.data.userInfo?.role ? [response.data.userInfo.role] : []
+      this.roles = response.data.userInfo?.roles?.length
+        ? [...response.data.userInfo.roles]
+        : (response.data.userInfo?.role ? [response.data.userInfo.role] : [])
       setToken(this.token)
-      localStorage.setItem('userInfo', JSON.stringify(response.data.userInfo))
+      setStoredUserInfo(response.data.userInfo)
+      touchActivity()
       syncWorkingCountryFromUserInfo(response.data.userInfo)
       return response
     },
@@ -63,8 +73,11 @@ export const useAuthStore = defineStore('auth', {
       try {
         const response = await getUserInfo()
         this.userInfo = response.data
-        this.roles = response.data?.role ? [response.data.role] : []
-        localStorage.setItem('userInfo', JSON.stringify(response.data))
+        this.roles = response.data?.roles?.length
+          ? [...response.data.roles]
+          : (response.data?.role ? [response.data.role] : [])
+        setStoredUserInfo(response.data)
+        touchActivity()
         syncWorkingCountryFromUserInfo(response.data)
         return response.data
       } catch (error) {
@@ -78,9 +91,10 @@ export const useAuthStore = defineStore('auth', {
       this.userInfo = null
       this.roles = []
       removeToken()
-      localStorage.removeItem('userInfo')
+      removeStoredUserInfo()
       clearWorkingCountryConfigured()
       setCachedWorkingCountry('default')
+      resetSessionValidation()
     },
 
     async refreshPermissions(workingCountry) {
@@ -90,7 +104,7 @@ export const useAuthStore = defineStore('auth', {
         const response = await getMyPermissions(country !== 'default' ? country : undefined)
         if (response?.data) {
           this.userInfo = { ...this.userInfo, permissions: response.data }
-          localStorage.setItem('userInfo', JSON.stringify(this.userInfo))
+          setStoredUserInfo(this.userInfo)
         }
         return this.userInfo?.permissions
       } catch (error) {

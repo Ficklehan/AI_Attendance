@@ -325,7 +325,7 @@
     "duplicateTag": "重名",
     "duplicateExpand": "展开明细",
     "duplicateCollapse": "收起明细",
-    "duplicateNotDuplicate": "非重名",
+    "duplicateNotDuplicate": "重名确认",
     "duplicateDetailTitle": "重名明细（同国家/仓库/日期/供应商/姓名）",
     "duplicateSourceTask": "来源任务",
     "duplicateColNo": "工号",

@@ -82,6 +82,9 @@ function translateApiError(payload, fallback) {
   if (message && message.includes('未返回可解析')) return t('errors.aiNoParseableRecords', { preview: '' })
   if (message && (message.includes('疑似模型编造') || message.includes('模板姓名'))) return t('errors.aiFabricated')
   if (message && message.includes('臆测而非读图')) return t('errors.aiUnreadableTimes')
+  if (message && (message.includes('结构异常') || message.includes('畸形行'))) {
+    return t('errors.aiMalformedRecords', messageArgs || {})
+  }
   if (message && message.includes('MIMO API Key')) return t('errors.mimoNotConfigured')
   if (message && message.includes('服务端启用了模拟识别')) return t('upload.simulatedServer')
   if (message && message.includes('模拟识别')) return t('upload.simulatedRecognition')

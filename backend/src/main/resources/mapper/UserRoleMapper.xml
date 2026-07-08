@@ -1,0 +1,51 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+    "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.attendance.mapper.UserRoleMapper">
+
+    <select id="selectRoleKeysByUserId" resultType="string">
+        SELECT role_key
+        FROM user_role
+        WHERE user_id = #{userId}
+        ORDER BY role_key
+    </select>
+
+    <select id="selectRoleKeysByUserIds" resultType="map">
+        SELECT user_id AS userId, role_key AS roleKey
+        FROM user_role
+        WHERE user_id IN
+        <foreach collection="userIds" item="uid" open="(" separator="," close=")">#{uid}</foreach>
+        ORDER BY user_id, role_key
+    </select>
+
+    <insert id="insertUserRole">
+        INSERT IGNORE INTO user_role (user_id, role_key)
+        VALUES (#{userId}, #{roleKey})
+    </insert>
+
+    <delete id="deleteUserRole">
+        DELETE FROM user_role
+        WHERE user_id = #{userId} AND role_key = #{roleKey}
+    </delete>
+
+    <delete id="deleteAllRolesForUser">
+        DELETE FROM user_role WHERE user_id = #{userId}
+    </delete>
+
+    <select id="countUsersByRoleKey" resultType="long">
+        SELECT COUNT(DISTINCT user_id) FROM user_role WHERE role_key = #{roleKey}
+    </select>
+
+    <select id="countActiveAdmins" resultType="long">
+        SELECT COUNT(DISTINCT u.id)
+        FROM users u
+        INNER JOIN user_role ur ON ur.user_id = u.id
+        WHERE ur.role_key = 'admin' AND u.status = 'active'
+    </select>
+
+    <select id="existsUserRole" resultType="int">
+        SELECT COUNT(*) FROM user_role
+        WHERE user_id = #{userId} AND role_key = #{roleKey}
+    </select>
+
+</mapper>

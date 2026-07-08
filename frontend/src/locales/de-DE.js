@@ -50,7 +50,13 @@ export default {
     "placeholder": "Land auswählen",
     "apply": "Als Arbeitsland setzen",
     "manageConfig": "Länderkonfiguration verwalten",
-    "saved": "Arbeitsland aktualisiert"
+    "saved": "Arbeitsland aktualisiert",
+    "setupTitle": "Arbeitsland auswählen",
+    "setupDesc": "Wählen Sie ein Arbeitsland für Erkennungsvorlagen, Zugriffsbereich und Feishu-Synchronisierung.",
+    "setupLanguageLabel": "Oberflächensprache",
+    "setupLanguageHint": "Änderungen gelten sofort. Sie können die Sprache jederzeit in der oberen Navigationsleiste ändern.",
+    "setupPlaceholder": "Land/Region auswählen",
+    "setupConfirm": "Bestätigen und fortfahren"
   },
   "errors": {
     "loginRequired": "Bitte melden Sie sich zuerst an",
@@ -80,6 +86,7 @@ export default {
     "aiInvalidJson": "Ungültiges JSON vom Modell. Zusammenfassung: {preview}",
     "aiNoParseableRecords": "Keine analysierbaren JSON-Zeilen. Zusammenfassung: {preview}",
     "aiFabricated": "Ergebnisse wirken erfunden",
+    "aiMalformedRecords": "{malformedPercent} % der Zeilen haben eine ungültige Struktur ({malformedCount}/{recordCount}), über dem Schwellenwert von {thresholdPercent} %. Bitte ein klareres Foto hochladen.",
     "aiUnreadableTimes": "Viele ??? bei Namen, aber Zeiten ausgefüllt",
     "validationFailed": "Validierung fehlgeschlagen: {detail}",
     "missingParameter": "Fehlender Parameter: {name}",
@@ -420,7 +427,7 @@ export default {
     "duplicateTag": "Duplikat",
     "expandDetail": "Details erweitern",
     "collapseDetail": "Details einklappen",
-    "notDuplicate": "Kein Duplikat",
+    "notDuplicate": "Duplikat bestätigen",
     "duplicateSuspect": "Mögliches Duplikat: {names}",
     "sourceTask": "Quellaufgabe",
     "unknownFile": "Unbekannte Datei"

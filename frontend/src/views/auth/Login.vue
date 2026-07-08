@@ -140,7 +140,7 @@ const handleLogin = async () => {
   loading.value = true
   try {
     await authStore.login(form)
-    message.success('登录成功')
+    message.success(t('auth.loginSuccess'))
     router.push('/')
   } catch (error) {
     console.error('登录失败:', error)

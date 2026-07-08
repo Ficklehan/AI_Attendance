@@ -103,4 +103,15 @@
             completed_at = NOW()
         WHERE id = #{id}
     </update>
+
+    <update id="markDownloaded">
+        UPDATE export_jobs
+        SET status = 'downloaded',
+            file_path = NULL
+        WHERE id = #{id}
+          AND user_id = #{userId}
+          AND status = 'completed'
+          AND file_path IS NOT NULL
+          AND file_path != ''
+    </update>
 </mapper>

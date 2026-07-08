@@ -6,7 +6,6 @@ import com.attendance.config.FeishuProperties;
 import com.attendance.dto.request.FeishuLoginExchangeRequest;
 import com.attendance.dto.request.FeishuMiniprogramLoginRequest;
 import com.attendance.dto.response.LoginResponse;
-import com.attendance.entity.User;
 import com.attendance.service.AuditLogService;
 import com.attendance.service.FeishuService;
 import com.attendance.service.ReminderSupport;
@@ -107,22 +106,8 @@ public class FeishuAuthController {
             }
             
             log.info("使用的飞书用户ID: {}", feishuUserId);
-            
-            String name = userInfo.getString("name");
-            String email = userInfo.getString("email");
-            
-            if (email == null || email.trim().isEmpty()) {
-                email = feishuUserId + "@feishu.user";
-            }
-            
-            User user = userService.findByFeishuUserId(feishuUserId);
-            
-            LoginResponse loginResponse;
-            if (user != null) {
-                loginResponse = userService.loginByFeishu(user);
-            } else {
-                loginResponse = userService.registerByFeishu(feishuUserId, name, email);
-            }
+
+            LoginResponse loginResponse = userService.authenticateFeishuUser(userInfo, feishuUserId);
             
             auditLogService.log("USER_LOGIN", "user", loginResponse.getUserInfo().getId(), "飞书登录");
 
@@ -280,21 +265,7 @@ public class FeishuAuthController {
 
             log.info("使用的飞书用户ID: {}", feishuUserId);
 
-            String name = userInfo.getString("name");
-            String email = userInfo.getString("email");
-
-            if (email == null || email.trim().isEmpty()) {
-                email = feishuUserId + "@feishu.user";
-            }
-
-            User user = userService.findByFeishuUserId(feishuUserId);
-
-            LoginResponse loginResponse;
-            if (user != null) {
-                loginResponse = userService.loginByFeishu(user);
-            } else {
-                loginResponse = userService.registerByFeishu(feishuUserId, name, email);
-            }
+            LoginResponse loginResponse = userService.authenticateFeishuUser(userInfo, feishuUserId);
 
             auditLogService.log("USER_LOGIN", "user", loginResponse.getUserInfo().getId(), "飞书小程序登录");
 

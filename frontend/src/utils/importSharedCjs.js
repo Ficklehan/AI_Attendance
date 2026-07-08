@@ -3,9 +3,9 @@
  */
 export function importSharedCjs(ns) {
   if (!ns) return ns
-  const d = ns.default
+  const { default: d, ...named } = ns
   if (d && typeof d === 'object' && !Array.isArray(d)) {
-    return d
+    return { ...d, ...named }
   }
   return ns
 }

@@ -7,6 +7,7 @@ public class UserListDTO {
     private String username;
     private String email;
     private String role;
+    private java.util.List<String> roles;
     private String realName;
     private String employeeId;
     private String workingCountry;
@@ -45,6 +46,14 @@ public class UserListDTO {
 
     public void setRole(String role) {
         this.role = role;
+    }
+
+    public java.util.List<String> getRoles() {
+        return roles;
+    }
+
+    public void setRoles(java.util.List<String> roles) {
+        this.roles = roles;
     }
 
     public String getRealName() {

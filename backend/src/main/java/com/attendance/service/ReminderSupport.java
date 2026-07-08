@@ -460,10 +460,10 @@ public final class ReminderSupport {
     }
 
     /**
-     * 规则范围：工作国家匹配 tasks.prompt_country；角色匹配任务创建者 users.role。
-     * scope 列表为空表示不限制该维度。
+     * 规则范围：工作国家匹配 tasks.prompt_country；角色匹配任务创建者任一绑定角色。
      */
-    public static boolean taskMatchesRuleScope(Task task, User creator, List<String> scopeCountries, List<String> scopeRoles) {
+    public static boolean taskMatchesRuleScope(Task task, User creator, List<String> creatorRoleKeys,
+                                               List<String> scopeCountries, List<String> scopeRoles) {
         if (scopeCountries != null && !scopeCountries.isEmpty()) {
             Set<String> allowed = scopeCountries.stream()
                     .filter(Objects::nonNull)
@@ -485,8 +485,16 @@ public final class ReminderSupport {
                     .filter(s -> !s.isEmpty())
                     .collect(Collectors.toSet());
             if (!allowed.isEmpty()) {
-                String role = creator != null && creator.getRole() != null ? creator.getRole().trim() : "";
-                if (role.isEmpty() || !allowed.contains(role)) {
+                List<String> creatorRoles = creatorRoleKeys != null && !creatorRoleKeys.isEmpty()
+                        ? creatorRoleKeys
+                        : (creator != null && creator.getRole() != null
+                        ? Collections.singletonList(creator.getRole().trim())
+                        : Collections.emptyList());
+                boolean matched = creatorRoles.stream()
+                        .filter(Objects::nonNull)
+                        .map(String::trim)
+                        .anyMatch(allowed::contains);
+                if (!matched) {
                     return false;
                 }
             }

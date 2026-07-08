@@ -231,14 +231,17 @@ export async function detectTableHeaderRotation(imageSrc) {
   }
 
   let img
-  let worker
   try {
-    ;[img, worker] = await Promise.all([
-      loadImageElement(imageSrc),
-      getOcrWorker(),
-    ])
+    img = await loadImageElement(imageSrc)
   } catch {
     return NO_HIT
+  }
+
+  let worker
+  try {
+    worker = await getOcrWorker()
+  } catch {
+    worker = null
   }
 
   const prepared = ORIENT_ANGLES.map((angle) => {
@@ -256,6 +259,9 @@ export async function detectTableHeaderRotation(imageSrc) {
   const candidates = []
 
   const runOcrBatch = async (items) => {
+    if (!worker) {
+      return []
+    }
     const results = await Promise.all(
       items.map(async (item) => ({
         angle: item.angle,

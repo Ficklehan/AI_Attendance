@@ -1,6 +1,7 @@
 package com.attendance.service;
 
 import com.attendance.config.CountryCatalog;
+import com.attendance.config.RoleDataScopeDimensions;
 import com.attendance.common.BusinessException;
 import com.attendance.common.ErrorCode;
 import com.attendance.common.ErrorKeys;
@@ -28,8 +29,7 @@ import java.util.stream.Collectors;
 public class DataScopeService {
 
     private static final List<String> KNOWN_ROLES = Arrays.asList("admin", "user");
-    private static final List<String> DIMENSIONS = Arrays.asList(
-            "owner_user", "country", "warehouse", "agency", "work_region");
+    private static final List<String> DIMENSIONS = RoleDataScopeDimensions.ALL;
 
     @Autowired
     private RoleDataScopeMapper roleDataScopeMapper;
@@ -39,6 +39,9 @@ public class DataScopeService {
 
     @Autowired
     private TaskRecordMapper taskRecordMapper;
+
+    @Autowired
+    private UserRoleService userRoleService;
 
     public DataScopeContext resolveForCurrentUser() {
         String userId = SecurityUtils.getCurrentUserId();
@@ -53,7 +56,34 @@ public class DataScopeService {
         if (user == null) {
             throw new BusinessException(ErrorCode.USER_NOT_FOUND, ErrorKeys.USER_NOT_FOUND);
         }
-        return resolveForRole(user.getRole(), userId);
+        List<String> roles = userRoleService.getRoleKeysForUserId(userId);
+        return resolveForRoles(roles, userId);
+    }
+
+    public DataScopeContext resolveForRoles(List<String> roles, String currentUserId) {
+        if (roles == null || roles.isEmpty()) {
+            return resolveForRole("user", currentUserId);
+        }
+        DataScopeContext merged = null;
+        for (String role : roles) {
+            DataScopeContext ctx = resolveForRole(role, currentUserId);
+            if (ctx.isAllUsers()) {
+                return DataScopeContext.allUsers();
+            }
+            if (merged == null) {
+                merged = copyScope(ctx);
+            } else {
+                mergeScope(merged, ctx);
+            }
+        }
+        if (merged == null) {
+            return resolveForRole("user", currentUserId);
+        }
+        if (!merged.hasOwnerUserFilter() && !merged.isRecordDimensionFilter()
+                && currentUserId != null && !currentUserId.isEmpty()) {
+            merged.setOwnerUserIds(Collections.singletonList(currentUserId));
+        }
+        return merged;
     }
 
     public DataScopeContext resolveForRole(String role, String currentUserId) {
@@ -192,5 +222,62 @@ public class DataScopeService {
 
     private static String normalizeRole(String role) {
         return SystemRoleService.normalizeRoleKey(role);
+    }
+
+    private static DataScopeContext copyScope(DataScopeContext source) {
+        DataScopeContext copy = new DataScopeContext();
+        copy.setAllUsers(source.isAllUsers());
+        copy.setViewerUserId(source.getViewerUserId());
+        copy.setOwnerUserIds(source.getOwnerUserIds());
+        copy.setCountries(source.getCountries());
+        copy.setCountryMatchTokens(source.getCountryMatchTokens());
+        copy.setWarehouses(source.getWarehouses());
+        copy.setAgencies(source.getAgencies());
+        copy.setWorkRegions(source.getWorkRegions());
+        return copy;
+    }
+
+    private static void mergeScope(DataScopeContext target, DataScopeContext source) {
+        Set<String> owners = new LinkedHashSet<>(target.getOwnerUserIds());
+        owners.addAll(source.getOwnerUserIds());
+        target.setOwnerUserIds(new ArrayList<>(owners));
+
+        Set<String> unifiedWorkCountries = new LinkedHashSet<>();
+        for (String code : target.getCountries()) {
+            String normalized = CountryResolver.normalize(code);
+            if (normalized != null && !normalized.isEmpty()) {
+                unifiedWorkCountries.add(normalized);
+            }
+        }
+        for (String code : target.getWorkRegions()) {
+            String normalized = CountryResolver.normalize(code);
+            if (normalized != null && !normalized.isEmpty()) {
+                unifiedWorkCountries.add(normalized);
+            }
+        }
+        for (String code : source.getCountries()) {
+            String normalized = CountryResolver.normalize(code);
+            if (normalized != null && !normalized.isEmpty()) {
+                unifiedWorkCountries.add(normalized);
+            }
+        }
+        for (String code : source.getWorkRegions()) {
+            String normalized = CountryResolver.normalize(code);
+            if (normalized != null && !normalized.isEmpty()) {
+                unifiedWorkCountries.add(normalized);
+            }
+        }
+        List<String> unifiedList = new ArrayList<>(unifiedWorkCountries);
+        target.setCountries(unifiedList);
+        target.setCountryMatchTokens(CountryCatalog.expandMatchTokens(unifiedList));
+        target.setWorkRegions(unifiedList);
+
+        Set<String> warehouses = new LinkedHashSet<>(target.getWarehouses());
+        warehouses.addAll(source.getWarehouses());
+        target.setWarehouses(new ArrayList<>(warehouses));
+
+        Set<String> agencies = new LinkedHashSet<>(target.getAgencies());
+        agencies.addAll(source.getAgencies());
+        target.setAgencies(new ArrayList<>(agencies));
     }
 }

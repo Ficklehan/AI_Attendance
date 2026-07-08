@@ -73,6 +73,7 @@
     "aiInvalidJson": "Ungültiges JSON vom Modell. Zusammenfassung: {preview}",
     "aiNoParseableRecords": "Keine analysierbaren JSON-Zeilen. Zusammenfassung: {preview}",
     "aiFabricated": "Ergebnisse wirken erfunden",
+    "aiMalformedRecords": "{malformedPercent} % der Zeilen haben eine ungültige Struktur ({malformedCount}/{recordCount}), über dem Schwellenwert von {thresholdPercent} %. Bitte ein klareres Foto hochladen.",
     "aiUnreadableTimes": "Viele ??? bei Namen, aber Zeiten ausgefüllt",
     "validationFailed": "Validierung fehlgeschlagen: {detail}",
     "missingParameter": "Fehlender Parameter: {name}",

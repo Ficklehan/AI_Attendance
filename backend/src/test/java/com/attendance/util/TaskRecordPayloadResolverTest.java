@@ -41,6 +41,26 @@ class TaskRecordPayloadResolverTest {
     }
 
     @Test
+    void confirmedTask_rawWithoutRowKey_confWithRowKey_mergesByIndexNotDuplicate() {
+        Task task = new Task();
+        task.setStatus("confirmed");
+        task.setRawData("["
+                + "{\"NO\":\"1\",\"NOM_PRENOM\":\"Raw A\"},"
+                + "{\"NO\":\"2\",\"NOM_PRENOM\":\"Raw B\"}"
+                + "]");
+        task.setConfirmedData("["
+                + "{\"_rowKey\":\"task-1-0\",\"NO\":\"1\",\"NOM_PRENOM\":\"Edited A\"},"
+                + "{\"_rowKey\":\"task-1-1\",\"NO\":\"2\",\"NOM_PRENOM\":\"Edited B\"}"
+                + "]");
+
+        JSONArray merged = JSON.parseArray(TaskRecordPayloadResolver.resolvePayload(task));
+        assertEquals(2, merged.size());
+        assertEquals("Edited A", merged.getJSONObject(0).getString("NOM_PRENOM"));
+        assertEquals("task-1-0", merged.getJSONObject(0).getString("_rowKey"));
+        assertEquals("Edited B", merged.getJSONObject(1).getString("NOM_PRENOM"));
+    }
+
+    @Test
     void mergeByIndexWhenNoRowKeys() {
         JSONArray raw = JSON.parseArray("[{\"NO\":\"1\",\"Date\":\"\"},{\"NO\":\"2\"}]");
         JSONArray conf = JSON.parseArray("[{\"NO\":\"1\",\"Date\":\"2026-06-15\"},{\"NO\":\"2\",\"Date\":\"2026-06-16\"}]");

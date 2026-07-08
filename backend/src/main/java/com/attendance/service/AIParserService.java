@@ -39,6 +39,14 @@ import java.util.Locale;
 public class AIParserService {
 
     private static final Logger log = LoggerFactory.getLogger(AIParserService.class);
+
+    /** 标记列合法分类值（提示词定义的枚举，模型输出中文）。 */
+    private static final Set<String> BASE_MARK_TOKENS =
+            new HashSet<>(Arrays.asList("手写", "模糊", "正常", "未出勤"));
+    /** 标记列可接受的全部系统 token（含系统重算/删除态）。 */
+    private static final Set<String> KNOWN_MARK_TOKENS =
+            new HashSet<>(Arrays.asList("手写", "模糊", "正常", "未出勤", "夜班", "已删除"));
+
     @Autowired
     private MimoProperties mimoProperties;
 
@@ -1070,6 +1078,7 @@ public class AIParserService {
         normalized.put("riskLevel", anomalies.getString("riskLevel"));
         normalized.put("anomalies", anomalies.getJSONArray("anomalies"));
 
+        salvageMisplacedMarkColumn(normalized);
         normalized.put("SmartMark", generateSmartMark(normalized));
 
         String signatureMark = SignatureMarkResolver.resolveFromAiOutput(
@@ -1262,6 +1271,55 @@ public class AIParserService {
         return quality;
     }
 
+    /**
+     * 模型可能把「备注」内容错放进「标记」列（尤其表格同时存在物理备注/标记两列时）。
+     * 标记列仅承载系统分类枚举，此处把其中的自由文本剥离：备注为空时回填到备注列，
+     * 并将标记列仅保留合法分类 token，避免标记信息被备注覆盖、备注丢失。
+     */
+    static void salvageMisplacedMarkColumn(JSONObject record) {
+        if (record == null) {
+            return;
+        }
+        String mark = record.getString("Mark");
+        if (mark == null || mark.trim().isEmpty()) {
+            return;
+        }
+        List<String> classification = new ArrayList<>();
+        List<String> freeText = new ArrayList<>();
+        for (String part : mark.split("[;；,，]")) {
+            String token = part == null ? "" : part.trim();
+            if (token.isEmpty()) {
+                continue;
+            }
+            if (isKnownMarkToken(token)) {
+                classification.add(token);
+            } else {
+                freeText.add(token);
+            }
+        }
+        if (freeText.isEmpty()) {
+            return;
+        }
+        String observations = record.getString("Observations");
+        if (observations == null || observations.trim().isEmpty()) {
+            record.put("Observations", String.join(";", freeText));
+        }
+        record.put("Mark", String.join(";", classification));
+    }
+
+    private static boolean isKnownMarkToken(String token) {
+        if (token == null) {
+            return false;
+        }
+        String trimmed = token.trim();
+        if (trimmed.isEmpty()) {
+            return false;
+        }
+        return KNOWN_MARK_TOKENS.contains(trimmed)
+                || SignatureMarkResolver.isSignatureMarkToken(trimmed)
+                || NightShiftMarkSupport.isNightShiftMarkToken(trimmed);
+    }
+
     private String generateSmartMark(JSONObject record) {
         if (record.containsKey("isDeleted") && record.getBooleanValue("isDeleted")) {
             return "已删除";
@@ -1288,9 +1346,8 @@ public class AIParserService {
         if (!existingMark.isEmpty()) {
             for (String part : existingMark.split("[;；,，]")) {
                 String mark = part == null ? "" : part.trim();
-                if (mark.isEmpty()
-                        || SignatureMarkResolver.isSignatureMarkToken(mark)
-                        || NightShiftMarkSupport.isNightShiftMarkToken(mark)) {
+                // 仅保留合法分类值，避免模型误放进「标记」列的备注等自由文本污染/覆盖标记
+                if (mark.isEmpty() || !BASE_MARK_TOKENS.contains(mark)) {
                     continue;
                 }
                 if (!marks.contains(mark)) {

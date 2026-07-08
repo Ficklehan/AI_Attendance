@@ -27,6 +27,18 @@
     <sql id="UserListWhere">
         FROM users
         WHERE status != 'deleted'
+        <if test="role != null and role != ''">
+            AND EXISTS (
+                SELECT 1 FROM user_role ur
+                WHERE ur.user_id = users.id AND ur.role_key = #{role}
+            )
+        </if>
+        <if test="excludeRole != null and excludeRole != ''">
+            AND NOT EXISTS (
+                SELECT 1 FROM user_role ur_ex
+                WHERE ur_ex.user_id = users.id AND ur_ex.role_key = #{excludeRole}
+            )
+        </if>
         <if test="keyword != null and keyword != ''">
             AND (
                 username LIKE CONCAT('%', #{keyword}, '%')
@@ -134,5 +146,9 @@
         WHERE status = 'active'
         ORDER BY real_name ASC, username ASC
     </select>
+
+    <update id="updateUserRole">
+        UPDATE users SET role = #{role}, updated_at = NOW() WHERE id = #{id}
+    </update>
 
 </mapper>

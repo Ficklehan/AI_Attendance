@@ -17,8 +17,7 @@ You are a senior staff engineer performing **structured, evidence-based code rev
 |-------|------|-------|
 | Backend | `backend/` | Spring Boot 2.7, MyBatis, MySQL 8, **JDK 8 only** |
 | PC Web | `frontend/` | Vue 3, Vite, Element Plus, Pinia |
-| Feishu mini | `feishu-miniprogram/` | TTML / native mini-program |
-| Mobile (legacy) | `mobile/` | Vue — only review when diff touches it |
+| Feishu mini | `feishu-miniprogram/` | TTML / native mini-program（**唯一移动端**） |
 | Config | `base-config/`, `backend/config/migration/` | Business + schema |
 | Docs | `docs/` | Architecture, data consistency, design system |
 
@@ -115,7 +114,7 @@ Apply every lens that matches the diff. Full checklists: [review-dimensions.md](
 
 1. **Correctness & data** — state machine, transactions, concurrency, idempotency, N+1
 2. **Security & access** — authz, input validation, SQL injection, path traversal, secrets in code
-3. **API contract** — breaking changes, error codes, DTO consistency across PC / mini / mobile
+3. **API contract** — breaking changes, error codes, DTO consistency across PC / mini
 4. **Integration** — Feishu sync, MiMo streaming, OSS/export paths, retry semantics
 5. **Frontend UX** — loading / empty / error states, i18n, design tokens, accessibility basics
 6. **Operability** — migrations, bootstrap runners, logging, config layering
@@ -206,8 +205,10 @@ npm run build
 
 | Skill | When |
 |-------|------|
+| `attendance-architecture-agent` | System-wide architecture, standards drift, duplicate wheels |
 | `attendance-pm-agent` | Review needs product / acceptance context |
 | `architect-fullstack` | Large architectural change needs design review |
 | `check-prd-alignment` | Verify implementation vs PRD |
 | `review-bugbot` | Deep bug hunt on diff |
 | `review-security` | Security-focused pass |
+| `attendance-ops-security-agent` | Deployment, secrets, Nginx, backup, ops hardening |

@@ -161,8 +161,9 @@ public class TaskController {
     }
 
     /**
-     * Legacy stats for mini-program profile; fields align with {@link #getTaskSummary()}.
+     * @deprecated 遗留兼容接口；请使用 GET /tasks/summary。将于后续版本移除。
      */
+    @Deprecated
     @GetMapping("/stats")
     public Result<Map<String, Object>> getTaskStats() {
         TaskSummaryDTO summary = taskService.getTaskSummary();

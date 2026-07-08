@@ -1,6 +1,7 @@
 package com.attendance.service;
 
 import com.attendance.config.CountryCatalog;
+import com.attendance.config.RoleDataScopeDimensions;
 import com.attendance.common.BusinessException;
 import com.attendance.common.ErrorKeys;
 import com.attendance.dto.request.RoleDataScopeUpdateRequest;
@@ -24,8 +25,7 @@ import java.util.stream.Collectors;
 @Service
 public class RoleDataScopeService {
 
-    private static final List<String> DIMENSIONS = Arrays.asList(
-            "owner_user", "country", "warehouse", "agency", "work_region");
+    private static final List<String> DIMENSIONS = RoleDataScopeDimensions.ALL;
 
     @Autowired
     private RoleDataScopeMapper roleDataScopeMapper;
@@ -115,7 +115,7 @@ public class RoleDataScopeService {
         options.put("country", workCountryCatalogOptions());
         options.put("warehouse", toDimensionOptions(roleDataScopeMapper.selectDistinctWarehouseOptions()));
         options.put("agency", toDimensionOptions(roleDataScopeMapper.selectDistinctAgencyOptions()));
-        options.put("owner_user", userMapper.selectUserList(0, 500, null).stream()
+        options.put("owner_user", userMapper.selectUserList(0, 500, null, null, null).stream()
                 .map(u -> new DimensionOptionDTO(u.getId(),
                         buildOwnerUserLabel(u.getRealName(), u.getUsername(), u.getEmail(), u.getId())))
                 .collect(Collectors.toList()));

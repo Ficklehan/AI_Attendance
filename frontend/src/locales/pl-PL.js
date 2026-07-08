@@ -50,7 +50,13 @@ export default {
     "placeholder": "Wybierz kraj",
     "apply": "Ustaw jako kraj roboczy",
     "manageConfig": "Zarządzaj konfiguracją kraju",
-    "saved": "Kraj roboczy zaktualizowany"
+    "saved": "Kraj roboczy zaktualizowany",
+    "setupTitle": "Wybierz kraj roboczy",
+    "setupDesc": "Wybierz kraj roboczy dla szablonów rozpoznawania, zakresu dostępu i synchronizacji Feishu.",
+    "setupLanguageLabel": "Język interfejsu",
+    "setupLanguageHint": "Zmiana obowiązuje natychmiast. Język można zmienić w dowolnym momencie na górnym pasku nawigacji.",
+    "setupPlaceholder": "Wybierz kraj/region",
+    "setupConfirm": "Potwierdź i kontynuuj"
   },
   "errors": {
     "loginRequired": "Najpierw się zaloguj",
@@ -81,6 +87,7 @@ export default {
     "aiInvalidJson": "Model zwrócił nieprawidłowy JSON. Podsumowanie: {preview}",
     "aiNoParseableRecords": "Model nie zwrócił analizowalnych wierszy JSON. Podsumowanie: {preview}",
     "aiFabricated": "Wyniki wyglądają na wymyślone",
+    "aiMalformedRecords": "{malformedPercent}% wierszy ma nieprawidłową strukturę ({malformedCount}/{recordCount}), powyżej progu {thresholdPercent}%. Prześlij wyraźniejsze zdjęcie.",
     "aiUnreadableTimes": "Wiele ??? w nazwach, ale czasy wypełnione — prawdopodobnie zgadywane",
     "validationFailed": "Błąd walidacji: {detail}",
     "missingParameter": "Brak parametru: {name}",
@@ -439,7 +446,7 @@ export default {
     "duplicateTag": "Duplikat",
     "expandDetail": "Rozwiń szczegóły",
     "collapseDetail": "Zwiń szczegóły",
-    "notDuplicate": "Nie duplikat",
+    "notDuplicate": "Potwierdź duplikat",
     "duplicateSuspect": "Podejrzenie duplikatu: {names}",
     "sourceTask": "Zadanie źródłowe",
     "unknownFile": "Nieznany plik"

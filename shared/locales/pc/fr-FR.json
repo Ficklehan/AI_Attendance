@@ -69,7 +69,13 @@
     "placeholder": "Sélectionner un pays",
     "apply": "Définir comme pays de travail",
     "manageConfig": "Gérer la config pays",
-    "saved": "Pays de travail mis à jour"
+    "saved": "Pays de travail mis à jour",
+    "setupTitle": "Sélectionnez votre pays de travail",
+    "setupDesc": "Choisissez un pays de travail pour les modèles de reconnaissance, le périmètre d'accès et la synchronisation Feishu.",
+    "setupLanguageLabel": "Langue de l'interface",
+    "setupLanguageHint": "Le changement est immédiat. Vous pouvez la modifier à tout moment depuis la barre de navigation.",
+    "setupPlaceholder": "Sélectionner un pays/région",
+    "setupConfirm": "Confirmer et continuer"
   },
   "auth": {
     "login": "Connexion",
@@ -467,7 +473,7 @@
     "duplicateTag": "Doublon",
     "expandDetail": "Développer",
     "collapseDetail": "Réduire",
-    "notDuplicate": "Pas un doublon",
+    "notDuplicate": "Confirmer le doublon",
     "duplicateSuspect": "Doublon possible : {names}",
     "sourceTask": "Tâche source"
   },

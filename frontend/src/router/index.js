@@ -4,6 +4,14 @@ import { useAuthStore } from '@/stores/auth'
 import i18n from '@/locales'
 import { getCachedWorkingCountry } from '@/utils/countryHeader'
 import { loadNightShiftRules } from '@/utils/nightShiftRules'
+import { isIdleExpired, isTokenExpiredLocally } from '@/utils/auth'
+import {
+  findSettingsNavByPath,
+  firstAccessibleSettingsPath,
+  hasAnySettingsAccess,
+} from '@/utils/settingsAccess'
+import { hasCapability, canManageRoles } from '@/utils/permissions'
+import { isSessionValidated, markSessionValidated, resetSessionValidation } from '@/utils/sessionState'
 
 const routes = [
   {
@@ -70,7 +78,7 @@ const routes = [
         path: 'employees',
         name: 'Employees',
         component: () => import('@/views/employee/EmployeeManagement.vue'),
-        meta: { titleKey: 'nav.employees' },
+        meta: { titleKey: 'nav.employees', requiresPermission: 'employees' },
       },
       {
         path: 'tasks/:taskId',
@@ -81,32 +89,31 @@ const routes = [
       {
         path: 'settings',
         component: () => import('@/components/SettingsLayout.vue'),
-        meta: { requiresAdmin: true },
         redirect: '/settings/ai',
         children: [
           {
             path: 'ai',
             name: 'SettingsAi',
             component: () => import('@/views/config/Config.vue'),
-            meta: { titleKey: 'settings.menu.ai', configModule: 'ai' },
+            meta: { titleKey: 'settings.menu.ai', configModule: 'ai', settingsPermission: 'aiConfig' },
           },
           {
             path: 'feishu',
             name: 'SettingsFeishu',
             component: () => import('@/views/config/Config.vue'),
-            meta: { titleKey: 'settings.menu.feishu', configModule: 'feishu' },
+            meta: { titleKey: 'settings.menu.feishu', configModule: 'feishu', settingsPermission: 'feishuConfig' },
           },
           {
             path: 'users',
             name: 'SettingsUsers',
             component: () => import('@/views/settings/UserManagement.vue'),
-            meta: { titleKey: 'settings.menu.users' },
+            meta: { titleKey: 'settings.menu.users', settingsPermission: 'users' },
           },
           {
             path: 'roles',
             name: 'SettingsRoles',
             component: () => import('@/views/settings/RoleManagement.vue'),
-            meta: { titleKey: 'settings.menu.roles' },
+            meta: { titleKey: 'settings.menu.roles', requiresSettingsAdmin: true },
           },
           { path: 'permissions', redirect: '/settings/roles' },
           { path: 'data-scope', redirect: '/settings/roles' },
@@ -114,13 +121,13 @@ const routes = [
             path: 'reminders',
             name: 'SettingsReminders',
             component: () => import('@/views/settings/SystemRemindersHub.vue'),
-            meta: { titleKey: 'settings.menu.systemReminders' },
+            meta: { titleKey: 'settings.menu.systemReminders', settingsPermission: 'reminderConfig' },
           },
           {
             path: 'audit',
             name: 'SettingsAudit',
             component: () => import('@/views/audit/AuditLog.vue'),
-            meta: { titleKey: 'settings.menu.audit' },
+            meta: { titleKey: 'settings.menu.audit', settingsPermission: 'audit' },
           },
         ],
       },
@@ -143,6 +150,10 @@ router.beforeEach(async (to, from, next) => {
   const authStore = useAuthStore()
   const requiresAuth = to.matched.some((record) => record.meta.requiresAuth !== false)
   const requiresAdmin = to.matched.some((record) => record.meta.requiresAdmin)
+  const requiresSettingsAdmin = to.matched.some((record) => record.meta.requiresSettingsAdmin)
+  const settingsPermission = [...to.matched].reverse().find((record) => record.meta.settingsPermission)?.meta.settingsPermission
+  const requiredPermission = [...to.matched].reverse().find((record) => record.meta.requiresPermission)?.meta.requiresPermission
+  const t = i18n.global.t
 
   if (requiresAuth && !authStore.isAuthenticated) {
     next('/login')
@@ -150,7 +161,28 @@ router.beforeEach(async (to, from, next) => {
   }
 
   if (authStore.isAuthenticated) {
+    if (isTokenExpiredLocally(authStore.token) || isIdleExpired()) {
+      authStore.logout()
+      resetSessionValidation()
+      message.warning(t('auth.sessionExpired'))
+      next('/login')
+      return
+    }
+
+    if (requiresAuth && !isSessionValidated()) {
+      try {
+        await authStore.fetchUserInfo()
+        markSessionValidated()
+      } catch {
+        resetSessionValidation()
+        next('/login')
+        return
+      }
+    }
+
     loadNightShiftRules(false, getCachedWorkingCountry()).catch(() => {})
+  } else {
+    resetSessionValidation()
   }
 
   if (to.path === '/login' && authStore.isAuthenticated) {
@@ -161,6 +193,50 @@ router.beforeEach(async (to, from, next) => {
   if (authStore.isAuthenticated && (to.path === '/' || to.path === '')) {
     next('/home')
     return
+  }
+
+  if (to.path === '/config' && authStore.isAuthenticated) {
+    const target = firstAccessibleSettingsPath(authStore)
+    if (target) {
+      next(target)
+    } else {
+      message.warning(t('errors.accessDenied'))
+      next('/home')
+    }
+    return
+  }
+
+  if (to.path.startsWith('/settings') && authStore.isAuthenticated) {
+    if (!hasAnySettingsAccess(authStore)) {
+      message.warning(t('errors.accessDenied'))
+      next('/home')
+      return
+    }
+    if (to.path === '/settings' || to.path === '/settings/') {
+      next(firstAccessibleSettingsPath(authStore) || '/home')
+      return
+    }
+    if (requiresSettingsAdmin && !canManageRoles(authStore)) {
+      message.warning(t('errors.adminRequired'))
+      next(firstAccessibleSettingsPath(authStore) || '/home')
+      return
+    }
+    if (settingsPermission && !hasCapability(authStore, settingsPermission)) {
+      if (!authStore.userInfo?.permissions) {
+        try {
+          await authStore.fetchUserInfo()
+        } catch {
+          next('/login')
+          return
+        }
+      }
+      const navItem = findSettingsNavByPath(to.path)
+      if (navItem && !hasCapability(authStore, settingsPermission)) {
+        message.warning(t('errors.accessDenied'))
+        next(firstAccessibleSettingsPath(authStore) || '/home')
+        return
+      }
+    }
   }
 
   if (requiresAdmin && authStore.isAuthenticated) {
@@ -175,6 +251,22 @@ router.beforeEach(async (to, from, next) => {
     if (!authStore.isAdmin) {
       const t = i18n.global.t
       message.warning(t('errors.adminRequired'))
+      next('/home')
+      return
+    }
+  }
+
+  if (requiredPermission && authStore.isAuthenticated && !hasCapability(authStore, requiredPermission)) {
+    if (!authStore.userInfo?.permissions) {
+      try {
+        await authStore.fetchUserInfo()
+      } catch {
+        next('/login')
+        return
+      }
+    }
+    if (!hasCapability(authStore, requiredPermission)) {
+      message.warning(t('errors.accessDenied'))
       next('/home')
       return
     }

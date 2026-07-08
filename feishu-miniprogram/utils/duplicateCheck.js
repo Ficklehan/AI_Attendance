@@ -5,15 +5,10 @@ const core = require('../shared-js/duplicateCheckCore')
 
 const {
   stripSerialSuffix,
-  duplicateGroupKey,
-  isEligibleForDuplicate: coreIsEligible,
   buildDuplicatePayload,
   ensureRecordRowKeys,
+  applyDuplicateDecorations,
 } = core
-
-function isEligibleForDuplicate(record) {
-  return coreIsEligible(record, isAbsentRow)
-}
 
 function buildRemoteMetaFromApi(duplicates, payload, taskId) {
   const map = {}
@@ -63,106 +58,43 @@ function buildRemoteMetaFromApi(duplicates, payload, taskId) {
   return map
 }
 
+function isMeaningfulDuplicateMeta(meta) {
+  if (!meta) return false
+  const peers = Array.isArray(meta.peers) ? meta.peers : []
+  const members = Array.isArray(meta.members) ? meta.members : []
+  return peers.length > 0 || members.length > 1
+}
+
 /**
- * 与 PC TaskEdit 一致：远程重名 + 本任务内同组重名自动编号。
+ * 把重名 meta 映射写回每行 record，供 buildDisplayRecords 渲染「重名」标签与明细。
+ * shared 核心只返回 meta 映射（PC 端按 rowKey 读取），小程序显示层读取 record 字段，
+ * 因此这里做一次桥接写回。
  */
-function applyDuplicateDecorations(records, remoteMetaMap, taskId) {
-  const remoteMetaSnapshot = { ...(remoteMetaMap || {}) }
-  const groups = new Map()
-
+function applyDuplicateMetaToRecords(records, duplicateMetaMap) {
+  const map = duplicateMetaMap || {}
   ;(records || []).forEach((record) => {
-    if (!record._rowKey) {
-      record._rowKey = `${taskId}-r${Math.random().toString(36).slice(2, 6)}`
+    if (!record) return
+    const meta = map[record._rowKey]
+    if (isMeaningfulDuplicateMeta(meta)) {
+      record._hasDuplicate = true
+      record._duplicatePeers = Array.isArray(meta.peers) ? meta.peers : []
+      record._duplicateMembers = Array.isArray(meta.members) ? meta.members : []
+    } else if (!record._duplicateConfirmedUnique) {
+      record._hasDuplicate = false
+      record._duplicatePeers = []
+      record._duplicateMembers = []
     }
-    if (!record._baseName) {
-      record._baseName = stripSerialSuffix(record.NOM_PRENOM)
-    }
-    if (record._nameAutoNumbered && stripSerialSuffix(record.NOM_PRENOM) !== record._baseName) {
-      record._baseName = stripSerialSuffix(record.NOM_PRENOM)
-    }
-    record._duplicatePeers = []
-    record._hasDuplicate = false
-    record._duplicateMembers = []
-
-    if (!isEligibleForDuplicate(record)) {
-      if (record._nameAutoNumbered || record._duplicateConfirmedUnique) {
-        record.NOM_PRENOM = record._baseName || stripSerialSuffix(record.NOM_PRENOM)
-      }
-      record._nameAutoNumbered = false
-      return
-    }
-
-    const remoteHit = remoteMetaSnapshot[record._rowKey]
-    if (!remoteHit) {
-      record._nameAutoNumbered = false
-      return
-    }
-
-    const key = duplicateGroupKey(record)
-    if (!groups.has(key)) groups.set(key, [])
-    groups.get(key).push(record)
   })
-
-  const mergedMeta = { ...remoteMetaSnapshot }
-
-  groups.forEach((members) => {
-    members.forEach((record, idx) => {
-      const serial = String(idx + 1).padStart(2, '0')
-      const targetName = `${record._baseName} ${serial}`.trim()
-      if (!record._duplicateConfirmedUnique
-        && (record._nameAutoNumbered || record.NOM_PRENOM === record._baseName || !record.NOM_PRENOM)) {
-        record.NOM_PRENOM = targetName
-        record._nameAutoNumbered = true
-      }
-
-      const localPeers = members
-        .filter((m) => m._rowKey !== record._rowKey)
-        .map((m) => `${m.NO || '?'}-${m.NOM_PRENOM || m._baseName || '?'}`)
-      const remotePeers = Array.isArray(remoteMetaSnapshot[record._rowKey]?.peers)
-        ? remoteMetaSnapshot[record._rowKey].peers
-        : []
-      const peers = [...new Set([...localPeers, ...remotePeers])]
-
-      record._duplicatePeers = peers
-      record._hasDuplicate = peers.length > 0 || (remoteMetaSnapshot[record._rowKey]?.members || []).length > 1
-      record._duplicateMembers = remoteMetaSnapshot[record._rowKey]?.members
-        || members.map((m) => ({
-          rowKey: m._rowKey,
-          sourceTaskId: taskId,
-          NO: m.NO,
-          displayName: m.NOM_PRENOM,
-          Pays: m.Pays,
-          Entrepot: m.Entrepot,
-          Date: m.Date,
-          AGENCE_INTERIMAIRE: m.AGENCE_INTERIMAIRE
-        }))
-
-      mergedMeta[record._rowKey] = {
-        ...(mergedMeta[record._rowKey] || {}),
-        peers,
-        members: record._duplicateMembers
-      }
-    })
-  })
-
-  const duplicateRowKeys = Object.keys(mergedMeta).filter((key) => {
-    const meta = mergedMeta[key]
-    return meta && ((meta.peers && meta.peers.length) || (meta.members && meta.members.length > 1))
-  })
-
-  return {
-    duplicateMetaMap: mergedMeta,
-    duplicateRowKeys,
-    duplicateCount: duplicateRowKeys.length
-  }
 }
 
 function fetchAndApplyDuplicates(taskId, records, scope) {
   ensureRecordRowKeys(records, taskId)
   const payload = buildDuplicatePayload(records)
   if (!payload.length) {
+    const duplicateMetaMap = applyDuplicateDecorations(records, {}, taskId, isAbsentRow)
+    applyDuplicateMetaToRecords(records, duplicateMetaMap)
     return Promise.resolve({
-      duplicateMetaMap: {},
+      duplicateMetaMap,
       duplicateRowKeys: [],
       duplicateCount: 0
     })
@@ -171,23 +103,39 @@ function fetchAndApplyDuplicates(taskId, records, scope) {
   return taskApi.checkDuplicateNames(taskId, payload, scope || 'confirmed_only')
     .then((res) => {
       if (!res || !isApiSuccess(res)) {
-        return { duplicateMetaMap: {}, duplicateRowKeys: [], duplicateCount: 0 }
+        const duplicateMetaMap = applyDuplicateDecorations(records, {}, taskId, isAbsentRow)
+        return buildDuplicateResult(records, duplicateMetaMap)
       }
       const data = getApiData(res) || {}
       const remoteMap = buildRemoteMetaFromApi(data.duplicates || [], payload, taskId)
-      return applyDuplicateDecorations(records, remoteMap, taskId)
+      const duplicateMetaMap = applyDuplicateDecorations(records, remoteMap, taskId, isAbsentRow)
+      return buildDuplicateResult(records, duplicateMetaMap)
     })
     .catch((err) => {
       console.warn('duplicate check failed', err)
-      return { duplicateMetaMap: {}, duplicateRowKeys: [], duplicateCount: 0 }
+      const duplicateMetaMap = applyDuplicateDecorations(records, {}, taskId, isAbsentRow)
+      return buildDuplicateResult(records, duplicateMetaMap)
     })
+}
+
+function buildDuplicateResult(records, duplicateMetaMap) {
+  applyDuplicateMetaToRecords(records, duplicateMetaMap)
+  const duplicateRowKeys = Object.keys(duplicateMetaMap || {}).filter((key) =>
+    isMeaningfulDuplicateMeta(duplicateMetaMap[key])
+  )
+  return {
+    duplicateMetaMap,
+    duplicateRowKeys,
+    duplicateCount: duplicateRowKeys.length
+  }
 }
 
 function confirmRecordNotDuplicate(record) {
   if (!record) return
   record._duplicateConfirmedUnique = true
-  record._nameAutoNumbered = false
+  // 「重名确认」：确认为重名后取消姓名后的流水号，还原基础名。
   record.NOM_PRENOM = record._baseName || stripSerialSuffix(record.NOM_PRENOM)
+  record._nameAutoNumbered = false
   record._hasDuplicate = false
   record._duplicatePeers = []
 }
@@ -196,6 +144,5 @@ module.exports = {
   stripSerialSuffix,
   ensureRecordRowKeys,
   fetchAndApplyDuplicates,
-  applyDuplicateDecorations,
   confirmRecordNotDuplicate
 }

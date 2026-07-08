@@ -23,8 +23,15 @@ function hasPersonalWorkingCountry(userInfo) {
   return !needsWorkingCountrySetup(userInfo)
 }
 
+/** 用户在工作国家选择器中的选项（含 default），非后端解析后的有效国家 */
+function resolveSelectedWorkingCountry(userInfo) {
+  const personal = normalizePersonalWorkingCountry(userInfo?.personalWorkingCountry)
+  return personal || 'default'
+}
+
 module.exports = {
   normalizePersonalWorkingCountry,
   needsWorkingCountrySetup,
   hasPersonalWorkingCountry,
+  resolveSelectedWorkingCountry,
 }

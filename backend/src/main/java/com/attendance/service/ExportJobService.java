@@ -175,6 +175,23 @@ public class ExportJobService {
             log.error("下载导出文件失败 jobId={}", jobId, e);
             throw new BusinessException(ErrorCode.FILE_UPLOAD_ERROR, ErrorKeys.FILE_NOT_FOUND);
         }
+        consumeDownloadedFile(jobId, userId, path);
+    }
+
+    private void consumeDownloadedFile(String jobId, String userId, Path path) {
+        try {
+            Files.deleteIfExists(path);
+        } catch (Exception e) {
+            log.warn("删除已下载导出文件失败 jobId={}", jobId, e);
+        }
+        try {
+            int updated = exportJobMapper.markDownloaded(jobId, userId);
+            if (updated > 0) {
+                log.info("导出文件已下载并清理 jobId={}", jobId);
+            }
+        } catch (Exception e) {
+            log.warn("更新导出任务下载状态失败 jobId={}", jobId, e);
+        }
     }
 
     private void runExport(String jobId) {

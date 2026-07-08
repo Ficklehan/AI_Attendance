@@ -22,6 +22,7 @@
 </template>
 
 <script setup>
+import { computed } from 'vue'
 import { useRoute } from 'vue-router'
 import {
   RobotOutlined,
@@ -31,21 +32,28 @@ import {
   FileSearchOutlined,
   BellOutlined,
 } from '@ant-design/icons-vue'
+import { useAuthStore } from '@/stores/auth'
+import { SETTINGS_NAV, canAccessSettingsItem } from '@/utils/settingsAccess'
 
 const route = useRoute()
+const authStore = useAuthStore()
 
-const navItems = [
-  { path: '/settings/ai', labelKey: 'settings.menu.ai', icon: RobotOutlined },
-  { path: '/settings/feishu', labelKey: 'settings.menu.feishu', icon: ApiOutlined },
-  { path: '/settings/users', labelKey: 'settings.menu.users', icon: TeamOutlined },
-  { path: '/settings/roles', labelKey: 'settings.menu.roles', icon: SafetyCertificateOutlined },
-  { path: '/settings/reminders', labelKey: 'settings.menu.systemReminders', icon: BellOutlined },
-  { path: '/settings/audit', labelKey: 'settings.menu.audit', icon: FileSearchOutlined },
-]
-
-const isActive = (path) => {
-  return route.path === path || route.path.startsWith(path + '/')
+const ICONS = {
+  '/settings/ai': RobotOutlined,
+  '/settings/feishu': ApiOutlined,
+  '/settings/users': TeamOutlined,
+  '/settings/roles': SafetyCertificateOutlined,
+  '/settings/reminders': BellOutlined,
+  '/settings/audit': FileSearchOutlined,
 }
+
+const navItems = computed(() =>
+  SETTINGS_NAV
+    .filter((item) => canAccessSettingsItem(authStore, item))
+    .map((item) => ({ ...item, icon: ICONS[item.path] }))
+)
+
+const isActive = (path) => route.path === path || route.path.startsWith(`${path}/`)
 </script>
 
 <style scoped lang="scss">

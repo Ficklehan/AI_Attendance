@@ -1,5 +1,4 @@
-const { isCountryConfigured } = require('./preferences')
-const { needsWorkingCountrySetup } = require('./workingCountrySetup')
+const { shouldPromptWorkingCountrySetup } = require('./preferences')
 const { t } = require('./i18n')
 
 /**
@@ -8,7 +7,7 @@ const { t } = require('./i18n')
  */
 function runWithCountryGate(action) {
   if (typeof action !== 'function') return
-  if (!needsWorkingCountrySetup() && isCountryConfigured()) {
+  if (!shouldPromptWorkingCountrySetup()) {
     action()
     return
   }

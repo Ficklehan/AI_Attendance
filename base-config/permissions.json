@@ -8,7 +8,8 @@
 		"audit":true,
 		"recordCalibrate":true,
 		"taskDeleteConfirmed":true,
-		"reminderConfig":true
+		"reminderConfig":true,
+		"employees":true
 	},
 	"user":{
 		"tasks":true,
@@ -19,6 +20,19 @@
 		"audit":false,
 		"recordCalibrate":false,
 		"taskDeleteConfirmed":false,
-		"reminderConfig":false
+		"reminderConfig":false,
+		"employees":true
+	},
+	"test":{
+		"tasks":true,
+		"country":true,
+		"aiConfig":false,
+		"feishuConfig":false,
+		"users":false,
+		"audit":false,
+		"recordCalibrate":false,
+		"taskDeleteConfirmed":true,
+		"reminderConfig":false,
+		"employees":true
 	}
 }

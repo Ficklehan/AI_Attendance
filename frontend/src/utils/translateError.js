@@ -237,6 +237,8 @@ function resolveErrorParts(payload) {
       return { title: t('errors.aiFabricated'), preview: '', key: null }
     } else if (message.includes('疑似模型臆测而非读图')) {
       return { title: t('errors.aiUnreadableTimes'), preview: '', key: null }
+    } else if (message.includes('结构异常') || message.includes('畸形行')) {
+      key = 'errors.aiMalformedRecords'
     } else if (message.includes('图片不够清晰') || message.startsWith('errors.aiImageTooBlurry')) {
       key = 'errors.aiImageTooBlurry'
       if (!args.blurPercent && !args.unknownPercent) {
@@ -279,8 +281,12 @@ function resolveErrorParts(payload) {
     return { title: t(key, titleArgs), preview, key }
   }
 
+  if (key && key.startsWith('errors.') && te('errors.requestFailed')) {
+    return { title: t('errors.requestFailed'), preview, key: null }
+  }
+
   return {
-    title: message || t('errors.requestFailed'),
+    title: message && !String(message).startsWith('errors.') ? message : t('errors.requestFailed'),
     preview,
     key: null,
   }

@@ -8,7 +8,7 @@ CREATE TABLE IF NOT EXISTS role_data_scope (
 CREATE TABLE IF NOT EXISTS role_data_dimension_rule (
     id BIGINT AUTO_INCREMENT PRIMARY KEY,
     role VARCHAR(32) NOT NULL COMMENT '角色标识',
-    dimension ENUM('owner_user', 'country', 'warehouse', 'agency') NOT NULL COMMENT '业务维度',
+    dimension ENUM('owner_user', 'country', 'warehouse', 'agency', 'work_region') NOT NULL COMMENT '业务维度',
     value VARCHAR(255) NOT NULL COMMENT '维度值；owner_user 可为用户ID或 __self__',
     UNIQUE KEY uk_role_dim_val (role, dimension, value),
     INDEX idx_role (role)

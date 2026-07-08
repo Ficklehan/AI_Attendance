@@ -50,7 +50,13 @@ export default {
     "placeholder": "Sélectionner un pays",
     "apply": "Définir comme pays de travail",
     "manageConfig": "Gérer la config pays",
-    "saved": "Pays de travail mis à jour"
+    "saved": "Pays de travail mis à jour",
+    "setupTitle": "Sélectionnez votre pays de travail",
+    "setupDesc": "Choisissez un pays de travail pour les modèles de reconnaissance, le périmètre d'accès et la synchronisation Feishu.",
+    "setupLanguageLabel": "Langue de l'interface",
+    "setupLanguageHint": "Le changement est immédiat. Vous pouvez la modifier à tout moment depuis la barre de navigation.",
+    "setupPlaceholder": "Sélectionner un pays/région",
+    "setupConfirm": "Confirmer et continuer"
   },
   "errors": {
     "loginRequired": "Veuillez vous connecter",
@@ -64,6 +70,7 @@ export default {
     "aiInvalidJson": "Le modèle a renvoyé des lignes JSON non analysables. Réessayez avec une image plus claire.",
     "aiNoParseableRecords": "Aucune ligne JSON d'assiduité analysable. Réessayez avec une image plus claire.",
     "aiFabricated": "Résultats probablement inventés. Uploadez une feuille de présence plus claire et complète",
+    "aiMalformedRecords": "{malformedPercent} % des lignes ont une structure invalide ({malformedCount}/{recordCount}), au-dessus du seuil de {thresholdPercent} %. Uploadez une photo plus claire et complète.",
     "aiUnreadableTimes": "Noms/IDs illisibles mais horaires uniformes — probablement devinés. Uploadez une photo plus claire",
     "systemError": "Erreur système, veuillez réessayer plus tard",
     "requestFailed": "Échec de la requête",
@@ -599,7 +606,7 @@ export default {
     "duplicateTag": "Doublon",
     "expandDetail": "Développer",
     "collapseDetail": "Réduire",
-    "notDuplicate": "Pas un doublon",
+    "notDuplicate": "Confirmer le doublon",
     "duplicateSuspect": "Doublon possible : {names}",
     "sourceTask": "Tâche source"
   },

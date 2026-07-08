@@ -109,7 +109,7 @@
             </CopyableCell>
           </template>
           <template v-else-if="column.key === 'imageUrls'">
-            <a-button type="link" size="small" @click="previewImages(record)">{{ $t('tasks.imagePreview') }}</a-button>
+            <a-button type="link" size="small" @click="previewTaskImages(record)">{{ $t('tasks.imagePreview') }}</a-button>
           </template>
           <template v-else-if="column.key === 'signature'">
             <CopyableCell :text="translateSignatureMark(getDisplaySignature(record.signature, record), t)">
@@ -226,12 +226,11 @@ import FieldFilterControl from '@/components/FieldFilterControl.vue'
 import { getEmployeeRecordList } from '@/api/task'
 import { createEmployeeRecordsExport } from '@/api/export'
 import { useExportCenter } from '@/composables/useExportCenter'
-import { resolveTaskImageUrls } from '@/utils/imageUrl'
 import { warmupOcrWorker } from '@/utils/imageAutoOrient'
+import { useTaskImagePreview } from '@/composables/useTaskImagePreview'
 import PageShell from '@/components/PageShell.vue'
 import ImagePreviewModal from '@/components/ImagePreviewModal.vue'
 import ImageCompareDockShell from '@/components/ImageCompareDockShell.vue'
-import { useImageComparePreview } from '@/composables/useImageComparePreview'
 import TableSortableHeader from '@/components/TableSortableHeader.vue'
 import TableColumnSettings from '@/components/TableColumnSettings.vue'
 import CopyableCell from '@/components/CopyableCell.vue'
@@ -295,16 +294,15 @@ const activeHeaderFilterField = ref('')
 const headerFilterDraft = ref('')
 const fieldDefs = computed(() => buildEmployeeRecordFieldDefs(t))
 const advancedFilters = ref({})
-const previewImagesList = ref([])
-const previewCurrentIndex = ref(0)
-const previewFetching = ref(false)
-let previewLoadToken = 0
 const {
-  dockOpen: previewDockOpen,
-  fullscreenOpen: previewFullscreenOpen,
-  openPreview: openPreviewPanel,
-  openFullscreen: openPreviewFullscreen,
-} = useImageComparePreview()
+  previewImagesList,
+  previewCurrentIndex,
+  previewFetching,
+  previewDockOpen,
+  previewFullscreenOpen,
+  openPreviewFullscreen,
+  previewTaskImages,
+} = useTaskImagePreview()
 
 const baseColumns = computed(() => [
   {
@@ -509,35 +507,6 @@ const clearHeaderFilter = () => {
 
 const openTask = (taskId) => {
   router.push(`/tasks/${taskId}`)
-}
-
-const previewImages = async (record) => {
-  const token = ++previewLoadToken
-  const dockWasOpen = previewDockOpen.value
-  if (dockWasOpen) {
-    previewFetching.value = true
-  }
-  try {
-    const urls = await resolveTaskImageUrls(record.imageUrls, record.fileKey)
-    if (token !== previewLoadToken) return
-    if (!urls.length) {
-      message.warning(t('tasks.noImages'))
-      return
-    }
-    previewCurrentIndex.value = 0
-    previewImagesList.value = urls
-    if (!dockWasOpen) {
-      openPreviewPanel()
-    }
-  } catch (e) {
-    if (token === previewLoadToken) {
-      message.error(e?.message || t('common.error'))
-    }
-  } finally {
-    if (token === previewLoadToken) {
-      previewFetching.value = false
-    }
-  }
 }
 
 const getStatusText = (status) => {

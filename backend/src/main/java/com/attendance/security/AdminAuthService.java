@@ -5,7 +5,9 @@ import com.attendance.common.ErrorCode;
 import com.attendance.common.ErrorKeys;
 import com.attendance.entity.User;
 import com.attendance.mapper.UserMapper;
+import com.attendance.service.UserRoleService;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.context.annotation.Lazy;
 import org.springframework.stereotype.Service;
 
 @Service
@@ -13,6 +15,10 @@ public class AdminAuthService {
 
     @Autowired
     private UserMapper userMapper;
+
+    @Autowired
+    @Lazy
+    private UserRoleService userRoleService;
 
     public void requireAdmin() {
         if (!isCurrentUserAdmin()) {
@@ -33,6 +39,6 @@ public class AdminAuthService {
             return false;
         }
         User user = userMapper.selectUserById(userId);
-        return user != null && "admin".equalsIgnoreCase(user.getRole());
+        return user != null && userRoleService.userHasRole(userId, "admin");
     }
 }

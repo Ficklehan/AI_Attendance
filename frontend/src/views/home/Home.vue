@@ -37,7 +37,7 @@
             <a-tag v-else color="green" size="small">{{ $t('config.feishuCountrySpecific') }}</a-tag>
           </a-space>
         </div>
-        <a-button type="link" size="small" @click="router.push('/config')">
+        <a-button type="link" size="small" @click="openWorkingCountryPicker">
           {{ $t('home.changeCountry') }}
         </a-button>
       </div>
@@ -421,6 +421,7 @@ import { useTableColumnSort } from '@/composables/useTableColumnSort'
 import { useAutoSizedColumns } from '@/composables/useAutoSizedColumns'
 import { useTableColumnResize } from '@/composables/useTableColumnResize'
 import { useTableBodyScrollY } from '@/composables/useTableBodyScrollY'
+import { useWorkingCountryPicker } from '@/composables/useWorkingCountryPicker'
 import { useColumnFreeze } from '@/composables/useColumnFreeze'
 import TableColumnSettings from '@/components/TableColumnSettings.vue'
 import TableSortableHeader from '@/components/TableSortableHeader.vue'
@@ -432,6 +433,7 @@ import { translateErrorMessage, showHomeUploadError } from '@/utils/translateErr
 import { isCopyableTableColumn, resolveTableCellCopyText } from '@/utils/tableCopy'
 
 const router = useRouter()
+const { requestOpenCountryPicker } = useWorkingCountryPicker()
 const { t, locale } = useI18n()
 const countryStore = useCountryStore()
 
@@ -1023,9 +1025,26 @@ const handleConfirm = () => {
   router.push(`/tasks/${currentTaskId.value}`)
 }
 
+const openWorkingCountryPicker = () => {
+  requestOpenCountryPicker()
+}
+
 const handleClear = () => {
-  clearBgTaskId()
-  resetState()
+  const hasContent = fileList.value.length > 0 || records.value.length > 0 || uploading.value
+  if (!hasContent) {
+    resetState()
+    return
+  }
+  aModal.confirm({
+    title: t('home.clearConfirmTitle'),
+    content: t('home.clearConfirmContent'),
+    okText: t('common.confirm'),
+    cancelText: t('common.cancel'),
+    onOk: () => {
+      clearBgTaskId()
+      resetState()
+    },
+  })
 }
 
 const deleteRecord = (record) => {

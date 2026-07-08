@@ -10,7 +10,12 @@ export const duplicateGroupKey = core.duplicateGroupKey
 export const buildDuplicateMember = core.buildDuplicateMember
 export const mergeDuplicateMembers = core.mergeDuplicateMembers
 export const buildDuplicatePayload = core.buildDuplicatePayload
+export const ensureRecordRowKeys = core.ensureRecordRowKeys
 
 export function isEligibleForDuplicate(record) {
   return core.isEligibleForDuplicate(record, isAbsentRow)
+}
+
+export function applyDuplicateDecorations(records, remoteMetaMap, taskId) {
+  return core.applyDuplicateDecorations(records, remoteMetaMap, taskId, isAbsentRow)
 }

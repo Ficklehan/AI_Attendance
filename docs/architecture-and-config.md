@@ -136,6 +136,8 @@ flowchart TB
 |------|-----|------|
 | @Order(15) | `ExportJobDatabaseBootstrap` | 确保 `export_jobs` 表及 `dismissed_at` |
 | @Order(20) | `PromptDatabaseBootstrap` | 确保 `recognition_prompt` 并播种 |
+| — | `UserRoleDatabaseBootstrap` | 确保 `user_role` 并回填 |
+| — | `RoleDataScopeDatabaseBootstrap` | 确保角色数据范围表 |
 | 默认 | `DefaultAdminBootstrap` | dev 下校正 admin（`ConditionalOnProperty`） |
 
 ### 3.3 启动脚本
@@ -179,8 +181,8 @@ AttendanceAgent/
 ├── base-config/           # 飞书、提示词源、权限（运行时读取）
 ├── backend/
 │   ├── config/
-│   │   ├── init.sql       # 全量建库
-│   │   ├── migration/     # 增量脚本 001–006
+│   │   ├── init.sql       # 全量建库（对齐 migration 001–024）
+│   │   ├── migration/     # 增量脚本 001–024（同编号多文件见 migrate_all.sh）
 │   │   └── README.md      # 数据库文档
 │   └── src/main/resources/
 │       ├── application.yml

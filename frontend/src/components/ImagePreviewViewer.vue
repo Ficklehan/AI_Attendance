@@ -72,7 +72,7 @@
           :key="currentSrc"
           :src="currentSrc"
           class="ipv-image"
-          :class="{ 'ipv-image--pending': loading || orienting }"
+          :class="{ 'ipv-image--pending': loading }"
           :style="imageStyle"
           draggable="false"
           :alt="$t('tasks.imagePreview')"
@@ -484,7 +484,7 @@ watch(viewportRef, (el, prev) => {
   align-items: center;
   justify-content: center;
   gap: 8px;
-  background: rgba(255, 255, 255, 0.72);
+  background: rgba(255, 255, 255, 0.45);
   color: $text-secondary;
   font-size: $font-size-xs;
   pointer-events: none;

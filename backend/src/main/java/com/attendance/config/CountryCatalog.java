@@ -22,6 +22,9 @@ public final class CountryCatalog {
 
     public static final List<Map<String, String>> OPTIONS = buildOptions();
 
+    /** 未指定或使用 default 时的全局默认国家（见 base-config/countries.md） */
+    public static final String GLOBAL_DEFAULT_COUNTRY = "FR";
+
     private static final Map<String, String> PAYS_LABELS = buildPaysLabels();
     private static final Map<String, String> LEGACY_ALIASES = buildLegacyAliases();
 
@@ -93,10 +96,21 @@ public final class CountryCatalog {
         return OPTIONS.stream().anyMatch(o -> o.get("code").equalsIgnoreCase(normalized));
     }
 
+    /**
+     * 将全局配置中的 default/空值解析为实际默认国家（法国）。
+     * 显式配置的国家码原样返回。
+     */
+    public static String resolveGlobalDefaultCountry(String code) {
+        if (code == null || code.trim().isEmpty() || "default".equalsIgnoreCase(code.trim())) {
+            return GLOBAL_DEFAULT_COUNTRY;
+        }
+        return CountryResolver.normalize(code);
+    }
+
     /** 考勤表 Pays 字段缺省值（与识别结果、飞书字段常用英文国名对齐）。 */
     public static String defaultPaysLabel(String countryCode) {
         if (countryCode == null || countryCode.trim().isEmpty() || "default".equalsIgnoreCase(countryCode.trim())) {
-            return null;
+            return PAYS_LABELS.get(GLOBAL_DEFAULT_COUNTRY);
         }
         String normalized = countryCode.trim().toUpperCase(Locale.ROOT);
         String mapped = PAYS_LABELS.get(normalized);

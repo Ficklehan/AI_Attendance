@@ -1,0 +1,26 @@
+name: Shared JS Sync Check
+
+on:
+  push:
+    paths:
+      - 'shared/js/**'
+      - 'feishu-miniprogram/shared-js/**'
+      - 'scripts/sync-miniprogram-shared.mjs'
+      - 'scripts/check-miniprogram-shared-sync.mjs'
+  pull_request:
+    paths:
+      - 'shared/js/**'
+      - 'feishu-miniprogram/shared-js/**'
+      - 'scripts/sync-miniprogram-shared.mjs'
+      - 'scripts/check-miniprogram-shared-sync.mjs'
+
+jobs:
+  check-shared-sync:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - name: Verify miniprogram shared-js mirrors shared/js
+        run: node scripts/check-miniprogram-shared-sync.mjs

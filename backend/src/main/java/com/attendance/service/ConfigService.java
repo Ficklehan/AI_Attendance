@@ -1,6 +1,8 @@
 package com.attendance.service;
 
+import com.attendance.config.CountryCatalog;
 import com.attendance.dto.CountryConfigBundle;
+import com.attendance.mapper.PluginConfigMapper;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import com.attendance.security.SecurityUtils;
@@ -8,6 +10,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Lazy;
 import org.springframework.stereotype.Service;
 
+import javax.annotation.PostConstruct;
 import java.io.IOException;
 import java.util.HashMap;
 import java.util.List;
@@ -17,6 +20,7 @@ import java.util.Map;
 public class ConfigService {
     
     private static final Logger log = LoggerFactory.getLogger(ConfigService.class);
+    static final String GLOBAL_WORKING_COUNTRY_KEY = "current_working_country";
 
     @Autowired
     private MarkdownConfigService markdownConfigService;
@@ -27,6 +31,35 @@ public class ConfigService {
     @Autowired
     @Lazy
     private UserService userService;
+
+    @Autowired
+    private PluginConfigMapper pluginConfigMapper;
+
+    @PostConstruct
+    public void loadGlobalWorkingCountry() {
+        try {
+            String stored = pluginConfigMapper.selectValue(GLOBAL_WORKING_COUNTRY_KEY);
+            if (stored != null && !stored.trim().isEmpty()) {
+                String normalized = stored.trim();
+                if ("DE".equalsIgnoreCase(normalized)) {
+                    log.warn("全局工作国家曾为 DE，已按规范迁移为 default（法国 FR）");
+                    normalized = "default";
+                    pluginConfigMapper.upsertValue(
+                            GLOBAL_WORKING_COUNTRY_KEY,
+                            normalized,
+                            "string",
+                            "全局工作国家（default 表示法国）");
+                }
+                markdownConfigService.setCountry(normalized);
+                log.info("已加载全局工作国家配置: {}", normalized);
+            } else {
+                markdownConfigService.setCountry("default");
+            }
+        } catch (Exception e) {
+            log.warn("加载全局工作国家配置失败，使用 default: {}", e.getMessage());
+            markdownConfigService.setCountry("default");
+        }
+    }
     
     public String getConfigValue(String configKey, String defaultValue) {
         Map<String, String> allConfigs = getAllConfigs();
@@ -78,11 +111,21 @@ public class ConfigService {
     }
 
     public String getGlobalWorkingCountry() {
-        return markdownConfigService.getCurrentCountry();
+        return CountryCatalog.resolveGlobalDefaultCountry(markdownConfigService.getCurrentCountry());
     }
     
     public void setCurrentCountry(String country) {
-        markdownConfigService.setCountry(country);
+        String stored = country == null || country.trim().isEmpty() ? "default" : country.trim();
+        markdownConfigService.setCountry(stored);
+        try {
+            pluginConfigMapper.upsertValue(
+                    GLOBAL_WORKING_COUNTRY_KEY,
+                    stored,
+                    "string",
+                    "全局工作国家（default 表示法国）");
+        } catch (Exception e) {
+            log.error("持久化全局工作国家失败: country={}", stored, e);
+        }
     }
     
     public List<String> getAllCountries() {

@@ -2,6 +2,7 @@ package com.attendance.config;
 
 import com.attendance.entity.User;
 import com.attendance.mapper.UserMapper;
+import com.attendance.service.UserRoleService;
 import com.attendance.util.IdGenerator;
 import com.attendance.util.PasswordEncoder;
 import org.slf4j.Logger;
@@ -11,6 +12,7 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.ApplicationArguments;
 import org.springframework.boot.ApplicationRunner;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
+import org.springframework.context.annotation.Lazy;
 import org.springframework.stereotype.Component;
 
 /**
@@ -27,6 +29,10 @@ public class DefaultAdminBootstrap implements ApplicationRunner {
 
     @Autowired
     private PasswordEncoder passwordEncoder;
+
+    @Autowired
+    @Lazy
+    private UserRoleService userRoleService;
 
     @Value("${attendance.default-admin-username:admin}")
     private String adminUsername;
@@ -47,6 +53,7 @@ public class DefaultAdminBootstrap implements ApplicationRunner {
             user.setRealName("系统管理员");
             user.setStatus("active");
             userMapper.insertUser(user);
+            userRoleService.setUserRoles(user.getId(), java.util.Collections.singletonList("admin"));
             log.warn("已创建默认管理员账号: username={}（请尽快修改密码）", adminUsername);
             return;
         }
@@ -57,8 +64,8 @@ public class DefaultAdminBootstrap implements ApplicationRunner {
             admin.setPasswordHash(passwordEncoder.encode(adminPassword));
             changed = true;
         }
-        if (!"admin".equalsIgnoreCase(admin.getRole())) {
-            admin.setRole("admin");
+        if (!userRoleService.userHasRole(admin.getId(), "admin")) {
+            userRoleService.addRoleToUser(admin.getId(), "admin");
             changed = true;
         }
         if (!"active".equals(admin.getStatus())) {

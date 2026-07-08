@@ -1,5 +1,6 @@
 package com.attendance.service;
 
+import com.attendance.config.CountryCatalog;
 import com.attendance.common.BusinessException;
 import com.attendance.common.ErrorCode;
 import com.attendance.common.ErrorKeys;
@@ -26,6 +27,7 @@ import com.attendance.util.ExportLocaleSupport;
 import com.attendance.mapper.UserMapper;
 import com.attendance.security.TaskAccessService;
 import com.attendance.util.RecordFeishuPrepareSupport;
+import com.attendance.util.RecognizedDateNormalizer;
 import com.attendance.util.RecognizedFieldSanitizer;
 import com.attendance.util.RecognizedTextNormalizer;
 import com.attendance.util.RecognitionFailureMessages;
@@ -131,6 +133,12 @@ public class TaskService {
     @Autowired
     @Lazy
     private ReminderScheduleService reminderScheduleService;
+
+    @Autowired
+    private TaskRecognitionLifecycleService taskRecognitionLifecycleService;
+
+    @Autowired
+    private TaskExcelExportService taskExcelExportService;
 
     private static final String[] CALIBRATABLE_FIELDS = {
             "NO", "Entrepot", "NOM_PRENOM", "AGENCE_INTERIMAIRE", "HORAIRES_DU_TRAVAIL",
@@ -262,7 +270,31 @@ public class TaskService {
         Task task = taskAccessService.requireViewableTask(taskId);
         String userId = com.attendance.security.SecurityUtils.getCurrentUserId();
         task.setCanConfirm(taskAccessService.canConfirmTask(userId, task));
+        maybeRepairTaskRecords(task);
         return task;
+    }
+
+    /** 确认后合并逻辑修复前可能写入双倍行；打开详情时按合并结果校正 task_records。 */
+    private void maybeRepairTaskRecords(Task task) {
+        if (!"confirmed".equalsIgnoreCase(task.getStatus())) {
+            return;
+        }
+        String payload = TaskRecordPayloadResolver.resolvePayload(task);
+        if (RecordJsonSupport.isBlank(payload)) {
+            return;
+        }
+        try {
+            JSONArray rows = JSON.parseArray(payload);
+            int expected = rows != null ? rows.size() : 0;
+            long actual = taskRecordMapper.countByTaskId(task.getTaskId());
+            if (actual != expected) {
+                log.info("task_records 行数与合并载荷不一致，自动修复: taskId={}, actual={}, expected={}",
+                        task.getTaskId(), actual, expected);
+                taskRecordSyncService.syncFromTaskId(task.getTaskId());
+            }
+        } catch (Exception e) {
+            log.warn("检测 task_records 行数失败: taskId={}", task.getTaskId(), e);
+        }
     }
 
     public Task getTaskByIdInternal(String taskId) {
@@ -270,67 +302,38 @@ public class TaskService {
     }
 
     public boolean isRecognitionHeartbeatFresh(String taskId, long maxAgeMs) {
-        Task task = taskMapper.selectTaskByTaskId(taskId);
-        if (task == null || task.getRecognitionHeartbeatAt() == null) {
-            return false;
-        }
-        long ageMs = java.time.Duration.between(
-                task.getRecognitionHeartbeatAt(),
-                java.time.LocalDateTime.now()).toMillis();
-        return ageMs >= 0 && ageMs < maxAgeMs;
+        return taskRecognitionLifecycleService.isRecognitionHeartbeatFresh(taskId, maxAgeMs);
     }
 
     @Transactional
     public void touchRecognitionHeartbeat(String taskId) {
-        taskMapper.touchRecognitionHeartbeat(taskId);
+        taskRecognitionLifecycleService.touchRecognitionHeartbeat(taskId);
     }
 
     public RecognitionCheckpoint loadRecognitionCheckpoint(String taskId) {
-        Task task = taskMapper.selectTaskByTaskId(taskId);
-        if (task == null) {
-            return RecognitionCheckpoint.empty();
-        }
-        return RecognitionCheckpoint.fromJson(task.getRecognitionCheckpoint());
+        return taskRecognitionLifecycleService.loadRecognitionCheckpoint(taskId);
     }
 
     @Transactional
     public void saveRecognitionCheckpoint(String taskId, RecognitionCheckpoint checkpoint) {
-        if (checkpoint == null) {
-            return;
-        }
-        taskMapper.updateRecognitionCheckpoint(taskId, checkpoint.toJson());
+        taskRecognitionLifecycleService.saveRecognitionCheckpoint(taskId, checkpoint);
     }
 
     @Transactional
     public void clearRecognitionCheckpoint(String taskId) {
-        taskMapper.clearRecognitionCheckpoint(taskId);
+        taskRecognitionLifecycleService.clearRecognitionCheckpoint(taskId);
     }
 
     public List<String> findStaleProcessingTaskIds(int staleSeconds, int batchSize) {
-        return taskMapper.selectStaleProcessingTaskIds(
-                Math.max(30, staleSeconds), Math.max(1, batchSize));
+        return taskRecognitionLifecycleService.findStaleProcessingTaskIds(staleSeconds, batchSize);
     }
 
     public List<String> findZombieProcessingTaskIds(int zombieMinutes, int batchSize) {
-        return taskMapper.selectZombieProcessingTaskIds(
-                Math.max(1, zombieMinutes), Math.max(1, batchSize));
+        return taskRecognitionLifecycleService.findZombieProcessingTaskIds(zombieMinutes, batchSize);
     }
 
-    /**
-     * 识别是否已真正开始（有进度/断点/部分结果），用于区分「仅上传中」的 processing 任务。
-     */
     public boolean hasRecognitionWorkStarted(Task task) {
-        if (task == null) {
-            return false;
-        }
-        if (task.getProgressRowCount() != null && task.getProgressRowCount() > 0) {
-            return true;
-        }
-        if (countJsonArrayRows(task.getRawData()) > 0) {
-            return true;
-        }
-        RecognitionCheckpoint cp = RecognitionCheckpoint.fromJson(task.getRecognitionCheckpoint());
-        return cp.getImageIndex() > 0 || cp.getRecordCount() > 0 || cp.getRetryCount() > 0;
+        return taskRecognitionLifecycleService.hasRecognitionWorkStarted(task);
     }
 
     public List<TaskListRow> getTaskList(String status, String keyword, String searchField, long offset, long size) {
@@ -345,81 +348,38 @@ public class TaskService {
 
     @Transactional
     public void updateTaskRawData(String taskId, String rawData, String aiRawOutput) {
-        updateTaskRawData(taskId, rawData, aiRawOutput, null);
+        taskRecognitionLifecycleService.updateTaskRawData(taskId, rawData, aiRawOutput);
     }
 
     @Transactional
     public void updateTaskRawData(String taskId, String rawData, String aiRawOutput, RecognitionTrace recognitionTrace) {
-        if (recognitionTrace != null) {
-            JSONObject summary = new JSONObject();
-            summary.put("recognitionTrace", recognitionTrace.toJson());
-            taskMapper.updateTaskAnomalySummary(taskId, summary.toJSONString());
-        }
-        int rowCount = countJsonArrayRows(rawData);
-        taskMapper.updateTaskRawData(taskId, rawData, aiRawOutput, rowCount);
-        log.info("更新任务AI解析结果: taskId={}, recordCount={}", taskId, rowCount);
-        taskRecordSyncService.syncFromTaskId(taskId);
+        taskRecognitionLifecycleService.updateTaskRawData(taskId, rawData, aiRawOutput, recognitionTrace);
     }
 
-    /** 兼容旧调用：忽略 imageQuality 警告写入 */
     @Transactional
     public void updateTaskRawData(String taskId, String rawData, String aiRawOutput, RecognitionTrace recognitionTrace,
                                   ImageQualityAssessment imageQuality) {
-        updateTaskRawData(taskId, rawData, aiRawOutput, recognitionTrace);
+        taskRecognitionLifecycleService.updateTaskRawData(taskId, rawData, aiRawOutput, recognitionTrace, imageQuality);
     }
 
-    /** 仅更新识别进度计数（轮询轻量接口数据源） */
     @Transactional
     public void updateTaskRecognitionProgress(String taskId, int rowCount, String engineTag) {
-        taskMapper.updateTaskRecognitionProgress(taskId, rowCount, engineTag);
+        taskRecognitionLifecycleService.updateTaskRecognitionProgress(taskId, rowCount, engineTag);
     }
 
-    /**
-     * 识别进行中周期性写入全量 raw_data（降频调用），并更新 progress_row_count。
-     */
     @Transactional
     public void updateTaskRawDataProgress(String taskId, String rawData, String aiRawOutput) {
-        int rowCount = countJsonArrayRows(rawData);
-        taskMapper.updateTaskRawDataProgress(taskId, rawData, aiRawOutput, rowCount);
+        taskRecognitionLifecycleService.updateTaskRawDataProgress(taskId, rawData, aiRawOutput);
     }
 
     public TaskProgressDTO getTaskProgress(String taskId) {
-        taskAccessService.requireTaskAccessForProgress(taskId);
-        TaskProgressDTO dto = taskMapper.selectTaskProgress(taskId);
-        if (dto == null) {
-            throw new BusinessException(ErrorCode.TASK_NOT_FOUND, ErrorKeys.TASK_NOT_FOUND);
-        }
-        String summary = dto.getAnomalySummaryRaw();
-        dto.setAnomalySummaryRaw(null);
-        if (summary != null && !summary.trim().isEmpty()) {
-            try {
-                JSONObject obj = JSON.parseObject(summary);
-                if (obj != null && obj.get("error") != null) {
-                    String err = RecognitionFailureMessages.toClientMessage(String.valueOf(obj.get("error")));
-                    dto.setProgressError(err);
-                    JSONObject args = obj.getJSONObject("errorArgs");
-                    if (args != null && !args.isEmpty()) {
-                        dto.setProgressErrorArgs(args);
-                    }
-                }
-            } catch (Exception ignored) {
-                // ignore
-            }
-        }
-        return dto;
+        return taskRecognitionLifecycleService.getTaskProgress(taskId);
     }
 
     private static int countJsonArrayRows(String rawData) {
-        if (rawData == null || rawData.trim().isEmpty()) {
-            return 0;
-        }
-        try {
-            JSONArray arr = JSON.parseArray(rawData);
-            return arr != null ? arr.size() : 0;
-        } catch (Exception e) {
-            return 0;
-        }
+        return TaskRecognitionLifecycleService.countJsonArrayRows(rawData);
     }
+
 
     @Transactional
     public void failTask(String taskId, String errorMessage) {
@@ -434,20 +394,9 @@ public class TaskService {
     @Transactional
     public void failTask(String taskId, String errorMessage, Map<String, Object> errorArgs,
                          RecognitionTrace recognitionTrace) {
-        JSONObject summary = new JSONObject();
-        summary.put("error", errorMessage);
-        if (errorArgs != null && !errorArgs.isEmpty()) {
-            summary.put("errorArgs", errorArgs);
-        }
-        if (recognitionTrace != null) {
-            summary.put("recognitionTrace", recognitionTrace.toJson());
-        }
-        taskMapper.updateTaskAnomalySummary(taskId, summary.toJSONString());
+        taskRecognitionLifecycleService.writeRecognitionFailureSummary(taskId, errorMessage, errorArgs, recognitionTrace);
         Task task = taskMapper.selectTaskByTaskId(taskId);
         int partialRows = task != null ? countJsonArrayRows(task.getRawData()) : 0;
-        if (partialRows <= 0) {
-            taskMapper.updateTaskRawDataProgress(taskId, "[]", "", 0);
-        }
         taskMapper.updateTaskStatus(taskId, "failed");
         taskRecordSyncService.syncFromTaskId(taskId);
         cancelReminderSchedulesForTask(taskId);
@@ -689,19 +638,14 @@ public class TaskService {
 
     @Transactional
     public void prepareTaskForRecognition(String taskId, boolean reset) {
-        taskAccessService.requireOwnedTask(taskId);
-        prepareTaskForRecognitionInternal(taskId, reset);
+        taskRecognitionLifecycleService.prepareTaskForRecognition(taskId, reset);
     }
 
     @Transactional
     public void prepareTaskForRecognitionInternal(String taskId, boolean reset) {
-        taskMapper.updateTaskStatus(taskId, "processing");
-        if (reset) {
-            taskMapper.updateTaskRawDataProgress(taskId, "[]", "mimo", 0);
-            clearRecognitionCheckpoint(taskId);
-        }
-        touchRecognitionHeartbeat(taskId);
+        taskRecognitionLifecycleService.prepareTaskForRecognitionInternal(taskId, reset);
     }
+
 
     public byte[] readUploadedImageBytesForTask(String taskId, String fileKey) throws IOException {
         Task task = taskMapper.selectTaskByTaskId(taskId);
@@ -722,7 +666,7 @@ public class TaskService {
 
     @Transactional
     public void updateTaskAnomalySummary(String taskId, String anomalySummary) {
-        taskMapper.updateTaskAnomalySummary(taskId, anomalySummary);
+        taskRecognitionLifecycleService.updateTaskAnomalySummary(taskId, anomalySummary);
     }
 
     @Transactional
@@ -939,392 +883,45 @@ public class TaskService {
 
     public List<EmployeeRecordDTO> getEmployeeRecordList(String status, String keyword, String searchField, String filters, long offset, long size) {
         DataScopeContext scope = resolveDataScope();
-        List<Map<String, String>> conditions = parseFilters(searchField, keyword, filters);
+        List<Map<String, String>> conditions = taskExcelExportService.parseFilters(searchField, keyword, filters);
         List<TaskRecord> rows = taskRecordMapper.selectRecordPage(scope, status, conditions, offset, size);
         Map<String, Map<String, JSONObject>> taskRowCache = new HashMap<>();
         List<EmployeeRecordDTO> result = new ArrayList<>();
         for (TaskRecord row : rows) {
-            result.add(toEmployeeRecord(row, taskRowCache));
+            result.add(taskExcelExportService.toEmployeeRecord(row, taskRowCache));
         }
         return result;
     }
 
     public long countEmployeeRecordList(String status, String keyword, String searchField, String filters) {
         DataScopeContext scope = resolveDataScope();
-        List<Map<String, String>> conditions = parseFilters(searchField, keyword, filters);
+        List<Map<String, String>> conditions = taskExcelExportService.parseFilters(searchField, keyword, filters);
         return taskRecordMapper.countRecords(scope, status, conditions);
-    }
-
-    private EmployeeRecordDTO toEmployeeRecord(TaskRecord row) {
-        return toEmployeeRecord(row, new HashMap<>());
-    }
-
-    private EmployeeRecordDTO toEmployeeRecord(TaskRecord row, Map<String, Map<String, JSONObject>> taskRowCache) {
-        EmployeeRecordDTO dto = new EmployeeRecordDTO();
-        dto.setTaskId(row.getTaskId());
-        dto.setFileKey(row.getFileKey());
-        dto.setUserName(row.getUserName());
-        dto.setTaskStatus(row.getTaskStatus());
-        dto.setRecordStatus(row.getTaskStatus());
-        dto.setImageUrls(row.getImageUrls());
-        dto.setName(row.getEmpName());
-        dto.setCountry(row.getCountry());
-        dto.setWarehouse(row.getWarehouse());
-        dto.setDate(row.getWorkDate());
-        dto.setAgency(row.getAgency());
-        dto.setShift(row.getShift());
-        dto.setArrival(row.getArrival());
-        dto.setDeparture(row.getDeparture());
-        dto.setPauseMinutes(row.getPauseMinutes());
-        dto.setSignature(row.getSignature());
-        dto.setObservations(row.getObservations());
-        JSONObject exportJson = buildEmployeeRecordExportJson(row, taskRowCache);
-        dto.setNo(RecordJsonSupport.pickJson(exportJson, "NO", "No", "no"));
-        dto.setPageNum(TaskRecordExportSupport.resolvePageNum(exportJson));
-        dto.setWorkHours(TaskRecordExportSupport.formatWorkHours(exportJson));
-        dto.setAnomalyDescription(TaskRecordExportSupport.formatAnomalyDescription(exportJson));
-        dto.setSmartMark(row.getSmartMark());
-        dto.setCreatedAt(row.getTaskCreatedAt() == null ? "" : row.getTaskCreatedAt().toString());
-        return dto;
-    }
-
-    private JSONObject buildEmployeeRecordExportJson(TaskRecord row, Map<String, Map<String, JSONObject>> taskRowCache) {
-        JSONObject export = TaskRecordExportSupport.toExportJson(row);
-        JSONObject source = resolveTaskRowJson(row, taskRowCache);
-        if (source == null) {
-            return export;
-        }
-        if (source.containsKey("anomalies")) {
-            export.put("anomalies", source.get("anomalies"));
-        }
-        String unreadableKey = RecognizedFieldSanitizer.UNREADABLE_FIELDS_KEY;
-        if (source.containsKey(unreadableKey)) {
-            export.put(unreadableKey, source.get(unreadableKey));
-        }
-        if (RecordJsonSupport.isBlank(TaskRecordExportSupport.resolvePageNum(export))) {
-            String pageNum = TaskRecordExportSupport.resolvePageNum(source);
-            if (!RecordJsonSupport.isBlank(pageNum)) {
-                export.put("PAGE_NUM", pageNum);
-            }
-        }
-        if (RecordJsonSupport.isBlank(RecordJsonSupport.pickJson(export, "NO", "No", "no"))) {
-            String no = RecordJsonSupport.pickJson(source, "NO", "No", "no");
-            if (!RecordJsonSupport.isBlank(no)) {
-                export.put("NO", no);
-            }
-        }
-        return export;
-    }
-
-    private JSONObject resolveTaskRowJson(TaskRecord row, Map<String, Map<String, JSONObject>> taskRowCache) {
-        if (row == null || RecordJsonSupport.isBlank(row.getTaskId())) {
-            return null;
-        }
-        Map<String, JSONObject> rowMap = taskRowCache.computeIfAbsent(row.getTaskId(), this::loadTaskRowJsonMap);
-        if (rowMap == null || rowMap.isEmpty()) {
-            return null;
-        }
-        if (!RecordJsonSupport.isBlank(row.getRowKey()) && rowMap.containsKey(row.getRowKey())) {
-            return rowMap.get(row.getRowKey());
-        }
-        return rowMap.get(String.valueOf(row.getRecordIndex()));
-    }
-
-    private Map<String, JSONObject> loadTaskRowJsonMap(String taskId) {
-        try {
-            Task task = taskMapper.selectTaskByTaskId(taskId);
-            if (task == null) {
-                return Collections.emptyMap();
-            }
-            String payload = TaskRecordPayloadResolver.resolvePayload(task);
-            if (RecordJsonSupport.isBlank(payload)) {
-                return Collections.emptyMap();
-            }
-            JSONArray rows = JSON.parseArray(payload);
-            if (rows == null || rows.isEmpty()) {
-                return Collections.emptyMap();
-            }
-            Map<String, JSONObject> map = new HashMap<>();
-            for (int i = 0; i < rows.size(); i++) {
-                JSONObject row = rows.getJSONObject(i);
-                if (row == null) {
-                    continue;
-                }
-                String rowKey = RecordJsonSupport.pickJson(row, "_rowKey");
-                if (!RecordJsonSupport.isBlank(rowKey)) {
-                    map.put(rowKey, row);
-                }
-                map.put(taskId + "_" + i, row);
-                map.put(String.valueOf(i), row);
-            }
-            return map;
-        } catch (Exception e) {
-            log.warn("加载任务 JSON 失败: taskId={}", taskId, e);
-            return Collections.emptyMap();
-        }
-    }
-
-    private List<Map<String, String>> parseFilters(String searchField, String keyword, String filters) {
-        List<Map<String, String>> list = new ArrayList<>();
-        if (!RecordJsonSupport.isBlank(filters)) {
-            try {
-                JSONArray arr = JSON.parseArray(filters);
-                if (arr != null) {
-                    for (int i = 0; i < arr.size(); i++) {
-                        JSONObject item = arr.getJSONObject(i);
-                        if (item == null) continue;
-                        String field = item.getString("field");
-                        String value = item.getString("keyword");
-                        String filterType = item.getString("filterType");
-                        if (RecordJsonSupport.isBlank(value)) continue;
-                        Map<String, String> one = new HashMap<>();
-                        one.put("field", field == null ? "" : field.trim());
-                        one.put("keyword", value.trim());
-                        if (!RecordJsonSupport.isBlank(filterType)) {
-                            one.put("filterType", filterType.trim());
-                        }
-                        list.add(one);
-                    }
-                }
-            } catch (Exception e) {
-                log.warn("解析 filters 失败，退化为单条件", e);
-            }
-        }
-        if (list.isEmpty() && !RecordJsonSupport.isBlank(keyword)) {
-            Map<String, String> one = new HashMap<>();
-            one.put("field", searchField == null ? "" : searchField.trim());
-            one.put("keyword", keyword.trim());
-            list.add(one);
-        }
-        return list;
     }
 
     public long exportTaskListToExcel(DataScopeContext scope, String status, String keyword, String searchField,
                                       ExcelSheetWriter writer, String locale) throws IOException {
-        String resolvedLocale = ExportLocaleSupport.resolveLocale(locale);
-        writer.writeHeader(ExportLocaleSupport.headers(resolvedLocale, "taskList.headers"));
-        long count = 0;
-        int offset = 0;
-        final int batchSize = 500;
-        while (true) {
-            List<TaskListRow> tasks = taskMapper.selectTaskList(scope, status, keyword, searchField, offset, batchSize);
-            if (tasks == null || tasks.isEmpty()) {
-                break;
-            }
-            for (TaskListRow task : tasks) {
-                writer.writeRow(
-                        ExcelExportHelper.cell(task.getTaskId()),
-                        ExcelExportHelper.cell(task.getFileKey()),
-                        ExcelExportHelper.cell(ExportLocaleSupport.formatTaskStatus(resolvedLocale, task.getStatus())),
-                        ExcelExportHelper.cell(task.getSyncStatus()),
-                        ExcelExportHelper.cell(task.getSyncError()),
-                        ExcelExportHelper.cell(task.getUserName()),
-                        ExcelExportHelper.cell(task.getCreatedAt()));
-                count++;
-            }
-            offset += tasks.size();
-            if (tasks.size() < batchSize) {
-                break;
-            }
-        }
-        return count;
+        return taskExcelExportService.exportTaskListToExcel(scope, status, keyword, searchField, writer, locale);
     }
 
-    private static final String[] TASK_JSON_EXPORT_HEADERS = {
-            "页码", "NO", "国家", "仓库", "日期", "姓名", "中介机构", "班次",
-            "到达时间", "离开时间", "休息(分钟)", "出勤工时", "员工签名", "备注", "异常说明", "标记"
-    };
-
-    /**
-     * 单任务导出：从 tasks.confirmed_data / raw_data JSON 写入 Excel（任务编辑页下载）
-     */
     public void writeTaskJsonRecordsToExcel(Task task, ExcelSheetWriter writer, String locale) throws IOException {
-        if (task == null) {
-            throw new BusinessException(ErrorCode.TASK_NOT_FOUND, ErrorKeys.TASK_NOT_FOUND);
-        }
-        String data = TaskRecordPayloadResolver.resolvePayload(task);
-        if (data == null || data.trim().isEmpty()) {
-            throw new BusinessException(ErrorCode.TASK_NOT_FOUND, ErrorKeys.NO_EXPORT_DATA);
-        }
-        String resolvedLocale = ExportLocaleSupport.resolveLocale(locale);
-        JSONArray records = JSON.parseArray(data);
-        writer.writeHeader(ExportLocaleSupport.headers(resolvedLocale, "taskJson.headers"));
-        if (records != null) {
-            for (int i = 0; i < records.size(); i++) {
-                JSONObject record = records.getJSONObject(i);
-                if (record == null) {
-                    continue;
-                }
-                writer.writeRow(
-                        ExcelExportHelper.cell(TaskRecordExportSupport.resolvePageNum(record)),
-                        ExcelExportHelper.cell(record.getString("NO")),
-                        ExcelExportHelper.cell(record.getString("Pays")),
-                        ExcelExportHelper.cell(record.getString("Entrepot")),
-                        ExcelExportHelper.cell(record.getString("Date")),
-                        ExcelExportHelper.cell(record.getString("NOM_PRENOM")),
-                        ExcelExportHelper.cell(record.getString("AGENCE_INTERIMAIRE")),
-                        ExcelExportHelper.cell(record.getString("HORAIRES_DU_TRAVAIL")),
-                        ExcelExportHelper.cell(record.getString("ARRIVEE")),
-                        ExcelExportHelper.cell(record.getString("DEPAR")),
-                        ExcelExportHelper.cell(record.getInteger("PAUSE")),
-                        ExcelExportHelper.cell(TaskRecordExportSupport.formatWorkHours(record)),
-                        ExcelExportHelper.cell(record.getString("SIGNATURE")),
-                        ExcelExportHelper.cell(record.getString("Observations")),
-                        ExcelExportHelper.cell(TaskRecordExportSupport.formatAnomalyDescription(record)),
-                        ExcelExportHelper.cell(record.getString("SmartMark")));
-            }
-        }
+        taskExcelExportService.writeTaskJsonRecordsToExcel(task, writer, locale);
     }
 
     public Path createTaskExportTempFile(String taskId, String locale) throws IOException {
         Task task = getTaskForCurrentUser(taskId);
-        Path tempFile = Files.createTempFile("attendance-export-", ".xlsx");
-        try (ExcelSheetWriter writer = ExcelExportHelper.open(tempFile)) {
-            writeTaskJsonRecordsToExcel(task, writer, locale);
-        } catch (Exception e) {
-            try {
-                Files.deleteIfExists(tempFile);
-            } catch (IOException ignored) {
-                // ignore cleanup failure
-            }
-            if (e instanceof IOException) {
-                throw (IOException) e;
-            }
-            if (e instanceof BusinessException) {
-                throw (BusinessException) e;
-            }
-            throw new BusinessException(ErrorCode.FILE_UPLOAD_ERROR, ErrorKeys.SYSTEM_ERROR);
-        }
-        return tempFile;
+        return taskExcelExportService.createTaskExportTempFile(task, locale);
     }
-
-    private static final String[] EMPLOYEE_RECORD_EXPORT_BASE_HEADERS = {
-            "任务ID", "操作人", "任务状态", "创建时间", "文件名",
-            "页码", "NO", "姓名", "国家", "仓库", "日期", "中介机构", "班次",
-            "到达时间", "离开时间", "休息(分钟)", "出勤工时", "员工签名", "备注", "异常说明", "标记"
-    };
-
-    private static final int EMPLOYEE_RECORD_BASE_COLUMN_COUNT = EMPLOYEE_RECORD_EXPORT_BASE_HEADERS.length;
 
     public long exportEmployeeRecordsToExcel(DataScopeContext scope, TaskQuery query, Path outputFile,
                                              String exportUserId, LocalDateTime linkExpiresAt) throws IOException {
-        boolean includeThumbnails = query != null && Boolean.TRUE.equals(query.getIncludeThumbnails());
-        String status = query != null ? query.getStatus() : null;
-        String keyword = query != null ? query.getKeyword() : null;
-        String searchField = query != null ? query.getSearchField() : null;
-        String filters = query != null ? query.getFilters() : null;
-        long expEpoch = linkExpiresAt != null
-                ? linkExpiresAt.atZone(ZoneId.systemDefault()).toEpochSecond()
-                : LocalDateTime.now().plusDays(7).atZone(ZoneId.systemDefault()).toEpochSecond();
-        String resolvedLocale = query != null ? ExportLocaleSupport.resolveLocale(query.getLocale()) : ExportLocaleSupport.defaultLocale();
-
-        try (EmployeeRecordExcelWriter writer = EmployeeRecordExcelWriter.open(
-                outputFile, includeThumbnails, EMPLOYEE_RECORD_BASE_COLUMN_COUNT,
-                ExportLocaleSupport.text(resolvedLocale, "sheet.attendanceRecords"))) {
-            writer.writeHeader(buildEmployeeRecordExportHeaders(resolvedLocale));
-            return writeEmployeeRecordExportRows(
-                    scope, status, keyword, searchField, filters, writer, exportUserId, expEpoch, includeThumbnails);
-        }
-    }
-
-    private String[] buildEmployeeRecordExportHeaders(String locale) {
-        String[] base = ExportLocaleSupport.headers(locale, "employeeRecords.headers");
-        String[] headers = new String[base.length + 2];
-        System.arraycopy(base, 0, headers, 0, base.length);
-        headers[base.length] = ExportLocaleSupport.text(locale, "employeeRecords.colImages");
-        headers[base.length + 1] = ExportLocaleSupport.text(locale, "employeeRecords.colLinks");
-        return headers;
-    }
-
-    private long writeEmployeeRecordExportRows(DataScopeContext scope, String status, String keyword,
-                                               String searchField, String filters,
-                                               EmployeeRecordExcelWriter writer,
-                                               String exportUserId, long expEpoch, boolean includeThumbnails)
-            throws IOException {
-        List<Map<String, String>> conditionList = parseFilters(searchField, keyword, filters);
-        long count = 0;
-        int offset = 0;
-        final int batchSize = 500;
-        Map<String, Map<String, JSONObject>> taskRowCache = new HashMap<>();
-        Map<String, List<String>> taskImageKeysCache = new HashMap<>();
-        while (true) {
-            List<TaskRecord> rows = taskRecordMapper.selectForExport(scope, status, conditionList, offset, batchSize);
-            if (rows == null || rows.isEmpty()) {
-                break;
-            }
-            for (TaskRecord row : rows) {
-                EmployeeRecordDTO dto = toEmployeeRecord(row, taskRowCache);
-                List<String> imageKeys = resolveExportImageKeys(row, dto, taskImageKeysCache);
-                List<String> imageUrls = employeeRecordExportImages.buildSignedImageUrls(
-                        imageKeys, exportUserId, expEpoch);
-                String[] baseCells = toEmployeeRecordExportCells(dto);
-                List<EmployeeRecordExportImages.ExportImage> exportImages = new ArrayList<>();
-                if (includeThumbnails) {
-                    int limit = Math.min(imageKeys.size(), employeeRecordExportImages.getMaxThumbnailsPerRow());
-                    for (int i = 0; i < limit; i++) {
-                        EmployeeRecordExportImages.ExportImage image =
-                                employeeRecordExportImages.readExportImage(imageKeys.get(i));
-                        if (image != null) {
-                            exportImages.add(image);
-                        }
-                    }
-                }
-                writer.writeRecordRow(baseCells, imageUrls, exportImages);
-                count++;
-            }
-            offset += rows.size();
-            if (rows.size() < batchSize) {
-                break;
-            }
-        }
-        return count;
-    }
-
-    private List<String> resolveExportImageKeys(TaskRecord row, EmployeeRecordDTO dto,
-                                                Map<String, List<String>> taskImageKeysCache) {
-        List<String> keys = employeeRecordExportImages.collectImageKeys(dto.getImageUrls(), dto.getFileKey());
-        if (!keys.isEmpty()) {
-            return keys;
-        }
-        if (row == null || RecordJsonSupport.isBlank(row.getTaskId())) {
-            return keys;
-        }
-        return taskImageKeysCache.computeIfAbsent(row.getTaskId(), taskId -> {
-            Task task = taskMapper.selectTaskByTaskId(taskId);
-            return task != null ? parseImageUrlList(task) : Collections.emptyList();
-        });
-    }
-
-    private String[] toEmployeeRecordExportCells(EmployeeRecordDTO dto) {
-        return new String[] {
-                ExcelExportHelper.cell(dto.getTaskId()),
-                ExcelExportHelper.cell(dto.getUserName()),
-                ExcelExportHelper.cell(dto.getTaskStatus()),
-                ExcelExportHelper.cell(dto.getCreatedAt()),
-                ExcelExportHelper.cell(dto.getFileKey()),
-                ExcelExportHelper.cell(dto.getPageNum()),
-                ExcelExportHelper.cell(dto.getNo()),
-                ExcelExportHelper.cell(dto.getName()),
-                ExcelExportHelper.cell(dto.getCountry()),
-                ExcelExportHelper.cell(dto.getWarehouse()),
-                ExcelExportHelper.cell(dto.getDate()),
-                ExcelExportHelper.cell(dto.getAgency()),
-                ExcelExportHelper.cell(dto.getShift()),
-                ExcelExportHelper.cell(dto.getArrival()),
-                ExcelExportHelper.cell(dto.getDeparture()),
-                ExcelExportHelper.cell(dto.getPauseMinutes()),
-                ExcelExportHelper.cell(dto.getWorkHours()),
-                ExcelExportHelper.cell(dto.getSignature()),
-                ExcelExportHelper.cell(dto.getObservations()),
-                ExcelExportHelper.cell(dto.getAnomalyDescription()),
-                ExcelExportHelper.cell(dto.getSmartMark()),
-        };
+        return taskExcelExportService.exportEmployeeRecordsToExcel(scope, query, outputFile, exportUserId, linkExpiresAt);
     }
 
     public Map<String, Object> checkDuplicateNamesAgainstConfirmed(String taskId,
                                                                    List<Map<String, Object>> currentRecords,
                                                                    String scope) {
-        taskAccessService.requireOwnedTask(taskId);
+        taskAccessService.requireViewableTask(taskId);
         Map<String, Object> result = new HashMap<>();
         List<Map<String, Object>> hits = new ArrayList<>();
 
@@ -1411,9 +1008,10 @@ public class TaskService {
         m.put("AGENCE_INTERIMAIRE", agency);
         m.put("NOM_PRENOM", name);
         m.put("baseName", RecordJsonSupport.upper(baseName));
-        m.put("paysKey", RecordJsonSupport.upper(pays));
+        String paysKey = CountryCatalog.normalizeCountryKey(pays);
+        m.put("paysKey", paysKey != null ? paysKey : RecordJsonSupport.upper(pays));
         m.put("entrepotKey", RecordJsonSupport.upper(entrepot));
-        m.put("dateKey", date);
+        m.put("dateKey", RecognizedDateNormalizer.normalizeDate(date));
         m.put("agencyKey", RecordJsonSupport.upper(agency));
         m.put("sourceTaskId", sourceTaskId);
         return m;

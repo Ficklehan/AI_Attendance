@@ -39,7 +39,7 @@
     </delete>
 
     <select id="countUsersByRole" resultType="long">
-        SELECT COUNT(*) FROM users WHERE role = #{roleKey}
+        SELECT COUNT(DISTINCT user_id) FROM user_role WHERE role_key = #{roleKey}
     </select>
 
     <select id="maxSortOrder" resultType="int">

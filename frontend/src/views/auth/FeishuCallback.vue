@@ -2,7 +2,7 @@
   <div class="callback-container">
     <div class="loading-content">
       <div class="spinner"></div>
-      <p>正在处理飞书登录…</p>
+      <p>{{ $t('auth.feishuCallbackProcessing') }}</p>
     </div>
   </div>
 </template>
@@ -10,14 +10,16 @@
 <script setup>
 import { onMounted } from 'vue'
 import { useRouter } from 'vue-router'
+import { useI18n } from 'vue-i18n'
 import { useAuthStore } from '@/stores/auth'
 import { message } from 'ant-design-vue'
-import { setToken } from '@/utils/auth'
+import { setToken, setStoredUserInfo, touchActivity } from '@/utils/auth'
 import request from '@/api/index'
 import { setCachedWorkingCountry } from '@/utils/countryHeader'
 
 const router = useRouter()
 const authStore = useAuthStore()
+const { t } = useI18n()
 
 onMounted(async () => {
   try {
@@ -25,7 +27,7 @@ onMounted(async () => {
     const exchangeCode = urlParams.get('exchange')
 
     if (!exchangeCode) {
-      throw new Error('缺少登录凭证')
+      throw new Error(t('auth.feishuCallbackMissingCode'))
     }
 
     const res = await request({
@@ -39,10 +41,13 @@ onMounted(async () => {
 
     authStore.token = data.token
     authStore.userInfo = userInfo
-    authStore.roles = userInfo?.role ? [userInfo.role] : []
+    authStore.roles = userInfo?.roles?.length
+      ? [...userInfo.roles]
+      : (userInfo?.role ? [userInfo.role] : [])
 
     setToken(data.token)
-    localStorage.setItem('userInfo', JSON.stringify(userInfo))
+    setStoredUserInfo(userInfo)
+    touchActivity()
 
     if (userInfo?.personalWorkingCountry) {
       setCachedWorkingCountry(userInfo.personalWorkingCountry)
@@ -50,7 +55,7 @@ onMounted(async () => {
       setCachedWorkingCountry('default')
     }
 
-    message.success('飞书登录成功')
+    message.success(t('auth.feishuLoginSuccess'))
 
     const redirect = urlParams.get('redirect')
     const target = redirect && redirect.startsWith('/') && !redirect.startsWith('//')
@@ -62,7 +67,7 @@ onMounted(async () => {
     }, 500)
   } catch (error) {
     console.error('飞书登录失败:', error)
-    message.error('登录失败: ' + (error.message || '请重试'))
+    message.error(t('auth.feishuLoginFailed', { reason: error.message || t('common.error') }))
     setTimeout(() => {
       router.replace('/login')
     }, 1000)

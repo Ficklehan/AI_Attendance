@@ -8,7 +8,15 @@
     </div>
 
     <a-card class="surface-card" :bordered="false">
+      <a-empty
+        v-if="!loading && !rules.length"
+        class="reminder-empty"
+        :description="$t('settings.reminders.emptyDesc')"
+      >
+        <a-button type="primary" @click="openCreate">{{ $t('settings.reminders.add') }}</a-button>
+      </a-empty>
       <a-table
+        v-else
         :columns="columns"
         :data-source="rules"
         :loading="loading"
@@ -589,6 +597,10 @@ const nextStep = () => {
   }
   if (step.value === 1) {
     ensureLocaleTemplateKeys()
+    if (!hasAnyOperatorTemplate()) {
+      message.warning(t('settings.reminders.templateRequired'))
+      return
+    }
   }
   step.value += 1
 }
@@ -633,6 +645,7 @@ const handleSave = async () => {
     await fetchRules()
   } catch (e) {
     console.error(e)
+    message.error(e?.message || t('config.saveFailed'))
   } finally {
     saving.value = false
   }

@@ -70,18 +70,6 @@
               </div>
 
               <template v-else>
-                <div class="functional-country-row">
-                  <label class="dimension-label">{{ $t('settings.roles.functionalCountryLabel') }}</label>
-                  <a-select
-                    v-model:value="functionalCountry"
-                    :options="functionalCountryOptions"
-                    style="min-width: 220px"
-                  />
-                </div>
-                <p v-if="functionalCountry !== '__default__'" class="tab-desc tab-desc--sub">
-                  {{ $t('settings.roles.functionalCountryHint') }}
-                </p>
-
                 <div class="perm-list">
                   <div v-for="def in PERM_DEFS" :key="def.key" class="perm-row">
                     <div class="perm-label-block">
@@ -100,14 +88,14 @@
             </a-tab-pane>
 
             <a-tab-pane key="dataScope" :tab="$t('settings.roles.stepDataScope')">
-              <template v-if="currentScope && currentScope.editable">
+              <template v-if="currentScope?.editable">
                 <p class="tab-desc">{{ $t('settings.roles.dataScopeDesc') }}</p>
-                <a-radio-group v-model:value="currentScope.scopeType">
+                <a-radio-group v-model:value="activeScopeType">
                   <a-radio value="restricted">{{ $t('settings.roles.scopeRestricted') }}</a-radio>
                   <a-radio value="all">{{ $t('settings.roles.scopeAll') }}</a-radio>
                 </a-radio-group>
 
-                <template v-if="currentScope.scopeType === 'restricted'">
+                <template v-if="activeScopeType === 'restricted'">
                   <div class="dimension-hint-row">
                     <p class="tab-desc">{{ $t('settings.roles.restrictedHint') }}</p>
                     <a-button size="small" :loading="optionsLoading" @click="refreshDimensionOptions">
@@ -119,7 +107,7 @@
                   <div class="dimension-block">
                     <label class="dimension-label">{{ $t('settings.roles.dimOwnerUser') }}</label>
                     <DimensionCheckboxPicker
-                      v-model="currentScope.rules.owner_user"
+                      v-model="activeOwnerUserRules"
                       :options="ownerUserOptions"
                       :max-height="ownerUserPickerHeight"
                     />
@@ -138,7 +126,7 @@
                   <div class="dimension-block">
                     <label class="dimension-label">{{ $t('settings.roles.dimWarehouse') }}</label>
                     <DimensionCheckboxPicker
-                      v-model="currentScope.rules.warehouse"
+                      v-model="activeWarehouseRules"
                       :options="warehouseOptions"
                       :max-height="220"
                     />
@@ -147,7 +135,7 @@
                   <div class="dimension-block">
                     <label class="dimension-label">{{ $t('settings.roles.dimAgency') }}</label>
                     <DimensionCheckboxPicker
-                      v-model="currentScope.rules.agency"
+                      v-model="activeAgencyRules"
                       :options="agencyOptions"
                       :max-height="220"
                     />
@@ -161,9 +149,63 @@
                 <p class="tab-desc">{{ $t('settings.roles.adminDataHint') }}</p>
               </template>
             </a-tab-pane>
-          </a-tabs>
 
-          <p class="footer-hint">{{ $t('settings.roles.assignHint') }}</p>
+            <a-tab-pane key="members" :tab="$t('settings.roles.stepMembers')">
+              <a-alert
+                type="info"
+                show-icon
+                class="role-hint-alert"
+                :message="$t('settings.roles.membersCrossLinkTitle')"
+                :description="$t('settings.roles.membersCrossLinkDesc')"
+              />
+              <p class="tab-desc">{{ $t('settings.roles.membersDesc') }}</p>
+              <div class="members-toolbar">
+                <a-input-search
+                  v-model:value="memberKeyword"
+                  class="member-search"
+                  :placeholder="$t('settings.users.searchPlaceholder')"
+                  allow-clear
+                  @search="loadMembers"
+                />
+                <a-button type="primary" @click="openAddMembers">
+                  <template #icon><PlusOutlined /></template>
+                  {{ $t('settings.roles.addMembers') }}
+                </a-button>
+              </div>
+              <a-table
+                :columns="memberColumns"
+                :data-source="members"
+                :loading="membersLoading"
+                row-key="id"
+                class="rich-table-header"
+                :pagination="memberPagination"
+                @change="handleMemberTableChange"
+              >
+                <template #bodyCell="{ column, record }">
+                  <template v-if="column.key === 'action'">
+                    <a-popconfirm
+                      v-if="canRemoveMember"
+                      :title="$t('settings.roles.removeMemberConfirm', { name: memberDisplayName(record) })"
+                      :ok-text="$t('common.confirm')"
+                      :cancel-text="$t('common.cancel')"
+                      :disabled="!canRemoveMemberRecord(record)"
+                      @confirm="handleRemoveMember(record)"
+                    >
+                      <a-button
+                        type="link"
+                        size="small"
+                        danger
+                        :disabled="!canRemoveMemberRecord(record)"
+                      >
+                        {{ $t('settings.roles.removeMember') }}
+                      </a-button>
+                    </a-popconfirm>
+                    <span v-else class="member-action-muted">{{ $t('settings.roles.defaultRoleMemberHint') }}</span>
+                  </template>
+                </template>
+              </a-table>
+            </a-tab-pane>
+          </a-tabs>
         </template>
       </a-card>
     </div>
@@ -196,23 +238,66 @@
         </a-form-item>
       </a-form>
     </a-modal>
+
+    <a-modal
+      v-model:open="addMembersOpen"
+      :title="$t('settings.roles.addMembers')"
+      :confirm-loading="memberSaving"
+      width="720px"
+      @ok="submitAddMembers"
+    >
+      <a-input-search
+        v-model:value="candidateKeyword"
+        :placeholder="$t('settings.users.searchPlaceholder')"
+        allow-clear
+        class="member-search"
+        @search="loadCandidates"
+      />
+      <a-table
+        class="rich-table-header candidate-table"
+        :row-selection="candidateRowSelection"
+        :columns="candidateColumns"
+        :data-source="candidates"
+        :loading="candidatesLoading"
+        row-key="id"
+        :pagination="candidatePagination"
+        @change="handleCandidateTableChange"
+      >
+        <template #bodyCell="{ column, record }">
+          <template v-if="column.key === 'role'">
+            <a-space wrap size="small">
+              <a-tag
+                v-for="roleKey in userRoleKeys(record)"
+                :key="roleKey"
+                :color="roleKey === 'admin' ? 'blue' : 'default'"
+              >
+                {{ roleNameMap[roleKey] || roleKey }}
+              </a-tag>
+            </a-space>
+          </template>
+        </template>
+      </a-table>
+    </a-modal>
   </div>
 </template>
 
 <script setup>
-import { computed, onMounted, reactive, ref } from 'vue'
+import { computed, onMounted, reactive, ref, watch } from 'vue'
+import { onBeforeRouteLeave } from 'vue-router'
 import { useI18n } from 'vue-i18n'
-import { message } from 'ant-design-vue'
+import { message, Modal } from 'ant-design-vue'
 import { PlusOutlined } from '@ant-design/icons-vue'
 import PageShell from '@/components/PageShell.vue'
 import DimensionCheckboxPicker from '@/components/DimensionCheckboxPicker.vue'
 import { getRoleDataScopes, updateRoleDataScope, getDataScopeDimensionOptions } from '@/api/dataScope'
 import { getRolePermissions, updateRolePermissions } from '@/api/permissions'
-import { listRoles, createRole, updateRole, deleteRole } from '@/api/roles'
+import { listRoles, createRole, updateRole, deleteRole, getRoleMembers, getRoleMemberCandidates, addRoleMembers, removeRoleMember } from '@/api/roles'
 import { useCountryStore } from '@/stores/country'
+import { useAuthStore } from '@/stores/auth'
 
 const { t } = useI18n()
 const countryStore = useCountryStore()
+const authStore = useAuthStore()
 const loading = ref(false)
 const saving = ref(false)
 const roleSaving = ref(false)
@@ -232,15 +317,27 @@ const PERM_DEFS = [
     hintKey: 'settings.roles.capTaskDeleteConfirmedHint',
   },
   { key: 'reminderConfig', nameKey: 'settings.roles.capReminderConfig' },
+  { key: 'employees', nameKey: 'settings.roles.capEmployees' },
 ]
 
 const systemRoles = ref([])
 const roleScopes = reactive({})
 const rolePermissions = reactive({})
-const roleCountryPermissions = reactive({})
 const selectedRoleKeys = ref(['user'])
 const activeTab = ref('functional')
-const functionalCountry = ref('__default__')
+
+const members = ref([])
+const membersLoading = ref(false)
+const memberKeyword = ref('')
+const memberPagination = reactive({ current: 1, pageSize: 10, total: 0, showSizeChanger: true })
+
+const addMembersOpen = ref(false)
+const memberSaving = ref(false)
+const candidates = ref([])
+const candidatesLoading = ref(false)
+const candidateKeyword = ref('')
+const selectedCandidateIds = ref([])
+const candidatePagination = reactive({ current: 1, pageSize: 10, total: 0 })
 
 const dimensionOptions = reactive({
   country: [],
@@ -255,22 +352,137 @@ const createRoleOpen = ref(false)
 const renameRoleOpen = ref(false)
 const createRoleForm = reactive({ roleKey: '', roleName: '' })
 const renameRoleForm = reactive({ roleName: '' })
+const savedSnapshots = ref({})
+let lastActiveTab = 'functional'
 
 const activeRoleKey = computed(() => selectedRoleKeys.value[0] || 'user')
 const activeRole = computed(() => systemRoles.value.find((r) => r.roleKey === activeRoleKey.value) || null)
 const currentScope = computed(() => roleScopes[activeRoleKey.value] || null)
+
+const snapshotRole = (roleKey) => JSON.stringify({
+  perms: rolePermissions[roleKey] || {},
+  scope: roleScopes[roleKey] || {},
+})
+
+const refreshSnapshots = () => {
+  const next = {}
+  systemRoles.value.forEach((role) => {
+    next[role.roleKey] = snapshotRole(role.roleKey)
+  })
+  savedSnapshots.value = next
+}
+
+const isRoleDirty = (roleKey) => {
+  const key = roleKey ?? activeRoleKey.value
+  if (key === 'admin') return false
+  const saved = savedSnapshots.value[key]
+  if (!saved) return false
+  return saved !== snapshotRole(key)
+}
+
+const isConfigTab = (tab) => tab === 'functional' || tab === 'dataScope'
+
+const confirmDiscardChanges = (onOk) => {
+  Modal.confirm({
+    title: t('settings.roles.unsavedTitle'),
+    content: t('settings.roles.unsavedContent'),
+    okText: t('settings.roles.discardChanges'),
+    cancelText: t('common.cancel'),
+    onOk,
+  })
+}
+
+const onTabChange = (nextTab) => {
+  if (nextTab === 'members') loadMembers()
+}
+
+watch(activeTab, (newTab) => {
+  const oldTab = lastActiveTab
+  if (newTab !== oldTab && isConfigTab(oldTab) && isRoleDirty()) {
+    activeTab.value = oldTab
+    confirmDiscardChanges(() => {
+      activeTab.value = newTab
+      lastActiveTab = newTab
+      onTabChange(newTab)
+    })
+    return
+  }
+  lastActiveTab = newTab
+  if (newTab !== oldTab) onTabChange(newTab)
+})
+
+const activeScopeType = computed({
+  get: () => currentScope.value?.scopeType ?? 'restricted',
+  set: (value) => {
+    if (currentScope.value) currentScope.value.scopeType = value
+  },
+})
+
+const activeOwnerUserRules = computed({
+  get: () => currentScope.value?.rules?.owner_user ?? [],
+  set: (value) => {
+    if (currentScope.value?.rules) currentScope.value.rules.owner_user = value
+  },
+})
+
+const activeWarehouseRules = computed({
+  get: () => currentScope.value?.rules?.warehouse ?? [],
+  set: (value) => {
+    if (currentScope.value?.rules) currentScope.value.rules.warehouse = value
+  },
+})
+
+const activeAgencyRules = computed({
+  get: () => currentScope.value?.rules?.agency ?? [],
+  set: (value) => {
+    if (currentScope.value?.rules) currentScope.value.rules.agency = value
+  },
+})
+
 const isAdminRole = computed(() => activeRoleKey.value === 'admin')
 const canSaveCurrentRole = computed(() => !isAdminRole.value && !!currentScope.value?.editable)
+const canRemoveMember = computed(() => activeRoleKey.value !== 'user')
 
-const functionalCountryOptions = computed(() => {
-  const options = [{ value: '__default__', label: t('settings.roles.functionalCountryDefault') }]
-  ;(countryStore.selectOptions || []).forEach((item) => {
-    const code = item.value || item.code
-    if (!code || code === 'default') return
-    options.push({ value: code, label: item.label || code })
+const memberColumns = computed(() => [
+  { title: t('auth.username'), dataIndex: 'username', key: 'username' },
+  { title: t('settings.users.realName'), dataIndex: 'realName', key: 'realName' },
+  { title: t('settings.users.email'), dataIndex: 'email', key: 'email', ellipsis: true },
+  { title: t('common.operation'), key: 'action', width: 140, align: 'center' },
+])
+
+const candidateColumns = computed(() => [
+  { title: t('auth.username'), dataIndex: 'username', key: 'username' },
+  { title: t('settings.users.realName'), dataIndex: 'realName', key: 'realName' },
+  { title: t('settings.users.email'), dataIndex: 'email', key: 'email', ellipsis: true },
+  { title: t('settings.users.role'), key: 'role', width: 180 },
+])
+
+const roleNameMap = computed(() => {
+  const map = {}
+  systemRoles.value.forEach((role) => {
+    map[role.roleKey] = role.roleName
   })
-  return options
+  return map
 })
+
+const userRoleKeys = (record) => {
+  if (Array.isArray(record?.roles) && record.roles.length) return record.roles
+  return record?.role ? [record.role] : ['user']
+}
+
+const refreshAuthIfSelf = async (userIds) => {
+  const selfId = authStore.userInfo?.id
+  if (!selfId || !userIds.some((id) => id === selfId)) return
+  await authStore.fetchUserInfo()
+  await authStore.refreshPermissions()
+}
+
+const candidateRowSelection = computed(() => ({
+  selectedRowKeys: selectedCandidateIds.value,
+  onChange: (keys) => {
+    selectedCandidateIds.value = keys
+  },
+}))
 
 const formatOptionLabel = (value, label) => {
   const text = (label || value || '').trim()
@@ -401,9 +613,7 @@ const syncScopeState = (scopes) => {
 
 const syncPermissionState = (data) => {
   Object.keys(rolePermissions).forEach((key) => delete rolePermissions[key])
-  Object.keys(roleCountryPermissions).forEach((key) => delete roleCountryPermissions[key])
   const roles = data?.roles || data || {}
-  const byCountry = data?.byCountry || {}
   systemRoles.value.forEach((role) => {
     const roleKey = role.roleKey
     const source = roles?.[roleKey] || {}
@@ -411,50 +621,23 @@ const syncPermissionState = (data) => {
     PERM_DEFS.forEach((def) => {
       rolePermissions[roleKey][def.key] = !!source[def.key]
     })
-    const countryMap = byCountry?.[roleKey] || {}
-    roleCountryPermissions[roleKey] = {}
-    Object.entries(countryMap).forEach(([countryCode, perms]) => {
-      if (!countryCode || countryCode === 'default') return
-      roleCountryPermissions[roleKey][countryCode] = {}
-      PERM_DEFS.forEach((def) => {
-        roleCountryPermissions[roleKey][countryCode][def.key] = perms?.[def.key] !== undefined
-          ? !!perms[def.key]
-          : !!rolePermissions[roleKey][def.key]
-      })
-    })
   })
 }
 
-const ensureCountryPerms = (roleKey, countryCode) => {
-  if (!roleCountryPermissions[roleKey]) {
-    roleCountryPermissions[roleKey] = {}
-  }
-  if (!roleCountryPermissions[roleKey][countryCode]) {
-    roleCountryPermissions[roleKey][countryCode] = {}
-    PERM_DEFS.forEach((def) => {
-      roleCountryPermissions[roleKey][countryCode][def.key] = !!rolePermissions[roleKey]?.[def.key]
-    })
-  }
-}
-
-const getFunctionalPerm = (key) => {
-  const roleKey = activeRoleKey.value
-  if (functionalCountry.value === '__default__') {
-    return !!rolePermissions[roleKey]?.[key]
-  }
-  ensureCountryPerms(roleKey, functionalCountry.value)
-  const countryVal = roleCountryPermissions[roleKey][functionalCountry.value][key]
-  return countryVal !== undefined ? !!countryVal : !!rolePermissions[roleKey]?.[key]
-}
+const getFunctionalPerm = (key) => !!rolePermissions[activeRoleKey.value]?.[key]
 
 const setFunctionalPerm = (key, checked) => {
-  const roleKey = activeRoleKey.value
-  if (functionalCountry.value === '__default__') {
-    rolePermissions[roleKey][key] = checked
-    return
+  rolePermissions[activeRoleKey.value][key] = checked
+}
+
+const memberDisplayName = (record) => record.realName || record.username || record.email || record.id
+
+const canRemoveMemberRecord = (record) => {
+  if (!canRemoveMember.value) return false
+  if (activeRoleKey.value === 'admin') {
+    if (record.id === authStore.userInfo?.id) return false
   }
-  ensureCountryPerms(roleKey, functionalCountry.value)
-  roleCountryPermissions[roleKey][functionalCountry.value][key] = checked
+  return true
 }
 
 const applyDimensionOptions = (opts) => {
@@ -498,6 +681,7 @@ const loadData = async () => {
     syncScopeState(scopesRes.data)
     syncPermissionState(permsRes.data || {})
     applyDimensionOptions(optionsRes.data || {})
+    refreshSnapshots()
   } catch (e) {
     message.error(e.message || t('common.error'))
   } finally {
@@ -506,7 +690,111 @@ const loadData = async () => {
 }
 
 const onRoleMenuClick = ({ key }) => {
-  selectedRoleKeys.value = [key]
+  if (key === activeRoleKey.value) return
+  const switchRole = () => {
+    selectedRoleKeys.value = [key]
+    memberPagination.current = 1
+    if (activeTab.value === 'members') {
+      loadMembers()
+    }
+  }
+  if (isRoleDirty()) {
+    confirmDiscardChanges(switchRole)
+    return
+  }
+  switchRole()
+}
+
+const loadMembers = async () => {
+  if (!activeRoleKey.value) return
+  membersLoading.value = true
+  try {
+    const res = await getRoleMembers(activeRoleKey.value, {
+      page: memberPagination.current,
+      size: memberPagination.pageSize,
+      keyword: memberKeyword.value || undefined,
+    })
+    const page = res.data || {}
+    members.value = page.records || []
+    memberPagination.total = page.total || 0
+  } catch (e) {
+    message.error(e.message || t('common.error'))
+  } finally {
+    membersLoading.value = false
+  }
+}
+
+const handleMemberTableChange = (pag) => {
+  memberPagination.current = pag.current
+  memberPagination.pageSize = pag.pageSize
+  loadMembers()
+}
+
+const openAddMembers = async () => {
+  selectedCandidateIds.value = []
+  candidateKeyword.value = ''
+  candidatePagination.current = 1
+  addMembersOpen.value = true
+  await loadCandidates()
+}
+
+const loadCandidates = async () => {
+  candidatesLoading.value = true
+  try {
+    const res = await getRoleMemberCandidates(activeRoleKey.value, {
+      page: candidatePagination.current,
+      size: candidatePagination.pageSize,
+      keyword: candidateKeyword.value || undefined,
+    })
+    const page = res.data || {}
+    candidates.value = page.records || []
+    candidatePagination.total = page.total || 0
+  } catch (e) {
+    message.error(e.message || t('common.error'))
+  } finally {
+    candidatesLoading.value = false
+  }
+}
+
+const handleCandidateTableChange = (pag) => {
+  candidatePagination.current = pag.current
+  candidatePagination.pageSize = pag.pageSize
+  loadCandidates()
+}
+
+const submitAddMembers = async () => {
+  if (!selectedCandidateIds.value.length) {
+    message.warning(t('settings.roles.selectUsersToAdd'))
+    return
+  }
+  memberSaving.value = true
+  try {
+    await addRoleMembers(activeRoleKey.value, selectedCandidateIds.value)
+    addMembersOpen.value = false
+    message.success(t('settings.roles.memberAdded'))
+    await refreshAuthIfSelf(selectedCandidateIds.value)
+    await loadMembers()
+  } catch (e) {
+    message.error(e.message || t('config.saveFailed'))
+  } finally {
+    memberSaving.value = false
+  }
+}
+
+const handleRemoveMember = async (record) => {
+  try {
+    await removeRoleMember(activeRoleKey.value, record.id)
+    message.success(t('settings.roles.memberRemoved'))
+    await refreshAuthIfSelf([record.id])
+    await loadMembers()
+  } catch (e) {
+    message.error(e.message || t('config.saveFailed'))
+  }
+}
+
+const hasRestrictedRules = (rules = {}) => {
+  const dims = ['owner_user', 'country', 'warehouse', 'agency', 'work_region']
+  return dims.some((dim) => Array.isArray(rules[dim]) && rules[dim].length > 0)
 }
 
 const handleSave = async () => {
@@ -515,14 +803,16 @@ const handleSave = async () => {
   const perms = rolePermissions[roleKey]
   if (!scope?.editable || !perms) return
 
+  if (scope.scopeType === 'restricted' && !hasRestrictedRules(scope.rules)) {
+    message.warning(t('settings.roles.restrictedEmptyWarning'))
+    return
+  }
+
   saving.value = true
   try {
     await Promise.all([
       updateRolePermissions({
         roles: { [roleKey]: { ...perms } },
-        byCountry: roleCountryPermissions[roleKey]
-          ? { [roleKey]: { ...roleCountryPermissions[roleKey] } }
-          : {},
       }),
       updateRoleDataScope(roleKey, {
         scopeType: scope.scopeType,
@@ -531,6 +821,7 @@ const handleSave = async () => {
     ])
     message.success(t('settings.roles.saved'))
     await loadData()
+    refreshSnapshots()
   } catch (e) {
     message.error(e.message || t('config.saveFailed'))
   } finally {
@@ -603,9 +894,28 @@ const handleDeleteRole = async () => {
 }
 
 onMounted(loadData)
+
+onBeforeRouteLeave((_to, _from, next) => {
+  if (!isRoleDirty()) {
+    next()
+    return
+  }
+  Modal.confirm({
+    title: t('settings.roles.unsavedTitle'),
+    content: t('settings.roles.unsavedContent'),
+    okText: t('settings.roles.discardChanges'),
+    cancelText: t('common.cancel'),
+    onOk: () => next(),
+    onCancel: () => next(false),
+  })
+})
 </script>
 
 <style scoped lang="scss">
+.role-hint-alert {
+  margin-bottom: 12px;
+}
+
 .role-mgmt {
   display: flex;
   flex-direction: column;
@@ -691,6 +1001,27 @@ onMounted(loadData)
   align-items: center;
   gap: 12px;
   margin-bottom: 12px;
+}
+
+.members-toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  margin-bottom: 16px;
+  align-items: center;
+}
+
+.member-search {
+  width: 280px;
+}
+
+.candidate-table {
+  margin-top: 12px;
+}
+
+.member-action-muted {
+  color: var(--text-secondary, #999);
+  font-size: 12px;
 }
 
 .perm-list {

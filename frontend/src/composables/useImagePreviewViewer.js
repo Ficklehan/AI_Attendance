@@ -4,6 +4,7 @@ import { detectTableHeaderRotation, invalidateOrientationCache, warmupOcrWorker 
 const MIN_USER_SCALE = 0.25
 const MAX_USER_SCALE = 5
 const ZOOM_STEP = 1.2
+const AUTO_ORIENT_TIMEOUT_MS = 12000
 
 export function useImagePreviewViewer(options = {}) {
   const images = computed(() => options.images?.value ?? options.images ?? [])
@@ -88,6 +89,13 @@ export function useImagePreviewViewer(options = {}) {
     return !manualRotationKeys.value.has(key)
   }
 
+  const withTimeout = (promise, timeoutMs) => Promise.race([
+    promise,
+    new Promise((_, reject) => {
+      setTimeout(() => reject(new Error('auto-orient timeout')), timeoutMs)
+    }),
+  ])
+
   let orientToken = 0
   const runAutoOrient = async () => {
     if (!shouldAutoOrient() || !currentSrc.value) {
@@ -98,7 +106,10 @@ export function useImagePreviewViewer(options = {}) {
     const token = ++orientToken
     orienting.value = true
     try {
-      const { rotation: detected, confidence } = await detectTableHeaderRotation(currentSrc.value)
+      const { rotation: detected, confidence } = await withTimeout(
+        detectTableHeaderRotation(currentSrc.value),
+        AUTO_ORIENT_TIMEOUT_MS,
+      )
       if (token !== orientToken) return
       if (confidence !== 'none') {
         rotation.value = detected
@@ -114,15 +125,20 @@ export function useImagePreviewViewer(options = {}) {
   }
 
   const onImageLoad = () => {
+    nextTick(() => fitToViewport({ preserveRotation: true }))
     if (shouldAutoOrient()) {
-      orienting.value = true
+      runAutoOrient()
+      return
     }
-    runAutoOrient()
+    orienting.value = false
   }
 
   const onImageError = (event) => {
+    orienting.value = false
+    orientToken += 1
     event.target.src =
       'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNDAwIiBoZWlnaHQ9IjMwMCIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48cmVjdCB3aWR0aD0iNDAwIiBoZWlnaHQ9IjMwMCIgZmlsbD0iI2Y1ZjVmNSIvPjx0ZXh0IHg9IjUwJSIgeT0iNTAlIiBkb21pbmFudC1iYXNlbGluZT0ibWlkZGxlIiB0ZXh0LWFuY2hvcj0ibWlkZGxlIiBmaWxsPSIjYmZiZmJmIiBmb250LXNpemU9IjE2Ij7lm77niYfliqDovb3lpLHotKU88L3RleHQ+PC9zdmc+'
+    nextTick(() => fitToViewport({ preserveRotation: true }))
   }
 
   const clampUserScale = (value) => Math.max(MIN_USER_SCALE, Math.min(MAX_USER_SCALE, value))
@@ -162,12 +178,9 @@ export function useImagePreviewViewer(options = {}) {
       rotation.value = 0
       resetPanZoom()
     }
-    if (srcChanged && autoOrientEnabled.value) {
-      orienting.value = true
-    }
     nextTick(() => {
       fitToViewport({ preserveRotation })
-      if (srcChanged) {
+      if (srcChanged && autoOrientEnabled.value) {
         runAutoOrient()
       }
     })
@@ -321,14 +334,9 @@ export function useImagePreviewViewer(options = {}) {
       currentIndex.value = safeTarget
       rotation.value = 0
       resetPanZoom()
-      if (autoOrientEnabled.value && newImages[safeTarget]) {
-        orienting.value = true
-      }
+      orienting.value = false
       nextTick(() => {
         fitToViewport()
-        if (newImages[safeTarget]) {
-          runAutoOrient()
-        }
       })
     },
     { flush: 'sync' },

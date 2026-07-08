@@ -1,6 +1,5 @@
 package com.attendance.dto.request;
 
-import javax.validation.constraints.Email;
 import javax.validation.constraints.NotBlank;
 import javax.validation.constraints.Size;
 
@@ -10,8 +9,6 @@ public class AdminUserCreateRequest {
     @Size(min = 2, max = 64)
     private String username;
 
-    @NotBlank
-    @Email
     private String email;
 
     @NotBlank
@@ -19,6 +16,10 @@ public class AdminUserCreateRequest {
     private String password;
 
     private String role = "user";
+    private java.util.List<String> roles;
+
+    @NotBlank
+    @Size(max = 128)
     private String realName;
     private String employeeId;
     private String workingCountry;
@@ -53,6 +54,14 @@ public class AdminUserCreateRequest {
 
     public void setRole(String role) {
         this.role = role;
+    }
+
+    public java.util.List<String> getRoles() {
+        return roles;
+    }
+
+    public void setRoles(java.util.List<String> roles) {
+        this.roles = roles;
     }
 
     public String getRealName() {

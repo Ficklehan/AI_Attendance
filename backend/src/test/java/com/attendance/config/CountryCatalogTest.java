@@ -11,6 +11,21 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 class CountryCatalogTest {
 
     @Test
+    void resolveGlobalDefaultCountryUsesFranceForDefault() {
+        assertEquals("FR", CountryCatalog.resolveGlobalDefaultCountry(null));
+        assertEquals("FR", CountryCatalog.resolveGlobalDefaultCountry(""));
+        assertEquals("FR", CountryCatalog.resolveGlobalDefaultCountry("default"));
+        assertEquals("FR", CountryCatalog.resolveGlobalDefaultCountry("DEFAULT"));
+        assertEquals("DE", CountryCatalog.resolveGlobalDefaultCountry("DE"));
+    }
+
+    @Test
+    void defaultPaysLabelForDefaultCountryIsFrance() {
+        assertEquals("France", CountryCatalog.defaultPaysLabel("default"));
+        assertEquals("France", CountryCatalog.defaultPaysLabel(null));
+    }
+
+    @Test
     void resolveLegacyAliases() {
         assertEquals("IT", CountryCatalog.resolveCountryCodeFromPays("ITALIA"));
         assertEquals("IT", CountryCatalog.resolveCountryCodeFromPays("ITA"));

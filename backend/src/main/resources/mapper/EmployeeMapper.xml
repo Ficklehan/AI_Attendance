@@ -22,12 +22,16 @@
         WHERE e.status = 1
         <if test="scope != null and !scope.allUsers">
             <choose>
-                <when test="scope.workRegions == null or scope.workRegions.size() == 0">
-                    AND 1=0
+                <when test="scope.countryMatchTokens != null and scope.countryMatchTokens.size() > 0">
+                    AND UPPER(TRIM(e.region_code)) IN
+                    <foreach collection="scope.countryMatchTokens" item="cv" open="(" separator="," close=")">#{cv}</foreach>
                 </when>
-                <otherwise>
+                <when test="scope.workRegions != null and scope.workRegions.size() > 0">
                     AND e.region_code IN
                     <foreach collection="scope.workRegions" item="wr" open="(" separator="," close=")">#{wr}</foreach>
+                </when>
+                <otherwise>
+                    AND 1=0
                 </otherwise>
             </choose>
         </if>
@@ -128,14 +132,26 @@
             AND e.region_code IN
             <foreach collection="regionCodes" item="rc" open="(" separator="," close=")">#{rc}</foreach>
         </if>
+        <if test="keyword != null and keyword != ''">
+            AND (
+                e.emp_no LIKE CONCAT('%', #{keyword}, '%')
+                OR e.display_name LIKE CONCAT('%', #{keyword}, '%')
+                OR e.match_name LIKE CONCAT('%', #{keyword}, '%')
+                OR e.agency_key LIKE CONCAT('%', #{keyword}, '%')
+            )
+        </if>
         <if test="scope != null and !scope.allUsers">
             <choose>
-                <when test="scope.workRegions == null or scope.workRegions.size() == 0">
-                    AND 1=0
+                <when test="scope.countryMatchTokens != null and scope.countryMatchTokens.size() > 0">
+                    AND UPPER(TRIM(e.region_code)) IN
+                    <foreach collection="scope.countryMatchTokens" item="cv" open="(" separator="," close=")">#{cv}</foreach>
                 </when>
-                <otherwise>
+                <when test="scope.workRegions != null and scope.workRegions.size() > 0">
                     AND e.region_code IN
                     <foreach collection="scope.workRegions" item="wr" open="(" separator="," close=")">#{wr}</foreach>
+                </when>
+                <otherwise>
+                    AND 1=0
                 </otherwise>
             </choose>
         </if>

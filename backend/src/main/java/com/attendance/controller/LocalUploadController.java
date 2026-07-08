@@ -551,7 +551,17 @@ public class LocalUploadController {
                          @RequestParam(value = "uid", required = false) String uid,
                          @RequestParam(value = "sig", required = false) String sig,
                          HttpServletResponse response) throws IOException {
-        authorizeImageAccess(fileKey, exp, uid, sig);
+        try {
+            authorizeImageAccess(fileKey, exp, uid, sig);
+        } catch (BusinessException e) {
+            if (!response.isCommitted()) {
+                int status = e.getCode() == ErrorCode.TOKEN_INVALID
+                        ? HttpServletResponse.SC_UNAUTHORIZED
+                        : HttpServletResponse.SC_FORBIDDEN;
+                response.sendError(status);
+            }
+            return;
+        }
         try {
             if (fileStorage.isRemote()) {
                 response.sendRedirect(fileStorage.publicAccessPath(fileKey));

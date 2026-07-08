@@ -41,6 +41,9 @@ public class ReminderScheduleService {
     private UserMapper userMapper;
 
     @Autowired
+    private UserRoleService userRoleService;
+
+    @Autowired
     private PluginConfigService pluginConfigService;
 
     @Autowired
@@ -155,9 +158,12 @@ public class ReminderScheduleService {
             return false;
         }
         User creator = userMapper.selectUserById(task.getUserId());
+        List<String> creatorRoles = creator != null
+                ? userRoleService.getRoleKeysForUserId(creator.getId()) : Collections.emptyList();
         return ReminderSupport.taskMatchesRuleScope(
                 task,
                 creator,
+                creatorRoles,
                 ReminderSupport.parseScopeList(rule.getScopeCountriesJson()),
                 ReminderSupport.parseScopeList(rule.getScopeRolesJson()));
     }

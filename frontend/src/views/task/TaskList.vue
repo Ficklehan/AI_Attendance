@@ -1,5 +1,7 @@
 <template>
   <div class="task-list-container page-inner">
+    <div class="image-compare-layout" :class="{ 'image-compare-layout--dock-open': previewDockOpen }">
+      <div class="image-compare-layout__main">
     <PageShell :title="$t('tasks.title')" :subtitle="$t('tasks.subtitle')">
       <template #extra>
         <a-button :loading="exporting" @click="handleExport">
@@ -115,6 +117,19 @@
           @clear-freeze="clearFrozenKeys"
         />
       </div>
+
+      <a-alert
+        v-if="loadError"
+        type="error"
+        show-icon
+        class="task-load-error"
+        :message="$t('tasks.loadError')"
+        :description="loadError"
+      >
+        <template #action>
+          <a-button size="small" @click="loadTasks()">{{ $t('common.retry') }}</a-button>
+        </template>
+      </a-alert>
       
       <a-table 
         :columns="columns" 
@@ -189,10 +204,10 @@
           <template v-else-if="column.key === 'fileKey'">
             <CopyableCell :text="record.fileKey" block>
               <div class="file-cell">
-                <FileImageOutlined class="file-icon file-cell__preview" @click="previewImages(record)" />
+                <FileImageOutlined class="file-icon file-cell__preview" @click="previewTaskImages(record)" />
                 <span class="file-name">{{ record.fileKey }}</span>
                 <span v-if="getImageCount(record) > 1" class="image-count">({{ getImageCount(record) }} {{ $t('tasks.images') }})</span>
-                <EyeOutlined class="preview-icon file-cell__preview" @click="previewImages(record)" />
+                <EyeOutlined class="preview-icon file-cell__preview" @click="previewTaskImages(record)" />
               </div>
             </CopyableCell>
           </template>
@@ -237,11 +252,23 @@
         />
       </div>
     </a-card>
-    
+      </div>
+
+      <ImageCompareDockShell
+        v-if="previewDockOpen"
+        v-model:open="previewDockOpen"
+        v-model:index="previewCurrentIndex"
+        :images="previewImagesList"
+        :loading="previewFetching"
+        :title="$t('tasks.imagePreview')"
+        @fullscreen="openPreviewFullscreen"
+      />
+    </div>
+
     <ImagePreviewModal
-      v-model:open="previewVisible"
+      v-model:open="previewFullscreenOpen"
+      v-model:index="previewCurrentIndex"
       :images="previewImagesList"
-      :initial-index="previewCurrentIndex"
       :title="$t('tasks.imagePreview')"
     />
 
@@ -273,9 +300,11 @@ import {
 import { getTaskList, getTaskSummary, deleteTask } from '@/api/task'
 import { createTaskListExport } from '@/api/export'
 import { useExportCenter } from '@/composables/useExportCenter'
-import { resolveTaskImageUrls } from '@/utils/imageUrl'
+import { useTaskImagePreview } from '@/composables/useTaskImagePreview'
+import { warmupOcrWorker } from '@/utils/imageAutoOrient'
 import PageShell from '@/components/PageShell.vue'
 import ImagePreviewModal from '@/components/ImagePreviewModal.vue'
+import ImageCompareDockShell from '@/components/ImageCompareDockShell.vue'
 import TaskDeleteModal from '@/components/TaskDeleteModal.vue'
 import CopyableCell from '@/components/CopyableCell.vue'
 import { useAuthStore } from '@/stores/auth'
@@ -309,6 +338,7 @@ const tasks = ref([])
 const taskSummary = ref(null)
 const exporting = ref(false)
 const loading = ref(false)
+const loadError = ref('')
 const currentPage = ref(1)
 const pageSize = ref(20)
 const total = ref(0)
@@ -318,9 +348,15 @@ const searchField = ref('')
 const activeHeaderFilterField = ref('')
 const activeHeaderFilterColumn = ref(null)
 const headerFilterDraft = ref('')
-const previewVisible = ref(false)
-const previewImagesList = ref([])
-const previewCurrentIndex = ref(0)
+const {
+  previewImagesList,
+  previewCurrentIndex,
+  previewFetching,
+  previewDockOpen,
+  previewFullscreenOpen,
+  openPreviewFullscreen,
+  previewTaskImages,
+} = useTaskImagePreview()
 const selectedRowKeys = ref([])
 const batchDeleting = ref(false)
 const deleteModalOpen = ref(false)
@@ -485,6 +521,7 @@ const syncProcessingPoll = () => {
 const loadTasks = async (options = {}) => {
   const { silent = false } = options
   if (!silent) loading.value = true
+  if (!silent) loadError.value = ''
   try {
     const [listRes] = await Promise.all([
       getTaskList({
@@ -503,6 +540,7 @@ const loadTasks = async (options = {}) => {
   } catch (error) {
     if (!silent) {
       console.error('加载任务列表失败:', error)
+      loadError.value = error?.message || t('common.error')
     }
   } finally {
     if (!silent) loading.value = false
@@ -548,17 +586,6 @@ const getImageCount = (record) => {
   } catch {
     return 1
   }
-}
-
-const previewImages = async (record) => {
-  const urls = await resolveTaskImageUrls(record.imageUrls, record.fileKey)
-  if (!urls.length) {
-    message.warning(t('tasks.noImages'))
-    return
-  }
-  previewImagesList.value = urls
-  previewCurrentIndex.value = 0
-  previewVisible.value = true
 }
 
 const handleBatchDelete = () => {
@@ -760,7 +787,8 @@ const applyRouteQuery = () => {
 }
 
 onMounted(async () => {
-  if (!authStore.userInfo?.permissions?.taskDeleteConfirmed && authStore.isAdmin) {
+  warmupOcrWorker()
+  if (!authStore.userInfo?.permissions) {
     try {
       await authStore.fetchUserInfo()
     } catch {
@@ -792,6 +820,10 @@ watch(() => route.path, (newPath, oldPath) => {
 </script>
 
 <style lang="scss" scoped>
+.task-load-error {
+  margin-bottom: 12px;
+}
+
 .task-list-container {
   .task-summary-bar {
     margin-bottom: $space-4;

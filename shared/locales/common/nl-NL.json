@@ -73,6 +73,7 @@
     "aiInvalidJson": "Ongeldige JSON van model. Samenvatting: {preview}",
     "aiNoParseableRecords": "Geen analyseerbare JSON-regels. Samenvatting: {preview}",
     "aiFabricated": "Resultaten lijken verzonnen",
+    "aiMalformedRecords": "{malformedPercent}% van de rijen heeft een ongeldige structuur ({malformedCount}/{recordCount}), boven de drempel van {thresholdPercent}%. Upload een duidelijkere foto.",
     "aiUnreadableTimes": "Veel ??? bij namen maar tijden ingevuld",
     "validationFailed": "Validatie mislukt: {detail}",
     "missingParameter": "Ontbrekende parameter: {name}",

@@ -1,6 +1,7 @@
 package com.attendance.service;
 
 import com.attendance.common.BusinessException;
+import com.attendance.common.PageResult;
 import com.attendance.common.ErrorCode;
 import com.attendance.common.ErrorKeys;
 import com.attendance.config.CountryCatalog;
@@ -12,8 +13,11 @@ import com.attendance.dto.response.LoginResponse;
 import com.attendance.dto.response.UserListDTO;
 import com.attendance.entity.User;
 import com.attendance.mapper.UserMapper;
+import com.attendance.security.AdminAuthService;
 import com.attendance.security.SecurityUtils;
+import com.alibaba.fastjson.JSONObject;
 import com.attendance.util.CountryResolver;
+import com.attendance.util.FeishuUserProfileResolver;
 import com.attendance.util.IdGenerator;
 import com.attendance.util.JwtUtil;
 import com.attendance.util.PasswordEncoder;
@@ -25,6 +29,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
+import java.util.Map;
 import java.util.stream.Collectors;
 
 @Service
@@ -46,6 +51,12 @@ public class UserService {
 
     @Autowired
     private SystemRoleService systemRoleService;
+
+    @Autowired
+    private AdminAuthService adminAuthService;
+
+    @Autowired
+    private UserRoleService userRoleService;
 
     @Autowired
     @Lazy
@@ -72,6 +83,7 @@ public class UserService {
         user.setStatus("active");
 
         userMapper.insertUser(user);
+        userRoleService.initializeUserRoles(user.getId(), "user");
         log.info("用户注册成功: username={}", user.getUsername());
 
         return generateLoginResponse(user);
@@ -150,6 +162,17 @@ public class UserService {
         return userMapper.selectUserByFeishuUserId(feishuUserId);
     }
 
+    @Transactional
+    public LoginResponse authenticateFeishuUser(JSONObject userInfo, String feishuUserId) {
+        FeishuUserProfileResolver.Profile profile = FeishuUserProfileResolver.resolve(userInfo, feishuUserId);
+        User user = findByFeishuUserId(feishuUserId);
+        if (user != null) {
+            syncFeishuProfile(user, profile);
+            return loginByFeishu(user);
+        }
+        return registerByFeishu(feishuUserId, profile);
+    }
+
     public LoginResponse loginByFeishu(User user) {
         if (!"active".equals(user.getStatus())) {
             throw new BusinessException(ErrorCode.USER_NOT_FOUND, ErrorKeys.USER_DISABLED);
@@ -162,44 +185,201 @@ public class UserService {
     }
 
     @Transactional
-    public LoginResponse registerByFeishu(String feishuUserId, String name, String email) {
+    public LoginResponse registerByFeishu(String feishuUserId, FeishuUserProfileResolver.Profile profile) {
         if (userMapper.existsByFeishuUserId(feishuUserId) > 0) {
             throw new BusinessException(ErrorCode.USER_ALREADY_EXISTS, ErrorKeys.FEISHU_USER_ALREADY_EXISTS);
         }
 
-        if (email != null && userMapper.existsByEmail(email) > 0) {
+        String email = profile.getEmail() != null
+                ? profile.getEmail()
+                : FeishuUserProfileResolver.buildInternalEmail(feishuUserId);
+        if (userMapper.existsByEmail(email) > 0) {
             throw new BusinessException(ErrorCode.USER_ALREADY_EXISTS, ErrorKeys.EMAIL_ALREADY_EXISTS);
         }
 
         User user = new User();
         user.setId(IdGenerator.generateId());
-        user.setUsername(email != null ? email.split("@")[0] : "feishu_" + feishuUserId.substring(0, 8));
+        user.setUsername(allocateUniqueUsername(profile.getUsername(), null));
         user.setEmail(email);
         user.setPasswordHash(null);
         user.setFeishuUserId(feishuUserId);
         user.setRole("user");
-        user.setRealName(name);
+        user.setRealName(profile.getRealName());
+        user.setEmployeeId(profile.getEmployeeId());
         user.setStatus("active");
 
         userMapper.insertUser(user);
+        userRoleService.initializeUserRoles(user.getId(), "user");
         log.info("飞书用户注册成功: username={}, feishuUserId={}", user.getUsername(), feishuUserId);
 
         return generateLoginResponse(user);
     }
 
+    private void syncFeishuProfile(User user, FeishuUserProfileResolver.Profile profile) {
+        boolean dirty = false;
+
+        if (profile.getRealName() != null && !profile.getRealName().equals(user.getRealName())) {
+            user.setRealName(profile.getRealName());
+            dirty = true;
+        }
+        if (profile.getEmployeeId() != null && !profile.getEmployeeId().equals(user.getEmployeeId())) {
+            user.setEmployeeId(profile.getEmployeeId());
+            dirty = true;
+        }
+
+        if (profile.getEmail() != null && !profile.getEmail().equals(user.getEmail())) {
+            if (canUseEmail(profile.getEmail(), user.getId())) {
+                user.setEmail(profile.getEmail());
+                dirty = true;
+            }
+        } else if (FeishuUserProfileResolver.isPlaceholderEmail(user.getEmail(), user.getFeishuUserId())) {
+            String internalEmail = FeishuUserProfileResolver.buildInternalEmail(user.getFeishuUserId());
+            if (!internalEmail.equals(user.getEmail()) && canUseEmail(internalEmail, user.getId())) {
+                user.setEmail(internalEmail);
+                dirty = true;
+            }
+        }
+
+        if (FeishuUserProfileResolver.isPlaceholderUsername(user.getUsername(), user.getFeishuUserId())) {
+            String nextUsername = allocateUniqueUsername(profile.getUsername(), user.getId());
+            if (!nextUsername.equals(user.getUsername())) {
+                user.setUsername(nextUsername);
+                dirty = true;
+            }
+        }
+
+        if (dirty) {
+            userMapper.updateUser(user);
+            log.info("飞书用户资料已同步: userId={}, username={}, email={}",
+                    user.getId(), user.getUsername(), user.getEmail());
+        }
+    }
+
+    private boolean canUseEmail(String email, String userId) {
+        if (email == null || email.trim().isEmpty()) {
+            return false;
+        }
+        if (userMapper.existsByEmail(email) == 0) {
+            return true;
+        }
+        User existing = userMapper.selectUserByEmail(email);
+        return existing != null && userId.equals(existing.getId());
+    }
+
+    private String allocateUniqueUsername(String baseUsername, String excludeUserId) {
+        String candidate = baseUsername;
+        int suffix = 1;
+        while (isUsernameTaken(candidate, excludeUserId)) {
+            candidate = baseUsername + suffix;
+            suffix++;
+            if (suffix > 100) {
+                throw new BusinessException(ErrorCode.USER_ALREADY_EXISTS, ErrorKeys.USER_ALREADY_EXISTS);
+            }
+        }
+        return candidate;
+    }
+
+    private boolean isUsernameTaken(String username, String excludeUserId) {
+        User existing = userMapper.selectUserByUsername(username);
+        if (existing == null) {
+            return false;
+        }
+        return excludeUserId == null || !excludeUserId.equals(existing.getId());
+    }
+
     public List<UserListDTO> listUsersForAdmin(long offset, long size, String keyword) {
+        return listUsersForAdmin(offset, size, keyword, null, null);
+    }
+
+    public List<UserListDTO> listUsersForAdmin(long offset, long size, String keyword,
+                                               String role, String excludeRole) {
         String normalizedKeyword = normalizeSearchKeyword(keyword);
-        return userMapper.selectUserList(offset, size, normalizedKeyword).stream()
-                .map(this::toUserListDto)
+        List<User> users = userMapper.selectUserList(offset, size, normalizedKeyword, role, excludeRole);
+        Map<String, List<String>> roleMap = userRoleService.getRoleKeysByUserIds(
+                users.stream().map(User::getId).collect(Collectors.toList()));
+        return users.stream()
+                .map(user -> toUserListDto(user, roleMap.get(user.getId())))
                 .collect(Collectors.toList());
     }
 
     public long countUsersForAdmin(String keyword) {
-        return userMapper.countUser(normalizeSearchKeyword(keyword));
+        return countUsersForAdmin(keyword, null, null);
+    }
+
+    public long countUsersForAdmin(String keyword, String role, String excludeRole) {
+        return userMapper.countUser(normalizeSearchKeyword(keyword), role, excludeRole);
+    }
+
+    public PageResult<UserListDTO> listUsersByRoleForAdmin(String roleKey, long page, long size, String keyword) {
+        adminAuthService.requireAdmin();
+        String role = normalizeRole(roleKey);
+        long safePage = Math.max(page, 1);
+        long safeSize = Math.min(Math.max(size, 1), 200);
+        long offset = (safePage - 1) * safeSize;
+        List<UserListDTO> records = listUsersForAdmin(offset, safeSize, keyword, role, null);
+        long total = countUsersForAdmin(keyword, role, null);
+        return PageResult.of(records, total, safePage, safeSize);
+    }
+
+    public PageResult<UserListDTO> listMemberCandidatesForAdmin(String roleKey, long page, long size, String keyword) {
+        adminAuthService.requireAdmin();
+        String role = normalizeRole(roleKey);
+        long safePage = Math.max(page, 1);
+        long safeSize = Math.min(Math.max(size, 1), 200);
+        long offset = (safePage - 1) * safeSize;
+        List<UserListDTO> records = listUsersForAdmin(offset, safeSize, keyword, null, role);
+        long total = countUsersForAdmin(keyword, null, role);
+        return PageResult.of(records, total, safePage, safeSize);
+    }
+
+    @Transactional
+    public void assignUsersToRole(String roleKey, List<String> userIds) {
+        adminAuthService.requireAdmin();
+        String role = normalizeRole(roleKey);
+        if (userIds == null || userIds.isEmpty()) {
+            return;
+        }
+        String currentAdminId = SecurityUtils.getCurrentUserId();
+        for (String userId : userIds) {
+            if (userId == null || userId.trim().isEmpty()) {
+                continue;
+            }
+            User user = getUserById(userId.trim());
+            if ("deleted".equals(user.getStatus())) {
+                continue;
+            }
+            if (userRoleService.userHasRole(userId.trim(), "admin")
+                    && !"admin".equals(role)
+                    && userId.trim().equals(currentAdminId)) {
+                throw new BusinessException(ErrorCode.PERMISSION_DENIED, ErrorKeys.ACCESS_DENIED);
+            }
+        }
+        userRoleService.assignRoleToUsers(role, userIds);
+    }
+
+    @Transactional
+    public void removeUserFromRole(String roleKey, String userId) {
+        adminAuthService.requireAdmin();
+        String role = normalizeRole(roleKey);
+        if (!userRoleService.userHasRole(userId, role)) {
+            return;
+        }
+        String currentAdminId = SecurityUtils.getCurrentUserId();
+        if ("admin".equals(role)) {
+            if (userId.equals(currentAdminId)) {
+                throw new BusinessException(ErrorCode.PERMISSION_DENIED, ErrorKeys.ACCESS_DENIED);
+            }
+            if (userRoleService.countActiveAdmins() <= 1) {
+                throw new BusinessException(400, ErrorKeys.VALIDATION_FAILED,
+                        java.util.Collections.singletonMap("detail", "cannot remove the last admin"));
+            }
+        }
+        userRoleService.removeRoleFromUser(userId, role);
     }
 
     public UserListDTO getUserDtoForAdmin(String userId) {
-        return toUserListDto(getUserById(userId));
+        User user = getUserById(userId);
+        return toUserListDto(user, userRoleService.getRoleKeysForUserId(userId));
     }
 
     @Transactional
@@ -207,50 +387,68 @@ public class UserService {
         if (userMapper.existsByUsername(request.getUsername()) > 0) {
             throw new BusinessException(ErrorCode.USER_ALREADY_EXISTS, ErrorKeys.USER_ALREADY_EXISTS);
         }
-        if (userMapper.existsByEmail(request.getEmail()) > 0) {
+        String username = request.getUsername().trim();
+        String storedEmail = resolveAdminStoredEmail(request.getEmail(), username);
+        if (userMapper.existsByEmail(storedEmail) > 0) {
             throw new BusinessException(ErrorCode.USER_ALREADY_EXISTS, ErrorKeys.EMAIL_ALREADY_EXISTS);
         }
         String role = normalizeRole(request.getRole());
         User user = new User();
         user.setId(IdGenerator.generateId());
-        user.setUsername(request.getUsername().trim());
-        user.setEmail(request.getEmail().trim());
+        user.setUsername(username);
+        user.setEmail(storedEmail);
         user.setPasswordHash(passwordEncoder.encode(request.getPassword()));
         user.setRole(role);
-        user.setRealName(request.getRealName());
+        user.setRealName(request.getRealName().trim());
         user.setEmployeeId(request.getEmployeeId());
         user.setWorkingCountry(normalizeWorkingCountry(request.getWorkingCountry()));
         user.setStatus("active");
         userMapper.insertUser(user);
+        if (request.getRoles() != null && !request.getRoles().isEmpty()) {
+            userRoleService.setUserRoles(user.getId(), request.getRoles());
+        } else {
+            userRoleService.initializeUserRoles(user.getId(), role);
+        }
         log.info("管理员创建用户: username={}, role={}", user.getUsername(), role);
-        return toUserListDto(user);
+        return getUserDtoForAdmin(user.getId());
     }
 
     @Transactional
     public UserListDTO updateUserByAdmin(String userId, AdminUserUpdateRequest request) {
         User user = getUserById(userId);
         String currentAdminId = SecurityUtils.getCurrentUserId();
-        if ("admin".equalsIgnoreCase(user.getRole())
-                && request.getRole() != null
-                && !"admin".equalsIgnoreCase(request.getRole())
-                && userId.equals(currentAdminId)) {
-            throw new BusinessException(ErrorCode.PERMISSION_DENIED, ErrorKeys.ACCESS_DENIED);
-        }
-        if (request.getEmail() != null && !request.getEmail().trim().isEmpty()) {
-            User byEmail = userMapper.selectUserByEmail(request.getEmail().trim());
-            if (byEmail != null && !byEmail.getId().equals(userId)) {
-                throw new BusinessException(ErrorCode.USER_ALREADY_EXISTS, ErrorKeys.EMAIL_ALREADY_EXISTS);
+        if (request.getRoles() != null) {
+            if (userRoleService.userHasRole(userId, "admin")
+                    && !request.getRoles().contains("admin")
+                    && userId.equals(currentAdminId)) {
+                throw new BusinessException(ErrorCode.PERMISSION_DENIED, ErrorKeys.ACCESS_DENIED);
             }
-            user.setEmail(request.getEmail().trim());
+            userRoleService.setUserRoles(userId, request.getRoles());
+            user.setRole(userRoleService.resolvePrimaryRole(request.getRoles()));
+        } else if (request.getRole() != null && !request.getRole().trim().isEmpty()) {
+            if (userRoleService.userHasRole(userId, "admin")
+                    && !"admin".equalsIgnoreCase(request.getRole())
+                    && userId.equals(currentAdminId)) {
+                throw new BusinessException(ErrorCode.PERMISSION_DENIED, ErrorKeys.ACCESS_DENIED);
+            }
+            userRoleService.setUserRoles(userId, java.util.Collections.singletonList(normalizeRole(request.getRole())));
+            user.setRole(normalizeRole(request.getRole()));
+        }
+        if (request.getEmail() != null) {
+            String storedEmail = resolveAdminStoredEmail(request.getEmail(), user.getUsername());
+            if (!storedEmail.equals(user.getEmail())) {
+                User byEmail = userMapper.selectUserByEmail(storedEmail);
+                if (byEmail != null && !byEmail.getId().equals(userId)) {
+                    throw new BusinessException(ErrorCode.USER_ALREADY_EXISTS, ErrorKeys.EMAIL_ALREADY_EXISTS);
+                }
+                user.setEmail(storedEmail);
+            }
         }
         if (request.getPassword() != null && !request.getPassword().trim().isEmpty()) {
             user.setPasswordHash(passwordEncoder.encode(request.getPassword()));
         }
-        if (request.getRole() != null && !request.getRole().trim().isEmpty()) {
-            user.setRole(normalizeRole(request.getRole()));
-        }
         if (request.getRealName() != null) {
-            user.setRealName(request.getRealName());
+            user.setRealName(request.getRealName().trim());
         }
         if (request.getEmployeeId() != null) {
             user.setEmployeeId(request.getEmployeeId());
@@ -277,7 +475,7 @@ public class UserService {
         }
         userMapper.updateUser(user);
         log.info("管理员更新用户: userId={}, role={}", userId, user.getRole());
-        return toUserListDto(getUserById(userId));
+        return getUserDtoForAdmin(userId);
     }
 
     @Transactional
@@ -323,10 +521,22 @@ public class UserService {
         if (user.getId() != null && user.getId().equals(currentAdminId)) {
             throw new BusinessException(ErrorCode.PERMISSION_DENIED, ErrorKeys.CANNOT_DELETE_SELF);
         }
-        if ("admin".equalsIgnoreCase(user.getRole())
-                && userMapper.countActiveByRole("admin") <= 1) {
+        if (userRoleService.userHasRole(user.getId(), "admin")
+                && userRoleService.countActiveAdmins() <= 1) {
             throw new BusinessException(ErrorCode.PERMISSION_DENIED, ErrorKeys.CANNOT_DELETE_LAST_ADMIN);
         }
+    }
+
+    private String resolveAdminStoredEmail(String emailInput, String username) {
+        String trimmed = emailInput != null ? emailInput.trim() : "";
+        if (trimmed.isEmpty()) {
+            return FeishuUserProfileResolver.buildLocalEmail(username);
+        }
+        if (!FeishuUserProfileResolver.isValidEmailFormat(trimmed)) {
+            throw new BusinessException(400, ErrorKeys.VALIDATION_FAILED,
+                    java.util.Collections.singletonMap("detail", "invalid email format"));
+        }
+        return trimmed;
     }
 
     private String normalizeUserStatus(String status) {
@@ -354,11 +564,17 @@ public class UserService {
     }
 
     private UserListDTO toUserListDto(User user) {
+        return toUserListDto(user, userRoleService.getRoleKeysForUserId(user.getId()));
+    }
+
+    private UserListDTO toUserListDto(User user, List<String> roles) {
         UserListDTO dto = new UserListDTO();
         dto.setId(user.getId());
         dto.setUsername(user.getUsername());
-        dto.setEmail(user.getEmail());
-        dto.setRole(user.getRole());
+        dto.setEmail(FeishuUserProfileResolver.displayEmail(user.getEmail(), user.getFeishuUserId()));
+        List<String> roleList = roles != null ? roles : userRoleService.getRoleKeysForUserId(user.getId());
+        dto.setRoles(roleList);
+        dto.setRole(userRoleService.resolvePrimaryRole(roleList));
         dto.setRealName(user.getRealName());
         dto.setEmployeeId(user.getEmployeeId());
         String storedCountry = user.getWorkingCountry();
@@ -380,8 +596,10 @@ public class UserService {
         LoginResponse.UserInfo userInfo = new LoginResponse.UserInfo();
         userInfo.setId(user.getId());
         userInfo.setUsername(user.getUsername());
-        userInfo.setEmail(user.getEmail());
-        userInfo.setRole(user.getRole());
+        userInfo.setEmail(FeishuUserProfileResolver.displayEmail(user.getEmail(), user.getFeishuUserId()));
+        List<String> roles = userRoleService.getRoleKeysForUserId(user.getId());
+        userInfo.setRoles(roles);
+        userInfo.setRole(userRoleService.resolvePrimaryRole(roles));
         userInfo.setRealName(user.getRealName());
         userInfo.setWorkingCountry(resolveWorkingCountryForUser(user));
         userInfo.setPersonalWorkingCountry(getPersonalWorkingCountry(user));

@@ -29,7 +29,7 @@ function syncCountryBeforeRecognition(app) {
   if (!code || !app || !app.globalData.token) {
     return Promise.resolve(code)
   }
-  const sync = updateCurrentCountry(code, app)
+  const sync = updateCurrentCountry(code, app, { personal: true })
     .then(() => {
       traceLog.log('sync_country_ok', { country: code })
       return code

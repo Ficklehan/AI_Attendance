@@ -50,7 +50,13 @@ export default {
     "placeholder": "Selecteer een land",
     "apply": "Instellen als werkland",
     "manageConfig": "Landconfiguratie beheren",
-    "saved": "Werkland bijgewerkt"
+    "saved": "Werkland bijgewerkt",
+    "setupTitle": "Selecteer uw werkland",
+    "setupDesc": "Kies een werkland voor herkenningssjablonen, toegangsbereik en Feishu-synchronisatie.",
+    "setupLanguageLabel": "Interfacetaal",
+    "setupLanguageHint": "Wijzigingen zijn direct zichtbaar. U kunt de taal altijd wijzigen via de bovenste navigatiebalk.",
+    "setupPlaceholder": "Selecteer land/regio",
+    "setupConfirm": "Bevestigen en doorgaan"
   },
   "errors": {
     "loginRequired": "Log eerst in",
@@ -80,6 +86,7 @@ export default {
     "aiInvalidJson": "Ongeldige JSON van model. Samenvatting: {preview}",
     "aiNoParseableRecords": "Geen analyseerbare JSON-regels. Samenvatting: {preview}",
     "aiFabricated": "Resultaten lijken verzonnen",
+    "aiMalformedRecords": "{malformedPercent}% van de rijen heeft een ongeldige structuur ({malformedCount}/{recordCount}), boven de drempel van {thresholdPercent}%. Upload een duidelijkere foto.",
     "aiUnreadableTimes": "Veel ??? bij namen maar tijden ingevuld",
     "validationFailed": "Validatie mislukt: {detail}",
     "missingParameter": "Ontbrekende parameter: {name}",
@@ -420,7 +427,7 @@ export default {
     "duplicateTag": "Duplicaat",
     "expandDetail": "Details uitklappen",
     "collapseDetail": "Details inklappen",
-    "notDuplicate": "Geen duplicaat",
+    "notDuplicate": "Duplicaat bevestigen",
     "duplicateSuspect": "Mogelijk duplicaat: {names}",
     "sourceTask": "Brontaak",
     "unknownFile": "Onbekend bestand"

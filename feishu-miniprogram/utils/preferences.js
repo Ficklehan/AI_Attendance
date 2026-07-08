@@ -147,16 +147,45 @@ function syncCountryConfig(app) {
   return fetchCountryOptions(app).then(() => syncCountryFromServer(app))
 }
 
+function hydrateUserInfoPersonalCountryFromLocal(app) {
+  const instance = app || getAppSafe()
+  const userInfo = (instance && instance.globalData.userInfo) || getUserInfoSafe()
+  if (!userInfo || hasPersonalWorkingCountry(userInfo)) return userInfo
+  if (!isCountryConfigured()) return userInfo
+  const code = getCountry()
+  if (!code || code === 'default') return userInfo
+  const patched = {
+    ...userInfo,
+    personalWorkingCountry: code,
+    workingCountry: code,
+  }
+  if (instance && instance.globalData) {
+    instance.globalData.userInfo = patched
+  }
+  try {
+    tt.setStorageSync('userInfo', patched)
+  } catch (e) {
+    // ignore
+  }
+  return patched
+}
+
+function shouldPromptWorkingCountrySetup(app) {
+  hydrateUserInfoPersonalCountryFromLocal(app)
+  if (isCountryConfigured()) return false
+  return needsWorkingCountrySetup(getUserInfoSafe())
+}
+
 function ensureCountryConfigured() {
-  if (!needsWorkingCountrySetup(getUserInfoSafe()) && isCountryConfigured()) {
+  if (!shouldPromptWorkingCountrySetup()) {
     return true
   }
   tt.redirectTo({ url: '/pages/settings/index?setup=1' })
   return false
 }
 
-function redirectToCountrySetupIfNeeded() {
-  if (!needsWorkingCountrySetup(getUserInfoSafe()) && isCountryConfigured()) {
+function redirectToCountrySetupIfNeeded(app) {
+  if (!shouldPromptWorkingCountrySetup(app)) {
     return false
   }
   tt.redirectTo({ url: '/pages/settings/index?setup=1' })
@@ -179,5 +208,7 @@ module.exports = {
   ensureCountryConfigured,
   redirectToCountrySetupIfNeeded,
   fetchCountryOptions,
-  applyCountryFromUserInfo
+  applyCountryFromUserInfo,
+  hydrateUserInfoPersonalCountryFromLocal,
+  shouldPromptWorkingCountrySetup,
 }

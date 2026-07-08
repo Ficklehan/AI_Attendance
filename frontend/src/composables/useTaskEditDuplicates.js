@@ -1,138 +1,113 @@
-import { ref } from 'vue'
+import { ref, onScopeDispose } from 'vue'
 import { checkTaskDuplicateNames } from '@/api/task'
 import {
   stripSerialSuffix,
-  duplicateGroupKey,
   isEligibleForDuplicate,
   buildDuplicateMember,
   mergeDuplicateMembers,
   buildDuplicatePayload,
+  applyDuplicateDecorations,
 } from '@/utils/duplicateCheck'
 
 /**
- * TaskEdit 重名检测：远程提示、本地编号、展开详情
+ * TaskEdit 重名检测：远程提示、本任务内同组重名、自动编号、展开详情
  */
 export function useTaskEditDuplicates(taskId, records) {
   const expandedDuplicateRowKeys = ref([])
   const duplicateMetaMap = ref({})
   const duplicateRefreshing = ref(false)
   const duplicateScope = ref('confirmed_only')
+  let duplicateFetchTimer = null
 
-  const getDuplicateMeta = (record) => duplicateMetaMap.value[record?._rowKey]
+  const getDuplicateMeta = (record) => {
+    const meta = duplicateMetaMap.value[record?._rowKey]
+    if (!meta) return null
+    const peers = Array.isArray(meta.peers) ? meta.peers : []
+    const members = Array.isArray(meta.members) ? meta.members : []
+    if (peers.length > 0 || members.length > 1) return meta
+    return null
+  }
 
   const refreshDuplicateDecorations = () => {
     if (duplicateRefreshing.value) return
     duplicateRefreshing.value = true
     try {
-      const remoteMetaSnapshot = { ...duplicateMetaMap.value }
-      const groups = new Map()
-      records.value.forEach((record) => {
-        if (!record._rowKey) {
-          record._rowKey = `${taskId.value}-${Math.random().toString(36).slice(2, 8)}`
-        }
-        if (!record._baseName) {
-          record._baseName = stripSerialSuffix(record.NOM_PRENOM)
-        }
-        if (record._nameAutoNumbered && stripSerialSuffix(record.NOM_PRENOM) !== record._baseName) {
-          record._baseName = stripSerialSuffix(record.NOM_PRENOM)
-        }
-        if (!isEligibleForDuplicate(record)) {
-          if (record._nameAutoNumbered || record._duplicateConfirmedUnique) {
-            record.NOM_PRENOM = record._baseName || stripSerialSuffix(record.NOM_PRENOM)
-          }
-          record._nameAutoNumbered = false
-          return
-        }
-        const key = duplicateGroupKey(record)
-        const remoteHit = duplicateMetaMap.value[record._rowKey]
-        if (!remoteHit) {
-          record._nameAutoNumbered = false
-          return
-        }
-        if (!groups.has(key)) groups.set(key, [])
-        groups.get(key).push(record)
-      })
-
-      const meta = {}
-      groups.forEach((members) => {
-        members.forEach((record, idx) => {
-          const serial = String(idx + 1).padStart(2, '0')
-          const targetName = `${record._baseName} ${serial}`.trim()
-          if (
-            !record._duplicateConfirmedUnique
-            && (record._nameAutoNumbered || record.NOM_PRENOM === record._baseName || !record.NOM_PRENOM)
-          ) {
-            record.NOM_PRENOM = targetName
-            record._nameAutoNumbered = true
-          }
-          const localPeers = members
-            .filter((m) => m._rowKey !== record._rowKey)
-            .map((m) => `${m.NO || '?'}-${m.NOM_PRENOM || m._baseName || '?'}`)
-          const remotePeers = Array.isArray(remoteMetaSnapshot?.[record._rowKey]?.peers)
-            ? remoteMetaSnapshot[record._rowKey].peers
-            : []
-          const peers = [...new Set([...localPeers, ...remotePeers])]
-          const remoteMembers = remoteMetaSnapshot[record._rowKey]?.members || []
-          const localMembers = members.map((m) => buildDuplicateMember(m, taskId.value))
-          meta[record._rowKey] = {
-            peers,
-            members: mergeDuplicateMembers(remoteMembers, localMembers),
-          }
-        })
-      })
-      const mergedMeta = {}
-      Object.keys(duplicateMetaMap.value).forEach((k) => {
-        mergedMeta[k] = { ...duplicateMetaMap.value[k] }
-      })
-      Object.keys(meta).forEach((k) => {
-        mergedMeta[k] = { ...(mergedMeta[k] || {}), ...meta[k] }
-      })
+      const mergedMeta = applyDuplicateDecorations(
+        records.value,
+        duplicateMetaMap.value,
+        taskId.value,
+      )
       duplicateMetaMap.value = mergedMeta
-      expandedDuplicateRowKeys.value = expandedDuplicateRowKeys.value.filter((key) => !!mergedMeta[key])
+      // applyDuplicateDecorations 会就地改写 record.NOM_PRENOM（重名自动编号/还原）。
+      // a-table 依据 data-source 数组引用做行渲染缓存，仅改属性不换数组引用时姓名列不会刷新，
+      // 因此这里替换数组引用（保留原行对象），确保编号后的流水号能显示到姓名后。
+      records.value = records.value.slice()
+      expandedDuplicateRowKeys.value = expandedDuplicateRowKeys.value.filter((key) => !!getDuplicateMeta({ _rowKey: key }))
     } finally {
       duplicateRefreshing.value = false
     }
   }
 
+  const buildRemoteMetaFromApi = (duplicates) => {
+    const map = {}
+    ;(duplicates || []).forEach((d) => {
+      if (!d?.rowKey) return
+      const current = records.value.find((p) => p._rowKey === d.rowKey)
+      const peers = (d.matches || []).map((m) => `${m.NO || '?'}-${m.NOM_PRENOM || '?'}`)
+      map[d.rowKey] = {
+        peers,
+        members: mergeDuplicateMembers(
+          (d.matches || []).map((m) => ({
+            rowKey: `${m.sourceTaskId}-${m.NO}-${m.NOM_PRENOM}`,
+            sourceTaskId: m.sourceTaskId,
+            NO: m.NO,
+            displayName: m.NOM_PRENOM,
+            Pays: m.Pays,
+            Entrepot: m.Entrepot,
+            Date: m.Date,
+            AGENCE_INTERIMAIRE: m.AGENCE_INTERIMAIRE,
+            HORAIRES_DU_TRAVAIL: m.HORAIRES_DU_TRAVAIL,
+            ARRIVEE: m.ARRIVEE,
+            DEPAR: m.DEPAR,
+            PAUSE: m.PAUSE,
+            SIGNATURE: m.SIGNATURE,
+            Observations: m.Observations,
+          })),
+          current ? [buildDuplicateMember(current, taskId.value)] : [],
+        ),
+      }
+    })
+    return map
+  }
+
   const fetchConfirmedDuplicateHints = async () => {
     try {
       const payload = buildDuplicatePayload(records.value)
+      if (!payload.length) {
+        duplicateMetaMap.value = {}
+        refreshDuplicateDecorations()
+        return
+      }
       const res = await checkTaskDuplicateNames(taskId.value, payload, duplicateScope.value)
-      const map = {}
-      const duplicates = res?.data?.duplicates || []
-      duplicates.forEach((d) => {
-        if (!d?.rowKey) return
-        const current = records.value.find((p) => p._rowKey === d.rowKey)
-        const peers = (d.matches || []).map((m) => `${m.NO || '?'}-${m.NOM_PRENOM || '?'}`)
-        map[d.rowKey] = {
-          peers,
-          members: mergeDuplicateMembers(
-            (d.matches || []).map((m) => ({
-              rowKey: `${m.sourceTaskId}-${m.NO}-${m.NOM_PRENOM}`,
-              sourceTaskId: m.sourceTaskId,
-              NO: m.NO,
-              displayName: m.NOM_PRENOM,
-              Pays: m.Pays,
-              Entrepot: m.Entrepot,
-              Date: m.Date,
-              AGENCE_INTERIMAIRE: m.AGENCE_INTERIMAIRE,
-              HORAIRES_DU_TRAVAIL: m.HORAIRES_DU_TRAVAIL,
-              ARRIVEE: m.ARRIVEE,
-              DEPAR: m.DEPAR,
-              PAUSE: m.PAUSE,
-              SIGNATURE: m.SIGNATURE,
-              Observations: m.Observations,
-            })),
-            current ? [buildDuplicateMember(current, taskId.value)] : [],
-          ),
-        }
-      })
-      duplicateMetaMap.value = map
+      duplicateMetaMap.value = buildRemoteMetaFromApi(res?.data?.duplicates || [])
       refreshDuplicateDecorations()
     } catch (error) {
       console.error('加载已确认任务重名提示失败:', error)
+      refreshDuplicateDecorations()
     }
   }
+
+  const scheduleDuplicateRecheck = (delayMs = 300) => {
+    if (duplicateFetchTimer) window.clearTimeout(duplicateFetchTimer)
+    duplicateFetchTimer = window.setTimeout(() => {
+      duplicateFetchTimer = null
+      fetchConfirmedDuplicateHints()
+    }, delayMs)
+  }
+
+  onScopeDispose(() => {
+    if (duplicateFetchTimer) window.clearTimeout(duplicateFetchTimer)
+  })
 
   const handleDuplicateScopeChange = async () => {
     await fetchConfirmedDuplicateHints()
@@ -140,7 +115,7 @@ export function useTaskEditDuplicates(taskId, records) {
 
   const toggleDuplicateExpand = (record) => {
     const key = record?._rowKey
-    if (!key || !duplicateMetaMap.value[key]) return
+    if (!key || !getDuplicateMeta(record)) return
     if (expandedDuplicateRowKeys.value.includes(key)) {
       expandedDuplicateRowKeys.value = expandedDuplicateRowKeys.value.filter((k) => k !== key)
     } else {
@@ -162,9 +137,11 @@ export function useTaskEditDuplicates(taskId, records) {
 
   const confirmNotDuplicate = (record) => {
     record._duplicateConfirmedUnique = true
-    record._nameAutoNumbered = false
+    // 「重名确认」：确认为重名后取消姓名后的流水号，还原基础名。
     record.NOM_PRENOM = record._baseName || stripSerialSuffix(record.NOM_PRENOM)
+    record._nameAutoNumbered = false
     refreshDuplicateDecorations()
+    scheduleDuplicateRecheck()
   }
 
   const markNameManuallyEdited = (record) => {
@@ -173,7 +150,7 @@ export function useTaskEditDuplicates(taskId, records) {
     if (record._duplicateConfirmedUnique) {
       record._nameAutoNumbered = false
     }
-    refreshDuplicateDecorations()
+    scheduleDuplicateRecheck()
   }
 
   return {
@@ -184,6 +161,7 @@ export function useTaskEditDuplicates(taskId, records) {
     getDuplicateMeta,
     refreshDuplicateDecorations,
     fetchConfirmedDuplicateHints,
+    scheduleDuplicateRecheck,
     handleDuplicateScopeChange,
     toggleDuplicateExpand,
     handleTableExpand,

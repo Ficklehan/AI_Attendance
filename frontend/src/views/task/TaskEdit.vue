@@ -634,8 +634,8 @@
   
   <ImagePreviewModal
     v-model:open="previewFullscreenOpen"
+    v-model:index="previewCurrentIndex"
     :images="previewImagesList"
-    :initial-index="previewCurrentIndex"
   />
 
   <RecordCalibrationModal
@@ -662,14 +662,14 @@ import { message, Modal as aModal } from 'ant-design-vue'
 import { DeleteOutlined, UndoOutlined, ExclamationCircleOutlined, FileImageOutlined, EyeOutlined, UploadOutlined, DownloadOutlined, QuestionCircleOutlined, LoadingOutlined, PlusOutlined } from '@ant-design/icons-vue'
 import { getTaskDetail, getTaskProgress, confirmTask, deleteTask, retryFeishuSync, calibrateTaskRecord } from '@/api/task'
 import { useAuthStore } from '@/stores/auth'
-import { resolveTaskImageUrls, fileNameFromImageUrl } from '@/utils/imageUrl'
+import { fileNameFromImageUrl } from '@/utils/imageUrl'
 import StatOverview from '@/components/StatOverview.vue'
 import PageShell from '@/components/PageShell.vue'
 import TruncatedTag from '@/components/TruncatedTag.vue'
 import RowStrikeText from '@/components/RowStrikeText.vue'
 import ImagePreviewModal from '@/components/ImagePreviewModal.vue'
 import ImageCompareDockShell from '@/components/ImageCompareDockShell.vue'
-import { useImageComparePreview } from '@/composables/useImageComparePreview'
+import { useTaskImagePreview } from '@/composables/useTaskImagePreview'
 import RecordCalibrationModal from '@/components/RecordCalibrationModal.vue'
 import TaskDeleteModal from '@/components/TaskDeleteModal.vue'
 import TableSortableHeader from '@/components/TableSortableHeader.vue'
@@ -731,6 +731,7 @@ import { startAdaptivePoll } from '@/utils/adaptivePoll'
 import { isAbsentRow } from '@/utils/recordDisplay'
 import { resolveTaskRecordsJson } from '@/utils/taskRecordPayload'
 import { useTaskEditDuplicates } from '@/composables/useTaskEditDuplicates'
+import { stripSerialSuffix } from '@/utils/duplicateCheck'
 import { useTaskEditConfirmValidation } from '@/composables/useTaskEditConfirmValidation'
 import { useTaskEditRecordDisplay } from '@/composables/useTaskEditRecordDisplay'
 import { getFormatHintKeys, isFormatHintField } from '@/utils/fieldFormatHints'
@@ -775,8 +776,8 @@ const {
   duplicateRefreshing,
   duplicateScope,
   getDuplicateMeta,
-  refreshDuplicateDecorations,
   fetchConfirmedDuplicateHints,
+  scheduleDuplicateRecheck,
   handleDuplicateScopeChange,
   toggleDuplicateExpand,
   handleTableExpand,
@@ -1024,14 +1025,15 @@ const rawData = ref('')
 const showAnomalyDetail = ref(false)
 const ANOMALY_DETAIL_LIMIT = 20
 const VALIDATION_BANNER_DEBOUNCE_MS = 450
-const previewImagesList = ref([])
-const previewCurrentIndex = ref(0)
 const {
-  dockOpen: previewDockOpen,
-  fullscreenOpen: previewFullscreenOpen,
-  openPreview: openPreviewPanel,
-  openFullscreen: openPreviewFullscreen,
-} = useImageComparePreview()
+  previewImagesList,
+  previewCurrentIndex,
+  previewDockOpen,
+  previewFullscreenOpen,
+  openPreviewFullscreen,
+  loadTaskImageUrls,
+  openImagePreviewAt,
+} = useTaskImagePreview()
 const task = ref(null)
 const countryStore = useCountryStore()
 const canDeleteTask = computed(() => {
@@ -1599,7 +1601,7 @@ const loadTask = async (silent = false, options = {}) => {
           ...record,
           isDeleted: Boolean(record.isDeleted || record.deleted),
           _rowKey: record._rowKey || `${taskId.value}-${idx}`,
-          _baseName: String(sanitizeFieldValue(record.NOM_PRENOM) || '').trim(),
+          _baseName: stripSerialSuffix(String(sanitizeFieldValue(record.NOM_PRENOM) || '').trim()),
           _nameAutoNumbered: false,
           _duplicateConfirmedUnique: false
         }))
@@ -1608,14 +1610,13 @@ const loadTask = async (silent = false, options = {}) => {
         normalized.CHECKER = signatureMark
         return normalized
       })
-      refreshDuplicateDecorations()
       await fetchConfirmedDuplicateHints()
       scheduleRequiredMissingCountUpdate(true)
       scheduleAnomalyCountUpdate(true)
     }
     rawData.value = task.value.aiRawOutput || ''
     
-    previewImagesList.value = await resolveTaskImageUrls(task.value.imageUrls, task.value.fileKey)
+    await loadTaskImageUrls(task.value)
   } catch (error) {
     const msg = String(error?.message || '')
     if (msg.includes(t('errors.taskNotFound')) || /任务不存在|任务已删除|Task not found/i.test(msg)) {
@@ -1728,8 +1729,7 @@ const handleReupload = () => {
 }
 
 const openImagePreview = (index) => {
-  previewCurrentIndex.value = Math.min(Math.max(index, 0), Math.max(previewImagesList.value.length - 1, 0))
-  openPreviewPanel()
+  openImagePreviewAt(index)
 }
 
 const getFileName = (url) => {
@@ -1751,7 +1751,7 @@ const handleAddManualRecord = () => {
   normalized.CHECKER = signatureMark
   records.value = [...records.value, normalized]
   clearRowCache()
-  refreshDuplicateDecorations()
+  scheduleDuplicateRecheck(0)
   scheduleRequiredMissingCountUpdate(true)
   scheduleAnomalyCountUpdate(true)
   if (visibleRowCount.value < records.value.length) {
@@ -1786,7 +1786,7 @@ const toggleDelete = (record, index) => {
   }
   records.value.splice(index, 1, record)
   clearRowCache()
-  refreshDuplicateDecorations()
+  scheduleDuplicateRecheck(0)
 }
 
 const calculateWorkHours = (record) => {
@@ -2025,12 +2025,9 @@ onMounted(async () => {
   loadTask()
 })
 
-let duplicateDebounceTimer = null
-
 onUnmounted(() => {
   isComponentMounted = false
   expandedDuplicateRowKeys.value = []
-  if (duplicateDebounceTimer) window.clearTimeout(duplicateDebounceTimer)
   if (requiredValidationDebounceTimer) window.clearTimeout(requiredValidationDebounceTimer)
   if (anomalyCountDebounceTimer) window.clearTimeout(anomalyCountDebounceTimer)
   tableLoadMoreObserver?.disconnect()
@@ -2100,11 +2097,7 @@ watch(validationWatchSignature, () => {
 
 watch(duplicateWatchSignature, () => {
   if (duplicateRefreshing.value) return
-  if (duplicateDebounceTimer) window.clearTimeout(duplicateDebounceTimer)
-  duplicateDebounceTimer = window.setTimeout(() => {
-    duplicateDebounceTimer = null
-    refreshDuplicateDecorations()
-  }, 300)
+  scheduleDuplicateRecheck(300)
 })
 
 watch(headerFilters, () => {

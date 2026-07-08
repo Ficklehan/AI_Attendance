@@ -50,7 +50,13 @@ export default {
     "placeholder": "Seleccione un país",
     "apply": "Establecer como país de trabajo",
     "manageConfig": "Gestionar configuración del país",
-    "saved": "País de trabajo actualizado"
+    "saved": "País de trabajo actualizado",
+    "setupTitle": "Seleccione su país de trabajo",
+    "setupDesc": "Elija un país de trabajo para plantillas de reconocimiento, alcance de acceso y sincronización con Feishu.",
+    "setupLanguageLabel": "Idioma de la interfaz",
+    "setupLanguageHint": "Los cambios se aplican de inmediato. Puede cambiar el idioma en cualquier momento desde la barra de navegación superior.",
+    "setupPlaceholder": "Seleccionar país/región",
+    "setupConfirm": "Confirmar y continuar"
   },
   "errors": {
     "loginRequired": "Inicie sesión primero",
@@ -64,6 +70,7 @@ export default {
     "aiInvalidJson": "El modelo devolvió JSON inválido sin comillas. Intente con una imagen más clara. Resumen: {preview}",
     "aiNoParseableRecords": "El modelo no devolvió filas JSON de asistencia analizables. Intente con una imagen más clara. Resumen: {preview}",
     "aiFabricated": "Los resultados parecen inventados y no leídos de la imagen. Suba una hoja de asistencia más clara y completa",
+    "aiMalformedRecords": "{malformedPercent}% de las filas tienen estructura inválida ({malformedCount}/{recordCount}), por encima del umbral del {thresholdPercent}%. Suba una foto más clara y completa.",
     "aiUnreadableTimes": "Muchos nombres/IDs ilegibles pero horarios uniformes — probablemente inventados. Suba una foto más clara",
     "systemError": "Error del sistema, inténtelo más tarde",
     "requestFailed": "Solicitud fallida",
@@ -435,7 +442,7 @@ export default {
     "duplicateTag": "Duplicado",
     "expandDetail": "Expandir detalle",
     "collapseDetail": "Contraer detalle",
-    "notDuplicate": "No es duplicado",
+    "notDuplicate": "Confirmar duplicado",
     "duplicateSuspect": "Posible duplicado: {names}",
     "sourceTask": "Tarea origen"
   },

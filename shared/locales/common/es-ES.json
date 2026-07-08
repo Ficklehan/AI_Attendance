@@ -57,6 +57,7 @@
     "aiInvalidJson": "El modelo devolvió JSON inválido sin comillas. Intente con una imagen más clara. Resumen: {preview}",
     "aiNoParseableRecords": "El modelo no devolvió filas JSON de asistencia analizables. Intente con una imagen más clara. Resumen: {preview}",
     "aiFabricated": "Los resultados parecen inventados y no leídos de la imagen. Suba una hoja de asistencia más clara y completa",
+    "aiMalformedRecords": "{malformedPercent}% de las filas tienen estructura inválida ({malformedCount}/{recordCount}), por encima del umbral del {thresholdPercent}%. Suba una foto más clara y completa.",
     "aiUnreadableTimes": "Muchos nombres/IDs ilegibles pero horarios uniformes — probablemente inventados. Suba una foto más clara",
     "systemError": "Error del sistema, inténtelo más tarde",
     "requestFailed": "Solicitud fallida",

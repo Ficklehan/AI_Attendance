@@ -16,6 +16,8 @@
     "sync:miniprogram-shared": "node scripts/sync-miniprogram-shared.mjs",
     "check:locale": "cd frontend && npm run check:locale",
     "check:locale:common": "cd frontend && npm run check:locale:common",
-    "check:locale:generated": "node scripts/check-locale-generated.mjs"
+    "check:locale:generated": "node scripts/check-locale-generated.mjs",
+    "check:miniprogram-shared": "node scripts/check-miniprogram-shared-sync.mjs",
+    "sync:miniprogram-shared:check": "npm run sync:miniprogram-shared && npm run check:miniprogram-shared"
   }
 }

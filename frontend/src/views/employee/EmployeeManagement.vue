@@ -2,7 +2,7 @@
   <div class="employee-mgmt page-inner">
     <PageShell :title="$t('employees.title')" :subtitle="$t('employees.subtitle')">
       <template #extra>
-        <a-button v-if="authStore.isAdmin" :loading="backfilling" @click="handleBackfill">
+        <a-button v-if="canManageRoles(authStore)" :loading="backfilling" @click="handleBackfill">
           {{ $t('employees.backfill') }}
         </a-button>
       </template>
@@ -42,6 +42,9 @@
             :pagination="listPagination"
             @change="handleListTableChange"
           >
+            <template #emptyText>
+              <a-empty :description="$t('employees.emptyList')" />
+            </template>
             <template #bodyCell="{ column, record, text }">
               <template v-if="column.key === 'regionCode'">
                 <CopyableCell :text="formatEmployeeRegion(record.regionCode)" />
@@ -55,30 +58,41 @@
 
         <a-tab-pane key="weekly" :tab="$t('employees.tabWeekly')">
           <div class="filter-bar weekly-bar">
-            <a-space wrap>
+            <a-space wrap :size="12">
               <a-button @click="shiftWeek(-1)">{{ $t('employees.prevWeek') }}</a-button>
-              <a-input
-                v-model:value="isoWeek"
-                class="week-input"
-                :placeholder="$t('employees.isoWeekPlaceholder')"
-                @press-enter="loadWeekly"
+              <a-date-picker
+                v-model:value="weekValue"
+                class="week-picker"
+                picker="week"
+                :allow-clear="false"
+                :placeholder="$t('employees.selectWeek')"
+                @change="loadWeekly"
               />
               <a-button @click="shiftWeek(1)">{{ $t('employees.nextWeek') }}</a-button>
               <span v-if="weeklyRangeLabel" class="week-range">{{ weeklyRangeLabel }}</span>
             </a-space>
-            <a-select
-              v-model:value="weeklyRegionCodes"
-              class="region-select"
-              mode="multiple"
-              :options="regionSelectOptions"
-              :placeholder="$t('employees.regionFilterPlaceholder')"
-              allow-clear
-              :max-tag-count="2"
-              show-search
-              option-filter-prop="label"
-              @change="loadWeekly"
-            />
-            <a-button type="primary" @click="loadWeekly">{{ $t('common.search') }}</a-button>
+            <a-space wrap :size="12">
+              <a-input
+                v-model:value="weeklyKeyword"
+                class="search-input"
+                :placeholder="$t('employees.searchPlaceholder')"
+                allow-clear
+                @press-enter="loadWeekly"
+              />
+              <a-select
+                v-model:value="weeklyRegionCodes"
+                class="region-select"
+                mode="multiple"
+                :options="regionSelectOptions"
+                :placeholder="$t('employees.regionFilterPlaceholder')"
+                allow-clear
+                :max-tag-count="2"
+                show-search
+                option-filter-prop="label"
+                @change="loadWeekly"
+              />
+              <a-button type="primary" @click="loadWeekly">{{ $t('common.search') }}</a-button>
+            </a-space>
           </div>
           <a-table
             :columns="weeklyColumns"
@@ -89,6 +103,9 @@
             :pagination="false"
             :scroll="{ x: weeklyScrollX }"
           >
+            <template #emptyText>
+              <a-empty :description="$t('employees.emptyWeekly')" />
+            </template>
             <template #bodyCell="{ column, record, text }">
               <template v-if="column.key?.startsWith('day-')">
                 <CopyableCell
@@ -119,10 +136,13 @@
 import { computed, onMounted, reactive, ref, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { message, Modal } from 'ant-design-vue'
+import dayjs from 'dayjs'
 import PageShell from '@/components/PageShell.vue'
 import CopyableCell from '@/components/CopyableCell.vue'
 import { getEmployeeList, getWeeklyAttendance, backfillEmployees } from '@/api/employee'
+import { getMyDataScope } from '@/api/dataScope'
 import { useAuthStore } from '@/stores/auth'
+import { canManageRoles } from '@/utils/permissions'
 import { useCountryStore } from '@/stores/country'
 import { getCachedWorkingCountry } from '@/utils/countryHeader'
 import { resolveCountryDisplayLabel } from '@/utils/countryLabels'
@@ -133,11 +153,28 @@ const { t, locale } = useI18n()
 const authStore = useAuthStore()
 const countryStore = useCountryStore()
 
+const dataScope = ref({
+  allUsers: true,
+  workRegions: [],
+})
+
+function allowedRegionCodes() {
+  if (dataScope.value.allUsers) return null
+  return (dataScope.value.workRegions || [])
+    .map((code) => normalizeCountryCode(code))
+    .filter(Boolean)
+}
+
 function buildInitialRegionCodes() {
+  const allowed = allowedRegionCodes()
   const cached = getCachedWorkingCountry()
-  if (cached && cached !== 'default') {
-    return [normalizeCountryCode(cached)]
+  const cachedNorm = cached && cached !== 'default' ? normalizeCountryCode(cached) : null
+  if (allowed && allowed.length > 0) {
+    if (cachedNorm && allowed.includes(cachedNorm)) return [cachedNorm]
+    if (allowed.length === 1) return [allowed[0]]
+    return []
   }
+  if (cachedNorm) return [cachedNorm]
   return []
 }
 
@@ -156,15 +193,35 @@ const listPagination = reactive({
 })
 
 const isoWeek = ref(currentIsoWeek())
+const weeklyKeyword = ref('')
 const weeklyRegionCodes = ref(buildInitialRegionCodes())
 const weeklyDays = ref([])
 const weeklyRangeLabel = ref('')
 const weeklyRows = ref([])
 const weeklyLoading = ref(false)
 
+// 周选择器 <-> ISO 周字符串（沿用现有 ISO 周解析，保证与后端一致）
+const weekValue = computed({
+  get() {
+    const days = parseIsoWeek(isoWeek.value)
+    return days?.length ? dayjs(`${days[0]}T12:00:00`) : null
+  },
+  set(val) {
+    if (!val) return
+    isoWeek.value = currentIsoWeek(val.toDate())
+  },
+})
+
 const regionSelectOptions = computed(() => {
   void locale.value
-  return countryStore.selectOptions
+  const all = countryStore.selectOptions || []
+  const allowed = allowedRegionCodes()
+  if (!allowed) return all
+  const allowedSet = new Set(allowed)
+  return all.filter((item) => {
+    const code = normalizeCountryCode(item.value || item.code)
+    return allowedSet.has(code)
+  })
 })
 
 const listColumns = computed(() => [
@@ -244,8 +301,8 @@ function shiftWeek(delta) {
 function formatDayHeader(day) {
   if (!day) return ''
   const d = new Date(`${day}T12:00:00Z`)
-  const weekdays = ['日', '一', '二', '三', '四', '五', '六']
-  return `${day.slice(5)}\n周${weekdays[d.getUTCDay()]}`
+  const weekday = t(`employees.weekdays.${d.getUTCDay()}`)
+  return `${day.slice(5)}\n${weekday}`
 }
 
 function formatHours(value) {
@@ -278,6 +335,7 @@ async function loadWeekly() {
   try {
     const res = await getWeeklyAttendance({
       isoWeek: isoWeek.value || undefined,
+      keyword: weeklyKeyword.value || undefined,
       regionCodes: weeklyRegionCodes.value,
     })
     const data = res.data || {}
@@ -345,6 +403,18 @@ onMounted(async () => {
   } catch {
     /* ignore */
   }
+  try {
+    const res = await getMyDataScope()
+    const scope = res?.data || {}
+    dataScope.value = {
+      allUsers: scope.allUsers === true,
+      workRegions: Array.isArray(scope.workRegions) ? scope.workRegions : [],
+    }
+    regionCodes.value = buildInitialRegionCodes()
+    weeklyRegionCodes.value = buildInitialRegionCodes()
+  } catch {
+    /* ignore */
+  }
   loadList()
 })
 </script>
@@ -364,8 +434,8 @@ onMounted(async () => {
   min-width: 220px;
   max-width: 360px;
 }
-.week-input {
-  width: 120px;
+.week-picker {
+  width: 180px;
 }
 .week-range {
   color: var(--text-secondary, #666);

@@ -16,6 +16,8 @@ import com.attendance.service.FeishuSyncService;
 import com.attendance.service.NightShiftConfigService;
 import com.attendance.service.ReminderScheduleService;
 import com.attendance.service.TaskRecordSyncService;
+import com.attendance.service.TaskExcelExportService;
+import com.attendance.service.TaskRecognitionLifecycleService;
 import com.attendance.service.TaskService;
 import com.attendance.util.RecordNoGenerator;
 import org.junit.jupiter.api.BeforeEach;
@@ -89,6 +91,12 @@ class TaskServiceTest {
 
     @Mock
     private com.attendance.mapper.UserMapper userMapper;
+
+    @Mock
+    private TaskRecognitionLifecycleService taskRecognitionLifecycleService;
+
+    @Mock
+    private TaskExcelExportService taskExcelExportService;
 
     @InjectMocks
     private TaskService taskService;
@@ -188,13 +196,10 @@ class TaskServiceTest {
     void testUpdateTaskRawData() {
         String rawData = "[{\"NO\":\"001\"}]";
         String aiRawOutput = "raw output";
-        
-        when(taskMapper.updateTaskRawData(anyString(), anyString(), anyString(), anyInt())).thenReturn(1);
 
         taskService.updateTaskRawData("20260520_001", rawData, aiRawOutput);
 
-        verify(taskMapper).updateTaskRawData(eq("20260520_001"), eq(rawData), eq(aiRawOutput), eq(1));
-        verify(taskRecordSyncService).syncFromTaskId("20260520_001");
+        verify(taskRecognitionLifecycleService).updateTaskRawData("20260520_001", rawData, aiRawOutput);
     }
 
     @Test
@@ -224,6 +229,49 @@ class TaskServiceTest {
 
         verify(taskMapper).updateTaskConfirmedData(eq("20260520_001"), anyString());
         verify(taskRecordSyncService).syncFromTaskId("20260520_001");
+    }
+
+    @Test
+    void checkDuplicateNames_matchesWhenPaysLabelDiffersFromCountryKey() {
+        when(taskAccessService.requireViewableTask("task-new")).thenReturn(testTask);
+
+        java.util.Map<String, Object> baseline = new java.util.HashMap<>();
+        baseline.put("sourceTaskId", "task-old");
+        baseline.put("NO", "1");
+        baseline.put("NOM_PRENOM", "Jean Dupont");
+        baseline.put("baseName", "JEAN DUPONT");
+        baseline.put("paysKey", "FR");
+        baseline.put("entrepotKey", "WH1");
+        baseline.put("dateKey", "2026-07-08");
+        baseline.put("agencyKey", "AG1");
+
+        when(taskRecordMapper.selectDuplicateBaseline(
+                eq("task-new"),
+                anyList(),
+                anyList(),
+                anyList(),
+                eq(allUsersScope)))
+                .thenReturn(java.util.Collections.singletonList(baseline));
+
+        java.util.Map<String, Object> current = new java.util.HashMap<>();
+        current.put("_rowKey", "task-new-0");
+        current.put("NOM_PRENOM", "Jean Dupont");
+        current.put("Pays", "France");
+        current.put("Entrepot", "WH1");
+        current.put("Date", "2026-07-08");
+        current.put("AGENCE_INTERIMAIRE", "AG1");
+
+        java.util.Map<String, Object> result = taskService.checkDuplicateNamesAgainstConfirmed(
+                "task-new",
+                java.util.Collections.singletonList(current),
+                "confirmed_only");
+
+        @SuppressWarnings("unchecked")
+        List<java.util.Map<String, Object>> duplicates =
+                (List<java.util.Map<String, Object>>) result.get("duplicates");
+        assertNotNull(duplicates);
+        assertEquals(1, duplicates.size());
+        assertEquals("task-new-0", duplicates.get(0).get("rowKey"));
     }
 
     @Test

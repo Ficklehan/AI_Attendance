@@ -325,7 +325,7 @@
     "duplicateTag": "Duplicate",
     "duplicateExpand": "Details",
     "duplicateCollapse": "Hide",
-    "duplicateNotDuplicate": "Not duplicate",
+    "duplicateNotDuplicate": "Confirm duplicate",
     "duplicateDetailTitle": "Duplicate details (country/warehouse/date/agency/name)",
     "duplicateSourceTask": "Task",
     "duplicateColNo": "No.",

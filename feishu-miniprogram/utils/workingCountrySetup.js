@@ -13,21 +13,9 @@ function getUserInfoSafe() {
   }
 }
 
+/** 仅当账户工作国家为全局默认（未配置个人国家）时需要首次设置 */
 function needsWorkingCountrySetup(userInfo) {
-  const info = userInfo || getUserInfoSafe()
-  if (!core.needsWorkingCountrySetup(info)) {
-    return false
-  }
-  try {
-    const configured = tt.getStorageSync('countryConfigured')
-    const country = tt.getStorageSync('currentCountry')
-    if (configured && country && country !== 'default') {
-      return false
-    }
-  } catch (e) {
-    // ignore
-  }
-  return true
+  return core.needsWorkingCountrySetup(userInfo || getUserInfoSafe())
 }
 
 module.exports = {

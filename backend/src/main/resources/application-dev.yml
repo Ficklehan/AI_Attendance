@@ -17,7 +17,7 @@ spring:
 
 jwt:
   secret: ${JWT_SECRET:}
-  expiration: ${JWT_EXPIRATION:604800000}
+  expiration: ${JWT_EXPIRATION:28800000}
 
 feishu:
   app-id: ${FEISHU_APP_ID:}

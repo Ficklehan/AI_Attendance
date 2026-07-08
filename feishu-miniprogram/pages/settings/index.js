@@ -7,9 +7,8 @@ const {
   saveLocale,
   isCountryConfigured,
   syncCountryConfig,
-  redirectToCountrySetupIfNeeded,
+  shouldPromptWorkingCountrySetup,
 } = require('../../utils/preferences')
-const { needsWorkingCountrySetup } = require('../../utils/workingCountrySetup')
 
 Page({
   data: {
@@ -167,7 +166,7 @@ Page({
   },
 
   onBackPress: function () {
-    if (this.data.isSetup && needsWorkingCountrySetup()) {
+    if (this.data.isSetup && shouldPromptWorkingCountrySetup()) {
       tt.showToast({ title: t('settings.mustSelectCountry'), icon: 'none' })
       return true
     }

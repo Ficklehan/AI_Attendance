@@ -7,6 +7,7 @@ import com.attendance.dto.response.RoleDataScopeDTO;
 import com.attendance.security.DataScopeContext;
 import com.attendance.service.DataScopeService;
 import com.attendance.service.RoleDataScopeService;
+import com.attendance.service.UserRoleService;
 import com.attendance.service.UserService;
 import com.attendance.entity.User;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -31,6 +32,9 @@ public class RoleDataScopeController {
     @Autowired
     private UserService userService;
 
+    @Autowired
+    private UserRoleService userRoleService;
+
     @GetMapping("/roles")
     public Result<Map<String, RoleDataScopeDTO>> listRoleScopes() {
         return Result.success(roleDataScopeService.getAllRoleScopes());
@@ -54,9 +58,12 @@ public class RoleDataScopeController {
         DataScopeContext ctx = dataScopeService.resolveForUserId(user.getId());
         Map<String, Object> body = new LinkedHashMap<>();
         body.put("role", user.getRole());
+        body.put("roles", userRoleService.getRoleKeysForUserId(user.getId()));
         body.put("allUsers", ctx.isAllUsers());
         body.put("ownerUserIds", ctx.getOwnerUserIds());
         body.put("countries", ctx.getCountries());
+        body.put("workRegions", ctx.getWorkRegions());
+        body.put("countryMatchTokens", ctx.getCountryMatchTokens());
         body.put("warehouses", ctx.getWarehouses());
         body.put("agencies", ctx.getAgencies());
         return Result.success(body);

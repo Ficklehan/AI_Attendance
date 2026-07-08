@@ -16,15 +16,15 @@
       :title="title"
       :active="open"
       :auto-orient-enabled="autoOrientEnabled"
+      :show-auto-orient-toggle="false"
       :show-header="false"
-      @update:auto-orient-enabled="autoOrientEnabled = $event"
       @update:index="onIndexUpdate"
     />
   </a-modal>
 </template>
 
 <script setup>
-import { ref, watch, computed, onMounted, onUnmounted } from 'vue'
+import { watch, computed, onMounted, onUnmounted } from 'vue'
 import ImagePreviewViewer from '@/components/ImagePreviewViewer.vue'
 
 const props = defineProps({
@@ -33,11 +33,12 @@ const props = defineProps({
   initialIndex: { type: Number, default: 0 },
   index: { type: Number, default: undefined },
   title: { type: String, default: '' },
+  autoOrientEnabled: { type: Boolean, default: true },
 })
 
 const emit = defineEmits(['update:open', 'update:index'])
 
-const autoOrientEnabled = ref(true)
+const autoOrientEnabled = computed(() => props.autoOrientEnabled)
 
 const viewerBindings = computed(() => {
   if (props.index !== undefined && props.index !== null) {

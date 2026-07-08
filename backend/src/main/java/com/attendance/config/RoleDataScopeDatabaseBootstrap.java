@@ -31,11 +31,13 @@ public class RoleDataScopeDatabaseBootstrap implements ApplicationRunner {
             jdbcTemplate.execute("CREATE TABLE IF NOT EXISTS role_data_dimension_rule ("
                     + "id BIGINT AUTO_INCREMENT PRIMARY KEY,"
                     + "role VARCHAR(32) NOT NULL,"
-                    + "dimension ENUM('owner_user','country','warehouse','agency') NOT NULL,"
+                    + "dimension ENUM('owner_user','country','warehouse','agency','work_region') NOT NULL,"
                     + "value VARCHAR(255) NOT NULL,"
                     + "UNIQUE KEY uk_role_dim_val (role, dimension, value),"
                     + "INDEX idx_role (role)"
                     + ") ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");
+            jdbcTemplate.execute("ALTER TABLE role_data_dimension_rule MODIFY COLUMN dimension "
+                    + "ENUM('owner_user','country','warehouse','agency','work_region') NOT NULL");
         } catch (Exception e) {
             log.warn("role_data_scope 表初始化跳过: {}", e.getMessage());
         }

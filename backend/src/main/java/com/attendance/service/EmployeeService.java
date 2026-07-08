@@ -36,8 +36,10 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.LinkedHashSet;
 import java.util.Locale;
 import java.util.Map;
+import java.util.Set;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
@@ -63,6 +65,12 @@ public class EmployeeService {
 
     @Autowired
     private AdminAuthService adminAuthService;
+
+    @Autowired
+    private PermissionService permissionService;
+
+    @Autowired
+    private UserService userService;
 
     @Transactional
     public void assignEmployeeOnConfirm(Map<String, Object> record, String regionCode) {
@@ -131,24 +139,45 @@ public class EmployeeService {
 
     public PageResult<EmployeeDTO> listEmployees(int page, int size, String regionCodesParam,
                                                  String regionCode, String keyword) {
+        requireEmployeesAccess();
         DataScopeContext scope = dataScopeService.resolveForCurrentUser();
+        if (!canQueryEmployees(scope)) {
+            long safePage = Math.max(page, 1);
+            long safeSize = Math.min(Math.max(size, 1), 200);
+            return PageResult.of(Collections.emptyList(), 0, safePage, safeSize);
+        }
         long safePage = Math.max(page, 1);
         long safeSize = Math.min(Math.max(size, 1), 200);
         long offset = (safePage - 1) * safeSize;
         String kw = keyword != null ? keyword.trim() : null;
-        List<String> regions = normalizeRegionFilters(regionCodesParam, regionCode);
+        List<String> regions = intersectRegionFilters(scope, normalizeRegionFilters(regionCodesParam, regionCode));
+        if (regions != null && regions.isEmpty()) {
+            return PageResult.of(Collections.emptyList(), 0, safePage, safeSize);
+        }
         long total = employeeMapper.countEmployees(scope, regions, kw);
         List<Employee> rows = employeeMapper.selectEmployeePage(scope, regions, kw, offset, safeSize);
         List<EmployeeDTO> dtos = rows.stream().map(this::toDto).collect(Collectors.toList());
         return PageResult.of(dtos, total, safePage, safeSize);
     }
 
-    public WeeklyAttendanceDTO getWeeklyAttendance(String isoWeek, String regionCodesParam, String regionCode) {
+    public WeeklyAttendanceDTO getWeeklyAttendance(String isoWeek, String regionCodesParam, String regionCode,
+                                                   String keyword) {
+        requireEmployeesAccess();
         DataScopeContext scope = dataScopeService.resolveForCurrentUser();
+        if (!canQueryEmployees(scope)) {
+            return emptyWeeklyAttendance(isoWeek);
+        }
         LocalDate[] range = parseIsoWeekRange(isoWeek);
         LocalDate start = range[0];
         LocalDate end = range[1];
-        List<String> regions = normalizeRegionFilters(regionCodesParam, regionCode);
+        List<String> regions = intersectRegionFilters(scope, normalizeRegionFilters(regionCodesParam, regionCode));
+        if (regions != null && regions.isEmpty()) {
+            return emptyWeeklyAttendance(formatIsoWeek(start));
+        }
+        String kw = keyword != null ? keyword.trim() : null;
+        if (kw != null && kw.isEmpty()) {
+            kw = null;
+        }
 
         WeeklyAttendanceDTO dto = new WeeklyAttendanceDTO();
         dto.setIsoWeek(formatIsoWeek(start));
@@ -161,7 +190,7 @@ public class EmployeeService {
         dto.setDays(days);
 
         List<Map<String, Object>> rawRows = employeeMapper.selectWeeklyAttendanceRows(
-                scope, regions, dto.getStartDate(), dto.getEndDate());
+                scope, regions, dto.getStartDate(), dto.getEndDate(), kw);
         Map<Long, WeeklyAttendanceDTO.WeeklyEmployeeRow> rowMap = new LinkedHashMap<>();
         for (Map<String, Object> raw : rawRows) {
             Long employeeId = toLong(raw.get("employeeId"));
@@ -187,6 +216,67 @@ public class EmployeeService {
             row.getCells().put(workDate, cell);
         }
         dto.setRows(new ArrayList<>(rowMap.values()));
+        return dto;
+    }
+
+    private void requireEmployeesAccess() {
+        permissionService.requirePermission(userService.getCurrentUser(), PermissionService.EMPLOYEES);
+    }
+
+    private static boolean canQueryEmployees(DataScopeContext scope) {
+        return scope != null && (scope.isAllUsers() || scope.isEmployeeDimensionFilter());
+    }
+
+    /**
+     * 将 UI 地区筛选与角色数据范围取交集；null 表示不额外收窄（仍由 Mapper 按 scope 过滤）。
+     */
+    private static List<String> intersectRegionFilters(DataScopeContext scope, List<String> requested) {
+        if (scope == null || scope.isAllUsers()) {
+            return requested;
+        }
+        if (!scope.isEmployeeDimensionFilter()) {
+            return Collections.emptyList();
+        }
+        if (requested == null || requested.isEmpty()) {
+            return null;
+        }
+        Set<String> allowed = new LinkedHashSet<>();
+        if (scope.getWorkRegions() != null) {
+            allowed.addAll(scope.getWorkRegions());
+        }
+        if (scope.getCountryMatchTokens() != null) {
+            allowed.addAll(scope.getCountryMatchTokens());
+        }
+        List<String> matched = new ArrayList<>();
+        for (String region : requested) {
+            if (region == null || region.trim().isEmpty()) {
+                continue;
+            }
+            String norm = EmployeeMatchSupport.normalizeRegionCode(region);
+            if (allowed.contains(norm) || allowed.contains(region.trim().toUpperCase(Locale.ROOT))) {
+                matched.add(norm);
+            }
+        }
+        return matched;
+    }
+
+    private WeeklyAttendanceDTO emptyWeeklyAttendance(String isoWeek) {
+        LocalDate[] range;
+        try {
+            range = parseIsoWeekRange(isoWeek);
+        } catch (BusinessException ex) {
+            range = parseIsoWeekRange(null);
+        }
+        WeeklyAttendanceDTO dto = new WeeklyAttendanceDTO();
+        dto.setIsoWeek(formatIsoWeek(range[0]));
+        dto.setStartDate(range[0].format(DATE_FMT));
+        dto.setEndDate(range[1].format(DATE_FMT));
+        List<String> days = new ArrayList<>();
+        for (LocalDate d = range[0]; !d.isAfter(range[1]); d = d.plusDays(1)) {
+            days.add(d.format(DATE_FMT));
+        }
+        dto.setDays(days);
+        dto.setRows(Collections.emptyList());
         return dto;
     }
 

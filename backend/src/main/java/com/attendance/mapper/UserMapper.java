@@ -18,9 +18,15 @@ public interface UserMapper {
     User selectUserByEmail(@Param("email") String email);
 
     List<User> selectUserList(@Param("offset") long offset, @Param("size") long size,
-                              @Param("keyword") String keyword);
+                              @Param("keyword") String keyword,
+                              @Param("role") String role,
+                              @Param("excludeRole") String excludeRole);
 
-    long countUser(@Param("keyword") String keyword);
+    long countUser(@Param("keyword") String keyword,
+                   @Param("role") String role,
+                   @Param("excludeRole") String excludeRole);
+
+    int updateUserRole(@Param("id") String id, @Param("role") String role);
 
     int insertUser(User user);
 

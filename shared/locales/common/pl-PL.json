@@ -74,6 +74,7 @@
     "aiInvalidJson": "Model zwrócił nieprawidłowy JSON. Podsumowanie: {preview}",
     "aiNoParseableRecords": "Model nie zwrócił analizowalnych wierszy JSON. Podsumowanie: {preview}",
     "aiFabricated": "Wyniki wyglądają na wymyślone",
+    "aiMalformedRecords": "{malformedPercent}% wierszy ma nieprawidłową strukturę ({malformedCount}/{recordCount}), powyżej progu {thresholdPercent}%. Prześlij wyraźniejsze zdjęcie.",
     "aiUnreadableTimes": "Wiele ??? w nazwach, ale czasy wypełnione — prawdopodobnie zgadywane",
     "validationFailed": "Błąd walidacji: {detail}",
     "missingParameter": "Brak parametru: {name}",

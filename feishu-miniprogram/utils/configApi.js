@@ -15,8 +15,12 @@ function getAppInstance(app) {
 
 function isCurrentUserAdmin(app) {
   const instance = getAppInstance(app)
-  const role = instance && instance.globalData.userInfo && instance.globalData.userInfo.role
-  return role === 'admin'
+  const userInfo = instance && instance.globalData.userInfo
+  if (!userInfo) return false
+  const roles = Array.isArray(userInfo.roles) && userInfo.roles.length
+    ? userInfo.roles
+    : (userInfo.role ? [userInfo.role] : [])
+  return roles.includes('admin')
 }
 
 function readLocalCountry() {
@@ -44,7 +48,7 @@ function fetchCountryOptions(app) {
     .catch(() => mergeCountryOptions([]))
 }
 
-/** 与 PC country store 一致：本地已选优先，再个人工作地区，最后系统默认 */
+/** 与 PC country store 一致：拉取 profile 同步 personalWorkingCountry，再解析当前工作国家 */
 function fetchCurrentCountry(app) {
   const instance = getAppInstance(app)
   if (!instance || !getAuthToken()) {
@@ -52,36 +56,36 @@ function fetchCurrentCountry(app) {
   }
 
   const localCountry = readLocalCountry()
-  if (localCountry && localCountry !== 'default') {
-    return Promise.resolve(localCountry)
-  }
 
-  const profilePromise = apiCall({ url: '/auth/profile', timeout: 15000 })
+  return apiCall({ url: '/auth/profile', timeout: 15000 })
     .then((res) => {
-      if (!isApiSuccess(res.data)) return null
-      const user = getApiData(res.data) || {}
-      if (user.id) {
-        instance.globalData.userInfo = Object.assign({}, instance.globalData.userInfo || {}, user)
-        try {
-          tt.setStorageSync('userInfo', instance.globalData.userInfo)
-        } catch (e) {
-          // ignore
+      let personalCountry = null
+      if (isApiSuccess(res.data)) {
+        const user = getApiData(res.data) || {}
+        if (user.id) {
+          instance.globalData.userInfo = Object.assign({}, instance.globalData.userInfo || {}, user)
+          try {
+            tt.setStorageSync('userInfo', instance.globalData.userInfo)
+          } catch (e) {
+            // ignore
+          }
         }
+        personalCountry = user.personalWorkingCountry || null
       }
-      return user.personalWorkingCountry || null
+      if (personalCountry && personalCountry !== 'default') {
+        return personalCountry
+      }
+      if (localCountry && localCountry !== 'default') {
+        return localCountry
+      }
+      return personalCountry || localCountry || 'default'
     })
-    .catch(() => null)
-
-  return profilePromise.then((personalCountry) => {
-    if (personalCountry && personalCountry !== 'default') {
-      return personalCountry
-    }
-    const localCountry = readLocalCountry()
-    if (localCountry && localCountry !== 'default') {
-      return localCountry
-    }
-    return null
-  })
+    .catch(() => {
+      if (localCountry && localCountry !== 'default') {
+        return localCountry
+      }
+      return localCountry || 'default'
+    })
 }
 
 function postCountryUpdate(url, country) {
@@ -99,27 +103,30 @@ function postCountryUpdate(url, country) {
   })
 }
 
-function updateCurrentCountry(country, app) {
+function updateCurrentCountry(country, app, options = {}) {
   const instance = getAppInstance(app)
   if (!instance || !getAuthToken()) {
     return Promise.reject(new Error(t('errors.loginRequired')))
   }
 
   const admin = isCurrentUserAdmin(instance)
-  const url = admin ? '/config/current-country' : '/auth/working-country'
+  const url = options.global === true && admin ? '/config/current-country' : '/auth/working-country'
 
   return postCountryUpdate(url, country)
     .then((effective) => {
       if (instance.globalData.userInfo) {
         instance.globalData.userInfo.workingCountry = effective
-        instance.globalData.userInfo.personalWorkingCountry = effective
+        if (options.global !== true) {
+          instance.globalData.userInfo.personalWorkingCountry =
+            country && country !== 'default' ? country : null
+        }
         try {
           tt.setStorageSync('userInfo', instance.globalData.userInfo)
         } catch (e) {
           // ignore
         }
       }
-      return effective
+      return country && String(country).trim() ? String(country).trim() : 'default'
     })
     .catch((err) => {
       const message = (err && err.message) || ''

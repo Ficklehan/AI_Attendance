@@ -69,7 +69,13 @@
     "placeholder": "Wybierz kraj",
     "apply": "Ustaw jako kraj roboczy",
     "manageConfig": "Zarządzaj konfiguracją kraju",
-    "saved": "Kraj roboczy zaktualizowany"
+    "saved": "Kraj roboczy zaktualizowany",
+    "setupTitle": "Wybierz kraj roboczy",
+    "setupDesc": "Wybierz kraj roboczy dla szablonów rozpoznawania, zakresu dostępu i synchronizacji Feishu.",
+    "setupLanguageLabel": "Język interfejsu",
+    "setupLanguageHint": "Zmiana obowiązuje natychmiast. Język można zmienić w dowolnym momencie na górnym pasku nawigacji.",
+    "setupPlaceholder": "Wybierz kraj/region",
+    "setupConfirm": "Potwierdź i kontynuuj"
   },
   "auth": {
     "login": "Logowanie",
@@ -306,7 +312,7 @@
     "duplicateTag": "Duplikat",
     "expandDetail": "Rozwiń szczegóły",
     "collapseDetail": "Zwiń szczegóły",
-    "notDuplicate": "Nie duplikat",
+    "notDuplicate": "Potwierdź duplikat",
     "duplicateSuspect": "Podejrzenie duplikatu: {names}",
     "sourceTask": "Zadanie źródłowe",
     "unknownFile": "Nieznany plik"

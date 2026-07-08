@@ -50,7 +50,13 @@ export default {
     "placeholder": "Vyberte zemi",
     "apply": "Nastavit jako pracovní zemi",
     "manageConfig": "Spravovat konfiguraci země",
-    "saved": "Pracovní země aktualizována"
+    "saved": "Pracovní země aktualizována",
+    "setupTitle": "Vyberte pracovní zemi",
+    "setupDesc": "Zvolte pracovní zemi pro šablony rozpoznávání, rozsah přístupu a synchronizaci Feishu.",
+    "setupLanguageLabel": "Jazyk rozhraní",
+    "setupLanguageHint": "Změna se projeví okamžitě. Jazyk můžete kdykoli změnit v horní navigační liště.",
+    "setupPlaceholder": "Vyberte zemi/oblast",
+    "setupConfirm": "Potvrdit a pokračovat"
   },
   "errors": {
     "loginRequired": "Nejprve se přihlaste",
@@ -81,6 +87,7 @@ export default {
     "aiInvalidJson": "Neplatný JSON od modelu. Shrnutí: {preview}",
     "aiNoParseableRecords": "Model nevrátil analyzovatelné JSON řádky. Shrnutí: {preview}",
     "aiFabricated": "Výsledky vypadají vymyšleně",
+    "aiMalformedRecords": "{malformedPercent} % řádků má neplatnou strukturu ({malformedCount}/{recordCount}), nad prahem {thresholdPercent} %. Nahrajte jasnější fotografii.",
     "aiUnreadableTimes": "Mnoho ??? u jmen, ale časy vyplněny",
     "validationFailed": "Validace selhala: {detail}",
     "missingParameter": "Chybí parametr: {name}",
@@ -439,7 +446,7 @@ export default {
     "duplicateTag": "Duplicita",
     "expandDetail": "Rozbalit detail",
     "collapseDetail": "Sbalit detail",
-    "notDuplicate": "Není duplicita",
+    "notDuplicate": "Potvrdit duplicitu",
     "duplicateSuspect": "Podezření na duplicitu: {names}",
     "sourceTask": "Zdrojový úkol",
     "unknownFile": "Neznámý soubor"

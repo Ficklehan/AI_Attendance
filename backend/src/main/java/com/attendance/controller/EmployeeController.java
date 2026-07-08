@@ -39,8 +39,9 @@ public class EmployeeController {
     public Result<WeeklyAttendanceDTO> weeklyAttendance(
             @RequestParam(required = false) String isoWeek,
             @RequestParam(required = false) String regionCodes,
-            @RequestParam(required = false) String regionCode) {
-        return Result.success(employeeService.getWeeklyAttendance(isoWeek, regionCodes, regionCode));
+            @RequestParam(required = false) String regionCode,
+            @RequestParam(required = false) String keyword) {
+        return Result.success(employeeService.getWeeklyAttendance(isoWeek, regionCodes, regionCode, keyword));
     }
 
     @PostMapping("/backfill")

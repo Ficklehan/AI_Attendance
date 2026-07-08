@@ -13,7 +13,14 @@ function mergeTaskRecordArrays(rawArr, confArr) {
   if (!conf.length) return raw
   if (!raw.length) return conf
 
-  const hasStableKeys = raw.some((r) => r && r._rowKey) || conf.some((r) => r && r._rowKey)
+  const rawHasKeys = raw.some((r) => r && r._rowKey)
+  const confHasKeys = conf.some((r) => r && r._rowKey)
+
+  if (!rawHasKeys && confHasKeys && raw.length === conf.length) {
+    return raw.map((row, i) => ({ ...row, ...conf[i] }))
+  }
+
+  const hasStableKeys = rawHasKeys || confHasKeys
   if (!hasStableKeys && raw.length === conf.length) {
     return raw.map((row, i) => ({ ...row, ...conf[i] }))
   }

@@ -2,10 +2,11 @@ import { defineStore } from 'pinia'
 import request from '@/api/index'
 import { useAuthStore } from '@/stores/auth'
 import { getCachedWorkingCountry, setCachedWorkingCountry, markWorkingCountryConfigured } from '@/utils/countryHeader'
-import { hasPersonalWorkingCountry } from '@/utils/workingCountrySetup'
+import { needsWorkingCountrySetup, resolveSelectedWorkingCountry } from '@/utils/workingCountrySetup'
 import { loadNightShiftRules } from '@/utils/nightShiftRules'
 import { COUNTRY_FLAG_FALLBACK, DEFAULT_COUNTRY_FLAG, resolveCountryFlag } from '@/utils/countryCatalog'
 import { buildCountrySelectOption, formatCountryLabel, translateCountryName } from '@/utils/countryLabels'
+import { setStoredUserInfo } from '@/utils/auth'
 
 export const useCountryStore = defineStore('country', {
   state: () => ({
@@ -64,33 +65,25 @@ export const useCountryStore = defineStore('country', {
       this.loading = true
       try {
         const authStore = useAuthStore()
-        const [optionsRes, countryRes] = await Promise.all([
-          request({ url: '/config/country-options', method: 'get' }),
-          request({ url: '/config/current-country', method: 'get' }),
-        ])
+        const optionsRes = await request({ url: '/config/country-options', method: 'get' })
         if (optionsRes?.data?.length) {
           this.options = optionsRes.data
         }
         const cached = getCachedWorkingCountry()
         const userInfo = authStore.userInfo
-        const needsSetup = !hasPersonalWorkingCountry(userInfo)
+        const needsSetup = needsWorkingCountrySetup(userInfo)
         this.setupRequired = needsSetup
 
         let country = 'default'
         if (needsSetup) {
           country = cached && cached !== 'default' ? cached : 'default'
         } else {
-          const effective = userInfo.personalWorkingCountry || userInfo.workingCountry
-            || countryRes?.data?.country
-            || 'default'
-          country = cached && cached !== 'default' ? cached : effective
+          country = resolveSelectedWorkingCountry(userInfo)
           markWorkingCountryConfigured()
         }
 
         this.workingCountry = country
-        if (!needsSetup && (!cached || cached === 'default')) {
-          setCachedWorkingCountry(country)
-        }
+        setCachedWorkingCountry(country)
         await this.loadBundle()
         this.hydrated = true
         return country
@@ -117,38 +110,34 @@ export const useCountryStore = defineStore('country', {
     async setWorkingCountry(country) {
       const code = country || 'default'
       const authStore = useAuthStore()
-      if (authStore.isAdmin) {
-        await request({
-          url: '/config/current-country',
-          method: 'post',
-          data: { country: code },
-        })
-      } else {
-        await request({
-          url: '/auth/working-country',
-          method: 'post',
-          data: { country: code },
-        })
-      }
+
+      const res = await request({
+        url: '/auth/working-country',
+        method: 'post',
+        data: { country: code },
+      })
+      const effective = res?.data?.country || code
       this.workingCountry = code
       setCachedWorkingCountry(code)
       if (code && code !== 'default') {
         markWorkingCountryConfigured()
         this.setupRequired = false
-        if (authStore.userInfo) {
-          authStore.userInfo = {
-            ...authStore.userInfo,
-            personalWorkingCountry: code,
-            workingCountry: code,
-          }
-          localStorage.setItem('userInfo', JSON.stringify(authStore.userInfo))
+      } else {
+        this.setupRequired = true
+      }
+      if (authStore.userInfo) {
+        authStore.userInfo = {
+          ...authStore.userInfo,
+          personalWorkingCountry: code === 'default' ? null : code,
+          workingCountry: effective,
         }
+        setStoredUserInfo(authStore.userInfo)
       }
       await this.loadBundle(code)
       loadNightShiftRules(true, code).catch(() => {})
       this.hydrated = true
       if (authStore.isAuthenticated) {
-        await authStore.refreshPermissions(code)
+        await authStore.refreshPermissions(code === 'default' ? undefined : code)
       }
       return code
     },

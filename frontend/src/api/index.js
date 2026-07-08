@@ -1,9 +1,8 @@
 import axios from 'axios'
-import { useAuthStore } from '@/stores/auth'
-import router from '@/router'
 import { getToken } from '@/utils/auth'
 import { getCachedWorkingCountry } from '@/utils/countryHeader'
 import { showApiError, showErrorMessage, translateApiError } from '@/utils/translateError'
+import { isAuthFailure, forceAuthLogout } from '@/utils/authFailure'
 import { API_BASE_PATH } from '@/constants/apiBase'
 
 const request = axios.create({
@@ -40,10 +39,8 @@ request.interceptors.response.use(
       const silent = response.config?.silentError === true
       const text = silent ? translateApiError(res) : showApiError(res)
 
-      if (res.code === 401 || res.code === 1004 || res.messageKey === 'errors.userDisabled') {
-        const authStore = useAuthStore()
-        authStore.logout()
-        router.push('/login')
+      if (isAuthFailure(res)) {
+        forceAuthLogout()
       }
 
       const err = new Error(text)
@@ -56,6 +53,12 @@ request.interceptors.response.use(
     return res
   },
   (error) => {
+    const status = error.response?.status
+    const data = error.response?.data
+    if (isAuthFailure(data)) {
+      forceAuthLogout()
+    }
+
     if (error.config?.silentError === true) {
       if (error.response?.data) {
         const data = error.response.data

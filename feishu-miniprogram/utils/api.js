@@ -17,7 +17,6 @@ const taskApi = {
   }),
   retryFeishuSync: (taskId) => request({ url: `/tasks/${taskId}/retry-sync`, method: 'POST' }),
   deleteTask: (taskId, reason) => request({ url: `/tasks/${taskId}/delete`, method: 'POST', data: { reason } }),
-  getTaskStats: () => request({ url: '/tasks/stats', method: 'GET' }),
   getTaskSummary: () => request({ url: '/tasks/summary', method: 'GET' }),
   calibrateRecord: (taskId, data) => request({
     url: `/tasks/${taskId}/calibrate-record`,
