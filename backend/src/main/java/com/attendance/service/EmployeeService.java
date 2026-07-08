@@ -14,6 +14,9 @@ import com.attendance.mapper.TaskMapper;
 import com.attendance.security.AdminAuthService;
 import com.attendance.security.DataScopeContext;
 import com.attendance.util.EmployeeMatchSupport;
+import com.attendance.util.ExcelExportHelper;
+import com.attendance.util.ExcelExportHelper.ExcelSheetWriter;
+import com.attendance.util.ExportLocaleSupport;
 import com.attendance.util.RecognizedDateNormalizer;
 import com.attendance.util.RecordJsonSupport;
 import com.attendance.util.TaskRecordExportSupport;
@@ -24,6 +27,7 @@ import org.springframework.dao.DuplicateKeyException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.io.IOException;
 import java.time.DayOfWeek;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
@@ -219,8 +223,148 @@ public class EmployeeService {
         return dto;
     }
 
-    private void requireEmployeesAccess() {
+    public void requireEmployeesAccess() {
         permissionService.requirePermission(userService.getCurrentUser(), PermissionService.EMPLOYEES);
+    }
+
+    /**
+     * 员工列表异步导出（在导出 worker 线程中调用，data scope 由调用方按 userId 解析后传入）。
+     */
+    public long exportEmployeeListToExcel(DataScopeContext scope, String regionCodesParam, String regionCode,
+                                          String keyword, ExcelSheetWriter writer, String locale) throws IOException {
+        String resolvedLocale = ExportLocaleSupport.resolveLocale(locale);
+        writer.writeHeader(ExportLocaleSupport.headers(resolvedLocale, "employeeList.headers"));
+        if (!canQueryEmployees(scope)) {
+            return 0;
+        }
+        List<String> regions = intersectRegionFilters(scope, normalizeRegionFilters(regionCodesParam, regionCode));
+        if (regions != null && regions.isEmpty()) {
+            return 0;
+        }
+        String kw = keyword != null && !keyword.trim().isEmpty() ? keyword.trim() : null;
+        long count = 0;
+        long offset = 0;
+        final int batchSize = 500;
+        while (true) {
+            List<Employee> rows = employeeMapper.selectEmployeePage(scope, regions, kw, offset, batchSize);
+            if (rows == null || rows.isEmpty()) {
+                break;
+            }
+            for (Employee e : rows) {
+                writer.writeRow(
+                        ExcelExportHelper.cell(e.getEmpNo()),
+                        ExcelExportHelper.cell(e.getDisplayName()),
+                        ExcelExportHelper.cell(e.getRegionCode()),
+                        ExcelExportHelper.cell(e.getAgencyKey()),
+                        ExcelExportHelper.cell(e.getFirstCreatedAt()),
+                        ExcelExportHelper.cell(e.getLastAttendanceDate()));
+                count++;
+            }
+            offset += rows.size();
+            if (rows.size() < batchSize) {
+                break;
+            }
+        }
+        return count;
+    }
+
+    /**
+     * 周考勤异步导出：表头为固定信息列 + 每日列 + 周合计工时；单元格显示当日工时或出勤标记。
+     */
+    public long exportWeeklyAttendanceToExcel(DataScopeContext scope, String isoWeek, String regionCodesParam,
+                                              String regionCode, String keyword, ExcelSheetWriter writer,
+                                              String locale) throws IOException {
+        String resolvedLocale = ExportLocaleSupport.resolveLocale(locale);
+        LocalDate[] range = parseIsoWeekRange(isoWeek);
+        LocalDate start = range[0];
+        LocalDate end = range[1];
+        List<LocalDate> days = new ArrayList<>();
+        for (LocalDate d = start; !d.isAfter(end); d = d.plusDays(1)) {
+            days.add(d);
+        }
+
+        List<String> headers = new ArrayList<>();
+        for (String h : ExportLocaleSupport.headers(resolvedLocale, "weeklyAttendance.headerPrefix")) {
+            headers.add(h);
+        }
+        DateTimeFormatter daySuffix = DateTimeFormatter.ofPattern("MM-dd");
+        for (LocalDate d : days) {
+            headers.add(ExportLocaleSupport.dayHeader(resolvedLocale, d.getDayOfWeek().getValue(), d.format(daySuffix)));
+        }
+        headers.add(ExportLocaleSupport.text(resolvedLocale, "weeklyAttendance.totalHours"));
+        writer.writeHeader(headers.toArray(new String[0]));
+
+        if (!canQueryEmployees(scope)) {
+            return 0;
+        }
+        List<String> regions = intersectRegionFilters(scope, normalizeRegionFilters(regionCodesParam, regionCode));
+        if (regions != null && regions.isEmpty()) {
+            return 0;
+        }
+        String kw = keyword != null && !keyword.trim().isEmpty() ? keyword.trim() : null;
+
+        String startStr = start.format(DATE_FMT);
+        String endStr = end.format(DATE_FMT);
+        List<Map<String, Object>> rawRows = employeeMapper.selectWeeklyAttendanceRows(
+                scope, regions, startStr, endStr, kw);
+        Map<Long, WeeklyAttendanceDTO.WeeklyEmployeeRow> rowMap = new LinkedHashMap<>();
+        for (Map<String, Object> raw : rawRows) {
+            Long employeeId = toLong(raw.get("employeeId"));
+            if (employeeId == null) {
+                continue;
+            }
+            WeeklyAttendanceDTO.WeeklyEmployeeRow row = rowMap.computeIfAbsent(employeeId, id -> {
+                WeeklyAttendanceDTO.WeeklyEmployeeRow r = new WeeklyAttendanceDTO.WeeklyEmployeeRow();
+                r.setEmployeeId(id);
+                r.setEmpNo(stringValue(raw.get("empNo")));
+                r.setDisplayName(stringValue(raw.get("displayName")));
+                r.setRegionCode(stringValue(raw.get("regionCode")));
+                r.setAgencyKey(stringValue(raw.get("agencyKey")));
+                return r;
+            });
+            String workDate = stringValue(raw.get("workDate"));
+            if (workDate.isEmpty()) {
+                continue;
+            }
+            WeeklyAttendanceDTO.WeeklyCell cell = new WeeklyAttendanceDTO.WeeklyCell();
+            cell.setPresent(true);
+            cell.setWorkHours(parseWorkHours(raw));
+            row.getCells().put(workDate, cell);
+        }
+
+        long count = 0;
+        for (WeeklyAttendanceDTO.WeeklyEmployeeRow row : rowMap.values()) {
+            List<String> cells = new ArrayList<>();
+            cells.add(ExcelExportHelper.cell(row.getEmpNo()));
+            cells.add(ExcelExportHelper.cell(row.getDisplayName()));
+            cells.add(ExcelExportHelper.cell(row.getRegionCode()));
+            cells.add(ExcelExportHelper.cell(row.getAgencyKey()));
+            double total = 0;
+            boolean hasHours = false;
+            for (LocalDate d : days) {
+                WeeklyAttendanceDTO.WeeklyCell cell = row.getCells().get(d.format(DATE_FMT));
+                if (cell == null || !cell.isPresent()) {
+                    cells.add("");
+                } else if (cell.getWorkHours() != null) {
+                    total += cell.getWorkHours();
+                    hasHours = true;
+                    cells.add(formatHours(cell.getWorkHours()));
+                } else {
+                    cells.add("\u2713");
+                }
+            }
+            cells.add(hasHours ? formatHours(total) : "");
+            writer.writeRow(cells.toArray(new String[0]));
+            count++;
+        }
+        return count;
+    }
+
+    private static String formatHours(double value) {
+        if (value == Math.rint(value)) {
+            return String.valueOf((long) value);
+        }
+        return String.valueOf(Math.round(value * 10.0) / 10.0);
     }
 
     private static boolean canQueryEmployees(DataScopeContext scope) {

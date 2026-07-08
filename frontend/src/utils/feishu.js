@@ -1,4 +1,5 @@
 import { API_BASE_PATH } from '@/constants/apiBase'
+import { getToken } from '@/utils/auth'
 
 export function parseFeishuBitableUrl(url) {
   if (!url) {
@@ -78,7 +79,7 @@ export function generateFeishuBitableUrl(appToken, tableId) {
 
 export async function validateFeishuBitableConnection(appToken, tableId) {
   try {
-    const token = localStorage.getItem('attendance_token')
+    const token = getToken()
     if (!token) {
       return { valid: false, error: '未登录，请先登录' }
     }

@@ -13,8 +13,20 @@ public class TaskQuery {
     private Boolean allUsersScope;
     /** 考勤记录导出：是否在 Excel 中嵌入考勤图片缩略图（默认 false，仅导出原图链接） */
     private Boolean includeThumbnails;
+    /** 考勤记录导出：嵌入的图片是否使用原图全分辨率（默认 false=嵌入右尺寸预览；原图始终由链接列保留） */
+    private Boolean embedFullResolution;
     /** 导出表头语言，与 PC 端 locale 一致，如 zh-CN、en-US */
     private String locale;
+    /** 考勤记录导出：原图超链接的根地址（含 context-path），创建导出任务时按当前请求域名派生；空则回退配置 export.public-base-url */
+    private String imageBaseUrl;
+
+    public String getImageBaseUrl() {
+        return imageBaseUrl;
+    }
+
+    public void setImageBaseUrl(String imageBaseUrl) {
+        this.imageBaseUrl = imageBaseUrl;
+    }
 
     public String getLocale() {
         return locale;
@@ -98,5 +110,13 @@ public class TaskQuery {
 
     public void setIncludeThumbnails(Boolean includeThumbnails) {
         this.includeThumbnails = includeThumbnails;
+    }
+
+    public Boolean getEmbedFullResolution() {
+        return embedFullResolution;
+    }
+
+    public void setEmbedFullResolution(Boolean embedFullResolution) {
+        this.embedFullResolution = embedFullResolution;
     }
 }

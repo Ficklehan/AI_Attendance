@@ -7,6 +7,7 @@ import org.apache.poi.ss.usermodel.CreationHelper;
 import org.apache.poi.ss.usermodel.Font;
 import org.apache.poi.ss.usermodel.Hyperlink;
 import org.apache.poi.ss.usermodel.IndexedColors;
+import org.apache.poi.ss.usermodel.Row;
 import org.apache.poi.ss.usermodel.Workbook;
 
 import java.util.List;
@@ -29,41 +30,38 @@ public final class ExportExcelLinkCells {
         return style;
     }
 
-    public static void writeImageLinkCell(Workbook workbook, Cell cell, List<String> urls, CellStyle linkStyle) {
-        if (urls == null || urls.isEmpty()) {
-            cell.setCellValue("");
-            return;
+    /**
+     * 每张图片写入一个独立单元格（各自一个真实超链接）。
+     *
+     * <p>Excel/WPS 不支持在单个单元格内放置多个 HYPERLINK（拼接会退化为不可用的文本地址），
+     * 因此多图时按 startCol 起向右铺开：单图显示“查看原图”，多图显示“图1、图2…”。</p>
+     *
+     * @return 实际写入的链接单元格数量（即占用的列数）。
+     */
+    public static int writeImageLinkCells(Workbook workbook, Row row, int startCol, List<String> urls,
+                                          CellStyle linkStyle) {
+        if (row == null || urls == null || urls.isEmpty()) {
+            return 0;
         }
-        if (linkStyle != null) {
-            cell.setCellStyle(linkStyle);
-        }
-        if (urls.size() == 1) {
-            CreationHelper helper = workbook.getCreationHelper();
-            Hyperlink hyperlink = helper.createHyperlink(HyperlinkType.URL);
-            hyperlink.setAddress(urls.get(0));
-            cell.setHyperlink(hyperlink);
-            cell.setCellValue("查看原图");
-            return;
-        }
-        cell.setCellFormula(buildMultiHyperlinkFormula(urls));
-    }
-
-    static String buildMultiHyperlinkFormula(List<String> urls) {
-        StringBuilder formula = new StringBuilder();
+        CreationHelper helper = workbook.getCreationHelper();
+        boolean single = urls.size() == 1;
+        int written = 0;
         for (int i = 0; i < urls.size(); i++) {
-            if (i > 0) {
-                formula.append("&CHAR(10)&");
+            Cell cell = row.createCell(startCol + i);
+            if (linkStyle != null) {
+                cell.setCellStyle(linkStyle);
             }
-            formula.append("HYPERLINK(\"")
-                    .append(escapeFormulaString(urls.get(i)))
-                    .append("\",\"图")
-                    .append(i + 1)
-                    .append("\")");
+            String url = urls.get(i) != null ? urls.get(i).trim() : "";
+            if (url.isEmpty()) {
+                cell.setCellValue("");
+                continue;
+            }
+            Hyperlink hyperlink = helper.createHyperlink(HyperlinkType.URL);
+            hyperlink.setAddress(url);
+            cell.setHyperlink(hyperlink);
+            cell.setCellValue(single ? "查看原图" : ("图" + (i + 1)));
+            written++;
         }
-        return formula.toString();
-    }
-
-    private static String escapeFormulaString(String value) {
-        return value == null ? "" : value.replace("\"", "\"\"");
+        return Math.max(written, urls.size());
     }
 }

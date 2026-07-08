@@ -1,3 +1,5 @@
+import { getToken } from './auth'
+
 const STORAGE_KEY = 'attendance_working_country'
 const CONFIGURED_KEY = 'attendance_working_country_configured'
 
@@ -35,7 +37,7 @@ export function clearWorkingCountryConfigured() {
 }
 
 export function buildAuthCountryHeaders() {
-  const token = localStorage.getItem('attendance_token')
+  const token = getToken()
   const country = getCachedWorkingCountry()
   const headers = { 'X-Country': country }
   if (token) {

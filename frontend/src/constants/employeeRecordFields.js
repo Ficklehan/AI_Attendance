@@ -7,10 +7,10 @@ import { FILTER_TYPES } from '@/utils/fieldFilterValue'
 export function buildEmployeeRecordFieldDefs(t) {
   return [
     { field: 'taskId', label: t('tasks.taskId'), dataIndex: 'taskId', key: 'taskId', filterType: FILTER_TYPES.TEXT },
-    { field: 'PAGE_NUM', label: t('taskEdit.pageNumber'), dataIndex: 'pageNum', key: 'pageNum', filterType: FILTER_TYPES.TEXT },
+    { field: 'PAGE_NUM', label: t('taskEdit.pageNumber'), dataIndex: 'pageNum', key: 'pageNum', filterType: FILTER_TYPES.TEXT, density: 'compact' },
     { field: 'NO', label: t('taskEdit.workerNumber'), dataIndex: 'no', key: 'no', filterType: FILTER_TYPES.TEXT, density: 'compact' },
     { field: 'NOM_PRENOM', label: t('taskEdit.name'), dataIndex: 'name', key: 'name', filterType: FILTER_TYPES.TEXT, ellipsis: false },
-    { field: 'Pays', label: t('taskEdit.countryField'), dataIndex: 'country', key: 'country', filterType: FILTER_TYPES.TEXT, density: 'compact' },
+    { field: 'Pays', label: t('taskEdit.countryField'), dataIndex: 'country', key: 'country', filterType: FILTER_TYPES.MULTISELECT, filterOptionsKey: 'countryOptions', isCountry: true, density: 'compact' },
     { field: 'Entrepot', label: t('taskEdit.warehouse'), dataIndex: 'warehouse', key: 'warehouse', filterType: FILTER_TYPES.TEXT },
     { field: 'Date', label: t('taskEdit.date'), dataIndex: 'date', key: 'date', filterType: FILTER_TYPES.DATE, density: 'compact' },
     { field: 'AGENCE_INTERIMAIRE', label: t('taskEdit.agency'), dataIndex: 'agency', key: 'agency', filterType: FILTER_TYPES.TEXT },

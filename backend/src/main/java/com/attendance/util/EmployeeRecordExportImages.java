@@ -39,8 +39,10 @@ public class EmployeeRecordExportImages {
     private static final int DISPLAY_MAX_HEIGHT = 96;
     /** 单列默认展示宽度：单张图 + 左右留白，用于列宽估算 */
     public static final int THUMB_COLUMN_DEFAULT_WIDTH_PX = DISPLAY_MAX_WIDTH + 12;
-    /** 仅当原图极大时才压缩入库，避免 Excel 体积失控；日常考勤照直接嵌原图 */
-    private static final int MAX_EMBED_DIMENSION = 1920;
+    /** 预览模式嵌入图片的最大边长：单元格内展示足够清晰，同时大幅压缩体积/内存，保证大批量可靠嵌入 */
+    public static final int PREVIEW_EMBED_DIMENSION = 640;
+    /** 全分辨率模式的安全上限：极端超大图仍做一次降采样，避免单图撑爆内存 */
+    private static final int FULL_EMBED_SAFETY_DIMENSION = 4096;
     private static final float EMBED_JPEG_QUALITY = 0.92f;
     private static final int MAX_THUMBNAILS_PER_ROW = 8;
 
@@ -127,6 +129,11 @@ public class EmployeeRecordExportImages {
     }
 
     public List<String> buildSignedImageUrls(List<String> fileKeys, String userId, long expEpochSecond) {
+        return buildSignedImageUrls(fileKeys, userId, expEpochSecond, null);
+    }
+
+    public List<String> buildSignedImageUrls(List<String> fileKeys, String userId, long expEpochSecond,
+                                             String baseUrlOverride) {
         List<String> urls = new ArrayList<>();
         if (fileKeys == null || fileKeys.isEmpty() || userId == null || userId.trim().isEmpty()) {
             return urls;
@@ -136,16 +143,20 @@ public class EmployeeRecordExportImages {
                 continue;
             }
             String trimmed = fileKey.trim();
-            String baseUrl = resolveImageBaseUrl(trimmed);
+            String baseUrl = resolveImageBaseUrl(trimmed, baseUrlOverride);
             urls.add(imageAccessSignatureService.appendSignedQueryWithExpiry(baseUrl, trimmed, userId, expEpochSecond));
         }
         return urls;
     }
 
     /**
-     * 读取原图嵌入 Excel：保留原图清晰度，仅在单元格内按适中尺寸展示。
+     * 读取图片嵌入 Excel。
+     *
+     * @param fullResolution true=嵌入原图全分辨率（仅极端超大图做安全降采样）；
+     *                       false=嵌入 {@link #PREVIEW_EMBED_DIMENSION} 右尺寸预览（体积小、大批量可靠）。
+     *                       无论哪种，原图全分辨率都由链接列另行保留，档案不丢失。
      */
-    public ExportImage readExportImage(String fileKey) {
+    public ExportImage readExportImage(String fileKey, boolean fullResolution) {
         if (fileKey == null || fileKey.trim().isEmpty()) {
             return null;
         }
@@ -166,8 +177,9 @@ public class EmployeeRecordExportImages {
             int srcHeight = size[1];
             byte[] embedData = raw;
             int pictureType = detectPictureType(trimmed, raw);
-            if (Math.max(srcWidth, srcHeight) > MAX_EMBED_DIMENSION) {
-                byte[] scaled = scaleImageToMax(raw, MAX_EMBED_DIMENSION, pictureType);
+            int maxDimension = fullResolution ? FULL_EMBED_SAFETY_DIMENSION : PREVIEW_EMBED_DIMENSION;
+            if (Math.max(srcWidth, srcHeight) > maxDimension) {
+                byte[] scaled = scaleImageToMax(raw, maxDimension, pictureType);
                 if (scaled == null) {
                     return null;
                 }
@@ -187,12 +199,45 @@ public class EmployeeRecordExportImages {
         }
     }
 
-    private String resolveImageBaseUrl(String fileKey) {
+    /**
+     * 归一化重编码：把图片解码后以标准 RGB 无损 PNG 重新编码。
+     * 用于 POI 嵌入失败后的重试——修复 CMYK / 异常色彩模型 JPEG 等 POI 无法直接嵌入的图片，
+     * 是"确保图片能进到表里"的兜底手段。展示尺寸保持不变。
+     */
+    public static ExportImage reencodeForReliableEmbed(ExportImage image) {
+        if (image == null || image.getData() == null || image.getData().length == 0) {
+            return null;
+        }
+        try {
+            BufferedImage src = ImageIO.read(new ByteArrayInputStream(image.getData()));
+            if (src == null) {
+                return null;
+            }
+            BufferedImage rgb = new BufferedImage(src.getWidth(), src.getHeight(), BufferedImage.TYPE_INT_RGB);
+            Graphics2D graphics = rgb.createGraphics();
+            graphics.setColor(Color.WHITE);
+            graphics.fillRect(0, 0, src.getWidth(), src.getHeight());
+            graphics.drawImage(src, 0, 0, null);
+            graphics.dispose();
+            ByteArrayOutputStream out = new ByteArrayOutputStream();
+            if (!ImageIO.write(rgb, "png", out)) {
+                return null;
+            }
+            return new ExportImage(out.toByteArray(), Workbook.PICTURE_TYPE_PNG,
+                    image.getDisplayWidthPx(), image.getDisplayHeightPx());
+        } catch (Exception ignored) {
+            return null;
+        }
+    }
+
+    private String resolveImageBaseUrl(String fileKey, String baseUrlOverride) {
         String remote = fileStorage.publicAccessPath(fileKey);
         if (remote != null && (remote.startsWith("http://") || remote.startsWith("https://"))) {
             return remote;
         }
-        String base = publicBaseUrl == null ? "" : publicBaseUrl.trim();
+        String base = baseUrlOverride != null && !baseUrlOverride.trim().isEmpty()
+                ? baseUrlOverride.trim()
+                : (publicBaseUrl == null ? "" : publicBaseUrl.trim());
         if (base.endsWith("/")) {
             base = base.substring(0, base.length() - 1);
         }

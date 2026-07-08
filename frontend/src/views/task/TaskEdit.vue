@@ -243,7 +243,7 @@
                       <FieldFilterControl
                         v-model:model-value="headerFilterDraft"
                         :filter-type="resolveColumnFilterType(column)"
-                        :options="resolveColumnFilterOptions(column, t)"
+                        :options="resolveColumnFilterOptions(column, t, paysCountrySelectOptions)"
                         class="table-header-filter-panel__input"
                         @submit="applyHeaderFilter"
                       />
@@ -680,6 +680,7 @@ import { useTableColumnResize } from '@/composables/useTableColumnResize'
 import { sumTableScrollX } from '@/utils/tableAutoColumns'
 import { translateApiError } from '@/utils/translateError'
 import { currentExportLocale } from '@/utils/exportLocale'
+import { getToken } from '@/utils/auth'
 import { getCachedWorkingCountry } from '@/utils/countryHeader'
 import { useCountryStore } from '@/stores/country'
 import {
@@ -1660,7 +1661,7 @@ const getExportFilename = (response, fallback) => {
 const handleExportExcel = async () => {
   if (!taskId.value) return
   try {
-    const token = localStorage.getItem('attendance_token')
+    const token = getToken()
     const locale = encodeURIComponent(currentExportLocale())
     const response = await fetch(`${API_BASE_PATH}/local/export/${taskId.value}/xlsx?locale=${locale}`, {
       headers: token ? { Authorization: `Bearer ${token}` } : {}

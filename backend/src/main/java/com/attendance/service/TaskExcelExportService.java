@@ -3,6 +3,7 @@ package com.attendance.service;
 import com.attendance.common.BusinessException;
 import com.attendance.common.ErrorCode;
 import com.attendance.common.ErrorKeys;
+import com.attendance.config.CountryCatalog;
 import com.attendance.dto.request.TaskQuery;
 import com.attendance.dto.response.EmployeeRecordDTO;
 import com.attendance.entity.Task;
@@ -184,11 +185,13 @@ public class TaskExcelExportService {
                         String value = item.getString("keyword");
                         String filterType = item.getString("filterType");
                         if (RecordJsonSupport.isBlank(value)) continue;
+                        String fieldTrim = field == null ? "" : field.trim();
+                        String filterTypeTrim = RecordJsonSupport.isBlank(filterType) ? "" : filterType.trim();
                         Map<String, String> one = new HashMap<>();
-                        one.put("field", field == null ? "" : field.trim());
-                        one.put("keyword", value.trim());
-                        if (!RecordJsonSupport.isBlank(filterType)) {
-                            one.put("filterType", filterType.trim());
+                        one.put("field", fieldTrim);
+                        one.put("keyword", expandCountryFilterKeyword(fieldTrim, filterTypeTrim, value.trim()));
+                        if (!filterTypeTrim.isEmpty()) {
+                            one.put("filterType", filterTypeTrim);
                         }
                         list.add(one);
                     }
@@ -199,11 +202,38 @@ public class TaskExcelExportService {
         }
         if (list.isEmpty() && !RecordJsonSupport.isBlank(keyword)) {
             Map<String, String> one = new HashMap<>();
-            one.put("field", searchField == null ? "" : searchField.trim());
-            one.put("keyword", keyword.trim());
+            String fieldTrim = searchField == null ? "" : searchField.trim();
+            one.put("field", fieldTrim);
+            one.put("keyword", expandCountryFilterKeyword(fieldTrim, "", keyword.trim()));
             list.add(one);
         }
         return list;
+    }
+
+    /**
+     * 国家多选筛选：把目录国家代码展开为可命中历史数据的匹配 token（代码 + 各语言名称 + 历史别名），
+     * 与数据权限的国家匹配口径（CountryCatalog.expandMatchTokens）保持一致；否则仅按代码匹配时，
+     * 会漏掉 country/country_key 存本地化名称（如「法国」/France）或旧别名的记录，导致国家筛选看起来无效。
+     */
+    private String expandCountryFilterKeyword(String field, String filterType, String rawKeyword) {
+        if (!"Pays".equals(field) || !"multiselect".equalsIgnoreCase(filterType)
+                || RecordJsonSupport.isBlank(rawKeyword)) {
+            return rawKeyword;
+        }
+        List<String> codes = new ArrayList<>();
+        for (String part : rawKeyword.split(";")) {
+            if (part != null && !part.trim().isEmpty()) {
+                codes.add(part.trim());
+            }
+        }
+        if (codes.isEmpty()) {
+            return rawKeyword;
+        }
+        List<String> tokens = CountryCatalog.expandMatchTokens(codes);
+        if (tokens == null || tokens.isEmpty()) {
+            return rawKeyword;
+        }
+        return String.join(";", tokens);
     }
 
     public long exportTaskListToExcel(DataScopeContext scope, String status, String keyword, String searchField,
@@ -306,7 +336,9 @@ public class TaskExcelExportService {
 
     public long exportEmployeeRecordsToExcel(DataScopeContext scope, TaskQuery query, Path outputFile,
                                              String exportUserId, LocalDateTime linkExpiresAt) throws IOException {
-        boolean includeThumbnails = query != null && Boolean.TRUE.equals(query.getIncludeThumbnails());
+        boolean embedFullResolution = query != null && Boolean.TRUE.equals(query.getEmbedFullResolution());
+        boolean includeThumbnails = embedFullResolution
+                || (query != null && Boolean.TRUE.equals(query.getIncludeThumbnails()));
         String status = query != null ? query.getStatus() : null;
         String keyword = query != null ? query.getKeyword() : null;
         String searchField = query != null ? query.getSearchField() : null;
@@ -320,8 +352,10 @@ public class TaskExcelExportService {
                 outputFile, includeThumbnails, EMPLOYEE_RECORD_BASE_COLUMN_COUNT,
                 ExportLocaleSupport.text(resolvedLocale, "sheet.attendanceRecords"))) {
             writer.writeHeader(buildEmployeeRecordExportHeaders(resolvedLocale));
+            String imageBaseUrl = query != null ? query.getImageBaseUrl() : null;
             return writeEmployeeRecordExportRows(
-                    scope, status, keyword, searchField, filters, writer, exportUserId, expEpoch, includeThumbnails);
+                    scope, status, keyword, searchField, filters, writer, exportUserId, expEpoch,
+                    includeThumbnails, embedFullResolution, imageBaseUrl);
         }
     }
 
@@ -337,7 +371,8 @@ public class TaskExcelExportService {
     private long writeEmployeeRecordExportRows(DataScopeContext scope, String status, String keyword,
                                                String searchField, String filters,
                                                EmployeeRecordExcelWriter writer,
-                                               String exportUserId, long expEpoch, boolean includeThumbnails)
+                                               String exportUserId, long expEpoch, boolean includeThumbnails,
+                                               boolean embedFullResolution, String imageBaseUrl)
             throws IOException {
         List<Map<String, String>> conditionList = parseFilters(searchField, keyword, filters);
         long count = 0;
@@ -354,14 +389,14 @@ public class TaskExcelExportService {
                 EmployeeRecordDTO dto = toEmployeeRecord(row, taskRowCache);
                 List<String> imageKeys = resolveExportImageKeys(row, dto, taskImageKeysCache);
                 List<String> imageUrls = employeeRecordExportImages.buildSignedImageUrls(
-                        imageKeys, exportUserId, expEpoch);
+                        imageKeys, exportUserId, expEpoch, imageBaseUrl);
                 String[] baseCells = toEmployeeRecordExportCells(dto);
                 List<EmployeeRecordExportImages.ExportImage> exportImages = new ArrayList<>();
                 if (includeThumbnails) {
                     int limit = Math.min(imageKeys.size(), employeeRecordExportImages.getMaxThumbnailsPerRow());
                     for (int i = 0; i < limit; i++) {
                         EmployeeRecordExportImages.ExportImage image =
-                                employeeRecordExportImages.readExportImage(imageKeys.get(i));
+                                employeeRecordExportImages.readExportImage(imageKeys.get(i), embedFullResolution);
                         if (image != null) {
                             exportImages.add(image);
                         }

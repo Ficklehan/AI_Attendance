@@ -15,6 +15,14 @@ export function createAgencyBillingExport(query) {
   return request.post('/exports/agency-billing', withExportLocale(query || {}))
 }
 
+export function createEmployeeListExport(query) {
+  return request.post('/exports/employee-list', withExportLocale(query || {}))
+}
+
+export function createWeeklyAttendanceExport(query) {
+  return request.post('/exports/weekly-attendance', withExportLocale(query || {}))
+}
+
 export function listExportJobs(params) {
   return request.get('/exports', { params })
 }

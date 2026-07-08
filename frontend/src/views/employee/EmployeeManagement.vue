@@ -32,6 +32,7 @@
               @change="loadList"
             />
             <a-button type="primary" @click="loadList">{{ $t('common.search') }}</a-button>
+            <a-button :loading="exportingList" @click="handleExportList">{{ $t('employees.export') }}</a-button>
           </div>
           <a-table
             :columns="listColumns"
@@ -92,6 +93,7 @@
                 @change="loadWeekly"
               />
               <a-button type="primary" @click="loadWeekly">{{ $t('common.search') }}</a-button>
+              <a-button :loading="exportingWeekly" @click="handleExportWeekly">{{ $t('employees.export') }}</a-button>
             </a-space>
           </div>
           <a-table
@@ -140,6 +142,8 @@ import dayjs from 'dayjs'
 import PageShell from '@/components/PageShell.vue'
 import CopyableCell from '@/components/CopyableCell.vue'
 import { getEmployeeList, getWeeklyAttendance, backfillEmployees } from '@/api/employee'
+import { createEmployeeListExport, createWeeklyAttendanceExport } from '@/api/export'
+import { useExportCenter } from '@/composables/useExportCenter'
 import { getMyDataScope } from '@/api/dataScope'
 import { useAuthStore } from '@/stores/auth'
 import { canManageRoles } from '@/utils/permissions'
@@ -152,6 +156,7 @@ import { isCopyableTableColumn, resolveTableCellCopyText } from '@/utils/tableCo
 const { t, locale } = useI18n()
 const authStore = useAuthStore()
 const countryStore = useCountryStore()
+const { openExportCenter, refreshExportSummary } = useExportCenter()
 
 const dataScope = ref({
   allUsers: true,
@@ -184,6 +189,8 @@ const regionCodes = ref(buildInitialRegionCodes())
 const employees = ref([])
 const listLoading = ref(false)
 const backfilling = ref(false)
+const exportingList = ref(false)
+const exportingWeekly = ref(false)
 
 const listPagination = reactive({
   current: 1,
@@ -352,6 +359,45 @@ async function loadWeekly() {
     message.error(e.message || t('common.error'))
   } finally {
     weeklyLoading.value = false
+  }
+}
+
+function joinRegionCodes(codes) {
+  return Array.isArray(codes) && codes.length > 0 ? codes.join(',') : undefined
+}
+
+async function handleExportList() {
+  exportingList.value = true
+  try {
+    await createEmployeeListExport({
+      keyword: keyword.value || undefined,
+      regionCodes: joinRegionCodes(regionCodes.value),
+    })
+    message.success(t('export.queued'))
+    await refreshExportSummary()
+    openExportCenter()
+  } catch (e) {
+    message.error(e.message || t('common.error'))
+  } finally {
+    exportingList.value = false
+  }
+}
+
+async function handleExportWeekly() {
+  exportingWeekly.value = true
+  try {
+    await createWeeklyAttendanceExport({
+      isoWeek: isoWeek.value || undefined,
+      keyword: weeklyKeyword.value || undefined,
+      regionCodes: joinRegionCodes(weeklyRegionCodes.value),
+    })
+    message.success(t('export.queued'))
+    await refreshExportSummary()
+    openExportCenter()
+  } catch (e) {
+    message.error(e.message || t('common.error'))
+  } finally {
+    exportingWeekly.value = false
   }
 }
 

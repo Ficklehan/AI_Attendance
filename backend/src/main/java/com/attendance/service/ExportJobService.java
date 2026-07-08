@@ -6,6 +6,7 @@ import com.attendance.common.ErrorCode;
 import com.attendance.common.ErrorKeys;
 import com.attendance.common.PageResult;
 import com.attendance.dto.request.AgencyBillingQuery;
+import com.attendance.dto.request.EmployeeExportQuery;
 import com.attendance.dto.request.TaskQuery;
 import com.attendance.dto.response.ExportJobDTO;
 import com.attendance.dto.response.ExportSummaryDTO;
@@ -43,6 +44,8 @@ public class ExportJobService {
     public static final String TYPE_TASK_LIST = "task_list";
     public static final String TYPE_EMPLOYEE_RECORDS = "employee_records";
     public static final String TYPE_AGENCY_BILLING = "agency_billing";
+    public static final String TYPE_EMPLOYEE_LIST = "employee_list";
+    public static final String TYPE_WEEKLY_ATTENDANCE = "weekly_attendance";
 
     @Value("${export.path:./exports}")
     private String exportPath;
@@ -58,6 +61,9 @@ public class ExportJobService {
 
     @Autowired
     private AgencyBillingService agencyBillingService;
+
+    @Autowired
+    private EmployeeService employeeService;
 
     @Autowired
     private TaskAccessService taskAccessService;
@@ -83,6 +89,32 @@ public class ExportJobService {
         job.setId(IdGenerator.generateId());
         job.setUserId(userId);
         job.setExportType(TYPE_AGENCY_BILLING);
+        job.setStatus("pending");
+        job.setQueryJson(JSON.toJSONString(query));
+        job.setExpiresAt(LocalDateTime.now().plusDays(Math.max(1, retentionDays)));
+        exportJobMapper.insert(job);
+
+        exportExecutor.execute(() -> runExport(job.getId()));
+        return ExportJobDTO.from(job);
+    }
+
+    public ExportJobDTO createEmployeeListExport(EmployeeExportQuery query) {
+        return createEmployeeExport(TYPE_EMPLOYEE_LIST, query);
+    }
+
+    public ExportJobDTO createWeeklyAttendanceExport(EmployeeExportQuery query) {
+        return createEmployeeExport(TYPE_WEEKLY_ATTENDANCE, query);
+    }
+
+    private ExportJobDTO createEmployeeExport(String exportType, EmployeeExportQuery query) {
+        String userId = taskAccessService.requireCurrentUserId();
+        if (query == null) {
+            query = new EmployeeExportQuery();
+        }
+        ExportJob job = new ExportJob();
+        job.setId(IdGenerator.generateId());
+        job.setUserId(userId);
+        job.setExportType(exportType);
         job.setStatus("pending");
         job.setQueryJson(JSON.toJSONString(query));
         job.setExpiresAt(LocalDateTime.now().plusDays(Math.max(1, retentionDays)));
@@ -200,28 +232,43 @@ public class ExportJobService {
             return;
         }
         exportJobMapper.updateStatus(jobId, "running", null);
-        TaskQuery query = parseQuery(job.getQueryJson());
+        String type = job.getExportType();
         com.attendance.security.DataScopeContext scope = taskService.resolveDataScopeForUserId(job.getUserId());
-        String prefix = TYPE_TASK_LIST.equals(job.getExportType()) ? "tasks"
-                : TYPE_AGENCY_BILLING.equals(job.getExportType()) ? "agency_releve" : "attendance_records";
+        String prefix = resolveFilePrefix(type);
         String fileName = prefix + "_" + FILE_TS.format(LocalDateTime.now()) + ".xlsx";
         Path dir = Paths.get(exportPath, job.getUserId());
         Path file = dir.resolve(jobId + ".xlsx");
 
         try {
             long rowCount;
-            if (TYPE_TASK_LIST.equals(job.getExportType())) {
+            if (TYPE_TASK_LIST.equals(type)) {
+                TaskQuery query = parseQuery(job.getQueryJson());
                 try (ExcelSheetWriter writer = ExcelExportHelper.open(file)) {
                     rowCount = taskService.exportTaskListToExcel(
                             scope, query.getStatus(), query.getKeyword(), query.getSearchField(), writer,
                             query.getLocale());
                 }
-            } else if (TYPE_AGENCY_BILLING.equals(job.getExportType())) {
+            } else if (TYPE_AGENCY_BILLING.equals(type)) {
                 AgencyBillingQuery billingQuery = parseAgencyBillingQuery(job.getQueryJson());
                 rowCount = AgencyBillingExcelWriter.write(file,
                         agencyBillingService.buildAllDetailsForExport(billingQuery, scope),
                         billingQuery.getLocale());
+            } else if (TYPE_EMPLOYEE_LIST.equals(type)) {
+                EmployeeExportQuery empQuery = parseEmployeeExportQuery(job.getQueryJson());
+                try (ExcelSheetWriter writer = ExcelExportHelper.open(file)) {
+                    rowCount = employeeService.exportEmployeeListToExcel(
+                            scope, empQuery.getRegionCodes(), empQuery.getRegionCode(), empQuery.getKeyword(),
+                            writer, empQuery.getLocale());
+                }
+            } else if (TYPE_WEEKLY_ATTENDANCE.equals(type)) {
+                EmployeeExportQuery empQuery = parseEmployeeExportQuery(job.getQueryJson());
+                try (ExcelSheetWriter writer = ExcelExportHelper.open(file)) {
+                    rowCount = employeeService.exportWeeklyAttendanceToExcel(
+                            scope, empQuery.getIsoWeek(), empQuery.getRegionCodes(), empQuery.getRegionCode(),
+                            empQuery.getKeyword(), writer, empQuery.getLocale());
+                }
             } else {
+                TaskQuery query = parseQuery(job.getQueryJson());
                 rowCount = taskService.exportEmployeeRecordsToExcel(
                         scope, query, file, job.getUserId(), job.getExpiresAt());
             }
@@ -234,7 +281,7 @@ public class ExportJobService {
                 BusinessException be = (BusinessException) e;
                 msg = be.getMessageKey() != null ? be.getMessageKey() : be.getMessage();
             } else {
-                msg = e.getMessage() != null ? e.getMessage() : e.getClass().getSimpleName();
+                msg = describeFailureChain(e);
             }
             if (msg.length() > 900) {
                 msg = msg.substring(0, 900);
@@ -245,6 +292,58 @@ public class ExportJobService {
             } catch (Exception ignored) {
                 // ignore cleanup failure
             }
+        }
+    }
+
+    /**
+     * 拼出根因链，避免 POI 之类外层异常只留下 "... : null" 而真因被丢弃。
+     */
+    private String describeFailureChain(Throwable e) {
+        StringBuilder sb = new StringBuilder();
+        Throwable current = e;
+        int depth = 0;
+        while (current != null && depth < 6) {
+            if (depth > 0) {
+                sb.append(" <- ");
+            }
+            sb.append(current.getClass().getSimpleName());
+            if (current.getMessage() != null && !current.getMessage().trim().isEmpty()) {
+                sb.append(": ").append(current.getMessage().trim());
+            }
+            Throwable next = current.getCause();
+            if (next == current) {
+                break;
+            }
+            current = next;
+            depth++;
+        }
+        return sb.length() > 0 ? sb.toString() : e.getClass().getSimpleName();
+    }
+
+    private String resolveFilePrefix(String type) {
+        if (TYPE_TASK_LIST.equals(type)) {
+            return "tasks";
+        }
+        if (TYPE_AGENCY_BILLING.equals(type)) {
+            return "agency_releve";
+        }
+        if (TYPE_EMPLOYEE_LIST.equals(type)) {
+            return "employees";
+        }
+        if (TYPE_WEEKLY_ATTENDANCE.equals(type)) {
+            return "weekly_attendance";
+        }
+        return "attendance_records";
+    }
+
+    private EmployeeExportQuery parseEmployeeExportQuery(String json) {
+        if (json == null || json.trim().isEmpty()) {
+            return new EmployeeExportQuery();
+        }
+        try {
+            return JSON.parseObject(json, EmployeeExportQuery.class);
+        } catch (Exception e) {
+            return new EmployeeExportQuery();
         }
     }
 

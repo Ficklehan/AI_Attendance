@@ -2,6 +2,8 @@ server:
   port: 8080
   servlet:
     context-path: /attendance/api
+  # 反向代理(nginx)后按 X-Forwarded-* 解析真实协议/域名，保证导出图片链接等使用公网地址
+  forward-headers-strategy: framework
 
 spring:
   profiles:

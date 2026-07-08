@@ -150,6 +150,15 @@
                                     </foreach>
                                     )
                                 </when>
+                                <when test="cond.field == 'Pays'">
+                                    AND (
+                                    <foreach collection="cond.keyword.split(';')" item="mv" separator=" OR ">
+                                        UPPER(TRIM(tr.country_key)) = UPPER(TRIM(#{mv}))
+                                        OR UPPER(TRIM(tr.country)) = UPPER(TRIM(#{mv}))
+                                        OR UPPER(TRIM(tr.country)) LIKE CONCAT('%', UPPER(TRIM(#{mv})), '%')
+                                    </foreach>
+                                    )
+                                </when>
                             </choose>
                         </when>
                         <when test="cond.filterType == 'datetime' and cond.field == 'createdAt'">

@@ -26,6 +26,7 @@ const DEFAULT_MAX_BY_KEY = {
 }
 
 const COMPACT_MAX_BY_KEY = {
+  pageNum: 72,
   no: 72,
   country: 76,
   date: 108,
@@ -36,6 +37,7 @@ const COMPACT_MAX_BY_KEY = {
 }
 
 const COMPACT_MIN_BY_KEY = {
+  pageNum: 56,
   no: 56,
   country: 60,
   date: 88,

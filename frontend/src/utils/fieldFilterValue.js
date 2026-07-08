@@ -1,6 +1,9 @@
 /** 字段筛选：类型定义、序列化与本地匹配（与后端 filterType 一致） */
 
 import dayjs from 'dayjs'
+import { resolveCountryCodeFromPays } from '@/utils/countryCatalog'
+
+const COUNTRY_FILTER_FIELDS = new Set(['Pays', 'country'])
 
 export const FILTER_TYPES = {
   TEXT: 'text',
@@ -42,10 +45,11 @@ export function buildSmartMarkOptions(t) {
   ]
 }
 
-export function getFilterOptions(def, t) {
+export function getFilterOptions(def, t, countryOptions = []) {
   if (!def) return []
   if (def.filterOptions) return def.filterOptions
   const key = def.filterOptionsKey
+  if (key === 'countryOptions' || def.isCountry) return countryOptions || []
   if (key === 'taskStatus') return buildTaskStatusOptions(t)
   if (key === 'signatureMarks') return buildSignatureMarkOptions(t)
   if (key === 'smartMarks') return buildSmartMarkOptions(t)
@@ -173,6 +177,17 @@ function matchMultiselect(cell, selected) {
   return selected.some((sel) => parts.includes(sel) || text.includes(sel))
 }
 
+/** 国家多选：按标准国家码归一后比对，兼容单元格存的是代码或本地化名称 */
+function matchCountryMultiselect(cell, selected) {
+  const raw = String(cell ?? '').trim()
+  if (!raw) return false
+  const cellCode = (resolveCountryCodeFromPays(raw) || raw).toUpperCase()
+  return (selected || []).some((sel) => {
+    const selCode = (resolveCountryCodeFromPays(sel) || String(sel || '')).trim().toUpperCase()
+    return selCode && (selCode === cellCode || raw.toUpperCase() === selCode)
+  })
+}
+
 /** 任务详情页本地筛选 */
 export function matchRecordByFilter(filterType, field, keyword, record) {
   const value = parseFilterValue(filterType, keyword)
@@ -182,7 +197,9 @@ export function matchRecordByFilter(filterType, field, keyword, record) {
     case FILTER_TYPES.STATUS:
       return String(cell ?? '') === String(value)
     case FILTER_TYPES.MULTISELECT:
-      return matchMultiselect(cell, value)
+      return COUNTRY_FILTER_FIELDS.has(field)
+        ? matchCountryMultiselect(cell, value)
+        : matchMultiselect(cell, value)
     case FILTER_TYPES.DATE:
       return inDateRange(cell, value)
     case FILTER_TYPES.DATETIME:
@@ -198,7 +215,7 @@ export function getRecognitionFieldFilterMeta() {
   return {
     PAGE_NUM: { filterType: FILTER_TYPES.TEXT },
     NO: { filterType: FILTER_TYPES.TEXT },
-    Pays: { filterType: FILTER_TYPES.TEXT },
+    Pays: { filterType: FILTER_TYPES.MULTISELECT, filterOptionsKey: 'countryOptions', isCountry: true },
     Entrepot: { filterType: FILTER_TYPES.TEXT },
     Date: { filterType: FILTER_TYPES.DATE },
     NOM_PRENOM: { filterType: FILTER_TYPES.TEXT },
@@ -219,8 +236,8 @@ export function resolveColumnFilterType(column) {
   return meta?.filterType || FILTER_TYPES.TEXT
 }
 
-export function resolveColumnFilterOptions(column, t) {
+export function resolveColumnFilterOptions(column, t, countryOptions = []) {
   if (column?.filterOptions?.length) return column.filterOptions
   const meta = getRecognitionFieldFilterMeta()[column?.searchField || column?.dataIndex]
-  return getFilterOptions({ ...meta, filterType: resolveColumnFilterType(column) }, t)
+  return getFilterOptions({ ...meta, filterType: resolveColumnFilterType(column) }, t, countryOptions)
 }

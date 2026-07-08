@@ -147,6 +147,8 @@ const typeLabel = (type) => {
   if (type === 'task_list') return t('export.typeTaskList')
   if (type === 'employee_records') return t('export.typeEmployeeRecords')
   if (type === 'agency_billing') return t('export.typeAgencyBilling')
+  if (type === 'employee_list') return t('export.typeEmployeeList')
+  if (type === 'weekly_attendance') return t('export.typeWeeklyAttendance')
   return type
 }
 

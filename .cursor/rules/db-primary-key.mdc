@@ -1,0 +1,38 @@
+---
+description: 数据库表主键规范——单列主键，禁止复合主键，唯一性用 UNIQUE KEY 保证
+alwaysApply: true
+---
+
+# 数据库主键规范
+
+## 硬性要求
+
+1. 每张表**必须有且仅有一个单列主键**（`PRIMARY KEY`），通常为自增代理键 `id BIGINT AUTO_INCREMENT PRIMARY KEY`（或业务无关的单列唯一 ID）。
+2. **禁止复合/联合主键**：`PRIMARY KEY (a, b)` 一律不允许。
+3. 业务上跨多列的唯一性约束，必须用**复合 UNIQUE KEY / 唯一索引**实现，不得用复合主键承担去重职责。**DB 层唯一性保证不能丢失。**
+4. 设计/审查表结构、编写建表 DDL、编写迁移脚本时主动遵守；发现存量表使用复合主键，应提出改造方案并提供存量库迁移与应用启动自愈路径。
+
+## 反例 / 正例
+
+```sql
+-- ❌ 禁止：复合主键
+CREATE TABLE user_role (
+    user_id VARCHAR(64) NOT NULL,
+    role_key VARCHAR(32) NOT NULL,
+    PRIMARY KEY (user_id, role_key)
+);
+
+-- ✅ 正确：单列自增主键 + 复合 UNIQUE 保证去重
+CREATE TABLE user_role (
+    id BIGINT NOT NULL AUTO_INCREMENT PRIMARY KEY,
+    user_id VARCHAR(64) NOT NULL,
+    role_key VARCHAR(32) NOT NULL,
+    UNIQUE KEY uk_user_role (user_id, role_key)
+);
+```
+
+## 存量表改造路径
+
+- 新增 `id BIGINT AUTO_INCREMENT`，`DROP PRIMARY KEY` 后将其设为单列主键；
+- 原复合主键降级为 `UNIQUE KEY`，保住去重语义；
+- 提供迁移脚本（存量库）+ 应用启动自愈（检测缺 `id` 列则自动 ALTER）。

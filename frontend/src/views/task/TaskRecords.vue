@@ -211,6 +211,16 @@
       <p v-if="exportIncludeThumbnails" class="export-options-warn">
         {{ $t('export.includeThumbnailsHint') }}
       </p>
+      <a-checkbox
+        v-if="exportIncludeThumbnails"
+        v-model:checked="exportEmbedFullResolution"
+        class="export-options-sub"
+      >
+        {{ $t('export.embedFullResolution') }}
+      </a-checkbox>
+      <p v-if="exportIncludeThumbnails && exportEmbedFullResolution" class="export-options-warn">
+        {{ $t('export.embedFullResolutionHint') }}
+      </p>
     </a-modal>
   </div>
 </template>
@@ -282,6 +292,7 @@ const loading = ref(false)
 const exporting = ref(false)
 const exportModalOpen = ref(false)
 const exportIncludeThumbnails = ref(false)
+const exportEmbedFullResolution = ref(false)
 const records = ref([])
 const total = ref(0)
 const currentPage = ref(1)
@@ -386,6 +397,7 @@ const buildExportFilters = () => JSON.stringify(buildQueryFilters())
 
 const openExportModal = () => {
   exportIncludeThumbnails.value = false
+  exportEmbedFullResolution.value = false
   exportModalOpen.value = true
 }
 
@@ -396,6 +408,7 @@ const confirmExport = async () => {
       status: filterStatus.value,
       filters: buildExportFilters(),
       includeThumbnails: exportIncludeThumbnails.value,
+      embedFullResolution: exportIncludeThumbnails.value && exportEmbedFullResolution.value,
     })
     message.success(t('export.queued'))
     exportModalOpen.value = false
@@ -446,11 +459,15 @@ const getFilterPlaceholder = (field) => {
 
 const filterPlaceholder = (def) => resolveFilterPlaceholder(def, t)
 
-const getFilterOptions = (def) => getFilterOptionsUtil(def, t)
+const countryFilterOptions = computed(() =>
+  (countryStore.selectOptions || []).filter((item) => item.value && item.value !== 'default'),
+)
+
+const getFilterOptions = (def) => getFilterOptionsUtil(def, t, countryFilterOptions.value)
 
 const getHeaderFilterOptions = (column) => {
   const def = findFieldDef(fieldDefs.value, column.searchField)
-  return getFilterOptions(def || { filterType: column.filterType })
+  return getFilterOptions(def || { filterType: column.filterType, isCountry: column.searchField === 'Pays' })
 }
 
 const isHeaderFilterActive = (field) => {
@@ -739,6 +756,11 @@ onMounted(() => {
   color: rgba(0, 0, 0, 0.45);
   font-size: 12px;
   line-height: 1.5;
+}
+
+.export-options-sub {
+  margin-top: 10px;
+  margin-left: 24px;
 }
 
 </style>

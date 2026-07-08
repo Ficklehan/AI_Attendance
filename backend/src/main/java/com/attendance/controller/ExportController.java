@@ -3,13 +3,16 @@ package com.attendance.controller;
 import com.attendance.common.PageResult;
 import com.attendance.common.Result;
 import com.attendance.dto.request.AgencyBillingQuery;
+import com.attendance.dto.request.EmployeeExportQuery;
 import com.attendance.dto.request.TaskQuery;
 import com.attendance.dto.response.ExportJobDTO;
 import com.attendance.dto.response.ExportSummaryDTO;
+import com.attendance.service.EmployeeService;
 import com.attendance.service.ExportJobService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.servlet.support.ServletUriComponentsBuilder;
 
 import javax.servlet.http.HttpServletResponse;
 
@@ -20,6 +23,9 @@ public class ExportController {
 
     @Autowired
     private ExportJobService exportJobService;
+
+    @Autowired
+    private EmployeeService employeeService;
 
     @PostMapping("/task-list")
     public Result<ExportJobDTO> exportTaskList(@RequestBody(required = false) TaskQuery query) {
@@ -34,7 +40,19 @@ public class ExportController {
         if (query == null) {
             query = new TaskQuery();
         }
+        if (query.getImageBaseUrl() == null || query.getImageBaseUrl().trim().isEmpty()) {
+            query.setImageBaseUrl(resolveRequestBaseUrl());
+        }
         return Result.success(exportJobService.createEmployeeRecordsExport(query));
+    }
+
+    /** 以当前请求(经反向代理 X-Forwarded-* 解析)域名+context-path 作为导出图片链接根地址 */
+    private String resolveRequestBaseUrl() {
+        try {
+            return ServletUriComponentsBuilder.fromCurrentContextPath().build().toUriString();
+        } catch (Exception e) {
+            return null;
+        }
     }
 
     @PostMapping("/agency-billing")
@@ -43,6 +61,24 @@ public class ExportController {
             query = new AgencyBillingQuery();
         }
         return Result.success(exportJobService.createAgencyBillingExport(query));
+    }
+
+    @PostMapping("/employee-list")
+    public Result<ExportJobDTO> exportEmployeeList(@RequestBody(required = false) EmployeeExportQuery query) {
+        employeeService.requireEmployeesAccess();
+        if (query == null) {
+            query = new EmployeeExportQuery();
+        }
+        return Result.success(exportJobService.createEmployeeListExport(query));
+    }
+
+    @PostMapping("/weekly-attendance")
+    public Result<ExportJobDTO> exportWeeklyAttendance(@RequestBody(required = false) EmployeeExportQuery query) {
+        employeeService.requireEmployeesAccess();
+        if (query == null) {
+            query = new EmployeeExportQuery();
+        }
+        return Result.success(exportJobService.createWeeklyAttendanceExport(query));
     }
 
     @GetMapping
