@@ -47,6 +47,8 @@ MIGRATIONS=(
   "$ROOT/migration/022_agency_billing_index.sql"
   "$ROOT/migration/023_user_roles.sql"
   "$ROOT/migration/024_role_data_scope_work_region.sql"
+  # 025_user_role_surrogate_id.sql — 仅当 user_role 仍为旧版复合主键时手动执行
+  #   （应用启动时 UserRoleDatabaseBootstrap 会自愈，通常无需手工执行；已是自增 id 会报错，跳过即可）
 )
 
 for f in "${MIGRATIONS[@]}"; do

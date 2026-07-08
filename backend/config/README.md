@@ -47,6 +47,7 @@ chmod +x backend/config/migrate_all.sh
 |------|----------------|
 | `011_reminder_template_locales.sql` | `reminder_feishu_messages` 仍为旧主键结构 |
 | `016_reminder_association_tables_drop.sql` + `017_..._create.sql` | 需重建关联表 PK（**会删数据**） |
+| `025_user_role_surrogate_id.sql` | `user_role` 仍为旧版复合主键 `(user_id, role_key)`；转为自增 `id` 单列主键（应用启动时 `UserRoleDatabaseBootstrap` 会自愈，通常无需手工执行） |
 
 > 若已执行过完整 `init.sql`（当前版本），通常**无需**再跑增量迁移。
 

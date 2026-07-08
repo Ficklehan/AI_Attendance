@@ -34,5 +34,17 @@
 		"taskDeleteConfirmed":true,
 		"reminderConfig":false,
 		"employees":true
+	},
+	"test2":{
+		"tasks":true,
+		"country":true,
+		"aiConfig":true,
+		"feishuConfig":false,
+		"users":false,
+		"audit":false,
+		"recordCalibrate":false,
+		"taskDeleteConfirmed":false,
+		"reminderConfig":false,
+		"employees":true
 	}
 }
