@@ -10,14 +10,20 @@ import java.io.IOException;
 import java.io.OutputStream;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.time.LocalDate;
+import java.time.LocalDateTime;
+import java.time.LocalTime;
+import java.time.OffsetDateTime;
+import java.time.ZonedDateTime;
 import java.time.format.DateTimeFormatter;
-import java.time.temporal.TemporalAccessor;
 
 public final class ExcelExportHelper {
 
     public static final String CONTENT_TYPE =
             "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet";
 
+    private static final DateTimeFormatter DATE = DateTimeFormatter.ofPattern("yyyy-MM-dd");
+    private static final DateTimeFormatter TIME = DateTimeFormatter.ofPattern("HH:mm:ss");
     private static final DateTimeFormatter DT = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
     private static final float DEFAULT_ROW_HEIGHT_POINTS = 18f;
 
@@ -32,8 +38,20 @@ public final class ExcelExportHelper {
         if (value == null) {
             return "";
         }
-        if (value instanceof TemporalAccessor) {
-            return DT.format((TemporalAccessor) value);
+        if (value instanceof LocalDate) {
+            return DATE.format((LocalDate) value);
+        }
+        if (value instanceof LocalDateTime) {
+            return DT.format((LocalDateTime) value);
+        }
+        if (value instanceof LocalTime) {
+            return TIME.format((LocalTime) value);
+        }
+        if (value instanceof ZonedDateTime) {
+            return DT.format((ZonedDateTime) value);
+        }
+        if (value instanceof OffsetDateTime) {
+            return DT.format((OffsetDateTime) value);
         }
         return String.valueOf(value);
     }
