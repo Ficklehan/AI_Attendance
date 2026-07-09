@@ -35,15 +35,15 @@ import java.util.Set;
 public class EmployeeRecordExportImages {
 
     /** Excel 单元格内展示的最大宽高（保持比例，不拉伸占满大行） */
-    private static final int DISPLAY_MAX_WIDTH = 128;
-    private static final int DISPLAY_MAX_HEIGHT = 96;
+    private static final int DISPLAY_MAX_WIDTH = 192;
+    private static final int DISPLAY_MAX_HEIGHT = 144;
     /** 单列默认展示宽度：单张图 + 左右留白，用于列宽估算 */
     public static final int THUMB_COLUMN_DEFAULT_WIDTH_PX = DISPLAY_MAX_WIDTH + 12;
     /** 预览模式嵌入图片的最大边长：单元格内展示足够清晰，同时大幅压缩体积/内存，保证大批量可靠嵌入 */
-    public static final int PREVIEW_EMBED_DIMENSION = 640;
+    public static final int PREVIEW_EMBED_DIMENSION = 1280;
     /** 全分辨率模式的安全上限：极端超大图仍做一次降采样，避免单图撑爆内存 */
     private static final int FULL_EMBED_SAFETY_DIMENSION = 4096;
-    private static final float EMBED_JPEG_QUALITY = 0.92f;
+    private static final float EMBED_JPEG_QUALITY = 0.95f;
     private static final int MAX_THUMBNAILS_PER_ROW = 8;
 
     @Value("${export.public-base-url:http://localhost:8080/attendance/api}")
