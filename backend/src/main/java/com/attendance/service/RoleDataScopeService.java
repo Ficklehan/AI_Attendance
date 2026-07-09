@@ -15,11 +15,11 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.HashMap;
 import java.util.LinkedHashMap;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.stream.Collectors;
 
 @Service
@@ -68,44 +68,63 @@ public class RoleDataScopeService {
             throw new BusinessException(400, ErrorKeys.VALIDATION_FAILED,
                     java.util.Collections.singletonMap("detail", "scopeType must be all or restricted"));
         }
-        if ("all".equals(scopeType)) {
-            roleDataScopeMapper.upsertScopeType(normalized, "all");
-            roleDataScopeMapper.deleteRulesByRole(normalized);
-            return loadRoleScope(normalized);
-        }
+        try {
+            if ("all".equals(scopeType)) {
+                roleDataScopeMapper.upsertScopeType(normalized, "all");
+                roleDataScopeMapper.deleteRulesByRole(normalized);
+                return loadRoleScope(normalized);
+            }
 
-        roleDataScopeMapper.upsertScopeType(normalized, "restricted");
-        roleDataScopeMapper.deleteRulesByRole(normalized);
-        Map<String, List<String>> rules = request != null ? request.getRules() : null;
-        if (rules != null) {
-            for (Map.Entry<String, List<String>> entry : rules.entrySet()) {
-                String dimension = normalizeDimension(entry.getKey());
-                if (dimension == null || entry.getValue() == null) {
-                    continue;
-                }
-                for (String raw : entry.getValue()) {
-                    if (raw == null || raw.trim().isEmpty()) {
+            roleDataScopeMapper.upsertScopeType(normalized, "restricted");
+            roleDataScopeMapper.deleteRulesByRole(normalized);
+            Map<String, List<String>> rules = request != null ? request.getRules() : null;
+            if (rules != null) {
+                for (Map.Entry<String, List<String>> entry : rules.entrySet()) {
+                    String dimension = normalizeDimension(entry.getKey());
+                    if (dimension == null || entry.getValue() == null) {
                         continue;
                     }
-                    String value = raw.trim();
-                    if ("owner_user".equals(dimension) && !"__self__".equals(value)) {
-                        if (userMapper.selectUserById(value) == null) {
-                            throw new BusinessException(400, ErrorKeys.VALIDATION_FAILED,
-                                    java.util.Collections.singletonMap("detail", "invalid owner_user: " + value));
+                    // 归一化后可能多值合并为同一代码（如 ITALIA/IT → IT），按维度去重后再写入
+                    Set<String> uniqueValues = new LinkedHashSet<>();
+                    for (String raw : entry.getValue()) {
+                        String value = normalizeRuleValue(dimension, raw);
+                        if (value != null) {
+                            uniqueValues.add(value);
                         }
                     }
-                    if ("country".equals(dimension) || "work_region".equals(dimension)) {
-                        String resolved = CountryCatalog.resolveCountryCodeFromPays(value);
-                        value = resolved != null ? resolved : com.attendance.util.CountryResolver.normalize(value);
-                        if (value == null || value.isEmpty() || "default".equalsIgnoreCase(value)) {
-                            continue;
+                    for (String value : uniqueValues) {
+                        if ("owner_user".equals(dimension) && !"__self__".equals(value)) {
+                            if (userMapper.selectUserById(value) == null) {
+                                throw new BusinessException(400, ErrorKeys.VALIDATION_FAILED,
+                                        java.util.Collections.singletonMap("detail", "invalid owner_user: " + value));
+                            }
                         }
+                        roleDataScopeMapper.insertRule(normalized, dimension, value);
                     }
-                    roleDataScopeMapper.insertRule(normalized, dimension, value);
                 }
             }
+            return loadRoleScope(normalized);
+        } catch (BusinessException e) {
+            throw e;
+        } catch (Exception e) {
+            String msg = e.getMessage() != null ? e.getMessage() : "";
+            Throwable cause = e.getCause();
+            while (cause != null) {
+                if (cause.getMessage() != null) {
+                    msg = msg + " " + cause.getMessage();
+                }
+                cause = cause.getCause();
+            }
+            if (msg.contains("Data truncated")
+                    || msg.contains("work_region")
+                    || msg.contains("role_data_dimension_rule")
+                    || msg.contains("Unknown column")) {
+                throw new BusinessException(500, ErrorKeys.DB_MIGRATION_REQUIRED,
+                        java.util.Collections.singletonMap("detail",
+                                "role_data_dimension_rule.dimension needs work_region; run migration 024"));
+            }
+            throw e;
         }
-        return loadRoleScope(normalized);
     }
 
     public Map<String, List<DimensionOptionDTO>> getDimensionOptions() {
@@ -225,5 +244,25 @@ public class RoleDataScopeService {
         }
         String d = dimension.trim().toLowerCase();
         return DIMENSIONS.contains(d) ? d : null;
+    }
+
+    /** 维度值归一化；无效值返回 null。国家类维度统一为目录代码，避免别名重复写入。 */
+    private static String normalizeRuleValue(String dimension, String raw) {
+        if (raw == null) {
+            return null;
+        }
+        String value = raw.trim();
+        if (value.isEmpty()) {
+            return null;
+        }
+        if ("country".equals(dimension) || "work_region".equals(dimension)) {
+            String resolved = CountryCatalog.resolveCountryCodeFromPays(value);
+            value = resolved != null ? resolved : com.attendance.util.CountryResolver.normalize(value);
+            if (value == null || value.isEmpty() || "default".equalsIgnoreCase(value)) {
+                return null;
+            }
+            return value.trim().toUpperCase();
+        }
+        return value;
     }
 }

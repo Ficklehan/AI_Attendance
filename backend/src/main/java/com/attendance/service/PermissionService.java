@@ -108,8 +108,10 @@ public class PermissionService {
         try {
             saveAll(merged);
         } catch (IOException e) {
-            log.error("保存 permissions.json 失败", e);
-            throw new BusinessException(ErrorCode.PERMISSION_DENIED, ErrorKeys.SYSTEM_ERROR);
+            log.error("保存 permissions.json 失败: path={}",
+                    configPathResolver.resolveFile(PERMISSIONS_FILE).toAbsolutePath(), e);
+            throw new BusinessException(500, ErrorKeys.SYSTEM_ERROR,
+                    Collections.singletonMap("detail", "failed to write permissions.json: " + e.getMessage()));
         }
     }
 
@@ -159,8 +161,11 @@ public class PermissionService {
         try {
             saveByCountryAll(merged);
         } catch (IOException e) {
-            log.error("保存 permissions-by-country.json 失败", e);
-            throw new BusinessException(ErrorCode.PERMISSION_DENIED, ErrorKeys.SYSTEM_ERROR);
+            log.error("保存 permissions-by-country.json 失败: path={}",
+                    configPathResolver.resolveFile(PERMISSIONS_BY_COUNTRY_FILE).toAbsolutePath(), e);
+            throw new BusinessException(500, ErrorKeys.SYSTEM_ERROR,
+                    Collections.singletonMap("detail",
+                            "failed to write permissions-by-country.json: " + e.getMessage()));
         }
     }
 

@@ -33,7 +33,7 @@
     </delete>
 
     <insert id="insertRule">
-        INSERT INTO role_data_dimension_rule (role, dimension, value)
+        INSERT IGNORE INTO role_data_dimension_rule (role, dimension, value)
         VALUES (#{role}, #{dimension}, #{value})
     </insert>
 

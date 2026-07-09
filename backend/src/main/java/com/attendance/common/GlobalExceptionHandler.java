@@ -2,8 +2,6 @@ package com.attendance.common;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.core.env.Environment;
 import org.springframework.http.HttpStatus;
 import org.springframework.validation.BindException;
 import org.springframework.web.HttpRequestMethodNotSupportedException;
@@ -30,9 +28,6 @@ import java.util.stream.Collectors;
 public class GlobalExceptionHandler {
     
     private static final Logger log = LoggerFactory.getLogger(GlobalExceptionHandler.class);
-
-    @Autowired
-    private Environment environment;
 
     @ExceptionHandler(BusinessException.class)
     public Result<Void> handleBusinessException(BusinessException e) {
@@ -136,23 +131,17 @@ public class GlobalExceptionHandler {
             if (msg.contains("export_jobs") && msg.contains("doesn't exist")) {
                 return Result.error(500, ErrorKeys.DB_MIGRATION_REQUIRED);
             }
-            if (isDevProfile() && (msg.contains("Unknown column") || msg.contains("doesn't exist"))) {
+            // 角色数据权限：存量库未扩 ENUM 时写入 work_region 会 Data truncated
+            if (msg.contains("role_data_dimension_rule")
+                    || (msg.contains("Data truncated") && msg.contains("dimension"))
+                    || msg.contains("work_region")) {
+                return Result.error(500, ErrorKeys.DB_MIGRATION_REQUIRED);
+            }
+            if (msg.contains("Unknown column") || msg.contains("doesn't exist")) {
                 return Result.error(500, ErrorKeys.DB_MIGRATION_REQUIRED);
             }
         }
         return Result.error(500, ErrorKeys.SYSTEM_ERROR);
-    }
-
-    private boolean isDevProfile() {
-        if (environment == null) {
-            return false;
-        }
-        for (String profile : environment.getActiveProfiles()) {
-            if ("dev".equalsIgnoreCase(profile)) {
-                return true;
-            }
-        }
-        return false;
     }
 
     private SQLException findSQLException(Throwable e) {
