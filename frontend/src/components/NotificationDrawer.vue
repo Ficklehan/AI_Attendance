@@ -221,7 +221,7 @@ const handleClick = async (item) => {
   if (item.link) {
     try {
       const url = new URL(item.link, window.location.origin)
-      const path = url.pathname.replace(/^\/attendance/, '') || '/tasks'
+      const path = url.pathname.replace(/^\/(clockai|attendance)/, '') || '/tasks'
       router.push(path + url.search)
       visible.value = false
     } catch {

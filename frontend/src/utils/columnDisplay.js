@@ -1,6 +1,9 @@
-const FREEZE_PREFIX = 'attendance:column-freeze:'
-const HIDDEN_PREFIX = 'attendance:column-hidden:'
-const WIDTH_PREFIX = 'attendance:column-widths:'
+const FREEZE_PREFIX = 'clockai:column-freeze:'
+const HIDDEN_PREFIX = 'clockai:column-hidden:'
+const WIDTH_PREFIX = 'clockai:column-widths:'
+const LEGACY_FREEZE_PREFIX = 'attendance:column-freeze:'
+const LEGACY_HIDDEN_PREFIX = 'attendance:column-hidden:'
+const LEGACY_WIDTH_PREFIX = 'attendance:column-widths:'
 
 export function getColumnKey(col) {
   if (!col) return ''
@@ -26,7 +29,7 @@ export function enforceFrozenPrefix(orderedKeys, selectedKeys = []) {
 }
 
 export function loadColumnFreeze(storageId, fallback = []) {
-  return loadStringArray(FREEZE_PREFIX + storageId, fallback)
+  return loadStringArrayWithLegacy(FREEZE_PREFIX, LEGACY_FREEZE_PREFIX, storageId, fallback)
 }
 
 export function saveColumnFreeze(storageId, keys) {
@@ -34,23 +37,31 @@ export function saveColumnFreeze(storageId, keys) {
 }
 
 export function loadHiddenColumns(storageId, fallback = []) {
-  return loadStringArray(HIDDEN_PREFIX + storageId, fallback)
+  return loadStringArrayWithLegacy(HIDDEN_PREFIX, LEGACY_HIDDEN_PREFIX, storageId, fallback)
 }
 
 export function saveHiddenColumns(storageId, keys) {
   saveStringArray(HIDDEN_PREFIX + storageId, keys)
 }
 
-function loadStringArray(storageKey, fallback) {
-  if (!storageKey || typeof localStorage === 'undefined') return [...fallback]
+function loadOptionalStringArray(storageKey) {
+  if (!storageKey || typeof localStorage === 'undefined') return undefined
   try {
     const raw = localStorage.getItem(storageKey)
-    if (!raw) return [...fallback]
+    if (!raw) return undefined
     const parsed = JSON.parse(raw)
-    return Array.isArray(parsed) ? parsed.map(String) : [...fallback]
+    return Array.isArray(parsed) ? parsed.map(String) : undefined
   } catch {
-    return [...fallback]
+    return undefined
   }
+}
+
+function loadStringArrayWithLegacy(prefix, legacyPrefix, storageId, fallback) {
+  const current = loadOptionalStringArray(prefix + storageId)
+  if (current !== undefined) return current
+  const legacy = loadOptionalStringArray(legacyPrefix + storageId)
+  if (legacy !== undefined) return legacy
+  return [...fallback]
 }
 
 function saveStringArray(storageKey, keys) {
@@ -103,6 +114,7 @@ export function loadColumnWidths(storageId) {
   if (!storageId || typeof localStorage === 'undefined') return {}
   try {
     const raw = localStorage.getItem(WIDTH_PREFIX + storageId)
+      || localStorage.getItem(LEGACY_WIDTH_PREFIX + storageId)
     if (!raw) return {}
     const parsed = JSON.parse(raw)
     if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) return {}

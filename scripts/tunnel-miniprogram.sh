@@ -5,7 +5,7 @@ set -euo pipefail
 
 ROOT_DIR="$(cd "$(dirname "$0")/.." && pwd)"
 PORT="${BACKEND_PORT:-8080}"
-CONTEXT="/attendance/api"
+CONTEXT="/clockai/api"
 
 if ! command -v cloudflared >/dev/null 2>&1; then
   echo "未安装 cloudflared。安装: brew install cloudflared"

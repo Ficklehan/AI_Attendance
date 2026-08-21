@@ -36,7 +36,7 @@ description: >-
 
 **技术栈**：Spring Boot 2.7（JDK 8）、MySQL 8、Nginx HTTPS 终结、Vue3 静态托管、飞书小程序、可选 OSS。
 
-API 基址：`/attendance/api`。健康检查：`GET /attendance/api/feishu-auth/readiness`。
+API 基址：`/clockai/api`。健康检查：`GET /clockai/api/feishu-auth/readiness`。
 
 ## 审计模式
 
@@ -159,8 +159,8 @@ gitleaks detect --source . --no-git 2>/dev/null || true
 **远程健康探测**（需用户确认域名）：
 
 ```bash
-curl -sI "https://<PUBLIC_HOST>/attendance/api/config/current-country" | head -5
-curl -s "https://<PUBLIC_HOST>/attendance/api/feishu-auth/readiness"
+curl -sI "https://<PUBLIC_HOST>/clockai/api/config/current-country" | head -5
+curl -s "https://<PUBLIC_HOST>/clockai/api/feishu-auth/readiness"
 ```
 
 ### Step 6 — 交付报告

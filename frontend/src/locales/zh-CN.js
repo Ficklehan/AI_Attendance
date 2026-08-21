@@ -254,7 +254,7 @@ export default {
   "nav": {
     "home": "首页",
     "tasks": "任务列表",
-    "attendance": "考勤",
+    "clockai": "考勤",
     "config": "配置管理",
     "settings": "设置",
     "audit": "审计日志",
@@ -1141,7 +1141,7 @@ export default {
     "profileFeature": "个人中心功能开发中",
     "notifications": "消息通知"
   },
-  "attendance": {
+  "clockai": {
     "menu": {
       "records": "考勤记录",
       "agencyBills": "中介结算"

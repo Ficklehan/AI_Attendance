@@ -66,7 +66,7 @@ Incident Progress:
 ```bash
 vim deploy/secrets.env          # 更新凭据
 ./start.sh apply                # render + 重启
-curl -s "https://<HOST>/attendance/api/feishu-auth/readiness"
+curl -s "https://<HOST>/clockai/api/feishu-auth/readiness"
 ```
 
 ### 复盘检查
@@ -175,10 +175,10 @@ find /opt/AttendanceAgent -mtime -3 -type f > /tmp/incident-recent-files.txt
 ```bash
 # API
 curl -s -o /dev/null -w "%{http_code}\n" \
-  "https://<HOST>/attendance/api/config/current-country"
+  "https://<HOST>/clockai/api/config/current-country"
 
 # 飞书
-curl -s "https://<HOST>/attendance/api/feishu-auth/readiness"
+curl -s "https://<HOST>/clockai/api/feishu-auth/readiness"
 
 # TLS
 curl -sI "https://<HOST>/" | grep -i strict-transport

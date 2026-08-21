@@ -19,9 +19,9 @@ if command -v node &>/dev/null; then
       echo "    警告: production.yaml 为 runtime.mode=public，小程序将走公网 API"
       echo "    若需纯本地，请改 yaml 为 mode: local 后执行 ./start.sh apply"
     fi
-    echo "    小程序 API: ${PUBLIC_BASE_URL:-${LOCAL_API_BASE_URL:-http://localhost:8080/attendance/api}}"
+    echo "    小程序 API: ${PUBLIC_BASE_URL:-${LOCAL_API_BASE_URL:-http://localhost:8080/clockai/api}}"
   fi
-  echo "    PC 前端: http://localhost:5175/attendance/"
+  echo "    PC 前端: http://localhost:5175/clockai/"
   echo ""
 fi
 

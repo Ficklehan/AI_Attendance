@@ -104,7 +104,7 @@
 
 ## 验证
 ```bash
-curl -s "https://otws-de.igofoex.com/attendance/api/feishu-auth/readiness"
+curl -s "https://otws-de.igofoex.com/clockai/api/feishu-auth/readiness"
 # feishuConfigured: true
 ```
 

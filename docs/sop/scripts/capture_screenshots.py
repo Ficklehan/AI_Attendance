@@ -10,8 +10,8 @@ try:
 except ImportError:
     raise SystemExit("Install playwright: pip install playwright && playwright install chromium")
 
-# Vite base=/attendance/ — 浏览器地址需带此前缀
-BASE = "http://localhost:5175/attendance"
+# Vite base=/clockai/ — 浏览器地址需带此前缀
+BASE = "http://localhost:5175/clockai"
 OUT = Path(__file__).resolve().parent.parent / "screenshots"
 OUT.mkdir(parents=True, exist_ok=True)
 

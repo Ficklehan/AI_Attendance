@@ -215,7 +215,7 @@ export default {
   "nav": {
     "home": "Strona główna",
     "tasks": "Zadania",
-    "attendance": "Obecność",
+    "clockai": "Obecność",
     "employees": "Pracownicy",
     "taskRecords": "Rejestry obecności",
     "config": "Konfiguracja",

@@ -8,21 +8,21 @@ public:
   scheme: http
 
 paths:
-  api_context: /attendance/api
+  api_context: /clockai/api
   feishu_oauth_callback: /feishu-auth/callback
-  frontend_web_base: /attendance
+  frontend_web_base: /clockai
   frontend_feishu_callback: feishu/callback
   frontend_login: ""
 
 frontend:
   dev_port: 5175
   # 完整访问路径（含 Vite base）
-  login_url: http://localhost:5175/attendance/login
-  site_url: http://localhost:5175/attendance/
+  login_url: http://localhost:5175/clockai/login
+  site_url: http://localhost:5175/clockai/
 
 backend:
   port: 8080
-  api_url: http://localhost:8080/attendance/api
+  api_url: http://localhost:8080/clockai/api
 
 spring:
   profile: dev

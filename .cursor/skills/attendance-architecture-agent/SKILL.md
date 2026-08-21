@@ -32,7 +32,7 @@ You are a **principal / staff system architect** performing **evidence-based arc
 | Config | `base-config/`, `backend/config/migration/` | Business + schema |
 | Docs | `docs/` | Architecture invariants |
 
-API base: `/attendance/api`. Dev frontend: `http://localhost:5175/attendance/`.
+API base: `/clockai/api`. Dev frontend: `http://localhost:5175/clockai/`.
 
 ## Audit Modes
 

@@ -53,8 +53,8 @@ fi
 
 if [ "$RUNTIME_MODE" = "local" ]; then
   echo ">>> 本地开发模式：启动 Spring Boot (profile: dev)"
-  echo "    PC 前端: http://localhost:5175/attendance/"
-  echo "    小程序 API: ${LOCAL_API_BASE_URL:-http://localhost:8080/attendance/api}"
+    echo "    PC 前端: http://localhost:5175/clockai/"
+    echo "    小程序 API: ${LOCAL_API_BASE_URL:-http://localhost:8080/clockai/api}"
   echo ""
   # shellcheck source=/dev/null
   source "$PROJECT_DIR/scripts/env-jdk8.sh"

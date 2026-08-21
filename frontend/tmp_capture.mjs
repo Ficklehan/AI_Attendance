@@ -10,8 +10,8 @@ const context = await browser.newContext({ viewport: { width: 1440, height: 900 
 const page = await context.newPage();
 
 const pages = [
-  { name: 'login', url: 'http://localhost:5175/attendance/login' },
-  { name: 'home-redirect', url: 'http://localhost:5175/attendance/home' },
+  { name: 'login', url: 'http://localhost:5175/clockai/login' },
+  { name: 'home-redirect', url: 'http://localhost:5175/clockai/home' },
 ];
 
 for (const p of pages) {

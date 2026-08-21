@@ -215,7 +215,7 @@ export default {
   "nav": {
     "home": "Inicio",
     "tasks": "Tareas",
-    "attendance": "Asistencia",
+    "clockai": "Asistencia",
     "employees": "Empleados",
     "config": "Configuración",
     "audit": "Registro de auditoría",

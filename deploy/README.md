@@ -75,7 +75,7 @@ Restart=on-failure
 ## 验证
 
 ```bash
-curl -s "https://$(grep PUBLIC_HOST deploy/rendered/production.env | cut -d= -f2)/attendance/api/feishu-auth/readiness"
+curl -s "https://$(grep PUBLIC_HOST deploy/rendered/production.env | cut -d= -f2)/clockai/api/feishu-auth/readiness"
 ```
 
 ## 小程序（手机）

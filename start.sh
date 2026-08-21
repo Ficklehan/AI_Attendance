@@ -73,7 +73,7 @@ start_backend() {
     "$PROJECT_DIR/scripts/mvn-jdk8.sh" compile -DskipTests -q
 
     echo "启动 Spring Boot (profile: dev)..."
-    echo "请访问: http://localhost:8080/attendance/api"
+    echo "请访问: http://localhost:8080/clockai/api"
     "$PROJECT_DIR/scripts/mvn-jdk8.sh" spring-boot:run -Dspring-boot.run.profiles=dev -DskipTests &
     BACKEND_PID=$!
     echo "后端启动中 (shell PID: $BACKEND_PID，Java 进程请用: lsof -i :8080)"
@@ -98,7 +98,7 @@ start_frontend() {
     FRONTEND_PID=$!
     
     echo "前端服务启动中 (PID: $FRONTEND_PID)..."
-    echo "请访问: http://localhost:5175/attendance/"
+    echo "请访问: http://localhost:5175/clockai/"
     
     cd ..
 }
@@ -111,7 +111,7 @@ show_usage() {
     echo "  all            启动所有服务 (后端 dev + 前端)"
     echo "  backend        仅启动后端 (profile: dev, localhost:8080)"
     echo "  dev            同 use-local-dev：杀 8080 后前台启动 dev（推荐）"
-    echo "  frontend       仅启动前端 (http://localhost:5175/attendance/)"
+    echo "  frontend       仅启动前端 (http://localhost:5175/clockai/)"
     echo "  init           初始化数据库"
     echo "  apply          ★ 改 production.yaml 后执行（render + 按 mode 重启）"
     echo "  render-deploy  仅渲染配置（不重启）"

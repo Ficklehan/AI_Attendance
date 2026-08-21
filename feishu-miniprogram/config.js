@@ -6,7 +6,7 @@
 const DEFAULT_RUNTIME = {
   RUNTIME_MODE: 'local',
   USE_PUBLIC_API: false,
-  LOCAL_BASE_URL: 'http://localhost:8080/attendance/api',
+  LOCAL_BASE_URL: 'http://localhost:8080/clockai/api',
 }
 
 let runtime = DEFAULT_RUNTIME

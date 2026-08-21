@@ -8,7 +8,7 @@ import { fileURLToPath } from 'url'
 const __dirname = path.dirname(fileURLToPath(import.meta.url))
 const ROOT = path.resolve(__dirname, '../..')
 const OUT = path.join(ROOT, 'docs/geu-ai-manual/assets')
-const BASE = 'http://localhost:5175/attendance'
+const BASE = 'http://localhost:5175/clockai'
 const TASK_ID = process.env.MANUAL_TASK_ID || '20260618_013'
 
 const CORE = [

@@ -91,7 +91,7 @@ function joinUrl(origin, ...segments) {
   return url
 }
 
-/** Join URL path segments (no origin), e.g. /attendance + feishu/callback */
+/** Join URL path segments (no origin), e.g. /clockai + feishu/callback */
 function joinPath(...segments) {
   let path = ''
   for (const segment of segments) {
@@ -111,7 +111,7 @@ function resolveFrontendPath(manifest, segment) {
   if (raw.startsWith('/')) {
     return raw
   }
-  const webBase = (manifest.paths && manifest.paths.frontend_web_base) || '/attendance'
+  const webBase = (manifest.paths && manifest.paths.frontend_web_base) || '/clockai'
   return joinPath(webBase, raw)
 }
 
@@ -119,7 +119,7 @@ function deriveUrls(manifest) {
   const host = manifest.public.host
   const scheme = manifest.public.scheme || 'https'
   const origin = `${scheme}://${host}`
-  const apiContext = manifest.paths.api_context || '/attendance/api'
+  const apiContext = manifest.paths.api_context || '/clockai/api'
   const apiBaseUrl = joinUrl(origin, apiContext)
   const feishuOAuthSuffix = manifest.paths.feishu_oauth_callback || '/feishu-auth/callback'
   const frontendFeishuCallbackPath = resolveFrontendPath(
@@ -130,7 +130,7 @@ function deriveUrls(manifest) {
     manifest,
     manifest.paths.frontend_login != null && manifest.paths.frontend_login !== ''
       ? manifest.paths.frontend_login
-      : (manifest.paths && manifest.paths.frontend_web_base) || 'attendance'
+      : (manifest.paths && manifest.paths.frontend_web_base) || 'clockai'
   )
 
   return {
@@ -152,7 +152,7 @@ function deriveRuntime(manifest) {
   const mode = String(rawMode).trim().toLowerCase() === 'local' ? 'local' : 'public'
   const localApi =
     (manifest.runtime && manifest.runtime.local_api_base) ||
-    'http://localhost:8080/attendance/api'
+    'http://localhost:8080/clockai/api'
   return {
     RUNTIME_MODE: mode,
     MINIPROGRAM_USE_PUBLIC_API: mode === 'public' ? 'true' : 'false',

@@ -72,8 +72,8 @@ echo ======================================
 echo   服务已启动！
 echo ======================================
 echo.
-echo 后端: http://localhost:8080/attendance/api
-echo 前端: http://localhost:5175/attendance/
+echo 后端: http://localhost:8080/clockai/api
+echo 前端: http://localhost:5175/clockai/
 echo 环境切换: production.yaml + Git Bash 执行 ./start.sh apply
 echo.
 echo 仅渲染配置: start.bat render-deploy  详见 deploy\README.md

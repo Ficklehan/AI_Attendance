@@ -214,7 +214,7 @@ export default {
   "nav": {
     "home": "Accueil",
     "tasks": "Tâches",
-    "attendance": "Présence",
+    "clockai": "Présence",
     "employees": "Employés",
     "taskRecords": "Registres de présence",
     "config": "Configuration",

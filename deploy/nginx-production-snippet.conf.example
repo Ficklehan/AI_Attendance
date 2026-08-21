@@ -1,18 +1,20 @@
-# 生产 Nginx 片段（放入 server_name uat-guanpei.eminxing.com 的 server {}）
+# 生产 Nginx 片段（放入对应 server_name 的 server {}）
 # 修改 alias 路径为实际部署目录后: nginx -t && nginx -s reload
+# 站点前缀：/clockai（API /clockai/api，PC /clockai/）
+# /attendance 留给其他功能，本模块不再占用该前缀。
 
 # --- 兜底：旧 OAuth 跳转、浏览器默认 favicon（消除控制台 404）---
 location = /feishu/callback {
-    return 302 /attendance/feishu/callback$is_args$args;
+    return 302 /clockai/feishu/callback$is_args$args;
 }
 
 location = /favicon.ico {
-    return 302 /attendance/favicon.svg;
+    return 302 /clockai/favicon.svg;
 }
 
 # --- 后端 API ---
-location /attendance/api/ {
-    proxy_pass http://127.0.0.1:8080/attendance/api/;
+location /clockai/api/ {
+    proxy_pass http://127.0.0.1:8080/clockai/api/;
     proxy_set_header Host $host;
     proxy_set_header X-Real-IP $remote_addr;
     proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
@@ -20,17 +22,17 @@ location /attendance/api/ {
     client_max_body_size 20m;
 }
 
-# --- PC 前端（Vite base=/attendance/，需先 npm run build）---
-location = /attendance {
-    return 302 /attendance/home$is_args$args;
+# --- PC 前端（Vite base=/clockai/，需先 npm run build）---
+location = /clockai {
+    return 302 /clockai/home$is_args$args;
 }
 
-location /attendance/ {
+location /clockai/ {
     alias /opt/AttendanceAgent/frontend/dist/;
-    try_files $uri $uri/ /attendance/index.html;
+    try_files $uri $uri/ /clockai/index.html;
 }
 
-# 可选：根路径跳到前端
+# 可选：根路径跳到本模块前端
 location = / {
-    return 302 /attendance/;
+    return 302 /clockai/;
 }

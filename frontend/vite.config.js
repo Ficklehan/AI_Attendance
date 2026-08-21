@@ -3,18 +3,23 @@ import vue from '@vitejs/plugin-vue'
 import path from 'path'
 import { vitePluginSharedCjs } from './vite-plugin-shared-cjs.mjs'
 
-const API_BASE_PATH = '/attendance/api'
+const API_BASE_PATH = '/clockai/api'
 const API_DEV_SERVER_ORIGIN = 'http://localhost:8080'
 
-function redirectAttendanceRoot() {
+function redirectClockaiRoot() {
   return {
-    name: 'redirect-attendance-root',
+    name: 'redirect-clockai-root',
     configureServer(server) {
       server.middlewares.use((req, res, next) => {
         const url = req.url?.split('?')[0] ?? ''
+        const query = req.url?.includes('?') ? req.url.slice(req.url.indexOf('?')) : ''
+        if (url === '/clockai' || url === '/clockai/') {
+          res.writeHead(301, { Location: `/clockai/home${query}` })
+          res.end()
+          return
+        }
         if (url === '/attendance' || url === '/attendance/') {
-          const query = req.url?.includes('?') ? req.url.slice(req.url.indexOf('?')) : ''
-          res.writeHead(301, { Location: `/attendance/home${query}` })
+          res.writeHead(301, { Location: `/clockai/home${query}` })
           res.end()
           return
         }
@@ -22,7 +27,7 @@ function redirectAttendanceRoot() {
       })
     },
     configurePreviewServer(server) {
-      redirectAttendanceRoot().configureServer(server)
+      redirectClockaiRoot().configureServer(server)
     },
   }
 }
@@ -30,7 +35,7 @@ function redirectAttendanceRoot() {
 const sharedJsDir = path.resolve(__dirname, '../shared/js')
 
 export default defineConfig({
-  plugins: [vitePluginSharedCjs(sharedJsDir), vue(), redirectAttendanceRoot()],
+  plugins: [vitePluginSharedCjs(sharedJsDir), vue(), redirectClockaiRoot()],
 
   resolve: {
     alias: {
@@ -64,7 +69,7 @@ export default defineConfig({
     },
   },
   
-  base: '/attendance/',
+  base: '/clockai/',
 
   build: {
     outDir: 'dist',

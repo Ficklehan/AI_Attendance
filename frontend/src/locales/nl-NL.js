@@ -213,7 +213,7 @@ export default {
   "nav": {
     "home": "Home",
     "tasks": "Taken",
-    "attendance": "Aanwezigheid",
+    "clockai": "Aanwezigheid",
     "employees": "Medewerkers",
     "taskRecords": "Aanwezigheidsrecords",
     "config": "Configuratie",

@@ -1,7 +1,7 @@
 server:
   port: 8080
   servlet:
-    context-path: /attendance/api
+    context-path: /clockai/api
   # 反向代理(nginx)后按 X-Forwarded-* 解析真实协议/域名，保证导出图片链接等使用公网地址
   forward-headers-strategy: framework
 
@@ -47,16 +47,16 @@ export:
   path: ./exports
   retention-days: 7
   # Excel 中考勤原图超链接的公网/API 根地址（含 context-path），生产请设 EXPORT_PUBLIC_BASE_URL
-  public-base-url: ${EXPORT_PUBLIC_BASE_URL:http://localhost:8080/attendance/api}
+  public-base-url: ${EXPORT_PUBLIC_BASE_URL:http://localhost:8080/clockai/api}
 
 feishu:
   app-id: ${FEISHU_APP_ID:}
   app-secret: ${FEISHU_APP_SECRET:}
   encryption-key: ${FEISHU_ENCRYPT_KEY:}
   verification-token: ${FEISHU_VERIFICATION_TOKEN:}
-  redirect-uri: ${FEISHU_REDIRECT_URI:http://localhost:8080/attendance/api/feishu-auth/callback}
-  frontend-callback-url: ${FEISHU_FRONTEND_CALLBACK_URL:http://localhost:5175/attendance/feishu/callback}
-  frontend-login-url: ${FEISHU_FRONTEND_LOGIN_URL:http://localhost:5175/attendance/}
+  redirect-uri: ${FEISHU_REDIRECT_URI:http://localhost:8080/clockai/api/feishu-auth/callback}
+  frontend-callback-url: ${FEISHU_FRONTEND_CALLBACK_URL:http://localhost:5175/clockai/feishu/callback}
+  frontend-login-url: ${FEISHU_FRONTEND_LOGIN_URL:http://localhost:5175/clockai/}
   bitable:
     app-token: ${BITABLE_APP_TOKEN:}
     table-id: ${BITABLE_TABLE_ID:}

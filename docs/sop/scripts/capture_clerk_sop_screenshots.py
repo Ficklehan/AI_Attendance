@@ -16,7 +16,7 @@ SHOT = Path(__file__).resolve().parent.parent / "screenshots"
 PREVIEW = Path(__file__).resolve().parent.parent / "previews"
 SHOT.mkdir(parents=True, exist_ok=True)
 
-BASE = "http://127.0.0.1:5175/attendance"
+BASE = "http://127.0.0.1:5175/clockai"
 LOGIN_USER = "admin"
 LOGIN_PASS = "admin123"
 

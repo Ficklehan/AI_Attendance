@@ -9,7 +9,7 @@ Load only sections relevant to audit scope. Each dimension ends with **drift sig
 ### Containers (must be identifiable)
 
 - [ ] PC (`frontend/`), mini (`feishu-miniprogram/`), API (`backend/`) are the three runtime clients
-- [ ] All clients talk to single API prefix `/attendance/api`
+- [ ] All clients talk to single API prefix `/clockai/api`
 - [ ] MySQL is system of record for tasks, users, prompts, exports
 - [ ] MiMo and Feishu are external; failures must degrade gracefully (task status, retry)
 

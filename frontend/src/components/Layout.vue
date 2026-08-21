@@ -322,13 +322,13 @@ const menuItems = computed(() => {
     { path: '/home', labelKey: 'nav.home', icon: HomeOutlined },
     { path: '/tasks', labelKey: 'nav.tasks', icon: UnorderedListOutlined },
     {
-      key: 'attendance',
-      path: '/attendance/records',
-      labelKey: 'nav.attendance',
+      key: 'clockai',
+      path: '/records',
+      labelKey: 'nav.clockai',
       icon: CalendarOutlined,
       children: [
-        { path: '/attendance/records', labelKey: 'attendance.menu.records', icon: CalendarOutlined },
-        { path: '/attendance/agency-bills', labelKey: 'attendance.menu.agencyBills', icon: FileTextOutlined },
+        { path: '/records', labelKey: 'clockai.menu.records', icon: CalendarOutlined },
+        { path: '/agency-bills', labelKey: 'clockai.menu.agencyBills', icon: FileTextOutlined },
       ],
     },
     { path: '/employees', labelKey: 'nav.employees', icon: TeamOutlined, permission: 'employees' },

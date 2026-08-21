@@ -169,7 +169,7 @@ def build_document() -> Path:
     doc.add_paragraph("目的：进入系统并确保使用本人账号，保证任务数据归属正确。")
 
     doc.add_heading("2.1  PC 网页端登录", level=2)
-    add_step(doc, 1, "打开浏览器，访问考勤系统地址（由 IT 提供，开发环境示例：http://localhost:5175/attendance/）")
+    add_step(doc, 1, "打开浏览器，访问考勤系统地址（由 IT 提供，开发环境示例：http://localhost:5175/clockai/）")
     add_step(doc, 2, "输入管理员分配的用户名和密码，点击「登录」", "首次登录建议修改密码")
     add_step(doc, 3, "也可点击「飞书登录」——需管理员已在后台绑定您的飞书账号", "未绑定时飞书登录后看不到历史任务")
     add_image(doc, "00-login.png", "图 2-1  PC 登录页")

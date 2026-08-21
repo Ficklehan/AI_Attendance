@@ -254,7 +254,7 @@ export default {
   "nav": {
     "home": "Home",
     "tasks": "Tasks",
-    "attendance": "Attendance",
+    "clockai": "Attendance",
     "config": "Configuration",
     "settings": "Settings",
     "audit": "Audit Logs",
@@ -1141,7 +1141,7 @@ export default {
     "profileFeature": "Profile feature is under development",
     "notifications": "Notifications"
   },
-  "attendance": {
+  "clockai": {
     "menu": {
       "records": "Attendance records",
       "agencyBills": "Agency billing"

@@ -4,9 +4,9 @@
 module.exports = {
   RUNTIME_MODE: 'public',
   USE_PUBLIC_API: true,
-  API_BASE_URL: 'https://uat-guanpei.eminxing.com/attendance/api',
-  LOCAL_BASE_URL: 'http://localhost:8080/attendance/api',
+  API_BASE_URL: 'https://uat-guanpei.eminxing.com/clockai/api',
+  LOCAL_BASE_URL: 'http://localhost:8080/clockai/api',
   PUBLIC_HOST: 'uat-guanpei.eminxing.com',
   PUBLIC_ORIGIN: 'https://uat-guanpei.eminxing.com',
-  PUBLIC_BASE_URL: 'https://uat-guanpei.eminxing.com/attendance/api',
+  PUBLIC_BASE_URL: 'https://uat-guanpei.eminxing.com/clockai/api',
 }

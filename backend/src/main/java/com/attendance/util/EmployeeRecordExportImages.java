@@ -46,7 +46,7 @@ public class EmployeeRecordExportImages {
     private static final float EMBED_JPEG_QUALITY = 0.95f;
     private static final int MAX_THUMBNAILS_PER_ROW = 8;
 
-    @Value("${export.public-base-url:http://localhost:8080/attendance/api}")
+    @Value("${export.public-base-url:http://localhost:8080/clockai/api}")
     private String publicBaseUrl;
 
     @Autowired

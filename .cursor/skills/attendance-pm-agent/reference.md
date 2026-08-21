@@ -4,15 +4,15 @@
 
 | Endpoint | Method | Purpose |
 |----------|--------|---------|
-| `/attendance/api/auth/login` | POST | PC password login |
-| `/attendance/api/feishu-auth/miniprogram/login` | POST | Mini-program Feishu login |
-| `/attendance/api/tasks` | GET | Paginated task list |
-| `/attendance/api/tasks/summary` | GET | Status counts (SSOT) |
-| `/attendance/api/tasks/{id}` | GET | Task detail |
-| `/attendance/api/tasks/{id}/confirm` | POST | Confirm & sync Feishu |
-| `/attendance/api/tasks/{id}/retry-sync` | POST | Retry Bitable sync |
-| `/attendance/api/local/upload-stream` | POST | SSE image upload + recognition |
-| `/attendance/api/export/jobs` | POST/GET | Async Excel export |
+| `/clockai/api/auth/login` | POST | PC password login |
+| `/clockai/api/feishu-auth/miniprogram/login` | POST | Mini-program Feishu login |
+| `/clockai/api/tasks` | GET | Paginated task list |
+| `/clockai/api/tasks/summary` | GET | Status counts (SSOT) |
+| `/clockai/api/tasks/{id}` | GET | Task detail |
+| `/clockai/api/tasks/{id}/confirm` | POST | Confirm & sync Feishu |
+| `/clockai/api/tasks/{id}/retry-sync` | POST | Retry Bitable sync |
+| `/clockai/api/local/upload-stream` | POST | SSE image upload + recognition |
+| `/clockai/api/export/jobs` | POST/GET | Async Excel export |
 
 ## Environment Variables
 
@@ -32,7 +32,7 @@ MIMO_MODEL=mimo-v2.5
 
 ## SOP Maintenance
 
-1. Update screenshots: `python docs/sop/scripts/capture_screenshots.py` (requires Playwright + frontend at `http://localhost:5175/attendance/`)
+1. Update screenshots: `python docs/sop/scripts/capture_screenshots.py` (requires Playwright + frontend at `http://localhost:5175/clockai/`)
 2. Regenerate docx: `python docs/sop/scripts/generate_sop_docx.py`
 3. Output: `docs/sop/output/AttendanceAgent_SOP_Multilingual.docx`
 

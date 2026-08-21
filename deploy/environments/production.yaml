@@ -9,7 +9,7 @@ description: 生产 / 公网部署
 # 注意：生产服务器上请保持 mode: public（可与本地仓库提交值不同，部署前确认）
 runtime:
   mode: public
-  local_api_base: http://localhost:8080/attendance/api
+  local_api_base: http://localhost:8080/clockai/api
 
 public:
   host: otws-de.igofoex.com
@@ -17,11 +17,11 @@ public:
 
 paths:
   # 与 server.servlet.context-path 一致
-  api_context: /attendance/api
+  api_context: /clockai/api
   # 相对 api_context 的路径段
   feishu_oauth_callback: /feishu-auth/callback
   # PC 前端 Vite base（与 frontend/vite.config.js base 一致）
-  frontend_web_base: /attendance
+  frontend_web_base: /clockai
   # 相对 frontend_web_base 的路由（Vue Router /feishu/callback）
   frontend_feishu_callback: feishu/callback
   frontend_login: ""

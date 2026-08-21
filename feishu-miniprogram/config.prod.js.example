@@ -5,7 +5,7 @@
 module.exports = {
   PUBLIC_HOST: 'uat-guanpei.eminxing.com',
   PUBLIC_ORIGIN: 'https://uat-guanpei.eminxing.com',
-  PUBLIC_BASE_URL: 'https://uat-guanpei.eminxing.com/attendance/api',
+  PUBLIC_BASE_URL: 'https://uat-guanpei.eminxing.com/clockai/api',
   DEPLOY_ENV: 'production',
   SPRING_PROFILE: 'prod'
 }

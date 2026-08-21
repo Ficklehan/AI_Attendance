@@ -1,7 +1,9 @@
 import { getToken } from './auth'
 
-const STORAGE_KEY = 'attendance_working_country'
-const CONFIGURED_KEY = 'attendance_working_country_configured'
+const STORAGE_KEY = 'clockai_working_country'
+const LEGACY_STORAGE_KEY = 'attendance_working_country'
+const CONFIGURED_KEY = 'clockai_working_country_configured'
+const LEGACY_CONFIGURED_KEY = 'attendance_working_country_configured'
 
 let memoryCache = null
 
@@ -10,7 +12,7 @@ export function getCachedWorkingCountry() {
   if (memoryCache) {
     return memoryCache
   }
-  const stored = localStorage.getItem(STORAGE_KEY)
+  const stored = localStorage.getItem(STORAGE_KEY) || localStorage.getItem(LEGACY_STORAGE_KEY)
   if (stored) {
     memoryCache = stored
     return stored
@@ -26,6 +28,7 @@ export function setCachedWorkingCountry(country) {
 
 export function isWorkingCountryConfigured() {
   return localStorage.getItem(CONFIGURED_KEY) === '1'
+    || localStorage.getItem(LEGACY_CONFIGURED_KEY) === '1'
 }
 
 export function markWorkingCountryConfigured() {

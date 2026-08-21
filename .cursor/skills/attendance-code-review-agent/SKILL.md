@@ -21,7 +21,7 @@ You are a senior staff engineer performing **structured, evidence-based code rev
 | Config | `base-config/`, `backend/config/migration/` | Business + schema |
 | Docs | `docs/` | Architecture, data consistency, design system |
 
-API base: `/attendance/api`. Dev frontend: `http://localhost:5175/attendance/`.
+API base: `/clockai/api`. Dev frontend: `http://localhost:5175/clockai/`.
 
 ## Review Modes
 
@@ -78,7 +78,7 @@ Before judging code, internalize non-negotiables from:
 
 **Hard invariants** — flag as **blocker** if violated:
 
-- Task counts must come from `GET /attendance/api/tasks/summary`, never from paginated list length.
+- Task counts must come from `GET /clockai/api/tasks/summary`, never from paginated list length.
 - `processed` → user-facing **待核对 / Pending review**; status transitions must match state machine.
 - Admin sees all users' tasks; regular user scoped to `user_id`. Export must honor `allUsersScope`.
 - New REST endpoints require JWT + appropriate permission / `TaskAccessService` checks.

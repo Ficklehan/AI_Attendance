@@ -1,6 +1,6 @@
 <template>
   <div class="agency-billing">
-    <PageShell :title="$t('attendance.agencyBills.title')" :subtitle="$t('attendance.agencyBills.subtitle')">
+    <PageShell :title="$t('clockai.agencyBills.title')" :subtitle="$t('clockai.agencyBills.subtitle')">
       <template #extra>
         <a-button :loading="exporting" @click="handleExport">
           {{ $t('export.startExport') }}
@@ -11,7 +11,7 @@
     <a-card class="surface-card" :bordered="false">
       <div class="filter-bar">
         <a-space wrap align="center">
-          <a-button @click="shiftWeek(-1)">{{ $t('attendance.agencyBills.prevWeek') }}</a-button>
+          <a-button @click="shiftWeek(-1)">{{ $t('clockai.agencyBills.prevWeek') }}</a-button>
           <a-range-picker
             v-model:value="dateRange"
             value-format="YYYY-MM-DD"
@@ -21,9 +21,9 @@
             @open-change="onPickerOpenChange"
             @calendar-change="onBillingCalendarChange"
           />
-          <a-button @click="shiftWeek(1)">{{ $t('attendance.agencyBills.nextWeek') }}</a-button>
+          <a-button @click="shiftWeek(1)">{{ $t('clockai.agencyBills.nextWeek') }}</a-button>
           <span class="range-limit-hint">
-            {{ $t('attendance.agencyBills.rangeLimitHint', { max: MAX_BILLING_RANGE_DAYS }) }}
+            {{ $t('clockai.agencyBills.rangeLimitHint', { max: MAX_BILLING_RANGE_DAYS }) }}
           </span>
         </a-space>
         <a-select
@@ -53,7 +53,7 @@
         <template #bodyCell="{ column, record }">
           <template v-if="column.key === 'action'">
             <a-button type="link" size="small" @click="openDetail(record)">
-              {{ $t('attendance.agencyBills.viewReleve') }}
+              {{ $t('clockai.agencyBills.viewReleve') }}
             </a-button>
           </template>
           <template v-else-if="column.key === 'agencyLabel'">
@@ -84,17 +84,17 @@
       <template v-else-if="detail">
         <div class="releve-header">
           <div><strong>{{ $t('taskEdit.warehouse') }}</strong> {{ displayWarehouse(detail) || '—' }}</div>
-          <div><strong>{{ $t('attendance.agencyBills.period') }}</strong> {{ detail.startDate }} ~ {{ detail.endDate }}</div>
+          <div><strong>{{ $t('clockai.agencyBills.period') }}</strong> {{ detail.startDate }} ~ {{ detail.endDate }}</div>
           <div><strong>{{ $t('taskEdit.agency') }}</strong> {{ displayAgency(detail) || '—' }}</div>
           <div><strong>{{ $t('employees.colRegion') }}</strong> {{ displayCountry(detail) || '—' }}</div>
         </div>
         <div class="releve-summary">
-          {{ $t('attendance.agencyBills.footerSummary', {
+          {{ $t('clockai.agencyBills.footerSummary', {
             count: detail.totalHeadcount,
             hours: formatHours(detail.totalHours),
           }) }}
         </div>
-        <div class="expand-hint">{{ $t('attendance.agencyBills.expandHint') }}</div>
+        <div class="expand-hint">{{ $t('clockai.agencyBills.expandHint') }}</div>
         <a-table
           :columns="detailColumns"
           :data-source="detail.rows"
@@ -126,13 +126,13 @@
               <table class="line-items-table">
                 <thead>
                   <tr>
-                    <th>{{ $t('attendance.agencyBills.colDate') }}</th>
-                    <th>{{ $t('attendance.agencyBills.colShift') }}</th>
-                    <th>{{ $t('attendance.agencyBills.colArrival') }}</th>
-                    <th>{{ $t('attendance.agencyBills.colDeparture') }}</th>
-                    <th>{{ $t('attendance.agencyBills.colBreak') }}</th>
-                    <th>{{ $t('attendance.agencyBills.hours') }}</th>
-                    <th>{{ $t('attendance.agencyBills.colObservations') }}</th>
+                    <th>{{ $t('clockai.agencyBills.colDate') }}</th>
+                    <th>{{ $t('clockai.agencyBills.colShift') }}</th>
+                    <th>{{ $t('clockai.agencyBills.colArrival') }}</th>
+                    <th>{{ $t('clockai.agencyBills.colDeparture') }}</th>
+                    <th>{{ $t('clockai.agencyBills.colBreak') }}</th>
+                    <th>{{ $t('clockai.agencyBills.hours') }}</th>
+                    <th>{{ $t('clockai.agencyBills.colObservations') }}</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -239,14 +239,14 @@ const summaryColumns = computed(() => [
   { title: t('taskEdit.agency'), dataIndex: 'agencyLabel', key: 'agencyLabel', ellipsis: true },
   { title: t('taskEdit.warehouse'), dataIndex: 'warehouseLabel', key: 'warehouseLabel', width: 120 },
   { title: t('employees.colRegion'), dataIndex: 'countryLabel', key: 'countryLabel', width: 120 },
-  { title: t('attendance.agencyBills.headcount'), dataIndex: 'headcount', key: 'headcount', width: 90, align: 'center' },
-  { title: t('attendance.agencyBills.attendanceDays'), dataIndex: 'attendanceDays', key: 'attendanceDays', width: 100, align: 'center' },
-  { title: t('attendance.agencyBills.totalHours'), dataIndex: 'totalHours', key: 'totalHours', width: 110, align: 'right' },
+  { title: t('clockai.agencyBills.headcount'), dataIndex: 'headcount', key: 'headcount', width: 90, align: 'center' },
+  { title: t('clockai.agencyBills.attendanceDays'), dataIndex: 'attendanceDays', key: 'attendanceDays', width: 100, align: 'center' },
+  { title: t('clockai.agencyBills.totalHours'), dataIndex: 'totalHours', key: 'totalHours', width: 110, align: 'right' },
   { title: '', key: 'action', width: 120 },
 ])
 
 const detailTitle = computed(() => {
-  if (!activeBlock.value) return t('attendance.agencyBills.detailTitle')
+  if (!activeBlock.value) return t('clockai.agencyBills.detailTitle')
   return `${displayAgency(activeBlock.value)} · ${displayWarehouse(activeBlock.value) || '—'}`
 })
 
@@ -278,7 +278,7 @@ const detailColumns = computed(() => {
   return [
     ...base,
     ...dayCols,
-    { title: t('attendance.agencyBills.hours'), dataIndex: 'totalHours', key: 'totalHours', width: 88, align: 'right', fixed: 'right' },
+    { title: t('clockai.agencyBills.hours'), dataIndex: 'totalHours', key: 'totalHours', width: 88, align: 'right', fixed: 'right' },
   ]
 })
 
@@ -288,7 +288,7 @@ const detailPagination = computed(() => ({
   pageSize: 50,
   showSizeChanger: true,
   pageSizeOptions: ['20', '50', '100', '200'],
-  showTotal: (total) => t('attendance.agencyBills.detailTotal', { total }),
+  showTotal: (total) => t('clockai.agencyBills.detailTotal', { total }),
 }))
 
 function buildInitialRegionCodes() {
@@ -315,16 +315,16 @@ function shiftWeek(delta) {
 
 function ensureValidDateRange() {
   if (!dateRange.value?.[0] || !dateRange.value?.[1]) {
-    message.warning(t('attendance.agencyBills.dateRequired'))
+    message.warning(t('clockai.agencyBills.dateRequired'))
     return false
   }
   const clamped = clampBillingDateRange(dateRange.value)
   if (clamped[0] !== dateRange.value[0] || clamped[1] !== dateRange.value[1]) {
-    message.warning(t('attendance.agencyBills.rangeTooLong', { max: MAX_BILLING_RANGE_DAYS }))
+    message.warning(t('clockai.agencyBills.rangeTooLong', { max: MAX_BILLING_RANGE_DAYS }))
     dateRange.value = clamped
   }
   if (!isBillingDateRangeValid(dateRange.value)) {
-    message.warning(t('attendance.agencyBills.rangeTooLong', { max: MAX_BILLING_RANGE_DAYS }))
+    message.warning(t('clockai.agencyBills.rangeTooLong', { max: MAX_BILLING_RANGE_DAYS }))
     return false
   }
   return true
@@ -409,7 +409,7 @@ watch(dateRange, (val) => {
   if (!val?.[0] || !val?.[1]) return
   const clamped = clampBillingDateRange(val)
   if (clamped[0] !== val[0] || clamped[1] !== val[1]) {
-    message.warning(t('attendance.agencyBills.rangeTooLong', { max: MAX_BILLING_RANGE_DAYS }))
+    message.warning(t('clockai.agencyBills.rangeTooLong', { max: MAX_BILLING_RANGE_DAYS }))
     dateRange.value = clamped
   }
 }, { deep: true })

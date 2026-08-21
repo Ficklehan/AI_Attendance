@@ -28,7 +28,7 @@ feishu-miniprogram/
 
 ## API Conventions
 
-**Base path:** `/attendance/api`
+**Base path:** `/clockai/api`
 
 **Response envelope:**
 ```json

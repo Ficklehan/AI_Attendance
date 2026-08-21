@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# 本地前后端守护启动：释放端口 → setsid 后台运行 → 日志写入 logs/
+# 本地前后端守护启动：释放端口 → nohup+disown 后台运行 → 日志写入 logs/
 set -euo pipefail
 
 PROJECT_DIR="$(cd "$(dirname "$0")/.." && pwd)"
@@ -44,26 +44,31 @@ stop_pid_file "$FRONTEND_PID_FILE"
 stop_port 8080
 stop_port 5175
 
+start_detached() {
+  local pid_file="$1"
+  local log_file="$2"
+  local cmd="$3"
+  # 子 shell 启动后立即退出，nohup 子进程由 launchd 接管（macOS 无 setsid/disown 可靠方案）
+  local pid
+  pid=$(/bin/bash -c 'nohup /bin/bash -lc "$1" >> "$2" 2>&1 < /dev/null & echo $!' _ "$cmd" "$log_file")
+  echo "$pid" > "$pid_file"
+  echo "$pid"
+}
+
 echo ">>> 启动后端 (dev)..."
-nohup env -i HOME="$HOME" PATH="$PATH" USER="${USER:-}" SHELL="${SHELL:-/bin/bash}" \
-  bash -lc "source '$PROJECT_DIR/scripts/env-jdk8.sh' && cd '$PROJECT_DIR/backend' && exec '$PROJECT_DIR/scripts/mvn-jdk8.sh' spring-boot:run -Dspring-boot.run.profiles=dev -DskipTests" \
-  >> "$BACKEND_LOG" 2>&1 < /dev/null &
-BACKEND_PID=$!
-echo "$BACKEND_PID" > "$BACKEND_PID_FILE"
+BACKEND_PID=$(start_detached "$BACKEND_PID_FILE" "$BACKEND_LOG" \
+  "source '$PROJECT_DIR/scripts/env-jdk8.sh' && cd '$PROJECT_DIR/backend' && exec '$PROJECT_DIR/scripts/mvn-jdk8.sh' spring-boot:run -Dspring-boot.run.profiles=dev -DskipTests")
 
 echo ">>> 启动前端..."
-nohup env -i HOME="$HOME" PATH="$PATH" USER="${USER:-}" SHELL="${SHELL:-/bin/bash}" \
-  bash -lc "cd '$PROJECT_DIR/frontend' && exec npm run dev" \
-  >> "$FRONTEND_LOG" 2>&1 < /dev/null &
-FRONTEND_PID=$!
-echo "$FRONTEND_PID" > "$FRONTEND_PID_FILE"
+FRONTEND_PID=$(start_detached "$FRONTEND_PID_FILE" "$FRONTEND_LOG" \
+  "cd '$PROJECT_DIR/frontend' && exec npm run dev")
 
 echo ""
 echo "已后台启动（nohup 守护，关闭终端仍运行）："
 echo "  后端 PID: $BACKEND_PID  日志: $BACKEND_LOG"
 echo "  前端 PID: $FRONTEND_PID  日志: $FRONTEND_LOG"
 echo ""
-echo "  后端 API:  http://localhost:8080/attendance/api"
-echo "  前端页面:  http://localhost:5175/attendance/"
+echo "  后端 API:  http://localhost:8080/clockai/api"
+echo "  前端页面:  http://localhost:5175/clockai/"
 echo ""
 echo "停止: bash $PROJECT_DIR/scripts/stop-dev-daemon.sh"

@@ -4,7 +4,7 @@ import { getCachedWorkingCountry } from '@/utils/countryHeader'
 import { translateErrorMessage } from '@/utils/translateError'
 import i18n from '@/locales'
 
-export const BG_TASK_STORAGE_KEY = 'attendance.bgRecognition.taskId'
+export const BG_TASK_STORAGE_KEY = 'clockai.bgRecognition.taskId'
 const POLL_DEADLINE_MS = 16 * 60 * 1000
 
 function buildUploadFormData(file, { taskId, deferRecognition } = {}) {
@@ -134,7 +134,9 @@ export function clearBgTaskId() {
 
 export function getPersistedBgTaskId() {
   try {
-    return sessionStorage.getItem(BG_TASK_STORAGE_KEY) || ''
+    return sessionStorage.getItem(BG_TASK_STORAGE_KEY)
+      || sessionStorage.getItem('attendance.bgRecognition.taskId')
+      || ''
   } catch {
     return ''
   }

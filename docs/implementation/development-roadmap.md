@@ -12,7 +12,7 @@ flowchart TB
     MP[飞书小程序]
   end
 
-  subgraph api [Spring Boot /attendance/api]
+  subgraph api [Spring Boot /clockai/api]
     Auth[JWT + Feishu OAuth]
     RBAC[Permission + DataScope]
     Task[Task / Recognition]

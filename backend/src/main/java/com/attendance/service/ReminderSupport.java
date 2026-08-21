@@ -154,7 +154,7 @@ public final class ReminderSupport {
         }
         String base = frontendBaseUrl;
         if (base == null || base.trim().isEmpty()) {
-            base = "http://localhost:5175/attendance/";
+            base = "http://localhost:5175/clockai/";
         }
         if (!base.endsWith("/")) {
             base = base + "/";
@@ -163,7 +163,7 @@ public final class ReminderSupport {
     }
 
     /**
-     * 登录后跳转的前端路径（相对 /attendance/ 路由）。
+     * 登录后跳转的前端路径（相对 /clockai/ 路由）。
      */
     public static String buildTaskRedirectPath(String taskId) {
         if (taskId == null || taskId.trim().isEmpty()) {
@@ -180,7 +180,9 @@ public final class ReminderSupport {
         if (!path.startsWith("/") || path.startsWith("//") || path.contains("://")) {
             return null;
         }
-        if (path.startsWith("/tasks/") || "/home".equals(path) || path.startsWith("/task-records")) {
+        if (path.startsWith("/tasks/") || "/home".equals(path) || path.startsWith("/task-records")
+                || path.startsWith("/records") || path.startsWith("/agency-bills")
+                || path.startsWith("/clockai/") || path.startsWith("/attendance/")) {
             return path;
         }
         return null;
@@ -196,7 +198,7 @@ public final class ReminderSupport {
         }
         String base = apiBaseUrl;
         if (base == null || base.trim().isEmpty()) {
-            base = "http://localhost:8080/attendance/api";
+            base = "http://localhost:8080/clockai/api";
         }
         base = base.replaceAll("/+$", "");
         try {

@@ -30,7 +30,7 @@ AttendanceAgent 专用检查清单。审计时按环境勾选适用项；每项�
 | 2.3 | 代理头 | `X-Forwarded-Proto`、`X-Real-IP` 正确 | OAuth 回调 http/https 错乱 |
 | 2.4 | 上传限制 | `client_max_body_size` 合理（≥20m 且不过大） | 无限制导致 DoS |
 | 2.5 | 安全响应头 | `HSTS`、`X-Content-Type-Options`、`X-Frame-Options` 等 | 完全缺失 |
-| 2.6 | 静态资源 | `/attendance/` 不列出目录、不执行脚本 | `alias` 路径错误导致遍历 |
+| 2.6 | 静态资源 | `/clockai/` 不列出目录、不执行脚本 | `alias` 路径错误导致遍历 |
 | 2.7 | 兜底路由 | 旧 `/feishu/callback` 302 到新路径 | OAuth 404 导致 token 泄露尝试 |
 | 2.8 | 防火墙 | 仅 22/443（及必要管理口）开放 | MySQL 3306 公网 |
 
@@ -60,7 +60,7 @@ AttendanceAgent 专用检查清单。审计时按环境勾选适用项；每项�
 | # | 检查项 | 通过标准 | 常见违规 |
 |---|--------|----------|----------|
 | 4.1 | JWT 过期 | `JWT_EXPIRATION` 合理（默认 8h） | 过长或不失效 |
-| 4.2 | OAuth 回调 | `FEISHU_REDIRECT_URI` 与开放平台完全一致 | 路径少 `/attendance/api` |
+| 4.2 | OAuth 回调 | `FEISHU_REDIRECT_URI` 与开放平台完全一致 | 路径少 `/clockai/api` |
 | 4.3 | 小程序合法域名 | 仅 `PUBLIC_HOST` 主机名 | 带 `https://` 或路径 |
 | 4.4 | 服务端出站 | 服务器可访问 `open.feishu.cn` | 防火墙阻断 |
 | 4.5 | IP 白名单 | 若飞书启用 IP 白名单，含服务器出口 IP | 漏配导致 API 失败 |

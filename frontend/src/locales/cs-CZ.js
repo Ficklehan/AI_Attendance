@@ -215,7 +215,7 @@ export default {
   "nav": {
     "home": "Domů",
     "tasks": "Úkoly",
-    "attendance": "Docházka",
+    "clockai": "Docházka",
     "employees": "Zaměstnanci",
     "taskRecords": "Záznamy docházky",
     "config": "Nastavení",

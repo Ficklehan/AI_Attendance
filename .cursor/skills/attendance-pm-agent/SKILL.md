@@ -56,7 +56,7 @@ You are a senior product manager for **AI考勤智能助手 / AI Attendance Assi
 | `failed` | 失败 | Failed | Retry upload |
 | `cancelled` | 已作废 | Cancelled | Delete |
 
-Single source of truth for counts: `GET /attendance/api/tasks/summary`.
+Single source of truth for counts: `GET /clockai/api/tasks/summary`.
 
 ## Role Permissions
 
@@ -84,7 +84,7 @@ When asked to produce an SOP or user guide:
    - FAQ
 3. **Languages** — always include at minimum: 简体中文, English. Add FR/DE/ES when user requests full i18n
 4. **Output format** — Word `.docx` via `docs/sop/scripts/generate_sop_docx.py`
-5. **Screenshots** — capture from running dev server (`http://localhost:5175/attendance/`, mini-program assets in `feishu-miniprogram/assets/`)
+5. **Screenshots** — capture from running dev server (`http://localhost:5175/clockai/`, mini-program assets in `feishu-miniprogram/assets/`)
 
 ### SOP Section Template
 

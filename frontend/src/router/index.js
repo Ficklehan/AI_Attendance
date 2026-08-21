@@ -52,27 +52,43 @@ const routes = [
       },
       {
         path: 'task-records',
-        redirect: '/attendance/records',
+        redirect: '/records',
       },
       {
         path: 'attendance',
-        component: () => import('@/components/AttendanceLayout.vue'),
-        redirect: '/attendance/records',
-        meta: { titleKey: 'nav.attendance' },
-        children: [
-          {
-            path: 'records',
-            name: 'TaskRecords',
-            component: () => import('@/views/task/TaskRecords.vue'),
-            meta: { titleKey: 'attendance.menu.records' },
-          },
-          {
-            path: 'agency-bills',
-            name: 'AgencyBilling',
-            component: () => import('@/views/attendance/AgencyBilling.vue'),
-            meta: { titleKey: 'attendance.menu.agencyBills' },
-          },
-        ],
+        redirect: '/records',
+      },
+      {
+        path: 'attendance/records',
+        redirect: '/records',
+      },
+      {
+        path: 'attendance/agency-bills',
+        redirect: '/agency-bills',
+      },
+      {
+        path: 'clockai',
+        redirect: '/records',
+      },
+      {
+        path: 'clockai/records',
+        redirect: '/records',
+      },
+      {
+        path: 'clockai/agency-bills',
+        redirect: '/agency-bills',
+      },
+      {
+        path: 'records',
+        name: 'TaskRecords',
+        component: () => import('@/views/task/TaskRecords.vue'),
+        meta: { titleKey: 'clockai.menu.records' },
+      },
+      {
+        path: 'agency-bills',
+        name: 'AgencyBilling',
+        component: () => import('@/views/agency-billing/AgencyBilling.vue'),
+        meta: { titleKey: 'clockai.menu.agencyBills' },
       },
       {
         path: 'employees',
@@ -142,7 +158,7 @@ const routes = [
 ]
 
 const router = createRouter({
-  history: createWebHistory('/attendance/'),
+  history: createWebHistory('/clockai/'),
   routes,
 })
 

@@ -996,7 +996,7 @@ if (有问题行) {
        └──────────┬─────────┘
                   ▼
 ┌─────────────────────────────────────────────┐
-│        Spring Boot 2.7  (:8080/attendance/api) │
+│        Spring Boot 2.7  (:8080/clockai/api) │
 │  Controllers → Services → MyBatis → MySQL   │
 │  JWT · TaskAccess · Permission · DataScope    │
 └──────┬──────────────────┬───────────────────┘
@@ -1077,7 +1077,7 @@ POST /tasks/:id/confirm
 所有端「待核对 N 条」「任务 Tab 角标」必须来自：
 
 ```
-GET /attendance/api/tasks/summary
+GET /clockai/api/tasks/summary
 ```
 
 禁止用列表分页 `records.length` 冒充全库统计——这是多端一致性的硬约定（`docs/data-consistency.md`）。

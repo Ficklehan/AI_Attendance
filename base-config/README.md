@@ -27,7 +27,7 @@
 - 请求国家码：`default` 或 `CN`、`FR`、`NL` 等（大写）。
 - **提示词**：优先 `recognition_prompt` 表中该国行；无则回退 `default`。
 - **飞书**：优先 `feishu.md` 中该国段落；无则回退 `default` 全局段。
-- **当前工作国家**：内存字段（`MarkdownConfigService.currentCountry`），经 API `POST /attendance/api/config/current-country` 设置；重启后恢复为 `default`，除非从配置流程持久化。
+- **当前工作国家**：内存字段（`MarkdownConfigService.currentCountry`），经 API `POST /clockai/api/config/current-country` 设置；重启后恢复为 `default`，除非从配置流程持久化。
 
 ## 权限项（permissions.json）
 

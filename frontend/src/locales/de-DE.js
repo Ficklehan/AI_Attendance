@@ -213,7 +213,7 @@ export default {
   "nav": {
     "home": "Startseite",
     "tasks": "Aufgaben",
-    "attendance": "Anwesenheit",
+    "clockai": "Anwesenheit",
     "employees": "Mitarbeiter",
     "taskRecords": "Anwesenheitsdatensätze",
     "config": "Konfiguration",

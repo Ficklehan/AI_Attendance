@@ -24,7 +24,7 @@ cases. Recommend Phase 0 consolidation before adding new countries.
 ## Topology (current state)
 ```mermaid
 flowchart TB
-  PC[frontend Vue3] --> API[/attendance/api]
+  PC[frontend Vue3] --> API[/clockai/api]
   MP[feishu-miniprogram] --> API
   API --> SVC[Services]
   SVC --> MySQL[(MySQL)]

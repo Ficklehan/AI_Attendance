@@ -1,6 +1,8 @@
-const TOKEN_KEY = 'attendance_token'
+const TOKEN_KEY = 'clockai_token'
+const LEGACY_TOKEN_KEY = 'attendance_token'
 const USER_INFO_KEY = 'userInfo'
-const LAST_ACTIVITY_KEY = 'attendance_last_activity'
+const LAST_ACTIVITY_KEY = 'clockai_last_activity'
+const LEGACY_LAST_ACTIVITY_KEY = 'attendance_last_activity'
 
 /** 无操作超过此时长将自动退出（2 小时） */
 export const IDLE_TIMEOUT_MS = 2 * 60 * 60 * 1000
@@ -28,17 +30,20 @@ function removeSessionItem(key) {
 }
 
 export function getToken() {
-  return readSessionItem(TOKEN_KEY)
+  return readSessionItem(TOKEN_KEY) || readSessionItem(LEGACY_TOKEN_KEY)
 }
 
 export function setToken(token) {
   writeSessionItem(TOKEN_KEY, token)
+  removeSessionItem(LEGACY_TOKEN_KEY)
   touchActivity()
 }
 
 export function removeToken() {
   removeSessionItem(TOKEN_KEY)
+  removeSessionItem(LEGACY_TOKEN_KEY)
   removeSessionItem(LAST_ACTIVITY_KEY)
+  removeSessionItem(LEGACY_LAST_ACTIVITY_KEY)
 }
 
 export function getStoredUserInfo() {
@@ -64,7 +69,7 @@ export function touchActivity() {
 }
 
 export function isIdleExpired() {
-  const raw = sessionStorage.getItem(LAST_ACTIVITY_KEY)
+  const raw = sessionStorage.getItem(LAST_ACTIVITY_KEY) || sessionStorage.getItem(LEGACY_LAST_ACTIVITY_KEY)
   if (!raw) return false
   return Date.now() - Number(raw) > IDLE_TIMEOUT_MS
 }

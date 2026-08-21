@@ -28,7 +28,12 @@ import ImagePreviewDock from '@/components/ImagePreviewDock.vue'
 import { useImageDockResize } from '@/composables/useImageDockResize'
 import { useImageDockViewportHeight } from '@/composables/useImageDockViewportHeight'
 
-const DOCK_WIDTH_KEY = 'attendance.imagePreviewDockWidth.v7'
+const DOCK_WIDTH_KEY = 'clockai.imagePreviewDockWidth.v7'
+const LEGACY_DOCK_WIDTH_KEY = 'attendance.imagePreviewDockWidth.v7'
+if (typeof sessionStorage !== 'undefined' && !sessionStorage.getItem(DOCK_WIDTH_KEY)) {
+  const legacy = sessionStorage.getItem(LEGACY_DOCK_WIDTH_KEY)
+  if (legacy) sessionStorage.setItem(DOCK_WIDTH_KEY, legacy)
+}
 
 const props = defineProps({
   open: { type: Boolean, default: false },

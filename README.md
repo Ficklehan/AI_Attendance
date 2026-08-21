@@ -86,8 +86,8 @@ start.bat
 
 ### 4. 访问系统（本地）
 
-- PC 前端: http://localhost:5175/attendance/（登录页 `/attendance/login`）
-- 后端 API: http://localhost:8080/attendance/api（例：`POST .../attendance/api/auth/login`）
+- PC 前端: http://localhost:5175/clockai/（登录页 `/clockai/login`）
+- 后端 API: http://localhost:8080/clockai/api（例：`POST .../clockai/api/auth/login`）
 - 默认账号: admin / admin123（**仅 dev**；生产请改密并关闭 bootstrap）
 - 域名与环境切换（PC / 后端 / 小程序）：见 **[docs/运维手册.md §5.2](docs/运维手册.md#52-域名与环境地址切换统一入口)**
 
@@ -127,35 +127,35 @@ HTTP 方法约定：**仅使用 GET 与 POST**。查询用 GET；创建、更新
 
 | 接口 | 方法 | 说明 |
 |-----|------|------|
-| POST /attendance/api/auth/login | POST | 用户登录 |
-| POST /attendance/api/auth/register | POST | 用户注册 |
-| GET /attendance/api/auth/profile | GET | 获取当前用户信息 |
+| POST /clockai/api/auth/login | POST | 用户登录 |
+| POST /clockai/api/auth/register | POST | 用户注册 |
+| GET /clockai/api/auth/profile | GET | 获取当前用户信息 |
 
 ### 任务接口
 
 | 接口 | 方法 | 说明 |
 |-----|------|------|
-| GET /attendance/api/tasks | GET | 获取任务列表 |
-| GET /attendance/api/tasks/:id | GET | 获取任务详情 |
-| POST /attendance/api/tasks/:id/confirm | POST | 确认提交任务 |
-| POST /attendance/api/tasks/:id/delete | POST | 删除任务 |
-| POST /attendance/api/tasks/:id/retry-sync | POST | 重试飞书多维表格同步 |
+| GET /clockai/api/tasks | GET | 获取任务列表 |
+| GET /clockai/api/tasks/:id | GET | 获取任务详情 |
+| POST /clockai/api/tasks/:id/confirm | POST | 确认提交任务 |
+| POST /clockai/api/tasks/:id/delete | POST | 删除任务 |
+| POST /clockai/api/tasks/:id/retry-sync | POST | 重试飞书多维表格同步 |
 
 ### 配置接口（节选）
 
 | 接口 | 方法 | 说明 |
 |-----|------|------|
-| GET /attendance/api/config | GET | 获取全部配置 |
-| POST /attendance/api/config/update | POST | 更新单项配置 |
-| POST /attendance/api/config/:key/delete | POST | 删除配置项 |
-| POST /attendance/api/config/current-country | POST | 设置当前工作国家 |
-| POST /attendance/api/config/system | POST | 更新系统配置 |
+| GET /clockai/api/config | GET | 获取全部配置 |
+| POST /clockai/api/config/update | POST | 更新单项配置 |
+| POST /clockai/api/config/:key/delete | POST | 删除配置项 |
+| POST /clockai/api/config/current-country | POST | 设置当前工作国家 |
+| POST /clockai/api/config/system | POST | 更新系统配置 |
 
 ### 上传接口
 
 | 接口 | 方法 | 说明 |
 |-----|------|------|
-| POST /attendance/api/local/upload-stream | POST | SSE流式上传解析 |
+| POST /clockai/api/local/upload-stream | POST | SSE流式上传解析 |
 
 ## 开发指南
 

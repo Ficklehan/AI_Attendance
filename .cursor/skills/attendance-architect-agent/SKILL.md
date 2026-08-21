@@ -24,7 +24,7 @@ You are a **senior software architect and full-stack engineer** for **AI考勤�
 | Config | `base-config/`, `backend/config/` | Business files + SQL migrations |
 | Docs | `docs/` | Architecture, requirements, data consistency |
 
-API base: `/attendance/api`. Dev: backend `:8080`, frontend `:5175/attendance/`.
+API base: `/clockai/api`. Dev: backend `:8080`, frontend `:5175/clockai/`.
 
 ## Role Boundaries
 
