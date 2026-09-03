@@ -26,7 +26,9 @@
   <ImagePreviewModal
     v-model:open="previewVisible"
     :images="previewUrls"
+    :image-names="previewNames"
     :initial-index="previewIndex"
+    :auto-orient-enabled="false"
   />
 </template>
 
@@ -54,6 +56,7 @@ const previewIndex = ref(0)
 
 const items = computed(() => buildTaskImageItems(props.imageUrls, props.fileKey))
 const previewUrls = computed(() => items.value.map((item) => item.url))
+const previewNames = computed(() => items.value.map((item) => item.name || ''))
 
 const headerTitle = computed(() => props.headerTitle || t('taskEdit.originalImage'))
 const actionLabel = computed(() => (props.inline ? t('tasks.view') : t('tasks.viewImage')))

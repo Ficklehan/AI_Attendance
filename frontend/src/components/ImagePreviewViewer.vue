@@ -62,9 +62,13 @@
         @mouseleave="onPointerUp"
         @dblclick="onDoubleClick"
       >
-        <div v-if="loading || orienting" class="ipv-orienting">
+        <div v-if="loading" class="ipv-orienting">
           <a-spin size="small" />
-          <span>{{ loading ? $t('common.loading') : $t('taskEdit.autoOrienting') }}</span>
+          <span>{{ $t('common.loading') }}</span>
+        </div>
+        <div v-else-if="orienting" class="ipv-orienting-badge">
+          <a-spin size="small" />
+          <span>{{ $t('taskEdit.autoOrienting') }}</span>
         </div>
         <img
           v-if="currentSrc"
@@ -146,6 +150,12 @@
             <span v-if="layout !== 'dock'">{{ $t('taskEdit.rotate') }}</span>
           </a-button>
         </a-tooltip>
+        <a-tooltip :title="$t('taskEdit.downloadImage')">
+          <a-button size="small" :loading="downloading" @click="downloadCurrentImage">
+            <template #icon><DownloadOutlined /></template>
+            <span v-if="layout !== 'dock'">{{ $t('taskEdit.downloadImage') }}</span>
+          </a-button>
+        </a-tooltip>
         <a-button
           v-if="autoOrientEnabled && layout !== 'dock'"
           size="small"
@@ -170,15 +180,19 @@
 </template>
 
 <script setup>
-import { computed, toRef, watch, onMounted, onUnmounted } from 'vue'
+import { computed, toRef, watch, onMounted, onUnmounted, ref } from 'vue'
+import { message } from 'ant-design-vue'
+import { useI18n } from 'vue-i18n'
 import {
   LeftOutlined,
   RightOutlined,
   ZoomInOutlined,
   ZoomOutOutlined,
   RotateLeftOutlined,
+  DownloadOutlined,
 } from '@ant-design/icons-vue'
 import { useImagePreviewViewer } from '@/composables/useImagePreviewViewer'
+import { downloadPreviewImage, resolvePreviewDownloadName } from '@/utils/downloadPreviewImage'
 
 const props = defineProps({
   images: { type: Array, default: () => [] },
@@ -195,9 +209,13 @@ const props = defineProps({
   layout: { type: String, default: 'modal' },
   viewportMinHeight: { type: String, default: '52vh' },
   viewportMaxHeight: { type: String, default: '72vh' },
+  imageNames: { type: Array, default: () => [] },
 })
 
 const emit = defineEmits(['update:autoOrientEnabled', 'update:index'])
+
+const { t } = useI18n()
+const downloading = ref(false)
 
 const {
   viewportRef,
@@ -243,11 +261,38 @@ const viewportStyle = computed(() => {
       maxHeight: '100%',
     }
   }
+  if (props.compact) {
+    return {
+      minHeight: props.viewportMinHeight,
+      maxHeight: props.viewportMaxHeight,
+    }
+  }
   return {
     minHeight: props.viewportMinHeight,
     maxHeight: props.viewportMaxHeight,
+    flex: '1 1 auto',
   }
 })
+
+const downloadCurrentImage = async () => {
+  const src = currentSrc.value
+  if (!src || downloading.value) return
+  downloading.value = true
+  try {
+    const filename = resolvePreviewDownloadName(
+      src,
+      props.imageNames[currentIndex.value],
+      currentIndex.value,
+    )
+    await downloadPreviewImage(src, filename)
+    message.success(t('taskEdit.downloadImageStarted'))
+  } catch (error) {
+    console.error(error)
+    message.error(t('taskEdit.downloadImageFailed'))
+  } finally {
+    downloading.value = false
+  }
+}
 
 watch(
   () => props.active,
@@ -306,6 +351,7 @@ watch(viewportRef, (el, prev) => {
   display: flex;
   flex-direction: column;
   min-height: 0;
+  height: 100%;
 
   &--compact {
     .ipv-body {
@@ -487,6 +533,23 @@ watch(viewportRef, (el, prev) => {
   background: rgba(255, 255, 255, 0.45);
   color: $text-secondary;
   font-size: $font-size-xs;
+  pointer-events: none;
+}
+
+.ipv-orienting-badge {
+  position: absolute;
+  top: 10px;
+  right: 10px;
+  z-index: 3;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 8px;
+  border-radius: $radius-md;
+  background: rgba(255, 255, 255, 0.92);
+  color: $text-secondary;
+  font-size: $font-size-xs;
+  box-shadow: $shadow-card;
   pointer-events: none;
 }
 

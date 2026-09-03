@@ -299,18 +299,28 @@ export function buildRecognitionTableColumns(t, options = {}) {
   }
 
   if (includeAction) {
+    const hasRightFixedPeer = cols.some((col) => col.fixed === 'right')
     cols.push({
       title: t('taskEdit.action'),
       key: 'action',
       autoWidth: false,
       width: options.actionColumnWidth || 40,
-      fixed: fixedAction ? 'right' : undefined,
+      fixed: fixedAction || hasRightFixedPeer ? 'right' : undefined,
       align: 'center',
       customCell: bindCellStyle(cellStyle, 'action'),
     })
   }
 
-  return withTableSorters(cols, {
+  const firstRightFixedIdx = cols.findIndex((col) => col.fixed === 'right')
+  const normalizedCols = firstRightFixedIdx < 0
+    ? cols
+    : cols.map((col, idx) => (
+      idx >= firstRightFixedIdx && col.fixed !== 'right'
+        ? { ...col, fixed: 'right' }
+        : col
+    ))
+
+  return withTableSorters(normalizedCols, {
     skipKeys: includeAction ? [] : ['action'],
   })
 }

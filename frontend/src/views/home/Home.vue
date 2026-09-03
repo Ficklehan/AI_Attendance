@@ -376,9 +376,11 @@
 
     <ImagePreviewModal
       v-model:open="previewVisible"
-      :images="uploadPreviewImages"
-      :initial-index="previewIndex"
+      v-model:index="previewIndex"
+      :images="previewImageUrls"
+      :image-names="previewImageNames"
       :title="previewTitle"
+      :auto-orient-enabled="false"
     />
   </div>
 </template>
@@ -463,12 +465,8 @@ const showResult = ref(false)
 const previewVisible = ref(false)
 const previewIndex = ref(0)
 const previewTitle = ref('')
-
-const uploadPreviewImages = computed(() =>
-  fileList.value
-    .filter((file) => !file.isPdf && (file.url || file.thumbUrl))
-    .map((file) => file.url || file.thumbUrl)
-)
+const previewImageUrls = ref([])
+const previewImageNames = ref([])
 const showAnomalyDetail = ref(true)
 const homeTableAnchor = ref(null)
 
@@ -769,6 +767,7 @@ const baseColumns = computed(() => buildRecognitionTableColumns(t, {
   useExceptionTypeColumn: true,
   exceptionTypeColumnWidth: 96,
   fixedAnomalyReasons: true,
+  fixedAction: true,
   anomalyReasonsColumnWidth: 220,
 }))
 
@@ -917,20 +916,28 @@ const clearUploadSelection = () => {
     previewVisible.value = false
     previewIndex.value = 0
     previewTitle.value = ''
+    previewImageUrls.value = []
+    previewImageNames.value = []
   }
 }
 
 const handleFilePreview = (file) => {
-  const target = fileList.value.find((item) => item.uid === file.uid) || file
+  const target = fileList.value.find((item) => item.uid === file.uid)
+    || fileList.value.find((item) => item.name === file.name)
+    || file
   if (target.isPdf || (!target.url && !target.thumbUrl)) {
     message.info(t('home.pdfNoPreview'))
     return
   }
   const imageFiles = fileList.value.filter(
-    (item) => !item.isPdf && (item.url || item.thumbUrl)
+    (item) => !item.isPdf && (item.url || item.thumbUrl),
   )
   const index = imageFiles.findIndex((item) => item.uid === target.uid)
   if (index < 0) return
+  const urls = imageFiles.map((item) => item.url || item.thumbUrl).filter(Boolean)
+  if (!urls.length) return
+  previewImageUrls.value = urls
+  previewImageNames.value = imageFiles.map((item) => item.name || '')
   previewTitle.value = target.name || ''
   previewIndex.value = index
   previewVisible.value = true
@@ -951,6 +958,8 @@ const handleFileRemove = (file) => {
     previewVisible.value = false
     previewIndex.value = 0
     previewTitle.value = ''
+    previewImageUrls.value = []
+    previewImageNames.value = []
   }
   return false
 }

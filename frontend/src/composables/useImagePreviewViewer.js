@@ -85,6 +85,8 @@ export function useImagePreviewViewer(options = {}) {
 
   const shouldAutoOrient = () => {
     if (!autoOrientEnabled.value) return false
+    const src = currentSrc.value
+    if (typeof src === 'string' && src.startsWith('blob:')) return false
     const key = `${currentIndex.value}:${currentSrc.value}`
     return !manualRotationKeys.value.has(key)
   }
@@ -273,6 +275,20 @@ export function useImagePreviewViewer(options = {}) {
     }
   }
 
+  const ensureImageVisible = () => {
+    nextTick(() => {
+      const img = imgRef.value
+      const src = currentSrc.value
+      if (!img || !src) return
+      if (img.src !== src) {
+        img.src = src
+      }
+      if (img.complete && img.naturalWidth > 0) {
+        onImageLoad()
+      }
+    })
+  }
+
   const handleKeydown = (event) => {
     if (!active.value) return
     if (event.key === 'ArrowLeft') {
@@ -295,12 +311,22 @@ export function useImagePreviewViewer(options = {}) {
     (value) => {
       if (value) {
         syncIndex()
+        ensureImageVisible()
         document.addEventListener('keydown', handleKeydown)
       } else {
         document.removeEventListener('keydown', handleKeydown)
       }
     },
     { immediate: true },
+  )
+
+  watch(
+    () => [active.value, currentSrc.value],
+    ([isActive]) => {
+      if (isActive) {
+        ensureImageVisible()
+      }
+    },
   )
 
   watch(
@@ -325,7 +351,8 @@ export function useImagePreviewViewer(options = {}) {
   watch(
     images,
     (newImages, oldImages) => {
-      if (!active.value || newImages === oldImages) return
+      if (!active.value) return
+      if (newImages === oldImages && currentSrc.value) return
       const target = controlledIndex.value != null ? controlledIndex.value : initialIndex.value
       const safeTarget = Math.min(
         Math.max(target, 0),
@@ -337,6 +364,7 @@ export function useImagePreviewViewer(options = {}) {
       orienting.value = false
       nextTick(() => {
         fitToViewport()
+        ensureImageVisible()
       })
     },
     { flush: 'sync' },
