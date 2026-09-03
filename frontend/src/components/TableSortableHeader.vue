@@ -7,6 +7,7 @@
         'table-sortable-header--has-filter': hasFilter,
         'table-sortable-header--has-sort': sortable,
         'table-sortable-header--compact': compact,
+        'table-sortable-header--micro': micro,
       },
     ]"
   >
@@ -33,8 +34,11 @@
       </a-tooltip>
     </div>
 
-    <div class="table-sortable-header__title" :title="titleText">
-      <span class="table-sortable-header__title-text">{{ title }}</span>
+    <div class="table-sortable-header__title" :title="hint ? undefined : titleText">
+      <a-tooltip v-if="hint" :title="hint" placement="top">
+        <span class="table-sortable-header__title-text table-sortable-header__title-text--hinted">{{ title }}</span>
+      </a-tooltip>
+      <span v-else class="table-sortable-header__title-text">{{ title }}</span>
     </div>
 
     <div v-if="hasFilter" class="table-sortable-header__trailing">
@@ -61,6 +65,8 @@ const props = defineProps({
   column: { type: Object, required: true },
   title: { type: [String, Number, Object], default: '' },
   compact: { type: Boolean, default: false },
+  micro: { type: Boolean, default: false },
+  hint: { type: String, default: '' },
   resizable: { type: Boolean, default: false },
 })
 
@@ -288,15 +294,14 @@ $table-compact-icon-size: 18px;
   }
 
   .table-sortable-header__title-text {
-    white-space: normal;
-    word-break: break-word;
+    white-space: nowrap;
+    word-break: normal;
     line-height: 1.2;
     font-size: 11px;
     text-align: left;
-    display: -webkit-box;
-    -webkit-line-clamp: 2;
-    -webkit-box-orient: vertical;
+    display: block;
     overflow: hidden;
+    text-overflow: ellipsis;
   }
 
   &.table-sortable-header--align-center .table-sortable-header__title,
@@ -363,5 +368,25 @@ $table-compact-icon-size: 18px;
   &:focus-visible::after {
     background: rgba(22, 119, 255, 0.55);
   }
+}
+
+.table-sortable-header--micro {
+  min-height: 26px;
+  gap: 0;
+
+  .table-sortable-header__title-text {
+    font-size: 10px !important;
+    line-height: 1.15;
+  }
+
+  .table-sortable-header__leading,
+  .table-sortable-header__trailing {
+    display: none;
+  }
+}
+
+.table-sortable-header__title-text--hinted {
+  cursor: help;
+  border-bottom: 1px dotted rgba(52, 64, 84, 0.35);
 }
 </style>

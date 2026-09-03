@@ -116,9 +116,19 @@ public final class EmployeeRecordExcelWriter implements AutoCloseable {
         }
 
         Row row = sheet.createRow(rowNum++);
+        int textLines = 1;
+        for (String cellVal : baseCells) {
+            if (cellVal == null || cellVal.isEmpty()) continue;
+            int lines = 1;
+            for (int i = 0; i < cellVal.length(); i++) {
+                if (cellVal.charAt(i) == '\n') lines++;
+            }
+            if (lines > textLines) textLines = lines;
+        }
+        float textHeight = Math.min(DEFAULT_ROW_HEIGHT_POINTS * textLines, 120f);
         row.setHeightInPoints(hasImages && maxDisplayHeight > 0
-                ? pixelsToPoints(maxDisplayHeight + IMAGE_PADDING_PX * 2)
-                : DEFAULT_ROW_HEIGHT_POINTS);
+                ? Math.max(pixelsToPoints(maxDisplayHeight + IMAGE_PADDING_PX * 2), textHeight)
+                : textHeight);
 
         for (int i = 0; i < baseCells.length; i++) {
             Cell cell = row.createCell(i);

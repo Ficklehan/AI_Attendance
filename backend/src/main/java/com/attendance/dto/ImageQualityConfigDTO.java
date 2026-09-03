@@ -38,8 +38,8 @@ public class ImageQualityConfigDTO {
      */
     private String unknownRateScope = "EFFECTIVE_ROWS";
 
-    /** 识别后内容层质量检测（与上传前图像锐度预检分离） */
-    private boolean postRecognitionQualityEnabled = true;
+    /** 识别后内容层质量检测（产品已关闭：仅保留上传前锐度拒图） */
+    private boolean postRecognitionQualityEnabled = false;
 
     /** 关键字段未知率统计是否排除未出勤行（默认排除）；同时用于模糊行统计分母 */
     private boolean unknownRateExcludeAbsent = true;

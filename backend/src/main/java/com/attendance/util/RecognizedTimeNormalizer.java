@@ -15,7 +15,66 @@ public final class RecognizedTimeNormalizer {
   private static final Pattern TIME_IN_TEXT = Pattern.compile(
       "(?i)(\\d{1,2})[:hH](\\d{2})|(\\d{1,2})[hH](?!\\d)");
 
+  /** Excel / ISO / 欧式日期时间，取时刻 */
+  private static final Pattern DATE_THEN_TIME = Pattern.compile(
+      "(?:\\d{4}[-/.]\\d{1,2}[-/.]\\d{1,2}|\\d{1,2}[-/.]\\d{1,2}[-/.]\\d{2,4})[T\\s]+(\\d{1,2})[:hH.](\\d{2})(?::\\d{2})?(?:\\s*([AaPp][Mm]))?");
+
+  private static final Pattern ISO_T_TIME = Pattern.compile("T(\\d{1,2}):(\\d{2})(?::\\d{2})?");
+
+  private static final Pattern CLOCK_SECONDS_OR_AMPM = Pattern.compile(
+      "^(\\d{1,2}):(\\d{2})(?::\\d{2})?(?:\\s*([AaPp][Mm]))?$", Pattern.CASE_INSENSITIVE);
+
   private RecognizedTimeNormalizer() {
+  }
+
+  private static String formatClock(int hours, int minutes) {
+    if (hours < 0 || hours > 23 || minutes < 0 || minutes > 59) {
+      return null;
+    }
+    return String.format("%02d:%02d", hours, minutes);
+  }
+
+  private static int applyAmPm(int hours, String ampm) {
+    if (ampm == null || ampm.isEmpty()) {
+      return hours;
+    }
+    char mer = Character.toLowerCase(ampm.charAt(0));
+    if (mer == 'a') {
+      return hours == 12 ? 0 : hours;
+    }
+    if (mer == 'p') {
+      return hours < 12 ? hours + 12 : hours;
+    }
+    return hours;
+  }
+
+  static String extractClockFromPastedText(String raw) {
+    if (raw == null) {
+      return null;
+    }
+    String str = raw.trim();
+    if (str.isEmpty()) {
+      return null;
+    }
+    Matcher dated = DATE_THEN_TIME.matcher(str);
+    if (dated.find()) {
+      return formatClock(applyAmPm(Integer.parseInt(dated.group(1)), dated.group(3)),
+          Integer.parseInt(dated.group(2)));
+    }
+    Matcher isoT = ISO_T_TIME.matcher(str);
+    if (isoT.find()) {
+      return formatClock(Integer.parseInt(isoT.group(1)), Integer.parseInt(isoT.group(2)));
+    }
+    Matcher standalone = CLOCK_SECONDS_OR_AMPM.matcher(str);
+    if (standalone.matches()) {
+      boolean hasAmPm = standalone.group(3) != null;
+      boolean hasSeconds = str.matches("\\d{1,2}:\\d{2}:\\d{2}(?:\\s*[AaPp][Mm])?");
+      if (hasAmPm || hasSeconds) {
+        return formatClock(applyAmPm(Integer.parseInt(standalone.group(1)), standalone.group(3)),
+            Integer.parseInt(standalone.group(2)));
+      }
+    }
+    return null;
   }
 
   public static String normalizeClockTime(String timeStr) {
@@ -25,6 +84,16 @@ public final class RecognizedTimeNormalizer {
     String str = timeStr.trim();
     if (RecognizedFieldSanitizer.isUnrecognized(str)) {
       return "";
+    }
+
+    String pasted = extractClockFromPastedText(str);
+    if (pasted != null) {
+      return pasted;
+    }
+
+    List<String> tokens = extractTimeTokenStrings(str);
+    if (tokens.size() == 1 && !str.equals(tokens.get(0))) {
+      return normalizeClockTime(tokens.get(0));
     }
 
     if (str.matches("\\d{1,2}:\\d{2}")) {

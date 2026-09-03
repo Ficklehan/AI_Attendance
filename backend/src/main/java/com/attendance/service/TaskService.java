@@ -409,6 +409,34 @@ public class TaskService {
         confirmTask(taskId, data, null);
     }
 
+    /**
+     * 确认前提交草稿：写回 raw_data（含 ExceptionType / 字段编辑），不改 status，不同步飞书。
+     */
+    @Transactional
+    public void saveDraft(String taskId, List<Map<String, Object>> data) {
+        Task task = taskAccessService.requireOwnedTask(taskId);
+        if (!"processed".equals(task.getStatus())) {
+            throw new BusinessException(ErrorCode.TASK_STATUS_ERROR, ErrorKeys.TASK_STATUS_CANNOT_SAVE_DRAFT);
+        }
+        if (data == null || data.isEmpty()) {
+            throw new BusinessException(ErrorCode.PARAM_ERROR, ErrorKeys.VALIDATION_FAILED);
+        }
+        for (Map<String, Object> record : data) {
+            if (record == null) {
+                continue;
+            }
+            RecognizedFieldSanitizer.sanitizeRecordPlaceholders(record);
+            RecognizedTextNormalizer.normalizeRecordFields(record);
+            refreshNightShiftSmartMark(record, task.getPromptCountry());
+        }
+        String rawData = JSON.toJSONString(data);
+        int updated = taskMapper.updateTaskDraftRawData(taskId, rawData, data.size());
+        if (updated <= 0) {
+            throw new BusinessException(ErrorCode.TASK_STATUS_ERROR, ErrorKeys.TASK_STATUS_CANNOT_SAVE_DRAFT);
+        }
+        log.info("已保存确认前草稿: taskId={}, recordCount={}", taskId, data.size());
+    }
+
     @Transactional
     public void confirmTask(String taskId, List<Map<String, Object>> data, String countryCode) {
         Task task = taskAccessService.requireOwnedTask(taskId);
@@ -911,6 +939,11 @@ public class TaskService {
     public Path createTaskExportTempFile(String taskId, String locale) throws IOException {
         Task task = getTaskForCurrentUser(taskId);
         return taskExcelExportService.createTaskExportTempFile(task, locale);
+    }
+
+    public Path createTaskExportTempFile(String taskId, String locale, JSONArray records) throws IOException {
+        Task task = getTaskForCurrentUser(taskId);
+        return taskExcelExportService.createTaskExportTempFile(task, locale, records);
     }
 
     public long exportEmployeeRecordsToExcel(DataScopeContext scope, TaskQuery query, Path outputFile,

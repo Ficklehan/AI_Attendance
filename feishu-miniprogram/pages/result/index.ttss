@@ -249,8 +249,11 @@
   min-width: 0;
   font-size: 20rpx;
   color: #9a6b00;
-  line-height: 1.45;
+  line-height: 1.3;
   font-weight: 600;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .result-page .required-validation-link {
@@ -322,18 +325,23 @@
 
 .result-page .reason-field-row {
   display: flex;
-  align-items: baseline;
-  gap: 4rpx;
-  margin-top: 6rpx;
+  align-items: flex-start;
+  gap: 8rpx;
+  margin-top: 12rpx;
   width: 100%;
+  padding: 12rpx 14rpx;
+  border-radius: 12rpx;
+  background: #fff4e5;
+  border: 1rpx solid #f0c27a;
+  box-sizing: border-box;
 }
 
 .result-page .reason-label {
   flex-shrink: 0;
-  font-size: 20rpx;
-  line-height: 1.35;
-  color: #c62828;
-  font-weight: 600;
+  font-size: 24rpx;
+  line-height: 1.4;
+  color: #b45309;
+  font-weight: 800;
 }
 
 .result-page .reason-value-col {
@@ -344,13 +352,13 @@
 .result-page .reason-summary-tag {
   display: inline-block;
   max-width: 100%;
-  padding: 4rpx 12rpx;
-  border-radius: 8rpx;
-  font-size: 20rpx;
-  line-height: 1.35;
-  font-weight: 600;
-  color: #c62828;
-  background: #ffe8e8;
+  padding: 0;
+  border-radius: 0;
+  font-size: 24rpx;
+  line-height: 1.45;
+  font-weight: 700;
+  color: #9a3412;
+  background: transparent;
   word-break: break-word;
   white-space: normal;
   box-sizing: border-box;
@@ -437,6 +445,83 @@
   background: rgba(28, 26, 46, 0.55);
   backdrop-filter: blur(4px);
   -webkit-backdrop-filter: blur(4px);
+}
+
+.result-page .validation-sheet {
+  width: 100%;
+  max-height: 72vh;
+  padding: 24rpx 32rpx 32rpx;
+  box-sizing: border-box;
+  background: #fff;
+  border-radius: 24rpx 24rpx 0 0;
+}
+
+.result-page .validation-sheet-title {
+  display: block;
+  font-size: 32rpx;
+  font-weight: 700;
+  color: #0f172a;
+  text-align: center;
+  margin-bottom: 12rpx;
+}
+
+.result-page .validation-sheet-summary {
+  display: block;
+  font-size: 26rpx;
+  color: #64748b;
+  line-height: 1.5;
+  margin-bottom: 20rpx;
+}
+
+.result-page .validation-sheet-scroll {
+  max-height: 46vh;
+  margin-bottom: 20rpx;
+}
+
+.result-page .validation-group {
+  padding: 20rpx 22rpx;
+  margin-bottom: 16rpx;
+  border-radius: 16rpx;
+  background: #f8fafc;
+  border: 1rpx solid #e2e8f0;
+}
+
+.result-page .validation-group--exceptionType {
+  background: #fff7ed;
+  border-color: #fed7aa;
+}
+
+.result-page .validation-group--ocrCalibration {
+  background: #fef2f2;
+  border-color: #fecaca;
+}
+
+.result-page .validation-group-title {
+  display: block;
+  font-size: 28rpx;
+  font-weight: 700;
+  color: #0f172a;
+  line-height: 1.45;
+  margin-bottom: 8rpx;
+}
+
+.result-page .validation-group-hint {
+  display: block;
+  font-size: 24rpx;
+  color: #64748b;
+  line-height: 1.5;
+  margin-bottom: 10rpx;
+}
+
+.result-page .validation-group-records {
+  display: block;
+  font-size: 24rpx;
+  font-weight: 600;
+  color: #2563eb;
+}
+
+.result-page .validation-sheet-btn {
+  width: 100%;
 }
 
 .result-page .result-expand-link:active {
@@ -615,4 +700,114 @@
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+
+.result-page .required-validation-banner.is-exception {
+  background: rgba(59, 130, 246, 0.1);
+}
+
+.result-page .exception-type-block {
+  margin: 12rpx 0 4rpx;
+}
+
+.result-page .exception-type-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12rpx;
+  margin-bottom: 8rpx;
+}
+
+.result-page .exception-type-label {
+  font-size: 22rpx;
+  font-weight: 700;
+  color: var(--text-1);
+}
+
+.result-page .exception-type-hint.is-action {
+  color: var(--primary);
+  font-weight: 600;
+}
+
+.result-page .exception-type-block.is-pending .exception-type-label {
+  color: #b45309;
+}
+
+.result-page .exception-type-stack {
+  display: flex;
+  gap: 8rpx;
+}
+
+.result-page .exception-type-stack.is-collapsed .exception-type-opt {
+  flex: 1;
+}
+
+.result-page .exception-type-stack.is-disabled {
+  opacity: 0.45;
+}
+
+.result-page .exception-type-stack.is-pending .exception-type-opt {
+  border: 2rpx dashed rgba(217, 64, 64, 0.65);
+  background: rgba(217, 64, 64, 0.06);
+}
+
+.result-page .exception-type-stack.is-pending .exception-type-opt-label {
+  color: #b45309;
+}
+
+.result-page .exception-type-opt {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6rpx;
+  flex: 1;
+  min-width: 0;
+  padding: 10rpx 8rpx;
+  border-radius: 8rpx;
+  border: 1rpx solid var(--border);
+  background: var(--surface-2);
+  text-align: center;
+}
+
+.result-page .exception-type-opt-check {
+  flex-shrink: 0;
+  font-size: 20rpx;
+  font-weight: 800;
+  line-height: 1;
+}
+
+.result-page .exception-type-opt-label {
+  font-size: 20rpx;
+  color: var(--text-2);
+  font-weight: 600;
+}
+
+.result-page .exception-type-opt.is-active {
+  border-color: transparent;
+}
+
+.result-page .exception-type-opt.is-active .exception-type-opt-label,
+.result-page .exception-type-opt.is-active .exception-type-opt-check {
+  color: #fff;
+}
+
+.result-page .exception-type-opt.is-active.exception-type-opt--attendance_ok {
+  background: #1A9E5C;
+}
+
+.result-page .exception-type-opt.is-active.exception-type-opt--paper_ok_ocr_wrong {
+  background: #C48A0A;
+}
+
+.result-page .exception-type-opt.is-active.exception-type-opt--paper_wrong_time {
+  background: #D94040;
+}
+
+.result-page .shift-variance-line {
+  margin: 8rpx 0 4rpx;
+}
+
+.result-page .shift-variance-line text {
+  font-size: 20rpx;
+  color: var(--text-3);
 }

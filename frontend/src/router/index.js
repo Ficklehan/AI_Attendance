@@ -145,6 +145,12 @@ const routes = [
             component: () => import('@/views/audit/AuditLog.vue'),
             meta: { titleKey: 'settings.menu.audit', settingsPermission: 'audit' },
           },
+          {
+            path: 'recognition-engine',
+            name: 'SettingsRecognitionEngine',
+            component: () => import('@/views/settings/RecognitionEngineSettings.vue'),
+            meta: { titleKey: 'settings.menu.recognitionEngine', requiresSettingsAdmin: true },
+          },
         ],
       },
       { path: 'config', redirect: '/settings/ai' },

@@ -47,6 +47,12 @@
               :controls="false"
               style="width: 100%"
             />
+            <ClockTimeField
+              v-else-if="field === 'ARRIVEE' || field === 'DEPAR'"
+              :value="draft[field]"
+              @update:value="(v) => { draft[field] = v }"
+              @commit="(v) => { draft[field] = v }"
+            />
             <a-input v-else v-model:value="draft[field]" allow-clear />
             <div class="calib-original-line">
               <span class="calib-original-label">{{ $t('calibration.originalValue') }}</span>
@@ -78,6 +84,7 @@
 import { computed, reactive, ref, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { message } from 'ant-design-vue'
+import ClockTimeField from '@/components/ClockTimeField.vue'
 import {
   CALIBRATABLE_FIELDS,
   FIELD_LABEL_KEYS,

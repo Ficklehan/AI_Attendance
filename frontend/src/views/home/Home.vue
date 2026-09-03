@@ -274,27 +274,30 @@
                 </template>
                 <template v-else-if="column.key === 'anomalyReasons'">
                   <CopyableCell
-                    v-if="getRecordAnomalyReasons(record).length > 0"
-                    :text="getRecordAnomalyReasons(record).join(', ')"
+                    v-if="hasAnomalyColumnContent(record)"
+                    :text="getRecordAnomalyReasons(record).join('\n')"
                   >
-                    <div class="inline-anomaly-tags">
-                      <TruncatedTag
-                        v-for="(reason, reasonIdx) in getRecordAnomalyReasons(record)"
-                        :key="reasonIdx"
-                        :text="reason"
-                        :color="getAnomalyTagColor(reason)"
-                        size="small"
-                      />
+                    <div class="recognition-note-list">
+                      <div
+                        v-for="(item, noteIdx) in getRecognitionNoteItems(record)"
+                        :key="item.key"
+                        class="recognition-note-list__item"
+                        :class="`recognition-note-list__item--${item.tone || 'default'}`"
+                      >
+                        <span class="recognition-note-list__index" aria-hidden="true">{{ noteIdx + 1 }}</span>
+                        <span class="recognition-note-list__text">{{ item.text }}</span>
+                      </div>
                     </div>
                   </CopyableCell>
                   <span v-else class="cell-muted">&mdash;</span>
                 </template>
-                <template v-else-if="column.key === 'SmartMark'">
-                  <CopyableCell :text="translateSmartMark(getDisplaySmartMark(record), t)">
-                    <a-tag :color="getMarkColor(getDisplaySmartMark(record))" class="mark-tag">
-                      {{ translateSmartMark(getDisplaySmartMark(record), t) }}
+                <template v-else-if="column.key === 'ExceptionType'">
+                  <CopyableCell v-if="formatExceptionTypeLabel(record.ExceptionType)" :text="formatExceptionTypeLabel(record.ExceptionType)">
+                    <a-tag color="processing" class="mark-tag">
+                      {{ formatExceptionTypeLabel(record.ExceptionType) }}
                     </a-tag>
                   </CopyableCell>
+                  <span v-else class="cell-muted">&mdash;</span>
                 </template>
                 <template v-else-if="column.key === 'PAUSE'">
                   <CopyableCell :text="formatPauseDisplay(record.PAUSE)" />
@@ -404,18 +407,19 @@ import {
 } from '@/utils/backgroundRecognition'
 import { applyMissingPays } from '@/utils/countryDefaults'
 import {
-  translateAnomalyReason,
-  translateSmartMark,
   stripSignatureMarksFromSmartMark,
   getDisplaySignature,
   translateSignatureMark,
   getSignatureMarkColor,
   markContains,
   computeSignatureMark,
-  anomalyReasonKind,
   calculateRecordStats,
 } from '@/utils/recognitionLabels'
 import { buildRecognitionTableColumns } from '@/utils/recognitionTableColumns'
+import {
+  EXCEPTION_TYPE_SHORT_I18N_KEYS,
+  normalizeExceptionType,
+} from '@/utils/exceptionType'
 import { sumTableScrollX } from '@/utils/tableAutoColumns'
 import { useTableColumnSort } from '@/composables/useTableColumnSort'
 import { useAutoSizedColumns } from '@/composables/useAutoSizedColumns'
@@ -423,11 +427,13 @@ import { useTableColumnResize } from '@/composables/useTableColumnResize'
 import { useTableBodyScrollY } from '@/composables/useTableBodyScrollY'
 import { useWorkingCountryPicker } from '@/composables/useWorkingCountryPicker'
 import { useColumnFreeze } from '@/composables/useColumnFreeze'
+import { useTaskEditRecordDisplay } from '@/composables/useTaskEditRecordDisplay'
 import TableColumnSettings from '@/components/TableColumnSettings.vue'
 import TableSortableHeader from '@/components/TableSortableHeader.vue'
 import CopyableCell from '@/components/CopyableCell.vue'
 import { hasRequiredMissing } from '@/utils/requiredRecordFields'
 import { isAbsentRow } from '@/utils/recordDisplay'
+import { hasManualCalibration } from '@/utils/calibrationHistory'
 import { formatCountryLabel } from '@/utils/countryLabels'
 import { translateErrorMessage, showHomeUploadError } from '@/utils/translateError'
 import { isCopyableTableColumn, resolveTableCellCopyText } from '@/utils/tableCopy'
@@ -736,25 +742,17 @@ const formatPauseDisplay = (value) => {
   return minutes === '' ? '-' : `${minutes} min`
 }
 
-const getEffectiveAnomalies = (record) => {
-  const anomalies = Array.isArray(record?.anomalies) ? record.anomalies : []
-  return anomalies.filter(reason => reason && !String(reason).includes(t('home.statsNight')) && !String(reason).includes('夜班'))
-}
-
-const getRecordAnomalyReasons = (record) => {
-  if (!record || record.isDeleted) return []
-  const mark = getDisplaySmartMark(record)
-  const reasons = getEffectiveAnomalies(record).map((r) => translateAnomalyReason(r, t))
-  if (record._parseMalformed) {
-    const malformedLabel = t('taskEdit.parseMalformedShort')
-    reasons.push(malformedLabel !== 'taskEdit.parseMalformedShort' ? malformedLabel : '结构异常')
-  }
-  if (markContains(mark, 'blurred')) reasons.push(t('taskEdit.blurredContent'))
-  if (markContains(mark, 'handwriting')) reasons.push(t('taskEdit.handwrittenContent'))
-  if (markContains(mark, 'absent')) reasons.push(t('taskEdit.absentReason'))
-  if (hasRequiredMissing(record)) reasons.push(t('taskEdit.requiredFieldMissingShort'))
-  return [...new Set(reasons)]
-}
+const getDuplicateMeta = () => null
+const {
+  getRecognitionNoteItems,
+  getRecordAnomalyReasons,
+  hasAnomalyColumnContent,
+  getAnomalyTagColor: getRecognitionAnomalyTagColor,
+} = useTaskEditRecordDisplay(records, getDuplicateMeta, {
+  isAbsentRow,
+  hasManualCalibration,
+  taskCountry: () => countryStore.workingCountry || getCachedWorkingCountry(),
+})
 
 const cellStyle = (record) => {
   if (!record) return {}
@@ -766,7 +764,21 @@ const cellStyle = (record) => {
   return {}
 }
 
-const baseColumns = computed(() => buildRecognitionTableColumns(t, { cellStyle }))
+const baseColumns = computed(() => buildRecognitionTableColumns(t, {
+  cellStyle,
+  useExceptionTypeColumn: true,
+  exceptionTypeColumnWidth: 96,
+  fixedAnomalyReasons: true,
+  anomalyReasonsColumnWidth: 220,
+}))
+
+const formatExceptionTypeLabel = (value) => {
+  const type = normalizeExceptionType(value)
+  if (!type) return ''
+  const key = EXCEPTION_TYPE_SHORT_I18N_KEYS[type]
+  const text = key ? t(key) : ''
+  return text && text !== key ? text : type
+}
 const { columns: sortedColumns, onSorterToggle, sortRows } = useTableColumnSort(baseColumns, { customHeader: true })
 const tableRecords = computed(() => sortRows(records.value))
 const { columns: sizedColumns } = useAutoSizedColumns(sortedColumns, tableRecords, { actionWidth: 50 })
@@ -1081,29 +1093,7 @@ const getRowClassName = (record, index) => {
   return ''
 }
 
-const getAnomalyTagColor = (reason) => {
-  const kind = anomalyReasonKind(reason)
-  if (kind === 'absent' || kind === 'missing') return 'red'
-  if (kind === 'blurred' || kind === 'duplicate') return 'orange'
-  if (kind === 'handwriting') return 'blue'
-  return 'default'
-}
-
-const getMarkColor = (mark) => {
-  const m = cellStr(mark)
-  if (!m) return 'default'
-  const parts = m.split(/[;；,，]/).map((p) => p.trim()).filter(Boolean)
-  for (const part of parts) {
-    if (part === '未签字' || part === '未签字确认') return 'warning'
-    if (part === '已签字' || part === '已签字确认') return 'success'
-  }
-  if (markContains(m, 'absent')) return 'error'
-  if (markContains(m, 'blurred')) return 'warning'
-  if (markContains(m, 'handwriting')) return 'processing'
-  if (markContains(m, 'nightShift')) return 'purple'
-  if (markContains(m, 'normal')) return 'success'
-  return 'default'
-}
+const getAnomalyTagColor = (reason) => getRecognitionAnomalyTagColor(reason)
 
 const hasHandwrittenText = (value) => {
   const text = cellStr(value).toLowerCase()
@@ -1853,6 +1843,82 @@ const getDisplaySmartMark = (record) => {
     margin-right: 0;
     line-height: 20px;
   }
+}
+
+.recognition-note-list {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: flex-start;
+  gap: 2px;
+  width: 100%;
+  min-width: 0;
+  text-align: left;
+  line-height: 1.3;
+  font-size: 11px;
+}
+
+.recognition-note-list__item {
+  display: flex;
+  align-items: flex-start;
+  gap: 4px;
+  width: 100%;
+  min-width: 0;
+}
+
+.recognition-note-list__index {
+  flex: none;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 12px;
+  height: 12px;
+  margin-top: 2px;
+  border-radius: 999px;
+  font-size: 9px;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  line-height: 1;
+  color: #fff;
+  background: $text-tertiary;
+}
+
+.recognition-note-list__text {
+  min-width: 0;
+  flex: 1;
+  white-space: normal;
+  word-break: break-word;
+  color: $text-primary;
+}
+
+.recognition-note-list__item--shift {
+  .recognition-note-list__index { background: linear-gradient(135deg, #2F6FED 0%, #5B8DEF 100%); }
+  .recognition-note-list__text { color: #2F6FED; }
+}
+
+.recognition-note-list__item--danger {
+  .recognition-note-list__index { background: #D94040; }
+  .recognition-note-list__text { color: #D94040; }
+}
+
+.recognition-note-list__item--warning {
+  .recognition-note-list__index { background: #D48806; }
+  .recognition-note-list__text { color: #AD6800; }
+}
+
+.recognition-note-list__item--accent {
+  .recognition-note-list__index { background: #722ED1; }
+  .recognition-note-list__text { color: #531DAB; }
+}
+
+.recognition-note-list__item--primary {
+  .recognition-note-list__index { background: #1677FF; }
+  .recognition-note-list__text { color: #0958D9; }
+}
+
+.recognition-note-list__item--success {
+  .recognition-note-list__index { background: #389E0D; }
+  .recognition-note-list__text { color: #237804; }
 }
 
 .cell-muted {

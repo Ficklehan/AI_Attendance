@@ -1356,6 +1356,42 @@ page {
   min-width: 0;
 }
 
+.record-title-wrap {
+  display: flex;
+  align-items: center;
+  min-width: 0;
+  flex: 1;
+  gap: 8rpx;
+}
+
+.record-line-no-tag {
+  flex-shrink: 0;
+  font-size: 20rpx;
+  font-weight: 700;
+  line-height: 1.2;
+  color: #6366f1;
+  background: rgba(99, 102, 241, 0.12);
+  padding: 2rpx 10rpx;
+  border-radius: 8rpx;
+  font-variant-numeric: tabular-nums;
+}
+
+.record-line-no-inline {
+  flex-shrink: 0;
+  font-size: 22rpx;
+  font-weight: 700;
+  color: #6366f1;
+  margin-right: 4rpx;
+  font-variant-numeric: tabular-nums;
+}
+
+.record-field-value-inline {
+  display: flex;
+  align-items: baseline;
+  flex-wrap: wrap;
+  min-width: 0;
+}
+
 .record-head-tags {
   display: flex;
   flex-wrap: wrap;

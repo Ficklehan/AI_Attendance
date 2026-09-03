@@ -49,7 +49,7 @@ public class RecognitionRunner {
     private RecognitionQualityGuard recognitionQualityGuard;
 
     @Autowired
-    private MimoKeyPool mimoKeyPool;
+    private RecognitionModelRuntime recognitionModelRuntime;
 
     @Autowired
     @Qualifier("recognitionExecutor")
@@ -99,7 +99,7 @@ public class RecognitionRunner {
             return "simulated";
         }
         recognitionSupport.requireRealAi();
-        return "mimo";
+        return recognitionSupport.getActiveEngine();
     }
 
     public RecognitionOutcome run(byte[] fileBytes, String originalFilename, String configCountry) throws Exception {
@@ -182,7 +182,8 @@ public class RecognitionRunner {
         final Exception[] error = {null};
         final CountDownLatch done = new CountDownLatch(1);
         final int[] recordIndex = {0};
-        final String engineTag = "mimo:" + (promptCountry != null ? promptCountry : "default");
+        final String engineTag = recognitionSupport.getActiveEngine() + ":"
+                + (promptCountry != null ? promptCountry : "default");
 
         if (trace != null) {
             JSONObject start = new JSONObject();
@@ -191,6 +192,8 @@ public class RecognitionRunner {
             start.put("configCountry", promptCountry);
             start.put("workingCountry", workingCountry);
             start.put("mimoConfigured", recognitionSupport.isMimoConfigured());
+            start.put("deepseekConfigured", recognitionSupport.isDeepseekConfigured());
+            start.put("activeEngine", recognitionSupport.getActiveEngine());
             start.put("simulatedAllowed", recognitionSupport.allowSimulatedFallback());
             trace.step("backend_recognition_start", start);
         }
@@ -221,10 +224,11 @@ public class RecognitionRunner {
             simulatedRecognitionService.simulateRecognition(simCallback);
         } else {
             if (trace != null) {
-                trace.step("engine_mode", "mode", "mimo");
+                trace.step("engine_mode", "mode", recognitionSupport.getActiveEngine());
             }
             recognitionSupport.requireRealAi();
-            log.info("调用 MiMo 大模型识别: file={}, country={}, size={} bytes",
+            log.info("调用 {} 大模型识别: file={}, country={}, size={} bytes",
+                    recognitionModelRuntime.displayEngineName(),
                     originalFilename, promptCountry, fileBytes.length);
 
             AIParserService.ParseCallback callback = new AIParserService.ParseCallback() {
@@ -249,13 +253,13 @@ public class RecognitionRunner {
 
                 @Override
                 public void onComplete(int totalCount) {
-                    log.info("MiMo 识别完成，共 {} 条", totalCount);
+                    log.info("{} 识别完成，共 {} 条", recognitionModelRuntime.displayEngineName(), totalCount);
                     done.countDown();
                 }
 
                 @Override
                 public void onError(Exception e) {
-                    log.error("MiMo 识别失败", e);
+                    log.error("{} 识别失败", recognitionModelRuntime.displayEngineName(), e);
                     error[0] = e;
                     done.countDown();
                 }
@@ -292,7 +296,8 @@ public class RecognitionRunner {
                 : aiParserService.getLastPromptCountry();
         String engine = recognitionSupport.shouldUseSimulatedRecognition()
                 ? "simulated"
-                : ("mimo:" + (country != null ? country : "default"));
+                : (recognitionSupport.getActiveEngine() + ":"
+                    + (country != null ? country : "default"));
 
         if (trace != null) {
             JSONObject doneMeta = new JSONObject();
@@ -357,7 +362,7 @@ public class RecognitionRunner {
         }
 
         int pendingImages = total - startIndex;
-        if (pendingImages >= 2 && mimoKeyPool.getPoolSize() > 1) {
+        if (pendingImages >= 2 && recognitionModelRuntime.getKeyPoolSize() > 1) {
             return recognizeAllTaskImagesParallel(taskId, configCountry, trace, systemRecovery, task, imageKeys,
                     merged, workingCountry, total, startIndex, checkpoint, resuming);
         }
@@ -431,7 +436,7 @@ public class RecognitionRunner {
         if (trace != null) {
             JSONObject parallelMeta = new JSONObject();
             parallelMeta.put("pendingImages", total - startIndex);
-            parallelMeta.put("keyPoolSize", mimoKeyPool.getPoolSize());
+            parallelMeta.put("keyPoolSize", recognitionModelRuntime.getKeyPoolSize());
             trace.step("batch_recognition_parallel", parallelMeta);
         }
 
@@ -525,11 +530,11 @@ public class RecognitionRunner {
 
     private RecognitionOutcome finalizeBatchOutcome(List<JSONObject> merged, String engine, String country) {
         ImageQualityAssessment imageQuality = recognitionQualityGuard.assessImageReadability(merged);
+        // 识别后质量偏低不再整单失败；仅上传前锐度过糊拒图
         if (imageQuality.isBlock()) {
-            throw new BusinessException(
-                    ErrorCode.AI_PARSE_ERROR,
-                    ErrorKeys.AI_IMAGE_TOO_BLURRY,
-                    recognitionQualityGuard.blurryBlockMessageArgs(imageQuality));
+            log.warn("批量识别后质量偏低但仍放行: blur={}%, unknown={}%, reason={}",
+                    imageQuality.getBlurPercent(), imageQuality.getUnknownPercent(),
+                    imageQuality.getBlockReason());
         }
         return new RecognitionOutcome(merged, engine, country, imageQuality);
     }

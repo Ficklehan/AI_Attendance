@@ -10,19 +10,28 @@ const COMPACT_CELL_H_PADDING = 16
 const FIXED_WIDTH_KEYS = new Set(['action', 'operation'])
 
 const DEFAULT_MAX_BY_KEY = {
-  serialNo: 44,
-  NO: 96,
-  Pays: 84,
-  NOM_PRENOM: 360,
-  name: 360,
-  Observations: 280,
-  observations: 280,
+  serialNo: 36,
+  PAGE_NUM: 40,
+  NO: 40,
+  EMPLOYEE_NO: 80,
+  Pays: 88,
+  NOM_PRENOM: 200,
+  name: 200,
+  Observations: 64,
+  observations: 64,
   fileKey: 260,
-  Entrepot: 240,
-  warehouse: 240,
-  AGENCE_INTERIMAIRE: 240,
-  agency: 240,
-  anomalyReasons: 260,
+  Entrepot: 140,
+  warehouse: 140,
+  AGENCE_INTERIMAIRE: 140,
+  agency: 140,
+  anomalyReasons: 240,
+  HORAIRES_DU_TRAVAIL: 100,
+  ARRIVEE: 96,
+  DEPAR: 96,
+  PAUSE: 56,
+  workHours: 56,
+  Date: 108,
+  SIGNATURE: 60,
 }
 
 const COMPACT_MAX_BY_KEY = {
@@ -31,8 +40,8 @@ const COMPACT_MAX_BY_KEY = {
   country: 76,
   date: 108,
   shift: 96,
-  arrival: 84,
-  departure: 84,
+  arrival: 100,
+  departure: 100,
   pauseMinutes: 72,
 }
 
@@ -42,8 +51,8 @@ const COMPACT_MIN_BY_KEY = {
   country: 60,
   date: 88,
   shift: 76,
-  arrival: 72,
-  departure: 72,
+  arrival: 80,
+  departure: 80,
   pauseMinutes: 56,
 }
 

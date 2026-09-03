@@ -332,7 +332,8 @@ public class LocalUploadController {
                             }
                             try {
                                 String promptCountry = aiParserService.getLastPromptCountry();
-                                String engineTag = "mimo:" + (promptCountry != null ? promptCountry : configCountry);
+                                String engineTag = recognitionSupport.getActiveEngine() + ":"
+                                        + (promptCountry != null ? promptCountry : configCountry);
                                 appendRawData(newTaskId, records, engineTag, trace);
                                 sendTraceDump(emitter, trace);
 
@@ -384,7 +385,7 @@ public class LocalUploadController {
                 if (!streamCompleted[0] && streamError[0] == null) {
                     log.warn("识别结束但未收到 complete 回调，补发完成事件: taskId={}", newTaskId);
                     try {
-                        String engineTag = "mimo:" + configCountry;
+                        String engineTag = recognitionSupport.getActiveEngine() + ":" + configCountry;
                         appendRawData(newTaskId, records, engineTag, trace);
                         JSONObject completeEvent = new JSONObject();
                         completeEvent.put("taskId", newTaskId);
@@ -629,9 +630,36 @@ public class LocalUploadController {
     public void exportXlsx(@PathVariable String taskId,
                            @RequestParam(value = "locale", required = false) String locale,
                            HttpServletResponse response) throws IOException {
+        writeExportResponse(taskId, locale, null, response);
+    }
+
+    /** 使用当前页记录（含 _aiBaseline / ExceptionType）导出，保证「修改前后」与页面一致 */
+    @PostMapping("/export/{taskId}/xlsx")
+    public void exportXlsxWithRecords(@PathVariable String taskId,
+                                      @RequestParam(value = "locale", required = false) String locale,
+                                      @RequestBody(required = false) String body,
+                                      HttpServletResponse response) throws IOException {
+        JSONArray records = null;
+        if (body != null && !body.trim().isEmpty()) {
+            JSONObject payload = JSON.parseObject(body);
+            if (payload != null && payload.get("records") != null) {
+                records = payload.getJSONArray("records");
+            } else {
+                records = JSON.parseArray(body);
+            }
+        }
+        writeExportResponse(taskId, locale, records, response);
+    }
+
+    private void writeExportResponse(String taskId, String locale, JSONArray records,
+                                     HttpServletResponse response) throws IOException {
         java.nio.file.Path tempFile = null;
         try {
-            tempFile = taskService.createTaskExportTempFile(taskId, locale);
+            if (records != null && !records.isEmpty()) {
+                tempFile = taskService.createTaskExportTempFile(taskId, locale, records);
+            } else {
+                tempFile = taskService.createTaskExportTempFile(taskId, locale);
+            }
             response.setContentType(ExcelExportHelper.CONTENT_TYPE);
             response.setHeader("Content-Disposition",
                     "attachment;filename=\"attendance_" + taskId + ".xlsx\"");

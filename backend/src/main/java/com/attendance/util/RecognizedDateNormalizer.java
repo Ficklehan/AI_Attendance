@@ -4,14 +4,16 @@ import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 /**
- * 日期归一化：明确格式 → YYYY-MM-DD；歧义如 03/04/2026 保留原样。
+ * 日期归一化 → YYYY-MM-DD。
+ * a/b/yyyy（或 . -）：默认按月/日/年；月不能 &gt;12，若一侧 &gt;12 则该侧为日、另一侧为月。
+ * 例：12/06/2026→2026-12-06；13/06/2026→2026-06-13；06/13/2026→2026-06-13。
  */
 public final class RecognizedDateNormalizer {
 
     private static final Pattern CANONICAL = Pattern.compile("^(\\d{4})-(\\d{2})-(\\d{2})$");
     private static final Pattern YMD = Pattern.compile("^(\\d{4})[/.-](\\d{1,2})[/.-](\\d{1,2})$");
-    private static final Pattern DMY4 = Pattern.compile("^(\\d{1,2})[/.-](\\d{1,2})[/.-](\\d{4})$");
-    private static final Pattern DMY2 = Pattern.compile("^(\\d{1,2})[/.-](\\d{1,2})[/.-](\\d{2})$");
+    private static final Pattern MDY4 = Pattern.compile("^(\\d{1,2})[/.-](\\d{1,2})[/.-](\\d{4})$");
+    private static final Pattern MDY2 = Pattern.compile("^(\\d{1,2})[/.-](\\d{1,2})[/.-](\\d{2})$");
 
     private RecognizedDateNormalizer() {
     }
@@ -36,15 +38,15 @@ public final class RecognizedDateNormalizer {
             return built != null ? built : str;
         }
 
-        Matcher dmy4 = DMY4.matcher(str);
-        if (dmy4.matches()) {
-            String built = tryDmyOrMdy(dmy4.group(1), dmy4.group(2), Integer.parseInt(dmy4.group(3)));
+        Matcher mdy4 = MDY4.matcher(str);
+        if (mdy4.matches()) {
+            String built = resolveMonthDayYear(mdy4.group(1), mdy4.group(2), Integer.parseInt(mdy4.group(3)));
             return built != null ? built : str;
         }
 
-        Matcher dmy2 = DMY2.matcher(str);
-        if (dmy2.matches()) {
-            String built = tryDmyOrMdy(dmy2.group(1), dmy2.group(2), 2000 + Integer.parseInt(dmy2.group(3)));
+        Matcher mdy2 = MDY2.matcher(str);
+        if (mdy2.matches()) {
+            String built = resolveMonthDayYear(mdy2.group(1), mdy2.group(2), 2000 + Integer.parseInt(mdy2.group(3)));
             return built != null ? built : str;
         }
 
@@ -78,17 +80,18 @@ public final class RecognizedDateNormalizer {
         return !isValidCanonicalDate(value.trim());
     }
 
-    private static String tryDmyOrMdy(String a, String b, int year) {
+    /** a/b/year：默认月日；月不能&gt;12 时互换（&gt;12 的一侧为日） */
+    private static String resolveMonthDayYear(String a, String b, int year) {
         int p = Integer.parseInt(a);
         int q = Integer.parseInt(b);
-        if (p > 12 && q <= 12) {
+        if (p > 12 && q >= 1 && q <= 12) {
             return buildCanonical(String.valueOf(year), q, p);
         }
-        if (q > 12 && p <= 12) {
+        if (q > 12 && p >= 1 && p <= 12) {
             return buildCanonical(String.valueOf(year), p, q);
         }
-        if (p <= 12 && q <= 12) {
-            return null;
+        if (p >= 1 && p <= 12 && q >= 1) {
+            return buildCanonical(String.valueOf(year), p, q);
         }
         return null;
     }

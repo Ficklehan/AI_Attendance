@@ -38,9 +38,9 @@
         INSERT INTO recognition_prompt (country_code, ai_prompt, continue_prompt, seed_version, user_modified)
         VALUES (#{countryCode}, #{aiPrompt}, #{continuePrompt}, #{seedVersion}, 0)
         ON DUPLICATE KEY UPDATE
-            ai_prompt = IF(user_modified = 1 AND seed_version >= VALUES(seed_version), ai_prompt, VALUES(ai_prompt)),
-            continue_prompt = IF(user_modified = 1 AND seed_version >= VALUES(seed_version), continue_prompt, VALUES(continue_prompt)),
-            seed_version = IF(user_modified = 1 AND seed_version >= VALUES(seed_version), seed_version, VALUES(seed_version)),
+            ai_prompt = IF(user_modified = 1, ai_prompt, VALUES(ai_prompt)),
+            continue_prompt = IF(user_modified = 1, continue_prompt, VALUES(continue_prompt)),
+            seed_version = IF(user_modified = 1, seed_version, VALUES(seed_version)),
             updated_at = CURRENT_TIMESTAMP
     </insert>
 

@@ -20,15 +20,16 @@ export function formatLineRanges(lines) {
 }
 
 /**
- * @param {Array<{ line: number, fields: string[] }>} issues
+ * @param {Array<{ line: number, fields: string[], issueType?: string }>} issues
  */
 export function groupConfirmValidationIssues(issues) {
   const map = new Map()
   ;(issues || []).forEach((issue) => {
     const fields = issue.fields || []
-    const key = fields.join('\0')
+    const issueType = issue.issueType || 'missing'
+    const key = `${issueType}\0${fields.join('\0')}`
     if (!map.has(key)) {
-      map.set(key, { fields: fields.slice(), lines: [] })
+      map.set(key, { fields: fields.slice(), lines: [], issueType })
     }
     map.get(key).lines.push(issue.line)
   })
@@ -40,6 +41,7 @@ export function groupConfirmValidationIssues(issues) {
         lines,
         count: lines.length,
         lineRanges: formatLineRanges(lines),
+        issueType: group.issueType,
       }
     })
     .sort((a, b) => b.count - a.count || a.lines[0] - b.lines[0])

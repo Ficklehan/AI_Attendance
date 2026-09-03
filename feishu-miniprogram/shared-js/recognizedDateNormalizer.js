@@ -1,6 +1,8 @@
 /** AUTO-GENERATED from shared/js — run: npm run sync:miniprogram-shared */
 /**
- * 日期归一化：明确格式 → YYYY-MM-DD；歧义如 03/04/2026 保留原样；无法解析保留原样（提交时拦截）。
+ * 日期归一化 → YYYY-MM-DD。
+ * a/b/yyyy（或 . -）：默认按月/日/年；月不能 >12，若一侧 >12 则该侧为日、另一侧为月。
+ * 例：12/06/2026→2026-12-06；13/06/2026→2026-06-13；06/13/2026→2026-06-13。
  */
 
 function pad2(n) {
@@ -35,17 +37,18 @@ function buildCanonical(year, month, day) {
   return isValidCanonicalDate(candidate) ? candidate : null
 }
 
-function tryDmyOrMdy(a, b, year) {
+/** a/b/year：默认月日；月不能>12 时互换（>12 的一侧为日） */
+function resolveMonthDayYear(a, b, year) {
   const p = parseInt(a, 10)
   const q = parseInt(b, 10)
-  if (p > 12 && q <= 12) {
+  if (p > 12 && q >= 1 && q <= 12) {
     return buildCanonical(year, q, p)
   }
-  if (q > 12 && p <= 12) {
+  if (q > 12 && p >= 1 && p <= 12) {
     return buildCanonical(year, p, q)
   }
-  if (p <= 12 && q <= 12) {
-    return null
+  if (p >= 1 && p <= 12 && q >= 1) {
+    return buildCanonical(year, p, q)
   }
   return null
 }
@@ -67,13 +70,13 @@ function normalizeDate(raw) {
 
   m = str.match(/^(\d{1,2})[/.-](\d{1,2})[/.-](\d{4})$/)
   if (m) {
-    const built = tryDmyOrMdy(m[1], m[2], parseInt(m[3], 10))
+    const built = resolveMonthDayYear(m[1], m[2], parseInt(m[3], 10))
     return built || str
   }
 
   m = str.match(/^(\d{1,2})[/.-](\d{1,2})[/.-](\d{2})$/)
   if (m) {
-    const built = tryDmyOrMdy(m[1], m[2], 2000 + parseInt(m[3], 10))
+    const built = resolveMonthDayYear(m[1], m[2], 2000 + parseInt(m[3], 10))
     return built || str
   }
 

@@ -62,7 +62,8 @@ public class PromptDatabaseBootstrap implements ApplicationRunner {
             }
 
             if (rows == 0 || force || legacy || missingPageNum || outdatedSeed) {
-                boolean useForce = force || legacy || missingPageNum || outdatedSeed || rows == 0;
+                // 仅空库 / 显式 force / 确认旧版结构才强制覆盖；版本升级与补 PAGE_NUM 不覆盖 user_modified
+                boolean useForce = force || legacy || rows == 0;
                 int seeded = recognitionPromptService.seedFromCanonical(useForce);
                 log.info("提示词数据库播种: rows={}, legacy={}, missingPageNum={}, outdatedSeed={}, force={}, seeded={}",
                         rows, legacy, missingPageNum, outdatedSeed, useForce, seeded);

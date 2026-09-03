@@ -1,5 +1,5 @@
 const { collectConfirmValidationIssues } = require('./requiredRecordFields')
-const { groupConfirmValidationIssues } = require('../shared-js/confirmValidationGrouping')
+const { buildSubmitValidationViewModel } = require('../shared-js/confirmValidationContent')
 const {
   collectSubmitValidationIssues,
   countSubmitBlockerLines,
@@ -36,22 +36,30 @@ function formatFieldLabels(fieldKeys, t) {
     .join(t('result.confirmValidationFieldSep'))
 }
 
+function translateValidationKey(t, key, params) {
+  const fullKey = `result.${key}`
+  const text = t(fullKey, params)
+  return text !== fullKey ? text : key
+}
+
+function buildValidationViewModel(issues, t) {
+  return buildSubmitValidationViewModel(
+    issues,
+    (key, params) => translateValidationKey(t, key, params),
+    (fields) => formatFieldLabels(fields, t),
+  )
+}
+
+/** @deprecated 仅供无自定义 UI 时的文本兜底 */
 function formatConfirmValidationContent(issues, t) {
-  const groups = groupConfirmValidationIssues(issues)
-  const lineCount = new Set((issues || []).map((issue) => issue.line)).size
-  const summary = t('result.submitValidationSummary', { count: lineCount })
-  const groupLines = groups.map((group) => {
-    const headerKey = group.issueType === 'format'
-      ? 'result.confirmFormatValidationGroupHeader'
-      : 'result.confirmValidationGroupHeader'
-    const header = t(headerKey, {
-      fields: formatFieldLabels(group.fields, t),
-      count: group.count,
-    })
-    const lines = t('result.confirmValidationGroupLines', { ranges: group.lineRanges })
-    return `${header}\n${lines}`
+  const vm = buildValidationViewModel(issues, t)
+  const blocks = vm.groups.map((group) => {
+    const lines = [group.title]
+    if (group.hint) lines.push(group.hint)
+    lines.push(group.records)
+    return lines.join('\n')
   })
-  return `${summary}\n\n${groupLines.join('\n\n')}`
+  return `${vm.summary}\n\n${blocks.join('\n\n')}`
 }
 
 function truncateModalContent(content) {
@@ -80,11 +88,20 @@ function showSubmitValidationModal(records, t, options) {
   const opts = options || {}
   const issues = collectSubmitValidationIssues(records, collectConfirmValidationIssues)
   if (!issues.length) return false
+
+  const viewModel = buildValidationViewModel(issues, t)
+  const firstIssue = findFirstValidationIssue(records)
+
   if (typeof opts.beforeModal === 'function') {
-    opts.beforeModal(findFirstValidationIssue(records), issues)
+    opts.beforeModal(firstIssue, issues)
   }
+  if (typeof opts.onShow === 'function') {
+    opts.onShow(viewModel, firstIssue, issues)
+    return true
+  }
+
   tt.showModal({
-    title: t('result.submitValidationTitle'),
+    title: viewModel.title,
     content: truncateModalContent(formatConfirmValidationContent(issues, t)),
     showCancel: false,
     confirmText: t('common.confirm'),
@@ -96,6 +113,7 @@ module.exports = {
   collectConfirmValidationIssues,
   collectSubmitValidationIssues,
   countSubmitValidationLines,
+  buildValidationViewModel,
   formatConfirmValidationContent,
   truncateModalContent,
   showSubmitValidationModal,

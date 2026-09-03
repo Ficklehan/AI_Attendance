@@ -6,7 +6,7 @@ const {
   resolveUploadCountry
 } = require('../../utils/recognitionUpload')
 const { getCountryLabel } = require('../../utils/preferences')
-const { formatRecognitionEngine } = require('../../utils/engineLabel')
+
 const { t } = require('../../utils/i18n')
 const { translateErrorMessage } = require('../../utils/translateError')
 const { markTaskDataDirty } = require('../../utils/taskSummary')
@@ -189,9 +189,9 @@ Page({
         this.applyProgress({
           status: 'uploading',
           rowCount: this.data.rowCount,
-          engine: 'mimo',
+          engine: '',
           promptCountry: resolveUploadCountry(),
-          engineLabel: formatRecognitionEngine('mimo', resolveUploadCountry()),
+          engineLabel: '',
           uploadLabel: t('recognizing.batchUploading', { current, total: uploadTotal }),
           attempt: 0
         })

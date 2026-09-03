@@ -69,6 +69,7 @@ public class TaskRecordDatabaseBootstrap implements ApplicationRunner {
             ensureProgressRowCountColumn();
             ensureRecognitionCheckpointColumns();
             ensureSmartMarkColumn();
+            ensureExceptionTypeColumn();
             ensureAgencyBillingIndex();
             backfillCountryKeys();
             log.info("task_records 表已就绪");
@@ -149,6 +150,22 @@ public class TaskRecordDatabaseBootstrap implements ApplicationRunner {
             }
         } catch (Exception e) {
             log.debug("smart_mark 列可能已存在: {}", e.getMessage());
+        }
+    }
+
+    private void ensureExceptionTypeColumn() {
+        try {
+            Integer cnt = jdbcTemplate.queryForObject(
+                    "SELECT COUNT(1) FROM information_schema.columns "
+                            + "WHERE table_schema = DATABASE() AND table_name = 'task_records' "
+                            + "AND column_name = 'exception_type'",
+                    Integer.class);
+            if (cnt == null || cnt == 0) {
+                jdbcTemplate.execute("ALTER TABLE task_records ADD COLUMN exception_type VARCHAR(64) NULL "
+                        + "COMMENT '异常类型(ExceptionType)' AFTER smart_mark");
+            }
+        } catch (Exception e) {
+            log.debug("exception_type 列可能已存在: {}", e.getMessage());
         }
     }
 

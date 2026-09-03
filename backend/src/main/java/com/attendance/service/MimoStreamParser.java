@@ -89,8 +89,13 @@ public final class MimoStreamParser {
                         continue;
                     }
                     appendDelta(delta.getString("content"), roundText, onDelta);
-                    // reasoning_content 部分模型会输出，仅用于展示/调试，不参与 JSON 行解析
-                    appendDelta(delta.getString("reasoning_content"), roundText, null);
+                    // reasoning_content 仅调试用，禁止拼入 roundText，否则会污染 JSON 行解析
+                    if (log.isDebugEnabled()) {
+                        String reasoning = delta.getString("reasoning_content");
+                        if (reasoning != null && !reasoning.isEmpty()) {
+                            log.debug("忽略 reasoning_content 增量 {} chars", reasoning.length());
+                        }
+                    }
                 } catch (Exception e) {
                     log.warn("解析 MiMo SSE chunk 失败: {}", truncate(data, 200), e);
                 }

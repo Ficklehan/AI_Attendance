@@ -8,6 +8,7 @@ import com.attendance.common.BusinessException;
 import com.attendance.common.ErrorKeys;
 import com.attendance.common.ErrorCode;
 import com.attendance.config.MimoProperties;
+import com.attendance.config.DeepSeekProperties;
 import com.attendance.storage.FileStorage;
 import com.attendance.service.MarkdownConfigService;
 import com.attendance.util.PageNumberNormalizer;
@@ -51,6 +52,9 @@ public class AIParserService {
     private MimoProperties mimoProperties;
 
     @Autowired
+    private DeepSeekProperties deepSeekProperties;
+
+    @Autowired
     private MarkdownConfigService markdownConfigService;
 
     @Autowired
@@ -69,7 +73,7 @@ public class AIParserService {
     private RecognitionCoordinator recognitionCoordinator;
 
     @Autowired
-    private MimoKeyPool mimoKeyPool;
+    private RecognitionModelRuntime recognitionModelRuntime;
 
     private final ThreadLocal<MimoKeyLease> activeKeyLease = new ThreadLocal<>();
 
@@ -136,7 +140,8 @@ public class AIParserService {
                     : resolveCountry(promptCountry));
             String base64Image = Base64.getEncoder().encodeToString(imageBytes);
             String mimeType = detectImageMimeType(imageBytes, originalFilename);
-            log.info("准备上传图片到 Mimo，文件名: {}, MIME类型: {}, 大小: {} bytes", originalFilename, mimeType, imageBytes.length);
+            log.info("准备上传图片到 {}，文件名: {}, MIME类型: {}, 大小: {} bytes",
+                    recognitionModelRuntime.displayEngineName(), originalFilename, mimeType, imageBytes.length);
 
             PromptBundle prompts = loadRecognitionPrompts(promptCountry, trace);
             if (trace != null) {
@@ -145,11 +150,12 @@ public class AIParserService {
                 req.put("imageBytes", imageBytes.length);
                 req.put("base64Chars", base64Image.length());
                 req.put("dataUrlPrefix", "data:" + mimeType + ";base64,");
-                req.put("model", mimoProperties.getModel());
-                req.put("apiUrl", mimoProperties.getApiUrl());
-                req.put("temperature", mimoProperties.getTemperature());
-                req.put("maxTokens", mimoProperties.getMaxTokens());
-                req.put("topP", mimoProperties.getTopP());
+                req.put("model", recognitionModelRuntime.getModel());
+                req.put("apiUrl", recognitionModelRuntime.getApiUrl());
+                req.put("temperature", recognitionModelRuntime.getTemperature());
+                req.put("maxTokens", recognitionModelRuntime.getMaxTokens());
+                req.put("topP", recognitionModelRuntime.getTopP());
+                req.put("engine", recognitionModelRuntime.getActiveEngine());
                 req.put("promptCountry", lastPromptCountry);
                 req.put("promptSection", lastPromptSection);
                 req.put("promptLength", prompts.aiPrompt.length());
@@ -305,15 +311,15 @@ public class AIParserService {
                                                    RecognitionTrace trace) {
         Set<Integer> failedKeyIndices = new HashSet<>();
         Exception lastError = null;
-        int poolSize = Math.max(1, mimoKeyPool.getPoolSize());
+        int poolSize = Math.max(1, recognitionModelRuntime.getKeyPoolSize());
 
         while (failedKeyIndices.size() < poolSize) {
             MimoKeyLease lease;
             try {
-                lease = mimoKeyPool.acquireExcluding(failedKeyIndices);
+                lease = recognitionModelRuntime.acquireKeyExcluding(failedKeyIndices);
             } catch (InterruptedException ie) {
                 Thread.currentThread().interrupt();
-                callback.onError(new IOException("MiMo Key 池等待被中断", ie));
+                callback.onError(new IOException(recognitionModelRuntime.displayEngineName() + " Key 池等待被中断", ie));
                 return;
             } catch (BusinessException be) {
                 callback.onError(lastError != null ? lastError : be);
@@ -331,7 +337,8 @@ public class AIParserService {
                         && failedKeyIndices.size() < poolSize - 1;
                 if (canFailover) {
                     failedKeyIndices.add(lease.getKeyIndex());
-                    log.warn("MiMo Key #{} 不可用，切换下一个 Key ({}/{}): {}",
+                    log.warn("{} Key #{} 不可用，切换下一个 Key ({}/{}): {}",
+                            recognitionModelRuntime.displayEngineName(),
                             lease.getKeyIndex(), failedKeyIndices.size(), poolSize, e.getMessage());
                     if (trace != null) {
                         JSONObject meta = new JSONObject();
@@ -343,7 +350,7 @@ public class AIParserService {
                     }
                     continue;
                 }
-                log.error("❌ MiMo API 调用失败", e);
+                log.error("❌ {} API 调用失败", recognitionModelRuntime.displayEngineName(), e);
                 if (trace != null) {
                     trace.step("model_error", "message", e.getMessage());
                 }
@@ -355,7 +362,7 @@ public class AIParserService {
         }
 
         if (lastError != null) {
-            log.error("❌ 所有 MiMo Key 均不可用", lastError);
+            log.error("❌ 所有 {} Key 均不可用", recognitionModelRuntime.displayEngineName(), lastError);
             if (trace != null) {
                 trace.step("model_error", "message", lastError.getMessage());
             }
@@ -407,7 +414,8 @@ public class AIParserService {
 
             while (hasMore && currentRound < maxRounds) {
                 currentRound++;
-                log.info("🤖 调用 MiMo 流式 API - 第 " + currentRound + " 轮");
+                log.info("🤖 调用 {} 流式 API - 第 {} 轮",
+                        recognitionModelRuntime.displayEngineName(), currentRound);
                 if (trace != null) {
                     trace.step("model_round_start", "round", currentRound);
                 }
@@ -508,21 +516,20 @@ public class AIParserService {
             }
 
             ImageQualityAssessment imageQuality = recognitionQualityGuard.assessImageReadability(extractedRecords);
+            // 识别后模糊/可读性检测仅作评估，不再拦截；过糊只在上传前拒图
             if (imageQuality.isBlock()) {
-                log.warn("拒绝模糊图片识别结果: blur={}%, unknown={}%",
-                        imageQuality.getBlurPercent(), imageQuality.getUnknownPercent());
+                log.warn("识别后质量偏低但仍放行: blur={}%, unknown={}%, reason={}",
+                        imageQuality.getBlurPercent(), imageQuality.getUnknownPercent(),
+                        imageQuality.getBlockReason());
                 if (trace != null) {
                     JSONObject meta = new JSONObject();
-                    meta.put("messageKey", ErrorKeys.AI_IMAGE_TOO_BLURRY);
                     meta.put("blurPercent", imageQuality.getBlurPercent());
                     meta.put("unknownPercent", imageQuality.getUnknownPercent());
-                    trace.step("image_too_blurry_rejected", meta);
+                    meta.put("blockReason", imageQuality.getBlockReason() != null
+                            ? String.valueOf(imageQuality.getBlockReason()) : null);
+                    meta.put("released", true);
+                    trace.step("image_quality_soft_pass", meta);
                 }
-                callback.onError(new BusinessException(
-                        ErrorCode.AI_PARSE_ERROR,
-                        ErrorKeys.AI_IMAGE_TOO_BLURRY,
-                        recognitionQualityGuard.blurryBlockMessageArgs(imageQuality)));
-                return;
             }
 
             log.info("✅ AI识别完全结束，共识别 {} 条记录", extractedRecords.size());
@@ -615,11 +622,17 @@ public class AIParserService {
         if (lease != null) {
             return lease.getApiKey();
         }
-        List<String> keys = mimoProperties.getResolvedApiKeys();
+        List<String> keys = recognitionModelRuntime.isMimoEngine()
+                ? mimoProperties.getResolvedApiKeys()
+                : deepSeekProperties.getResolvedApiKeys();
         if (!keys.isEmpty()) {
             return keys.get(0);
         }
-        String single = mimoProperties.getApiKey();
+        if (recognitionModelRuntime.isMimoEngine()) {
+            String single = mimoProperties.getApiKey();
+            return single != null ? single.trim() : "";
+        }
+        String single = deepSeekProperties.getApiKey();
         return single != null ? single.trim() : "";
     }
 
@@ -630,23 +643,22 @@ public class AIParserService {
         String roundText = "";
         try {
             String apiKey = resolveActiveApiKey();
-            String apiUrl = mimoProperties.getApiUrl();
-            
+            String apiUrl = recognitionModelRuntime.getApiUrl();
+            String engineName = recognitionModelRuntime.displayEngineName();
+
             if (apiKey == null || apiKey.trim().isEmpty()) {
-                throw new IllegalStateException("MIMO_API_KEY 未配置");
+                throw new IllegalStateException(engineName + " API Key 未配置");
             }
 
             JSONObject requestBody = new JSONObject();
-            String model = mimoProperties.getModel();
-            if (model == null || model.trim().isEmpty()) {
-                model = "mimo-v2.5";
-            }
+            String model = recognitionModelRuntime.getModel();
             requestBody.put("model", model);
             requestBody.put("messages", messages);
-            requestBody.put("max_tokens", mimoProperties.getMaxTokens());
+            requestBody.put("max_tokens", recognitionModelRuntime.getMaxTokens());
             requestBody.put("stream", true);
-            requestBody.put("temperature", mimoProperties.getTemperature());
-            requestBody.put("top_p", mimoProperties.getTopP());
+            requestBody.put("temperature", recognitionModelRuntime.getTemperature());
+            requestBody.put("top_p", recognitionModelRuntime.getTopP());
+            // MiMo / DeepSeek V4 均可能默认开启 thinking；识图 OCR 必须关闭，否则推理占满 max_tokens、无有效 JSON 行
             JSONObject thinking = new JSONObject();
             thinking.put("type", "disabled");
             requestBody.put("thinking", thinking);
@@ -671,7 +683,7 @@ public class AIParserService {
                         errorContent = "(无法读取错误响应)";
                     }
                 }
-                log.error("❌ Mimo API 请求失败！状态码: {}, 错误内容: {}", response.code(), errorContent);
+                log.error("❌ {} API 请求失败！状态码: {}, 错误内容: {}", engineName, response.code(), errorContent);
                 throw new MimoApiException(response.code(),
                         "API请求失败: " + response.code() + " - 错误: " + errorContent);
             }
@@ -730,10 +742,13 @@ public class AIParserService {
                 callback,
                 lastScanPos[0],
                 seenRecords);
-            flushExtractAllRecords(accumulatedText.toString(), extractedRecords, seenRecords, callback);
+            // 仅在本轮尚未解析出任何行时做修补重扫，避免外层数组+行数组被吃两遍
+            if (extractedRecords.isEmpty()) {
+                flushExtractAllRecords(accumulatedText.toString(), extractedRecords, seenRecords, callback);
+            }
 
         } catch (Exception e) {
-            log.error("调用 MiMo API 失败", e);
+            log.error("调用 {} API 失败", recognitionModelRuntime.displayEngineName(), e);
             throw e;
         }
         return new StreamRoundOutcome(finishReason, roundText);
@@ -753,12 +768,17 @@ public class AIParserService {
     /**
      * 模型流式输出时常见错误：每行数组未写闭合 ] 就直接换行开始下一行，例如
      * ["41",...,"","","","",\n["42",...  → 需在换行前的 [ 之前补上 ]。
+     * <p>注意：合法的 {@code ],\n[} / {@code ]\n[} / 外层 {@code [\n[} 不得被改写，
+     * 否则一张表会被拆成两套解析路径并出现双倍行数。
      */
     static String repairMissingRowClosingBrackets(String text) {
         if (text == null || text.isEmpty()) {
             return text;
         }
-        String repaired = text.replaceAll("(?<![\\]])\\r?\\n\\s*\\[", "]\n[");
+        // 缺 ] 且行尾是 "," 再换行开下一行：["41",...,"",\n["42" → ["41",...,""],\n["42"
+        String repaired = text.replaceAll("(?<!\\]),\\r?\\n(\\s*)\\[", "],\n$1[");
+        // 缺 ] 且行尾直接换行开下一行：...false\n["42" / ...""\n["42"
+        repaired = repaired.replaceAll("(?<=(?:\"|true|false|\\d))\\r?\\n(\\s*)\\[", "]\n$1[");
         repaired = repaired.trim();
         repaired = RecognizedRecordShapeSupport.repairStickyRowBoundaries(repaired);
         if (repaired.startsWith("[") && !repaired.endsWith("]")) {
@@ -774,14 +794,24 @@ public class AIParserService {
         return text.replaceAll("(?s)```[a-zA-Z]*\\s*", "").replace("```", "").trim();
     }
 
-    private static String buildRecordDedupKey(JSONArray itemArray, String itemNo, String itemName) {
+    private static String buildRecordDedupKey(JSONArray itemArray) {
+        if (itemArray == null || itemArray.isEmpty()) {
+            return "";
+        }
+        // 标准 15 列：[NO, Pays, Entrepot, Date, NOM_PRENOM, ...]
+        // 旧逻辑误用 index=1（Pays）作姓名，同国多行易撞车或在不同解析形态下去重失效。
+        String itemNo = String.valueOf(itemArray.get(0));
+        String itemDate = itemArray.size() > 3 ? String.valueOf(itemArray.get(3)) : "";
+        String itemName = itemArray.size() > 4
+                ? String.valueOf(itemArray.get(4))
+                : (itemArray.size() > 1 ? String.valueOf(itemArray.get(1)) : "");
         boolean unknownNo = isUnknownCell(itemNo);
         boolean unknownName = isUnknownCell(itemName);
         if (unknownNo && unknownName && itemArray.size() >= 7) {
-            return itemNo + "|" + itemName + "|"
-                    + itemArray.get(4) + "|" + itemArray.get(5) + "|" + itemArray.get(6);
+            return itemNo + "|" + itemDate + "|" + itemName + "|"
+                    + itemArray.get(5) + "|" + itemArray.get(6);
         }
-        return itemNo + "|" + itemName;
+        return itemNo + "|" + itemDate + "|" + itemName;
     }
 
     private static boolean isUnknownCell(String value) {
@@ -795,9 +825,29 @@ public class AIParserService {
                 || "illegible".equalsIgnoreCase(t);
     }
 
+    /** 模型有时输出外层数组包裹多行：[[row],[row],...]，需拆成行再入队。 */
+    private static boolean isNestedRowArray(JSONArray itemArray) {
+        if (itemArray == null || itemArray.isEmpty()) {
+            return false;
+        }
+        int nested = 0;
+        for (int i = 0; i < itemArray.size(); i++) {
+            if (itemArray.get(i) instanceof JSONArray) {
+                nested++;
+            }
+        }
+        return nested > 0 && nested == itemArray.size();
+    }
+
     private void pushRecordArray(JSONArray itemArray, List<JSONObject> extractedRecords,
                                Set<String> seenRecords, ParseCallback callback) {
         if (itemArray == null || itemArray.size() < 2) {
+            return;
+        }
+        if (isNestedRowArray(itemArray)) {
+            for (int i = 0; i < itemArray.size(); i++) {
+                pushRecordArray((JSONArray) itemArray.get(i), extractedRecords, seenRecords, callback);
+            }
             return;
         }
         List<JSONArray> expanded = RecognizedRecordShapeSupport.expandMergedRowArrays(itemArray);
@@ -808,6 +858,10 @@ public class AIParserService {
                 : null;
         for (int i = 0; i < expanded.size(); i++) {
             JSONArray candidate = expanded.get(i);
+            if (isNestedRowArray(candidate)) {
+                pushRecordArray(candidate, extractedRecords, seenRecords, callback);
+                continue;
+            }
             boolean recoveredFromMerge = mergedSixteen && i == 0 && recoveredFirst != null
                     && candidate.toJSONString().equals(recoveredFirst.toJSONString());
             pushSingleRecordArray(candidate, recoveredFromMerge, extractedRecords, seenRecords, callback);
@@ -820,14 +874,17 @@ public class AIParserService {
         if (itemArray == null || itemArray.size() < 2) {
             return;
         }
+        if (itemArray.get(0) instanceof JSONArray) {
+            // 防御：嵌套行不应走到单行归一化
+            pushRecordArray(itemArray, extractedRecords, seenRecords, callback);
+            return;
+        }
         if (recognitionPromptGuard.isPromptExampleArray(itemArray)) {
             log.warn("跳过提示词示例或表头占位行，不作为识别结果: {}", itemArray.toJSONString());
             return;
         }
         int rawFieldCount = itemArray.size();
-        String itemNo = itemArray.size() > 0 ? String.valueOf(itemArray.get(0)) : "";
-        String itemName = itemArray.size() > 1 ? String.valueOf(itemArray.get(1)) : "";
-        String recordKey = buildRecordDedupKey(itemArray, itemNo, itemName);
+        String recordKey = buildRecordDedupKey(itemArray);
         if (seenRecords.contains(recordKey)) {
             return;
         }
@@ -860,7 +917,11 @@ public class AIParserService {
             if (recordStart == -1) break;
 
             int recordEnd = findMatchingBracket(accumulatedText, recordStart);
-            if (recordEnd == -1) break;
+            if (recordEnd == -1) {
+                // 外层 [ 尚未闭合时，跳过该 [ 继续找已闭合的内层行，避免整段卡死
+                pos = recordStart + 1;
+                continue;
+            }
 
             maxRecordEnd = Math.max(maxRecordEnd, recordEnd + 1);
 

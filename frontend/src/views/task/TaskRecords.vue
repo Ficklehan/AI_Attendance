@@ -131,23 +131,13 @@
             <CopyableCell :text="record.workHours || calculateWorkHours(record)" />
           </template>
           <template v-else-if="column.key === 'anomalyDescription'">
-            <CopyableCell :text="record.anomalyDescription || '-'" />
+            <div class="anomaly-description-cell">
+              <CopyableCell :text="record.anomalyDescription || '-'" block />
+            </div>
           </template>
-          <template v-else-if="column.key === 'smartMark'">
-            <CopyableCell
-              v-if="record.smartMark"
-              :text="buildRecordMarkTags(record, { getDisplayMark, isAbsentRow, t }).map((tag) => tag.label).join(', ')"
-            >
-              <a-space wrap size="small" class="mark-tags">
-                <a-tag
-                  v-for="tag in buildRecordMarkTags(record, { getDisplayMark, isAbsentRow, t })"
-                  :key="tag.key"
-                  :color="tag.color"
-                  class="mark-tag"
-                >
-                  {{ tag.label }}
-                </a-tag>
-              </a-space>
+          <template v-else-if="column.key === 'exceptionType'">
+            <CopyableCell v-if="formatExceptionTypeLabel(record.exceptionType)" :text="formatExceptionTypeLabel(record.exceptionType)">
+              <a-tag color="processing" class="mark-tag">{{ formatExceptionTypeLabel(record.exceptionType) }}</a-tag>
             </CopyableCell>
             <span v-else class="cell-muted">-</span>
           </template>
@@ -261,21 +251,20 @@ import {
   isFilterActive,
 } from '@/utils/fieldFilterValue'
 import {
-  buildRecordMarkTags,
-  markContains,
-  stripSignatureMarksFromSmartMark,
-  withInferredNightShiftMark,
   getDisplaySignature,
   translateSignatureMark,
   getSignatureMarkColor,
 } from '@/utils/recognitionLabels'
 import { calculateWorkHours } from '@/utils/workHours'
-import { isAbsentRow } from '@/utils/recordDisplay'
 import { compareTableValues } from '@/utils/tableSort'
 import { isCopyableTableColumn, resolveTableCellCopyText } from '@/utils/tableCopy'
 import { formatPaysFieldDisplay } from '@/utils/countryLabels'
 import { useCountryStore } from '@/stores/country'
 import { withColumnDensity } from '@/utils/tableColumnDensity'
+import {
+  EXCEPTION_TYPE_SHORT_I18N_KEYS,
+  normalizeExceptionType,
+} from '@/utils/exceptionType'
 
 const { t } = useI18n()
 const router = useRouter()
@@ -476,9 +465,12 @@ const isHeaderFilterActive = (field) => {
   return isFilterActive(def.filterType, advancedFilters.value[field])
 }
 
-const getDisplayMark = (record) => {
-  const raw = stripSignatureMarksFromSmartMark(String(record?.smartMark || record?.SmartMark || '').trim())
-  return withInferredNightShiftMark(raw, record)
+const formatExceptionTypeLabel = (value) => {
+  const type = normalizeExceptionType(value)
+  if (!type) return ''
+  const key = EXCEPTION_TYPE_SHORT_I18N_KEYS[type]
+  const text = key ? t(key) : ''
+  return text && text !== key ? text : type
 }
 
 const handleHeaderPopoverOpen = (column, open) => {
@@ -619,6 +611,13 @@ onMounted(() => {
 
 .mark-tags {
   max-width: 280px;
+}
+
+.anomaly-description-cell {
+  :deep(.copyable-cell__content) {
+    white-space: pre-line;
+    line-height: 1.45;
+  }
 }
 
 .cell-muted {

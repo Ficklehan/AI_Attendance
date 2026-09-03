@@ -5,6 +5,8 @@ import com.attendance.config.CountryCatalog;
 import com.attendance.dto.ConfirmValidationConfigDTO;
 import com.attendance.dto.NightShiftConfigDTO;
 import com.attendance.dto.CountryConfigBundle;
+import com.attendance.dto.RecognitionEngineConfigDTO;
+import com.attendance.dto.request.RecognitionEngineUpdateRequest;
 import com.attendance.dto.request.SystemConfigRequest;
 import com.attendance.dto.response.SystemConfigDTO;
 import com.attendance.service.ConfigService;
@@ -14,6 +16,7 @@ import com.attendance.service.NightShiftConfigService;
 import com.attendance.service.MarkdownConfigService;
 import com.attendance.service.PluginConfigService;
 import com.attendance.service.RecognitionPromptGuard;
+import com.attendance.service.RecognitionEngineConfigService;
 import com.attendance.service.RecognitionPromptService;
 import com.attendance.service.RecognitionQualityGuard;
 import com.attendance.security.AdminAuthService;
@@ -63,6 +66,9 @@ public class ConfigController {
 
     @Autowired
     private FeishuCountryConfigService feishuCountryConfigService;
+
+    @Autowired
+    private RecognitionEngineConfigService recognitionEngineConfigService;
 
     private void requireAdmin() {
         adminAuthService.requireAdmin();
@@ -161,19 +167,23 @@ public class ConfigController {
     public Result<Map<String, String>> getAiPrompts(@RequestParam(required = false, defaultValue = "default") String country) {
         requireAdmin();
         Map<String, String> prompts = new HashMap<>();
-        prompts.put("ai_prompt", configService.getAiPrompt(country));
-        prompts.put("continue_prompt", configService.getContinuePrompt(country));
+        // 配置页始终直读数据库，避免内存缓存导致「已保存仍显示旧文案」
+        String aiPrompt = recognitionPromptService.getAiPromptFresh(country);
+        String continuePrompt = recognitionPromptService.getContinuePromptFresh(country);
+        prompts.put("ai_prompt", aiPrompt != null ? aiPrompt : "");
+        prompts.put("continue_prompt", continuePrompt != null ? continuePrompt : "");
         prompts.put("country", country);
-        prompts.put("legacy_prompt", String.valueOf(markdownConfigService.isCurrentPromptsLegacy()));
+        prompts.put("effective_country", recognitionPromptService.resolveEffectivePromptCountry(country));
+        prompts.put("legacy_prompt", String.valueOf(recognitionPromptService.isLegacyPromptForCountry(country)));
         return Result.success(prompts);
     }
 
     @GetMapping("/prompt-status")
     public Result<Map<String, Object>> getPromptStatus() {
         requireAdmin();
-        String content = recognitionPromptService.getAiPrompt("default");
+        String content = recognitionPromptService.getAiPromptFresh("default");
         Map<String, Object> body = new HashMap<>();
-        body.put("legacy", markdownConfigService.isCurrentPromptsLegacy()
+        body.put("legacy", recognitionPromptService.isLegacyPromptInDatabase()
                 || recognitionPromptService.isMissingPageNumPromptInDatabase());
         body.put("hasNewFields", content != null && content.contains("Pays,Entrepot"));
         body.put("hasPageNum", content != null && content.contains("PAGE_NUM"));
@@ -275,6 +285,7 @@ public class ConfigController {
         requireAdmin();
         try {
             markdownConfigService.loadConfigs();
+            recognitionPromptService.invalidateCache();
             log.info("配置已重新加载（飞书配置以数据库为准，未从 md 覆盖）");
             return Result.success(null, "配置已刷新");
         } catch (Exception e) {
@@ -365,5 +376,22 @@ public class ConfigController {
         requireAdmin();
         pluginConfigService.updateSystemConfig(request);
         return Result.success(pluginConfigService.getSystemConfig());
+    }
+
+    /**
+     * 识别模型引擎配置（MiMo / DeepSeek），仅管理员可读写。
+     */
+    @GetMapping("/recognition-engine")
+    public Result<RecognitionEngineConfigDTO> getRecognitionEngineConfig() {
+        requireAdmin();
+        return Result.success(recognitionEngineConfigService.getConfig());
+    }
+
+    @PostMapping("/recognition-engine")
+    public Result<RecognitionEngineConfigDTO> updateRecognitionEngineConfig(
+            @Validated @RequestBody RecognitionEngineUpdateRequest request) {
+        requireAdmin();
+        recognitionEngineConfigService.saveEngine(request.getEngine());
+        return Result.success(recognitionEngineConfigService.getConfig());
     }
 }

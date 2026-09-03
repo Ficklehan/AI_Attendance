@@ -46,6 +46,15 @@ export const confirmTask = (taskId, data) => {
   })
 }
 
+/** 确认前草稿：异常类型 / 字段编辑写回 raw_data */
+export const saveTaskDraft = (taskId, data) => {
+  return request({
+    url: `/tasks/${taskId}/save-draft`,
+    method: 'post',
+    data,
+  })
+}
+
 export const deleteTask = (taskId, reason) => {
   const payload = {}
   if (reason != null && String(reason).trim() !== '') {

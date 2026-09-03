@@ -82,6 +82,7 @@ CREATE TABLE IF NOT EXISTS task_records (
     observations TEXT NULL COMMENT '备注',
     page_num VARCHAR(32) NULL COMMENT '页码',
     smart_mark VARCHAR(255) NULL COMMENT '智能标记',
+    exception_type VARCHAR(64) NULL COMMENT '异常类型',
     task_created_at DATETIME NOT NULL COMMENT '任务创建时间',
     created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
     updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
@@ -181,7 +182,8 @@ INSERT INTO plugin_config (config_key, config_value, config_type, description) V
 ('auto_confirm', 'false', 'boolean', '是否自动确认'),
 ('notification_enabled', 'true', 'boolean', '是否启用通知'),
 ('recognition_prompt_seed_version', '2', 'number', '内置识别提示词模板版本；应用启动时用于刷新标准提示词'),
-('current_working_country', 'default', 'string', '全局工作国家（default 解析为法国 FR）')
+('current_working_country', 'default', 'string', '全局工作国家（default 解析为法国 FR）'),
+('recognition_engine', 'mimo', 'string', '识别模型引擎（mimo / deepseek，全局统一，不区分国家）')
 ON DUPLICATE KEY UPDATE config_value=VALUES(config_value);
 
 -- 异步导出任务（与 migration/005_export_jobs.sql 一致）

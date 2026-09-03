@@ -317,9 +317,7 @@ export function buildRecordMarkTags(record, { getDisplayMark, isAbsentRow, t, ha
     return [{ key: 'absent', label: t('recognition.marks.absent'), color: 'error' }]
   }
   let parts = splitSmartMarkParts(getDisplayMark(record))
-  if (!parts.length) {
-    parts = ['正常']
-  }
+    .filter((part) => !markContains(part, 'normal'))
   const tags = parts.map((part, index) => ({
     key: `mark-${part}-${index}`,
     label: translateSmartMarkPart(part, t),

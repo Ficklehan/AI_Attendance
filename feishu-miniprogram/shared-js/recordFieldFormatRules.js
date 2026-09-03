@@ -32,6 +32,28 @@ function pickField(record, keys) {
 function extractTimeTokens(raw) {
   const s = String(raw || '').trim()
   if (!s) return []
+
+  // 单点录入友好：先整串归一（1 → 01:00，9:01 → 09:01），再校验
+  if (!/[-–—]/.test(s)) {
+    const compact = s.replace(/\s+/g, '')
+    const looksLikeSingleClock = /^(?:\d{1,2}(?::\d{1,2})?|\d{1,2}[hH]\d{0,2}|\d{1,2}[,.]\d{1,2}|\d{3,4})$/i.test(compact)
+    if (looksLikeSingleClock) {
+      const normalized = normalizeClockTime(s)
+      const match = String(normalized || '').match(/^(\d{2}):(\d{2})$/)
+      if (match) {
+        const hours = parseInt(match[1], 10)
+        const minutes = parseInt(match[2], 10)
+        if (hours >= 0 && hours <= 23 && minutes >= 0 && minutes <= 59) {
+          return [{ hours, minutes, raw: s }]
+        }
+      }
+    }
+    // 14:00+1 等带额外符号：禁止从子串抽时间冒充合法
+    if (/[^\d:hH.,\s]/i.test(compact)) {
+      return []
+    }
+  }
+
   return extractTimeTokenStrings(s)
     .map((token) => {
       const normalized = normalizeClockTime(token)

@@ -279,6 +279,15 @@
         WHERE task_id = #{taskId}
     </update>
 
+    <update id="updateTaskDraftRawData">
+        UPDATE tasks
+        SET raw_data = #{rawData},
+            progress_row_count = #{progressRowCount},
+            updated_at = NOW()
+        WHERE task_id = #{taskId}
+          AND status = 'processed'
+    </update>
+
     <update id="updateTaskRecordPayload">
         UPDATE tasks
         SET raw_data = #{rawData},

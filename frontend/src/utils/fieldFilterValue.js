@@ -53,8 +53,17 @@ export function getFilterOptions(def, t, countryOptions = []) {
   if (key === 'taskStatus') return buildTaskStatusOptions(t)
   if (key === 'signatureMarks') return buildSignatureMarkOptions(t)
   if (key === 'smartMarks') return buildSmartMarkOptions(t)
+  if (key === 'exceptionTypes') return buildExceptionTypeOptions(t)
   if (def.filterType === FILTER_TYPES.STATUS) return buildTaskStatusOptions(t)
   return []
+}
+
+function buildExceptionTypeOptions(t) {
+  return [
+    { value: 'attendance_ok', label: t('taskEdit.exceptionTypeAttendanceOkShort') },
+    { value: 'paper_ok_ocr_wrong', label: t('taskEdit.exceptionTypePaperOkOcrWrongShort') },
+    { value: 'paper_wrong_time', label: t('taskEdit.exceptionTypePaperWrongTimeShort') },
+  ]
 }
 
 export function emptyFilterValue(filterType) {
@@ -227,6 +236,7 @@ export function getRecognitionFieldFilterMeta() {
     SIGNATURE: { filterType: FILTER_TYPES.MULTISELECT, filterOptionsKey: 'signatureMarks' },
     Observations: { filterType: FILTER_TYPES.TEXT },
     SmartMark: { filterType: FILTER_TYPES.MULTISELECT, filterOptionsKey: 'smartMarks' },
+    ExceptionType: { filterType: FILTER_TYPES.MULTISELECT, filterOptionsKey: 'exceptionTypes' },
   }
 }
 

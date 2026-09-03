@@ -7,6 +7,7 @@ export const SETTINGS_NAV = [
   { path: '/settings/roles', labelKey: 'settings.menu.roles', adminOnly: true },
   { path: '/settings/reminders', labelKey: 'settings.menu.systemReminders', permission: 'reminderConfig' },
   { path: '/settings/audit', labelKey: 'settings.menu.audit', permission: 'audit' },
+  { path: '/settings/recognition-engine', labelKey: 'settings.menu.recognitionEngine', adminOnly: true },
 ]
 
 export function canAccessSettingsItem(authStore, item) {

@@ -19,6 +19,7 @@ import com.attendance.util.ExcelExportHelper.ExcelSheetWriter;
 import com.attendance.util.ExportLocaleSupport;
 import com.attendance.util.RecordJsonSupport;
 import com.attendance.util.RecognizedFieldSanitizer;
+import com.attendance.util.TaskDetailExcelExporter;
 import com.attendance.util.TaskRecordExportSupport;
 import com.attendance.util.TaskRecordPayloadResolver;
 import com.alibaba.fastjson.JSON;
@@ -92,6 +93,11 @@ public class TaskExcelExportService {
         dto.setWorkHours(TaskRecordExportSupport.formatWorkHours(exportJson));
         dto.setAnomalyDescription(TaskRecordExportSupport.formatAnomalyDescription(exportJson));
         dto.setSmartMark(row.getSmartMark());
+        String exceptionType = RecordJsonSupport.pickJson(exportJson, "ExceptionType", "exceptionType");
+        if (RecordJsonSupport.isBlank(exceptionType)) {
+            exceptionType = row.getExceptionType();
+        }
+        dto.setExceptionType(exceptionType);
         dto.setCreatedAt(row.getTaskCreatedAt() == null ? "" : row.getTaskCreatedAt().toString());
         return dto;
     }
@@ -109,6 +115,24 @@ public class TaskExcelExportService {
         if (source.containsKey(unreadableKey)) {
             export.put(unreadableKey, source.get(unreadableKey));
         }
+        String exceptionType = RecordJsonSupport.pickJson(source, "ExceptionType", "exceptionType");
+        if (!RecordJsonSupport.isBlank(exceptionType)) {
+            export.put("ExceptionType", exceptionType);
+        }
+        if (source.containsKey("_manuallyAdded")) {
+            export.put("_manuallyAdded", source.get("_manuallyAdded"));
+        }
+        if (source.containsKey("_manualCalibrated")) {
+            export.put("_manualCalibrated", source.get("_manualCalibrated"));
+        }
+        if (source.containsKey("_calibrationHistory")) {
+            export.put("_calibrationHistory", source.get("_calibrationHistory"));
+        }
+        if (source.containsKey("_parseMalformed")) {
+            export.put("_parseMalformed", source.get("_parseMalformed"));
+        }
+        // 班次/到离以任务 JSON 为准（更完整），便于班次偏差句
+        copyIfPresent(source, export, "HORAIRES_DU_TRAVAIL", "ARRIVEE", "DEPAR", "SmartMark", "Mark");
         if (RecordJsonSupport.isBlank(TaskRecordExportSupport.resolvePageNum(export))) {
             String pageNum = TaskRecordExportSupport.resolvePageNum(source);
             if (!RecordJsonSupport.isBlank(pageNum)) {
@@ -122,6 +146,17 @@ public class TaskExcelExportService {
             }
         }
         return export;
+    }
+
+    private static void copyIfPresent(JSONObject source, JSONObject export, String... keys) {
+        if (source == null || export == null || keys == null) {
+            return;
+        }
+        for (String key : keys) {
+            if (key != null && source.containsKey(key)) {
+                export.put(key, source.get(key));
+            }
+        }
     }
 
     private JSONObject resolveTaskRowJson(TaskRecord row, Map<String, Map<String, JSONObject>> taskRowCache) {
@@ -308,30 +343,36 @@ public class TaskExcelExportService {
                         ExcelExportHelper.cell(record.getString("SIGNATURE")),
                         ExcelExportHelper.cell(record.getString("Observations")),
                         ExcelExportHelper.cell(TaskRecordExportSupport.formatAnomalyDescription(record)),
-                        ExcelExportHelper.cell(record.getString("SmartMark")));
+                        ExcelExportHelper.cell(formatExceptionTypeForLegacyExport(record, resolvedLocale)));
             }
         }
     }
 
-    public Path createTaskExportTempFile(Task task, String locale) throws IOException {
-        Path tempFile = Files.createTempFile("attendance-export-", ".xlsx");
-        try (ExcelSheetWriter writer = ExcelExportHelper.open(tempFile)) {
-            writeTaskJsonRecordsToExcel(task, writer, locale);
-        } catch (Exception e) {
-            try {
-                Files.deleteIfExists(tempFile);
-            } catch (IOException ignored) {
-                // ignore cleanup failure
-            }
-            if (e instanceof IOException) {
-                throw (IOException) e;
-            }
-            if (e instanceof BusinessException) {
-                throw (BusinessException) e;
-            }
-            throw new BusinessException(ErrorCode.FILE_UPLOAD_ERROR, ErrorKeys.SYSTEM_ERROR);
+    private static String formatExceptionTypeForLegacyExport(JSONObject record, String locale) {
+        String code = record.getString("ExceptionType");
+        if (code == null || code.trim().isEmpty()) {
+            String mark = record.getString("SmartMark");
+            return mark != null ? mark : "";
         }
-        return tempFile;
+        String label = ExportLocaleSupport.text(locale, "exceptionType." + code.trim());
+        if (label == null || label.isEmpty() || label.startsWith("exceptionType.")) {
+            return code;
+        }
+        return label;
+    }
+
+    public Path createTaskExportTempFile(Task task, String locale) throws IOException {
+        return TaskDetailExcelExporter.export(task, locale);
+    }
+
+    public Path createTaskExportTempFile(Task task, String locale, JSONArray records) throws IOException {
+        if (task == null) {
+            throw new BusinessException(ErrorCode.TASK_NOT_FOUND, ErrorKeys.TASK_NOT_FOUND);
+        }
+        if (records == null || records.isEmpty()) {
+            return TaskDetailExcelExporter.export(task, locale);
+        }
+        return TaskDetailExcelExporter.exportRecords(records, locale);
     }
 
     public long exportEmployeeRecordsToExcel(DataScopeContext scope, TaskQuery query, Path outputFile,
@@ -355,7 +396,7 @@ public class TaskExcelExportService {
             String imageBaseUrl = query != null ? query.getImageBaseUrl() : null;
             return writeEmployeeRecordExportRows(
                     scope, status, keyword, searchField, filters, writer, exportUserId, expEpoch,
-                    includeThumbnails, embedFullResolution, imageBaseUrl);
+                    includeThumbnails, embedFullResolution, imageBaseUrl, resolvedLocale);
         }
     }
 
@@ -372,7 +413,8 @@ public class TaskExcelExportService {
                                                String searchField, String filters,
                                                EmployeeRecordExcelWriter writer,
                                                String exportUserId, long expEpoch, boolean includeThumbnails,
-                                               boolean embedFullResolution, String imageBaseUrl)
+                                               boolean embedFullResolution, String imageBaseUrl,
+                                               String locale)
             throws IOException {
         List<Map<String, String>> conditionList = parseFilters(searchField, keyword, filters);
         long count = 0;
@@ -390,7 +432,7 @@ public class TaskExcelExportService {
                 List<String> imageKeys = resolveExportImageKeys(row, dto, taskImageKeysCache);
                 List<String> imageUrls = employeeRecordExportImages.buildSignedImageUrls(
                         imageKeys, exportUserId, expEpoch, imageBaseUrl);
-                String[] baseCells = toEmployeeRecordExportCells(dto);
+                String[] baseCells = toEmployeeRecordExportCells(dto, locale);
                 List<EmployeeRecordExportImages.ExportImage> exportImages = new ArrayList<>();
                 if (includeThumbnails) {
                     int limit = Math.min(imageKeys.size(), employeeRecordExportImages.getMaxThumbnailsPerRow());
@@ -428,7 +470,7 @@ public class TaskExcelExportService {
         });
     }
 
-    private String[] toEmployeeRecordExportCells(EmployeeRecordDTO dto) {
+    private String[] toEmployeeRecordExportCells(EmployeeRecordDTO dto, String locale) {
         return new String[] {
                 ExcelExportHelper.cell(dto.getTaskId()),
                 ExcelExportHelper.cell(dto.getUserName()),
@@ -450,8 +492,20 @@ public class TaskExcelExportService {
                 ExcelExportHelper.cell(dto.getSignature()),
                 ExcelExportHelper.cell(dto.getObservations()),
                 ExcelExportHelper.cell(dto.getAnomalyDescription()),
-                ExcelExportHelper.cell(dto.getSmartMark()),
+                ExcelExportHelper.cell(formatExceptionTypeLabel(dto.getExceptionType(), locale)),
         };
+    }
+
+    private static String formatExceptionTypeLabel(String code, String locale) {
+        if (code == null || code.trim().isEmpty()) {
+            return "";
+        }
+        String trimmed = code.trim();
+        String label = ExportLocaleSupport.text(locale, "exceptionType." + trimmed);
+        if (label == null || label.isEmpty() || label.startsWith("exceptionType.")) {
+            return trimmed;
+        }
+        return label;
     }
 
     private List<String> parseImageUrlList(Task task) {

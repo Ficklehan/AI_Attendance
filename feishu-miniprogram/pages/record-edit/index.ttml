@@ -1,10 +1,35 @@
 <view class="page calibrate-page">
   <view class="hint">{{texts.hint}}</view>
+  <view tt:if="{{convertedFromAbsent}}" class="hint restore-hint">{{texts.absentRestoreHint}}</view>
 
   <scroll-view scroll-y class="form-scroll" enhanced show-scrollbar="{{false}}">
     <view class="form-body">
-      <view tt:for="{{fields}}" tt:key="key" class="field-row">
-        <text class="field-label">{{item.label}}</text>
+      <view class="exception-type-block">
+        <view class="exception-type-head-row">
+          <text class="field-label">{{texts.exceptionTypeLabel}}</text>
+        </view>
+        <view class="exception-type-stack {{exceptionTypeDisabled ? 'is-disabled' : ''}}">
+          <view
+            tt:for="{{exceptionTypeOptions}}"
+            tt:key="value"
+            class="exception-type-opt {{item.active ? 'is-active' : ''}} exception-type-opt--{{item.value}}"
+            data-value="{{item.value}}"
+            bindtap="onSelectExceptionType"
+          >
+            <text tt:if="{{item.active}}" class="exception-type-opt-check">✓</text>
+            <text>{{item.label}}</text>
+          </view>
+        </view>
+        <view tt:if="{{showFocusHint}}" class="focus-fields-banner">
+          <text>{{focusFieldsHintText}}</text>
+        </view>
+      </view>
+
+      <view tt:for="{{fields}}" tt:key="key" class="field-row {{item.highlight ? 'is-focus-field' : ''}}">
+        <view class="field-label-row">
+          <text class="field-label {{item.highlight ? 'is-focus' : ''}}">{{item.label}}</text>
+          <text tt:if="{{item.highlight}}" class="field-focus-badge">{{focusFieldBadgeText}}</text>
+        </view>
 
         <block tt:if="{{item.inputType === 'country'}}">
           <view
@@ -32,19 +57,95 @@
           <text tt:if="{{item.countryLocked}}" class="field-country-hint">{{texts.paysLockedHint}}</text>
         </block>
 
+        <block tt:elif="{{item.inputType === 'date'}}">
+          <picker
+            mode="date"
+            value="{{item.pickerValue}}"
+            disabled="{{item.locked}}"
+            data-key="{{item.key}}"
+            bindchange="onDatePickerChange"
+          >
+            <view class="field-input-shell picker-shell {{item.missing ? 'is-required-empty' : ''}} {{item.formatInvalid ? 'is-format-invalid' : ''}} {{item.highlight ? 'is-calib-highlight' : ''}} {{item.locked ? 'is-locked' : ''}}">
+              <text class="field-picker-value">{{item.displayValue || texts.pickDate}}</text>
+              <text class="field-picker-chevron">▼</text>
+            </view>
+          </picker>
+        </block>
+
+        <block tt:elif="{{item.inputType === 'time'}}">
+          <view class="field-input-shell time-hybrid-shell {{item.missing ? 'is-required-empty' : ''}} {{item.formatInvalid ? 'is-format-invalid' : ''}} {{item.highlight ? 'is-calib-highlight' : ''}} {{item.locked ? 'is-locked' : ''}}">
+            <input
+              class="field-input time-hybrid-input"
+              type="text"
+              value="{{item.displayValue}}"
+              placeholder="{{texts.pickTime}}"
+              disabled="{{item.locked}}"
+              data-key="{{item.key}}"
+              bindinput="onTimeFieldInput"
+              bindblur="onTimeInputBlur"
+              bindconfirm="onTimeInputBlur"
+            />
+            <picker
+              mode="time"
+              value="{{item.pickerValue}}"
+              disabled="{{item.locked}}"
+              data-key="{{item.key}}"
+              bindchange="onTimePickerChange"
+            >
+              <view class="time-hybrid-clock">▼</view>
+            </picker>
+          </view>
+        </block>
+
+        <block tt:elif="{{item.inputType === 'shift'}}">
+          <view class="shift-picker-row {{item.highlight ? 'is-calib-highlight-wrap' : ''}} {{item.locked ? 'is-locked' : ''}}">
+            <picker
+              mode="time"
+              value="{{item.shiftStart}}"
+              disabled="{{item.locked}}"
+              data-key="{{item.key}}"
+              data-part="start"
+              bindchange="onShiftPickerChange"
+            >
+              <view class="field-input-shell picker-shell shift-half {{item.missing ? 'is-required-empty' : ''}} {{item.formatInvalid ? 'is-format-invalid' : ''}} {{item.highlight ? 'is-calib-highlight' : ''}}">
+                <text class="field-picker-value">{{item.shiftStart}}</text>
+                <text class="field-picker-chevron">▼</text>
+              </view>
+            </picker>
+            <text class="shift-sep">-</text>
+            <picker
+              mode="time"
+              value="{{item.shiftEnd}}"
+              disabled="{{item.locked}}"
+              data-key="{{item.key}}"
+              data-part="end"
+              bindchange="onShiftPickerChange"
+            >
+              <view class="field-input-shell picker-shell shift-half {{item.missing ? 'is-required-empty' : ''}} {{item.formatInvalid ? 'is-format-invalid' : ''}} {{item.highlight ? 'is-calib-highlight' : ''}}">
+                <text class="field-picker-value">{{item.shiftEnd}}</text>
+                <text class="field-picker-chevron">▼</text>
+              </view>
+            </picker>
+          </view>
+        </block>
+
         <block tt:else>
-          <view class="field-input-shell {{item.missing ? 'is-required-empty' : ''}} {{item.formatInvalid ? 'is-format-invalid' : ''}}">
+          <view class="field-input-shell {{item.missing ? 'is-required-empty' : ''}} {{item.formatInvalid ? 'is-format-invalid' : ''}} {{item.highlight ? 'is-calib-highlight' : ''}} {{item.locked ? 'is-locked' : ''}}">
             <input
               class="field-input"
               type="{{item.inputType || 'text'}}"
               value="{{item.value}}"
               placeholder="{{item.formatPlaceholder}}"
+              disabled="{{item.locked}}"
               data-key="{{item.key}}"
               bindinput="onFieldInput"
             />
           </view>
-          <text tt:if="{{item.formatInvalid && item.formatHint}}" class="field-format-hint">{{item.formatHint}}</text>
         </block>
+
+        <text tt:if="{{item.changeHint}}" class="field-change-hint">{{item.changeHint}}</text>
+        <text tt:if="{{item.locked}}" class="field-country-hint">{{texts.exceptionTypeLockedHint}}</text>
+        <text tt:if="{{item.formatInvalid && item.formatHint}}" class="field-format-hint">{{item.formatHint}}</text>
       </view>
     </view>
   </scroll-view>

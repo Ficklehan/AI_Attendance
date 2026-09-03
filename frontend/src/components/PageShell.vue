@@ -11,8 +11,15 @@
           {{ item }}
         </span>
       </div>
-      <h1 class="page-shell__title">{{ title }}</h1>
-      <p v-if="subtitle" class="page-shell__subtitle">{{ subtitle }}</p>
+      <div class="page-shell__title-row">
+        <h1 class="page-shell__title">{{ title }}</h1>
+        <span v-if="subtitle && inlineSubtitle" class="page-shell__inline-subtitle">{{ subtitle }}</span>
+        <slot name="title-extra" />
+      </div>
+      <p v-if="subtitle && !inlineSubtitle" class="page-shell__subtitle">{{ subtitle }}</p>
+      <div v-if="$slots.meta" class="page-shell__meta">
+        <slot name="meta" />
+      </div>
     </div>
     <div v-if="$slots.extra" class="page-shell__extra">
       <slot name="extra" />
@@ -24,7 +31,8 @@
 defineProps({
   title: { type: String, required: true },
   subtitle: { type: String, default: '' },
-  breadcrumb: { type: Array, default: () => [] }
+  breadcrumb: { type: Array, default: () => [] },
+  inlineSubtitle: { type: Boolean, default: false },
 })
 </script>
 
@@ -58,6 +66,14 @@ defineProps({
   }
 }
 
+.page-shell__title-row {
+  display: flex;
+  align-items: baseline;
+  flex-wrap: wrap;
+  gap: $spacing-sm $spacing-md;
+  min-width: 0;
+}
+
 .page-shell__title {
   margin: 0;
   font-size: $font-size-2xl;
@@ -65,6 +81,19 @@ defineProps({
   color: $text-primary;
   letter-spacing: -0.02em;
   line-height: 1.25;
+}
+
+.page-shell__inline-subtitle {
+  font-size: $font-size-base;
+  font-weight: $font-weight-medium;
+  color: $text-secondary;
+  font-variant-numeric: tabular-nums;
+  line-height: 1.25;
+}
+
+.page-shell__meta {
+  margin-top: $spacing-xs;
+  min-width: 0;
 }
 
 .page-shell__subtitle {

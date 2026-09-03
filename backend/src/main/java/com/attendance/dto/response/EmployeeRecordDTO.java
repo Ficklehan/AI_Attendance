@@ -23,6 +23,8 @@ public class EmployeeRecordDTO {
     private String workHours;
     private String anomalyDescription;
     private String smartMark;
+    /** 异常类型代码：attendance_ok / paper_ok_ocr_wrong / paper_wrong_time */
+    private String exceptionType;
     private String createdAt;
 
     public String getTaskId() {
@@ -199,6 +201,14 @@ public class EmployeeRecordDTO {
 
     public void setSmartMark(String smartMark) {
         this.smartMark = smartMark;
+    }
+
+    public String getExceptionType() {
+        return exceptionType;
+    }
+
+    public void setExceptionType(String exceptionType) {
+        this.exceptionType = exceptionType;
     }
 
     public String getCreatedAt() {

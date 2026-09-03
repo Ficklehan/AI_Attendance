@@ -7,6 +7,11 @@ const {
   formatLineRanges,
   groupConfirmValidationIssues,
 } = require('./confirmValidationGrouping.cjs')
+const {
+  isExceptionTypeMissingForSubmit,
+  isOcrWrongMissingFieldAdjustment,
+  OCR_WRONG_ADJUST_FIELDS,
+} = require('./exceptionTypeCore.cjs')
 
 const CONFIRM_FIELD_KEYS = [
   'Pays',
@@ -142,6 +147,10 @@ function createRequiredRecordFields(deps) {
 
   function collectConfirmValidationIssues(records, config) {
     const cfg = config || activeConfig
+    const isAbsentByMark = (row) => {
+      const mark = getRecordMark(row)
+      return mark.indexOf('未出勤') !== -1 || markContains(mark, 'absent')
+    }
     const issues = []
     ;(records || []).forEach((record, index) => {
       const fields = getMissingRequiredFieldKeys(record, cfg)
@@ -152,6 +161,24 @@ function createRequiredRecordFields(deps) {
           name: pickField(record, ['NOM_PRENOM', 'Name']),
           fields,
           issueType: 'missing',
+        })
+      }
+      if (isExceptionTypeMissingForSubmit(record, { isAbsentRow: isAbsentByMark })) {
+        issues.push({
+          line: index + 1,
+          no: pickField(record, ['NO']) || '?',
+          name: pickField(record, ['NOM_PRENOM', 'Name']),
+          fields: ['ExceptionType'],
+          issueType: 'exceptionType',
+        })
+      }
+      if (isOcrWrongMissingFieldAdjustment(record, { isAbsentRow: isAbsentByMark })) {
+        issues.push({
+          line: index + 1,
+          no: pickField(record, ['NO']) || '?',
+          name: pickField(record, ['NOM_PRENOM', 'Name']),
+          fields: OCR_WRONG_ADJUST_FIELDS.slice(),
+          issueType: 'ocrCalibration',
         })
       }
     })

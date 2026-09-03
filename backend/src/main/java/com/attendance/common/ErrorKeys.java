@@ -25,6 +25,7 @@ public final class ErrorKeys {
 
     public static final String TASK_NOT_FOUND = "errors.taskNotFound";
     public static final String TASK_STATUS_CANNOT_CONFIRM = "errors.taskStatusCannotConfirm";
+    public static final String TASK_STATUS_CANNOT_SAVE_DRAFT = "errors.taskStatusCannotSaveDraft";
     public static final String FEISHU_RETRY_CONFIRMED_ONLY = "errors.feishuRetryConfirmedOnly";
     public static final String FEISHU_ALREADY_SYNCED = "errors.feishuAlreadySynced";
     public static final String FEISHU_SYNC_DISABLED = "errors.feishuSyncDisabled";
@@ -57,6 +58,10 @@ public final class ErrorKeys {
 
     public static final String MIMO_NOT_CONFIGURED = "errors.mimoNotConfigured";
     public static final String MIMO_UNAVAILABLE = "errors.mimoUnavailable";
+    public static final String DEEPSEEK_NOT_CONFIGURED = "errors.deepseekNotConfigured";
+    public static final String DEEPSEEK_UNAVAILABLE = "errors.deepseekUnavailable";
+    public static final String DEEPSEEK_INVALID_MODEL = "errors.deepseekInvalidModel";
+    public static final String AI_UNAVAILABLE = "errors.aiUnavailable";
     public static final String AI_PROMPT_NOT_FOUND = "errors.aiPromptNotFound";
     public static final String AI_CONTINUE_PROMPT_NOT_FOUND = "errors.aiContinuePromptNotFound";
     public static final String AI_HEADER_ECHO = "errors.aiHeaderEcho";

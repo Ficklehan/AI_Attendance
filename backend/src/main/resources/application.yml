@@ -121,6 +121,15 @@ mimo:
   max-tokens: ${MIMO_MAX_TOKENS:8192}
   top-p: ${MIMO_TOP_P:0.9}
 
+deepseek:
+  api-key: ${DEEPSEEK_API_KEY:}
+  api-keys: ${DEEPSEEK_API_KEYS:}
+  api-url: ${DEEPSEEK_API_URL:https://api.deepseek.com/v1}
+  model: ${DEEPSEEK_MODEL:deepseek-v4-flash-vision-exp}
+  temperature: ${DEEPSEEK_TEMPERATURE:0.3}
+  max-tokens: ${DEEPSEEK_MAX_TOKENS:8192}
+  top-p: ${DEEPSEEK_TOP_P:0.9}
+
 logging:
   level:
     com.attendance: DEBUG

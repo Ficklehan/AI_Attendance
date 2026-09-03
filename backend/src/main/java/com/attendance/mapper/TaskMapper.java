@@ -66,6 +66,11 @@ public interface TaskMapper {
 
     int updateTaskConfirmedData(@Param("taskId") String taskId, @Param("confirmedData") String confirmedData);
 
+    /** 确认前草稿：仅更新 raw_data，保持 processed 状态 */
+    int updateTaskDraftRawData(@Param("taskId") String taskId,
+                               @Param("rawData") String rawData,
+                               @Param("progressRowCount") int progressRowCount);
+
     /** 校准等场景：同时更新 raw/confirmed，不改变 status */
     int updateTaskRecordPayload(@Param("taskId") String taskId,
                                 @Param("rawData") String rawData,

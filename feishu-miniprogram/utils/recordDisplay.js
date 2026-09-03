@@ -134,10 +134,28 @@ function isAbsentRow(record) {
   return !arrive && !depart
 }
 
+/** 与 PC TaskEdit 恢复未出勤行一致：可再改成正常出勤数据 */
+function restoreAbsentRecord(record) {
+  if (!record || record.isDeleted || record._restored) return record
+  if (!isAbsentRow(record)) return record
+  const next = {
+    ...record,
+    _prevMark: record.SmartMark,
+    SmartMark: '正常',
+    _restored: true,
+  }
+  if (next.Mark) next.Mark = '正常'
+  if (next.mark) next.mark = '正常'
+  if (next.smartMark) next.smartMark = '正常'
+  return next
+}
+
 const { FIELD_LABEL_KEYS } = require('./calibratableFields')
 const { hasRequiredMissing, getMissingRequiredFieldKeys, isConfiguredRequiredField, appendRequiredMark } = require('./requiredRecordFields')
 const { getInvalidFormatFieldKeys, isArrivalDepartureSameTime } = require('./recordFieldFormatRules')
 const { getFormatHintKeys } = require('./fieldFormatHints')
+const { computeShiftVarianceSentence } = require('./exceptionTypeUi')
+const { EXCEPTION_TYPE, normalizeExceptionType } = require('../shared-js/exceptionTypeCore')
 
 const ANOMALY_CATEGORY_ORDER = ['required', 'unreadable', 'duplicate', 'other']
 
@@ -271,6 +289,13 @@ function getMarkTagForPart(part) {
   return getMarkTag(part)
 }
 
+function isNormalMarkPart(part) {
+  const p = String(part || '').trim()
+  if (!p) return false
+  if (p === '正常') return true
+  return markContains(p, 'normal')
+}
+
 function buildRecordMarkLabels(record) {
   if (record.isDeleted) {
     return [{ key: 'deleted', label: t('recognition.marks.deleted'), tagClass: 'tag-default' }]
@@ -280,7 +305,11 @@ function buildRecordMarkLabels(record) {
   }
   const mark = getEffectiveSmartMark(record)
   let parts = splitSmartMarkParts(mark)
-  if (!parts.length) {
+  const exceptionType = normalizeExceptionType(record.ExceptionType)
+  // 未点选「考勤正确」前，不把「正常」默认成右上角标签
+  if (exceptionType !== EXCEPTION_TYPE.ATTENDANCE_OK) {
+    parts = parts.filter((part) => !isNormalMarkPart(part))
+  } else if (!parts.length) {
     parts = ['正常']
   }
   const labels = parts.map((part, index) => ({
@@ -454,7 +483,11 @@ function buildRecordFieldRows(record, ctx) {
   }
 
   const primaryRow = [
-    cell('PAGE_NUM', 'result.fieldPageNumber', ctx.PAGE_NUM, ctx.pageNumText),
+    (() => {
+      const pageCell = cell('PAGE_NUM', 'result.fieldPageNumber', ctx.PAGE_NUM, ctx.pageNumText)
+      if (ctx.lineNo) pageCell.lineNo = ctx.lineNo
+      return pageCell
+    })(),
     cell('NO', 'result.fieldWorkerNo', ctx.NO, ctx.displayNo),
     cell('Date', 'result.fieldDate', ctx.Date, ctx.dateText),
     cell('ARRIVEE', 'result.fieldArrival', ctx.ARRIVEE, ctx.ARRIVEE),
@@ -475,7 +508,7 @@ function buildRecordFieldRows(record, ctx) {
   return { primaryRow, contextRow }
 }
 
-function enrichRecord(record, index) {
+function enrichRecord(record, lineNo) {
   const NO = pickField(record, 'NO')
   const NOM_PRENOM = pickField(record, 'NOM_PRENOM', 'Name')
   const Date = pickField(record, 'Date', 'WorkDate')
@@ -497,7 +530,18 @@ function enrichRecord(record, index) {
   const anomalyGroups = collectAnomalyGroups(record)
   const anomalyGroupPreview = buildGroupBadges(anomalyGroups)
   const anomalySummaryText = anomalyGroups.map((group) => group.summary).join('；')
-  const anomalySummaryLong = anomalySummaryText.length > 42
+  const shiftVarianceText = computeShiftVarianceSentence({
+    ...record,
+    HORAIRES_DU_TRAVAIL,
+    ARRIVEE,
+    DEPAR,
+    isDeleted: record.isDeleted,
+  })
+  const recognitionNoteParts = []
+  if (anomalySummaryText) recognitionNoteParts.push(anomalySummaryText)
+  if (shiftVarianceText) recognitionNoteParts.push(shiftVarianceText)
+  const recognitionNoteText = recognitionNoteParts.join('；')
+  const anomalySummaryLong = recognitionNoteText.length > 36
   const anomalyReasonPreview = anomalyGroupPreview
   const anomalyReasonMore = 0
   const displayName = displayFieldValue(cleanPersonName(NOM_PRENOM))
@@ -515,7 +559,7 @@ function enrichRecord(record, index) {
 
   const display = {
     ...record,
-    index,
+    lineNo: lineNo || 0,
     NO,
     NOM_PRENOM,
     Date,
@@ -535,14 +579,20 @@ function enrichRecord(record, index) {
     smartMarkDisplay,
     rowTypeLabel: getRowTypeLabel({ ...record, SmartMark: effectiveSmartMark, isDeleted: record.isDeleted }),
     rowTypeTag: getRowTypeTag({ ...record, SmartMark: effectiveSmartMark, isDeleted: record.isDeleted }),
-    markLabels: buildRecordMarkLabels({ ...record, SmartMark: effectiveSmartMark }),
+    markLabels: buildRecordMarkLabels({
+      ...record,
+      SmartMark: effectiveSmartMark,
+      ExceptionType: record.ExceptionType,
+    }),
     markTag: getMarkTag(effectiveSmartMark),
     rowClass: getRowClass({ ...record, SmartMark: effectiveSmartMark, isDeleted: record.isDeleted }),
     rowDotClass: getRowDotClass({ ...record, SmartMark: effectiveSmartMark, isDeleted: record.isDeleted }),
     anomalyGroups,
     anomalyGroupPreview,
-    anomalySummaryText,
+    anomalySummaryText: recognitionNoteText,
     anomalySummaryLong,
+    shiftVarianceText,
+    recognitionNoteText,
     anomalyReasons: anomalyGroups.map((group) => group.summary),
     anomalyReasonPreview,
     anomalyReasonMore,
@@ -552,7 +602,7 @@ function enrichRecord(record, index) {
     calibrationHistory: buildCalibrationHistoryUi(record),
     duplicateMembers: record._duplicateMembers || [],
     isAbsent: isAbsentRow({ ...record, SmartMark: effectiveSmartMark }),
-    canEdit: !record.isDeleted && !isAbsentRow({ ...record, SmartMark: effectiveSmartMark }),
+    canEdit: !record.isDeleted,
     _rowKey: record._rowKey,
     titleText: `${displayName} (${displayNo})`,
     dateText,
@@ -563,6 +613,7 @@ function enrichRecord(record, index) {
     metricsLine: `${t('result.fieldBreak')}:${pauseText}  ${t('result.fieldWorkHours')}:${workHoursText}`,
     pageNumText: displayFieldValue(PAGE_NUM),
     fieldRows: buildRecordFieldRows(record, {
+      lineNo: lineNo || 0,
       PAGE_NUM,
       NO,
       displayNo,
@@ -602,7 +653,7 @@ function buildDisplayRecords(records, maxCount) {
     typeof maxCount === 'number' ? maxCount : records.length,
     records.length
   )
-  return records.slice(0, limit).map((r, i) => enrichRecord(r, i))
+  return records.slice(0, limit).map((r, i) => enrichRecord(r, i + 1))
 }
 
 function calculateRecordStatsForDisplay(records) {
@@ -635,6 +686,7 @@ function buildAnomalyAlerts(records, limit) {
 module.exports = {
   pickField,
   isAbsentRow,
+  restoreAbsentRecord,
   hasRequiredMissing,
   collectAnomalyGroups,
   buildGroupBadges,

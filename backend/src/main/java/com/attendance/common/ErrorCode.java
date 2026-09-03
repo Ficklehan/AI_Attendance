@@ -7,6 +7,7 @@ public class ErrorCode {
     public static final int TOKEN_INVALID = 1004;
     public static final int TOKEN_EXPIRED = 1005;
     public static final int PERMISSION_DENIED = 1006;
+    public static final int PARAM_ERROR = 1007;
 
     public static final int TASK_NOT_FOUND = 2001;
     public static final int TASK_STATUS_ERROR = 2002;

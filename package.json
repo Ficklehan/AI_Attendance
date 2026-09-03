@@ -9,6 +9,7 @@
     "render:deploy:all": "node scripts/render-deploy-config.mjs --env production && node scripts/render-deploy-config.mjs --env uat",
     "render:deploy:check": "node scripts/render-deploy-config.mjs --env production --check",
     "start:dev": "bash scripts/use-local-dev.sh",
+    "restart:dev": "bash scripts/restart-dev-daemon.sh",
     "start:prod": "bash scripts/start-backend-prod.sh",
     "restart:prod": "bash scripts/restart-backend-prod.sh",
     "apply:site": "bash scripts/apply-site-config.sh",

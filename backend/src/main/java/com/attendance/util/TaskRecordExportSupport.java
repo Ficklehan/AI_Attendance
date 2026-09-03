@@ -49,6 +49,7 @@ public final class TaskRecordExportSupport {
         record.put("Observations", row.getObservations());
         record.put("PAGE_NUM", row.getPageNum());
         record.put("SmartMark", row.getSmartMark());
+        record.put("ExceptionType", row.getExceptionType());
         record.put("isDeleted", row.isDeleted());
         return record;
     }
@@ -90,48 +91,205 @@ public final class TaskRecordExportSupport {
         return String.format(Locale.ROOT, "%.2f", Math.round(workMinutes * 100.0 / 60.0) / 100.0);
     }
 
+    /**
+     * 识别说明：与确认页 recognition notes 顺序对齐
+     * 1) 标记类（已删除/未出勤/非「正常」SmartMark/手工补录/人工校准）
+     * 2) 班次偏差句
+     * 3) 分组摘要（必填缺失 / 看不清 / 格式不规范 / 重名 / 其他）
+     */
     public static String formatAnomalyDescription(JSONObject record) {
         if (record == null) {
             return "";
         }
-        Set<String> parts = new LinkedHashSet<>();
+        List<String> lines = new ArrayList<>();
+
+        boolean deleted = Boolean.TRUE.equals(record.getBoolean("isDeleted"))
+                || Boolean.TRUE.equals(record.getBoolean("deleted"));
+        String smartMark = RecordJsonSupport.pickJson(record, "SmartMark", "Mark", "smartMark");
+        boolean absent = smartMark.contains("未出勤");
+
+        if (deleted) {
+            lines.add("已删除");
+        } else if (absent) {
+            lines.add("未出勤");
+        } else {
+            if (Boolean.TRUE.equals(record.getBoolean("_manuallyAdded"))) {
+                lines.add("手工补录");
+            }
+            for (String part : splitSmartMarkParts(smartMark)) {
+                if (part.isEmpty() || "正常".equals(part)) {
+                    continue;
+                }
+                lines.add(part);
+            }
+            if (containsHandwriting(record, smartMark)
+                    && lines.stream().noneMatch(s -> s.contains("手写"))) {
+                lines.add("手写");
+            }
+            if (hasManualCalibration(record)) {
+                lines.add("人工校准");
+            }
+        }
+
+        if (!deleted && !absent) {
+            String shiftSentence = ShiftVarianceSupport.formatSentenceZh(record);
+            if (!RecordJsonSupport.isBlank(shiftSentence)) {
+                lines.add(shiftSentence);
+            }
+        }
+
+        if (!deleted) {
+            appendGroupedAnomalySummaries(record, lines);
+        }
+
+        return joinAnomalyLines(lines);
+    }
+
+    private static void appendGroupedAnomalySummaries(JSONObject record, List<String> lines) {
+        LinkedHashSet<String> required = new LinkedHashSet<>();
+        LinkedHashSet<String> unreadable = new LinkedHashSet<>();
+        LinkedHashSet<String> format = new LinkedHashSet<>();
+        LinkedHashSet<String> duplicate = new LinkedHashSet<>();
+        LinkedHashSet<String> other = new LinkedHashSet<>();
 
         JSONArray anomalies = record.getJSONArray("anomalies");
         if (anomalies != null) {
             for (int i = 0; i < anomalies.size(); i++) {
-                String formatted = formatAnomalyItem(anomalies.getString(i));
+                String raw = anomalies.getString(i);
+                if (RecordJsonSupport.isBlank(raw)) {
+                    continue;
+                }
+                String text = raw.trim();
+                if (isMarkRedundantRaw(text)) {
+                    continue;
+                }
+                if (text.startsWith("missing.")) {
+                    String field = text.substring("missing.".length());
+                    required.add(FIELD_LABELS.getOrDefault(field, field));
+                    continue;
+                }
+                Matcher duplicateMatch = DUPLICATE_PATTERN.matcher(text);
+                if (duplicateMatch.matches()) {
+                    duplicate.add(duplicateMatch.group(1).trim());
+                    continue;
+                }
+                if ("deleted.record".equals(text)) {
+                    continue;
+                }
+                String formatted = formatAnomalyItem(text);
                 if (!RecordJsonSupport.isBlank(formatted) && !isMarkRedundantAnomaly(formatted)) {
-                    parts.add(formatted);
+                    other.add(formatted);
                 }
             }
         }
 
-        JSONArray unreadable = record.getJSONArray(RecognizedFieldSanitizer.UNREADABLE_FIELDS_KEY);
-        if (unreadable != null && !unreadable.isEmpty()) {
-            List<String> labels = new ArrayList<>();
-            for (int i = 0; i < unreadable.size(); i++) {
-                String field = unreadable.getString(i);
+        for (String field : REQUIRED_EXPORT_FIELDS) {
+            if (isBlankField(record, field)) {
+                required.add(FIELD_LABELS.getOrDefault(field, field));
+            }
+        }
+
+        JSONArray unread = record.getJSONArray(RecognizedFieldSanitizer.UNREADABLE_FIELDS_KEY);
+        if (unread != null) {
+            for (int i = 0; i < unread.size(); i++) {
+                String field = unread.getString(i);
                 if (!RecordJsonSupport.isBlank(field)) {
-                    labels.add(FIELD_LABELS.getOrDefault(field, field));
+                    unreadable.add(FIELD_LABELS.getOrDefault(field, field));
                 }
             }
-            if (!labels.isEmpty()) {
-                parts.add("看不清：" + String.join("、", labels));
+        }
+
+        if (isArrivalDepartureSameTime(record)) {
+            format.add("到达与离开时间相同");
+        }
+        if (Boolean.TRUE.equals(record.getBoolean("_parseMalformed"))) {
+            format.add("结构异常");
+        }
+
+        appendGroupLine(lines, "必填缺失", required);
+        appendGroupLine(lines, "看不清", unreadable);
+        appendGroupLine(lines, "格式不规范", format);
+        appendGroupLine(lines, "重名", duplicate);
+        appendGroupLine(lines, "其他异常", other);
+    }
+
+    private static final String[] REQUIRED_EXPORT_FIELDS = {
+            "NOM_PRENOM", "Date", "ARRIVEE", "DEPAR", "PAUSE"
+    };
+
+    private static void appendGroupLine(List<String> lines, String label, Set<String> items) {
+        if (items == null || items.isEmpty()) {
+            return;
+        }
+        lines.add(label + "：" + String.join("、", items));
+    }
+
+    private static boolean isBlankField(JSONObject record, String field) {
+        String value = RecordJsonSupport.pickJson(record, field);
+        return RecordJsonSupport.isBlank(value) || "???".equals(value.trim());
+    }
+
+    private static boolean isArrivalDepartureSameTime(JSONObject record) {
+        String arrive = RecordJsonSupport.pickJson(record, "ARRIVEE", "arrival");
+        String depart = RecordJsonSupport.pickJson(record, "DEPAR", "DEPART", "departure");
+        if (RecordJsonSupport.isBlank(arrive) || RecordJsonSupport.isBlank(depart)) {
+            return false;
+        }
+        Integer a = parseTimeToMinutes(arrive);
+        Integer b = parseTimeToMinutes(depart);
+        return a != null && b != null && a.equals(b);
+    }
+
+    private static boolean hasManualCalibration(JSONObject record) {
+        if (Boolean.TRUE.equals(record.getBoolean("_manualCalibrated"))) {
+            return true;
+        }
+        Object history = record.get("_calibrationHistory");
+        if (history instanceof JSONArray) {
+            return !((JSONArray) history).isEmpty();
+        }
+        if (history instanceof List) {
+            return !((List<?>) history).isEmpty();
+        }
+        if (history instanceof String) {
+            String raw = ((String) history).trim();
+            return raw.startsWith("[") && raw.length() > 2;
+        }
+        return false;
+    }
+
+    private static List<String> splitSmartMarkParts(String smartMark) {
+        List<String> parts = new ArrayList<>();
+        if (RecordJsonSupport.isBlank(smartMark)) {
+            return parts;
+        }
+        for (String part : smartMark.split("[;；|,，]+")) {
+            String trimmed = part.trim();
+            if (!trimmed.isEmpty()) {
+                parts.add(trimmed);
             }
         }
+        return parts;
+    }
 
-        String smartMark = RecordJsonSupport.pickJson(record, "SmartMark", "Mark", "smartMark");
-        if (smartMark.contains("模糊") && parts.stream().noneMatch(s -> s.contains("模糊"))) {
-            parts.add("内容模糊");
-        }
-        if (containsHandwriting(record, smartMark) && parts.stream().noneMatch(s -> s.contains("手写"))) {
-            parts.add("手写内容");
-        }
-        if (smartMark.contains("未出勤") && parts.stream().noneMatch(s -> s.contains("未出勤"))) {
-            parts.add("未出勤");
-        }
+    private static boolean isMarkRedundantRaw(String text) {
+        return "内容模糊".equals(text) || "手写内容".equals(text) || "未出勤".equals(text)
+                || "模糊".equals(text) || "手写".equals(text);
+    }
 
-        return String.join("；", parts);
+    /** 与确认页识别说明一致：有序编号，一条一行（Excel 单元格内换行） */
+    private static String joinAnomalyLines(List<String> parts) {
+        if (parts == null || parts.isEmpty()) {
+            return "";
+        }
+        StringBuilder sb = new StringBuilder();
+        for (int i = 0; i < parts.size(); i++) {
+            if (i > 0) {
+                sb.append('\n');
+            }
+            sb.append(i + 1).append(". ").append(parts.get(i));
+        }
+        return sb.toString();
     }
 
     private static boolean containsHandwriting(JSONObject record, String smartMark) {

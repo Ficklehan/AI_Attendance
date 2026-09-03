@@ -51,6 +51,22 @@ public final class ExcelExportStyles {
         return style;
     }
 
+    public static CellStyle createChangedCellStyle(Workbook workbook) {
+        Font font = workbook.createFont();
+        font.setFontHeightInPoints((short) 10);
+        font.setColor(IndexedColors.BROWN.getIndex());
+
+        CellStyle style = workbook.createCellStyle();
+        style.setFont(font);
+        style.setFillForegroundColor(IndexedColors.LEMON_CHIFFON.getIndex());
+        style.setFillPattern(FillPatternType.SOLID_FOREGROUND);
+        style.setWrapText(true);
+        style.setAlignment(HorizontalAlignment.LEFT);
+        style.setVerticalAlignment(VerticalAlignment.TOP);
+        applyThinBorders(style);
+        return style;
+    }
+
     public static CellStyle createTotalRowStyle(Workbook workbook) {
         Font font = workbook.createFont();
         font.setBold(true);

@@ -36,10 +36,31 @@ public class RecognitionPromptService {
         return aiPromptCache.computeIfAbsent(effective, this::loadAiPromptFromDb);
     }
 
+    /** 配置页直读库，绕过内存缓存，保证保存后立刻看到最新文案 */
+    public String getAiPromptFresh(String country) {
+        String code = normalizeCountry(country);
+        String effective = resolveEffectivePromptCountry(code);
+        String prompt = loadAiPromptFromDb(effective);
+        if (prompt != null) {
+            aiPromptCache.put(effective, prompt);
+        }
+        return prompt;
+    }
+
     public String getContinuePrompt(String country) {
         String code = normalizeCountry(country);
         String effective = resolveEffectivePromptCountry(code);
         return continuePromptCache.computeIfAbsent(effective, this::loadContinuePromptFromDb);
+    }
+
+    public String getContinuePromptFresh(String country) {
+        String code = normalizeCountry(country);
+        String effective = resolveEffectivePromptCountry(code);
+        String prompt = loadContinuePromptFromDb(effective);
+        if (prompt != null) {
+            continuePromptCache.put(effective, prompt);
+        }
+        return prompt;
     }
 
     private String loadAiPromptFromDb(String effective) {
@@ -61,6 +82,11 @@ public class RecognitionPromptService {
     private void clearPromptCache() {
         aiPromptCache.clear();
         continuePromptCache.clear();
+    }
+
+    /** 配置刷新等场景主动清空提示词内存缓存 */
+    public void invalidateCache() {
+        clearPromptCache();
     }
 
     public boolean hasCountryPrompt(String country) {
@@ -103,11 +129,14 @@ public class RecognitionPromptService {
     }
 
     public boolean isLegacyPromptInDatabase() {
-        RecognitionPrompt def = recognitionPromptMapper.selectByCountry("default");
-        if (def == null || def.getAiPrompt() == null) {
-            return true;
+        return isLegacyPromptForCountry("default");
+    }
+
+    public boolean isLegacyPromptForCountry(String country) {
+        String prompt = getAiPromptFresh(country);
+        if (prompt == null || prompt.trim().isEmpty()) {
+            return false;
         }
-        String prompt = def.getAiPrompt();
         if (MarkdownConfigService.isLegacyPromptsFile(prompt)) {
             return true;
         }

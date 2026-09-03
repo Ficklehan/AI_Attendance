@@ -40,9 +40,50 @@ public class TaskRecordBackfillRunner implements ApplicationRunner {
         try {
             backfillMissing();
             backfillSmartMark();
+            backfillExceptionType();
             backfillLegacySignature();
         } catch (Exception e) {
             log.warn("task_records 历史回填跳过: {}", e.getMessage());
+        }
+    }
+
+    /**
+     * 补齐 exception_type：对已有行但异常类型为空的任务重新同步（每轮限量）。
+     * 从任务 confirmed/raw JSON 的 ExceptionType 回填到 task_records 列。
+     */
+    private void backfillExceptionType() {
+        Integer colExists = jdbcTemplate.queryForObject(
+                "SELECT COUNT(1) FROM information_schema.columns "
+                        + "WHERE table_schema = DATABASE() AND table_name = 'task_records' "
+                        + "AND column_name = 'exception_type'",
+                Integer.class);
+        if (colExists == null || colExists == 0) {
+            return;
+        }
+        List<String> taskIds = jdbcTemplate.queryForList(
+                "SELECT DISTINCT tr.task_id FROM task_records tr "
+                        + "INNER JOIN tasks t ON t.task_id = tr.task_id "
+                        + "WHERE (tr.exception_type IS NULL OR TRIM(tr.exception_type) = '') "
+                        + "AND ("
+                        + "  (t.confirmed_data IS NOT NULL AND t.confirmed_data LIKE '%ExceptionType%') "
+                        + "  OR (t.raw_data IS NOT NULL AND t.raw_data LIKE '%ExceptionType%')"
+                        + ") "
+                        + "ORDER BY tr.task_id DESC LIMIT ?",
+                String.class, BATCH);
+        if (taskIds.isEmpty()) {
+            return;
+        }
+        int synced = 0;
+        for (String taskId : taskIds) {
+            try {
+                taskRecordSyncService.syncFromTaskId(taskId);
+                synced++;
+            } catch (Exception e) {
+                log.debug("exception_type 回填跳过 taskId={}: {}", taskId, e.getMessage());
+            }
+        }
+        if (synced > 0) {
+            log.info("task_records exception_type 回填: {} 个任务", synced);
         }
     }
 

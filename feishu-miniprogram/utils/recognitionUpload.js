@@ -4,7 +4,7 @@ const { translateApiError } = require('./translateError')
 const { getCountry } = require('./preferences')
 const { apiCall } = require('./request')
 const { updateCurrentCountry } = require('./configApi')
-const { formatRecognitionEngine } = require('./engineLabel')
+const { formatRecognitionEngine, resolveProgressEngine } = require('./engineLabel')
 const { prepareImageForUpload } = require('./imagePrep')
 const traceLog = require('./traceLog')
 
@@ -142,7 +142,7 @@ function uploadImageAsync(filePath, country, onProgress, options) {
           onProgress({
             status: 'uploading',
             rowCount: 0,
-            engine: 'mimo',
+            engine: '',
             promptCountry: uploadCountry,
             engineLabel: t('recognizing.statusUploading'),
             attempt: 0
@@ -329,7 +329,10 @@ function pollTaskUntilDone(taskId, options) {
         .then((task) => {
           const status = task.status
           const rowCount = parseRecordCount(task)
-          const engine = task.aiRawOutput || ''
+          const engine = resolveProgressEngine(
+            task.aiRawOutput,
+            options && options.preferredEngine,
+          )
 
           traceLog.log('poll_task', {
             attempt: attempts,
@@ -355,7 +358,10 @@ function pollTaskUntilDone(taskId, options) {
               .then((fullTask) => {
                 traceLog.logServerTrace(fullTask)
                 traceLog.logTaskParse(fullTask)
-                const fullEngine = fullTask.aiRawOutput || engine
+                const fullEngine = resolveProgressEngine(
+                  fullTask.aiRawOutput || engine,
+                  options && options.preferredEngine,
+                )
                 if (fullEngine === 'simulated' || String(fullEngine).indexOf('simulated') >= 0) {
                   cleanup()
                   reject(new Error(t('upload.simulatedRecognition')))
@@ -449,29 +455,31 @@ function startTaskRecognition(taskId, country, options) {
         t('upload.startRecognizeFail')
       ))
     })
-    .then(() => {
+    .then((payload) => {
+    const preferredEngine = (payload && payload.recognitionEngine) || ''
     if (shouldAbort && shouldAbort()) {
-      return { aborted: true, taskId, promptCountry: uploadCountry }
+      return { aborted: true, taskId, promptCountry: uploadCountry, engine: preferredEngine }
     }
     if (onProgress) {
       onProgress({
         status: 'processing',
         rowCount: 0,
-        engine: 'mimo',
+        engine: preferredEngine,
         promptCountry: uploadCountry,
-        engineLabel: formatRecognitionEngine('mimo', uploadCountry),
+        engineLabel: formatRecognitionEngine(preferredEngine, uploadCountry),
         attempt: 0
       })
     }
     return pollTaskUntilDone(taskId, {
       onProgress,
       shouldAbort,
-      promptCountry: uploadCountry
+      promptCountry: uploadCountry,
+      preferredEngine,
     }).then((result) => ({
       ...result,
       taskId,
       promptCountry: uploadCountry,
-      engine: (result && result.engine) || 'mimo'
+      engine: (result && result.engine) || preferredEngine
     }))
   })
 }
@@ -495,7 +503,7 @@ function runBatchUploadAndWatch(firstPath, restPaths, options) {
       status: 'ready',
       rowCount: 0,
       promptCountry: uploadCountry,
-      engineLabel: formatRecognitionEngine('mimo', uploadCountry),
+      engineLabel: '',
       attempt: 0
     })
   }
@@ -573,7 +581,7 @@ function runUploadAndWatch(filePath, options) {
       status: 'ready',
       rowCount: 0,
       promptCountry: uploadCountry,
-      engineLabel: formatRecognitionEngine('mimo', uploadCountry),
+      engineLabel: '',
       attempt: 0
     })
   }
@@ -582,7 +590,7 @@ function runUploadAndWatch(filePath, options) {
     .then((country) => uploadImageAsync(filePath, country, onProgress))
     .then((payload) => {
       const taskId = payload.taskId
-      const engine = payload.recognitionEngine || 'mimo'
+      const engine = payload.recognitionEngine || ''
       const promptCountry = payload.promptCountry || uploadCountry
 
       if (engine === 'simulated' || String(engine).indexOf('simulated') >= 0) {
@@ -614,7 +622,8 @@ function runUploadAndWatch(filePath, options) {
       return pollTaskUntilDone(taskId, {
         onProgress,
         shouldAbort,
-        promptCountry
+        promptCountry,
+        preferredEngine: engine,
       }).then((result) => ({
         ...result,
         taskId,
@@ -636,7 +645,7 @@ function startRecognition(filePath, onProgress) {
       status: 'ready',
       rowCount: 0,
       promptCountry: uploadCountry,
-      engineLabel: formatRecognitionEngine('mimo', uploadCountry),
+      engineLabel: '',
       attempt: 0
     })
   }
@@ -645,7 +654,7 @@ function startRecognition(filePath, onProgress) {
     .then((country) => uploadImageAsync(filePath, country, onProgress))
     .then((payload) => {
       const taskId = payload.taskId
-      const engine = payload.recognitionEngine || 'mimo'
+      const engine = payload.recognitionEngine || ''
       const promptCountry = payload.promptCountry || uploadCountry
       const promptSection = payload.promptSection || ''
 
@@ -670,7 +679,11 @@ function startRecognition(filePath, onProgress) {
         })
       }
 
-      return pollTaskUntilDone(taskId, { onProgress, promptCountry }).then((result) => {
+      return pollTaskUntilDone(taskId, {
+        onProgress,
+        promptCountry,
+        preferredEngine: engine,
+      }).then((result) => {
         traceLog.log('recognition_success', {
           taskId,
           engine: result.engine,

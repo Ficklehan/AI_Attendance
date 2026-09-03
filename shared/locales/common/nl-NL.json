@@ -14,7 +14,7 @@
   },
   "recognition": {
     "marks": {
-      "normal": "Normaal",
+      "normal": "Aanwezigheid correct",
       "handwriting": "Handgeschreven",
       "blurred": "Wazig",
       "nightShift": "Nachtdienst",
@@ -22,7 +22,9 @@
       "deleted": "Verwijderd",
       "signedConfirmed": "Getekend (bevestigd)",
       "unsignedConfirmed": "Niet getekend (bevestigd)",
-      "signed": "Getekend"
+      "signed": "Getekend",
+      "unsigned": "Unsigned",
+      "manuallyAdded": "Manually added"
     },
     "missing": {
       "NO": "Werknemer-ID niet herkend",
@@ -82,12 +84,34 @@
     "methodNotAllowed": "HTTP-methode niet toegestaan",
     "systemError": "Systeemfout, probeer later opnieuw",
     "requestFailed": "Verzoek mislukt",
-    "networkError": "Netwerkfout, controleer je verbinding"
+    "networkError": "Netwerkfout, controleer je verbinding",
+    "confirmRequiredFieldsMissing": "Some records are missing required fields (including name). Please complete them before submitting.",
+    "deepseekNotConfigured": "DeepSeek API Key is not configured. Set DEEPSEEK_API_KEY in backend/.env and restart the backend",
+    "deepseekUnavailable": "DeepSeek recognition is temporarily unavailable. Wait 1–2 minutes and try again; contact your admin if it persists",
+    "deepseekInvalidModel": "Invalid DeepSeek model ID for vision OCR. Set DEEPSEEK_MODEL=deepseek-v4-flash-vision-exp in backend/.env, then run bash scripts/restart-dev-daemon.sh",
+    "aiUnavailable": "AI recognition is temporarily unavailable. Wait 1–2 minutes and try again; contact your admin if it persists",
+    "aiImageTooBlurry": "The photo is not clear enough to read the attendance sheet reliably. Retake it straight-on with good lighting, or upload a sharper image.",
+    "aiImageTooBlurryBlurRows": "The photo is not clear enough: about {blurPercent}% of attendance rows are hard to read (blurry handwriting or unclear names/IDs). Retake straight-on with good light and avoid camera shake.",
+    "aiImageTooBlurryUnknownFields": "About {unknownPercent}% of key fields (employee ID, name, arrival/departure times, etc.) could not be read. Please upload a sharper photo and try again.",
+    "aiImageTooBlurryFewRows": "Very few attendance rows were recognized, and many fields are unreadable. Make sure the full sheet is in frame and in focus, then retake the photo.",
+    "uploadImageTooBlurry": "The image is too blurry to upload. Please retake the photo (straight-on, good light, no motion blur).",
+    "imageQualityBlockReasonBlurRows": "Low-readability row ratio exceeded block threshold",
+    "imageQualityBlockReasonUnknownFields": "Critical-field unknown rate exceeded block threshold",
+    "imageQualityBlockReasonFewRowsUnknown": "Too few effective rows with high unknown rate",
+    "imageQualityDenominatorEffectiveRows": "Effective attendance rows only",
+    "imageQualityDenominatorAllRows": "All non-deleted rows",
+    "imageQualityStatsRangeAllRows": "All non-deleted rows",
+    "imageQualityStatsRangeAttendanceOnly": "Effective attendance rows (exclude absent)",
+    "imageQualityStatsRangeNamedRows": "Rows with name or employee ID",
+    "imageQualityUnknownIncludeAbsent": "Including absent rows",
+    "taskStatusCannotSaveDraft": "Taakstatus staat opslaan van concept niet toe"
   },
   "common": {
     "cancel": "Annuleren",
     "save": "Opslaan",
-    "loading": "Laden..."
+    "loading": "Laden...",
+    "search": "Search",
+    "retry": "Retry"
   },
   "validation": {
     "required": "{field} is verplicht",
@@ -97,13 +121,13 @@
   },
   "fieldFormat": {
     "dateShort": "Datum vereist, bijv. 2026-06-12",
-    "dateTooltip": "Formaat YYYY-MM-DD. Duidelijke formaten zoals 12/06/2026 worden omgezet. Ambigue datums zoals 03/04/2026 handmatig corrigeren",
+    "dateTooltip": "Formaat: YYYY-MM-DD, bijv. 2026-05-17",
     "shiftShort": "Twee tijden vereist, bijv. 8:00-18:00",
-    "shiftTooltip": "Dienst moet start- en eindtijd bevatten, bijv. 8:00-18:00 of 08h00-17h30",
-    "arrivalShort": "Eén tijd vereist, bijv. 08:30",
-    "arrivalTooltip": "Aankomst moet één tijd zijn, bijv. 8:30, 08:30 of 18h00",
-    "departureShort": "Eén tijd vereist, bijv. 18:00",
-    "departureTooltip": "Vertrek moet één tijd zijn, bijv. 18:00, 18h00 of 17:30",
+    "shiftTooltip": "Formaat: start-eind, bijv. 09:00-14:00",
+    "arrivalShort": "kiezen of plakken",
+    "arrivalTooltip": "Klik op de klok of plak. 2026-09-03 08:30 wordt 08:30; 9:01 / 1 ook",
+    "departureShort": "kiezen of plakken",
+    "departureTooltip": "Klik op de klok of plak. 2026-09-03 17:30 wordt 17:30; 14:00 / 2 ook",
     "sameTimeShort": "Aankomst en vertrek zijn gelijk",
     "sameTimeTooltip": "Aankomst en vertrek moeten verschillen. Corrigeer en probeer opnieuw."
   }

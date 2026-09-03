@@ -1,9 +1,7 @@
 import { ref, h } from 'vue'
 import { Modal as aModal } from 'ant-design-vue'
 import { useI18n } from 'vue-i18n'
-import {
-  groupConfirmValidationIssues,
-} from '@/utils/confirmValidationGrouping'
+import { buildSubmitValidationViewModel } from '@/utils/confirmValidationContent'
 import {
   getMissingRequiredFieldKeys,
   REQUIRED_FIELD_I18N_KEYS,
@@ -59,37 +57,77 @@ export function useTaskEditConfirmValidation() {
       .join(t('taskEdit.confirmValidationFieldSep'))
 
   const formatConfirmValidationContent = (issues) => {
-    const groups = groupConfirmValidationIssues(issues)
-    const lineCount = new Set((issues || []).map((issue) => issue.line)).size
-    const summary = t('taskEdit.submitValidationSummary', { count: lineCount })
-    const groupLines = groups.map((group) => {
-      const headerKey = group.issueType === 'format'
-        ? 'taskEdit.confirmFormatValidationGroupHeader'
-        : 'taskEdit.confirmValidationGroupHeader'
-      const header = t(headerKey, {
-        fields: formatFieldLabels(group.fields),
-        count: group.count,
-      })
-      const lines = t('taskEdit.confirmValidationGroupLines', { ranges: group.lineRanges })
-      return `${header}\n  ${lines}`
-    })
-    return `${summary}\n\n${groupLines.join('\n\n')}`
+    const vm = buildSubmitValidationViewModel(
+      issues,
+      (key, params) => {
+        const fullKey = `taskEdit.${key}`
+        const text = t(fullKey, params)
+        return text !== fullKey ? text : key
+      },
+      formatFieldLabels,
+    )
+    return vm
   }
 
-  const showConfirmValidationModal = (issues) => {
-    const content = formatConfirmValidationContent(issues)
-    aModal.error({
-      title: t('taskEdit.submitValidationTitle'),
-      content: h('div', {
+  const renderValidationModalContent = (viewModel) => h('div', {
+    style: {
+      maxHeight: '360px',
+      overflowY: 'auto',
+    },
+  }, [
+    h('p', {
+      style: {
+        margin: '0 0 14px',
+        color: '#64748b',
+        fontSize: '13px',
+        lineHeight: '1.5',
+      },
+    }, viewModel.summary),
+    ...viewModel.groups.map((group) => h('div', {
+      key: group.id,
+      style: {
+        marginBottom: '10px',
+        padding: '10px 12px',
+        background: '#f8fafc',
+        borderRadius: '8px',
+        border: '1px solid #e2e8f0',
+      },
+    }, [
+      h('div', {
         style: {
-          maxHeight: '360px',
-          overflowY: 'auto',
-          whiteSpace: 'pre-wrap',
-          lineHeight: '1.6',
+          fontWeight: '600',
           fontSize: '13px',
+          color: '#0f172a',
+          lineHeight: '1.45',
+          marginBottom: group.hint ? '4px' : '6px',
         },
-      }, content),
-      width: 560,
+      }, group.title),
+      group.hint
+        ? h('div', {
+          style: {
+            fontSize: '12px',
+            color: '#64748b',
+            lineHeight: '1.5',
+            marginBottom: '6px',
+          },
+        }, group.hint)
+        : null,
+      h('div', {
+        style: {
+          fontSize: '12px',
+          color: '#2563eb',
+          fontWeight: '600',
+        },
+      }, group.records),
+    ])),
+  ])
+
+  const showConfirmValidationModal = (issues) => {
+    const viewModel = formatConfirmValidationContent(issues)
+    aModal.error({
+      title: viewModel.title,
+      content: renderValidationModalContent(viewModel),
+      width: 480,
       okText: t('common.confirm'),
     })
   }

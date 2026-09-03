@@ -124,6 +124,18 @@ public class TaskController {
         return Result.success(null, "任务确认成功");
     }
 
+    /** 确认前草稿保存：异常类型 / 字段编辑写回 raw_data，刷新不丢 */
+    @PostMapping("/{taskId}/save-draft")
+    public Result<Void> saveDraft(@PathVariable String taskId,
+                                  @Valid @RequestBody ConfirmTaskRequest request) {
+        log.info("收到任务草稿保存: taskId={}, recordsCount={}", taskId,
+                request.getData() == null ? 0 : request.getData().size());
+        taskService.saveDraft(taskId, request.getData());
+        auditLogService.log("TASK_DRAFT_SAVED", "task", taskId,
+                request.getData() == null ? 0 : request.getData().size());
+        return Result.success(null, "草稿已保存");
+    }
+
     @PostMapping("/{taskId}/delete")
     public Result<Void> deleteTask(@PathVariable String taskId,
                                    @Valid @RequestBody DeleteTaskRequest request) {

@@ -9,13 +9,6 @@
           <template #icon><ReloadOutlined /></template>
           {{ $t('config.reloadFromFile') }}
         </a-button>
-        <a-button
-          v-if="promptLegacy"
-          danger
-          @click="resetPromptsToStandard"
-        >
-          重置提示词为标准模板
-        </a-button>
       </template>
     </PageShell>
 
@@ -187,29 +180,8 @@
                 <h3 class="card-title">{{ t('config.aiConfig.title') }}</h3>
                 <p class="card-desc">{{ t('config.aiConfig.subtitle') }}</p>
               </div>
-              <div class="header-actions">
-                <a-button @click="loadCountryTemplate">
-                  <template #icon><FileTextOutlined /></template>
-                  {{ t('config.aiConfig.templateLoad') }}
-                </a-button>
-              </div>
             </div>
           </template>
-
-          <a-alert
-            v-if="promptLegacy"
-            type="warning"
-            show-icon
-            class="prompt-legacy-alert"
-            :message="t('config.aiConfig.legacyPromptTitle')"
-            :description="t('config.aiConfig.legacyPromptDesc')"
-          >
-            <template #action>
-              <a-button size="small" @click="applyLatestPrompts">
-                {{ t('config.aiConfig.applyLatestPrompts') }}
-              </a-button>
-            </template>
-          </a-alert>
 
           <a-form layout="vertical">
             <a-form-item :label="t('config.aiConfig.aiPrompt')">
@@ -635,6 +607,7 @@ import { parseFeishuBitableUrl } from '@/utils/feishu'
 import PageShell from '@/components/PageShell.vue'
 import NightShiftSettingsCard from '@/components/NightShiftSettingsCard.vue'
 import { useCountryStore } from '@/stores/country'
+import { useAuthStore } from '@/stores/auth'
 import { setCachedWorkingCountry } from '@/utils/countryHeader'
 import { formatCountryLabel, translateCountryName, buildCountrySelectOption } from '@/utils/countryLabels'
 import { withTableSorters } from '@/utils/tableSort'
@@ -645,6 +618,7 @@ import { sumTableScrollX } from '@/utils/tableAutoColumns'
 const { t, locale } = useI18n()
 const route = useRoute()
 const countryStore = useCountryStore()
+const authStore = useAuthStore()
 
 const routeModule = computed(() => route.meta.configModule || '')
 const visibleTabKeys = computed(() => {
@@ -698,7 +672,6 @@ const urlParseResult = ref(null)
 const bundleLoading = ref(false)
 const showPromptPreview = ref(false)
 const promptPreview = ref(null)
-const promptLegacy = ref(false)
 
 const countryBundle = ref({
   requestCountry: 'default',
@@ -848,73 +821,13 @@ const wizardSteps = [
   { titleKey: 'config.wizard.step5', descKey: 'config.wizard.step5Desc' }
 ]
 
-const isLegacyPromptText = (text) => {
-  if (!text) return true
-  if (text.includes('检查器')
-    || text.includes('CHECKER')
-    || text.includes('[NO,姓名,中介')
-    || text.includes('第10个字段')) {
-    return true
-  }
-  if (text.includes('Pays,Entrepot') || text.includes('Pays, Entrepot')) {
-    if (!text.includes('PAGE_NUM')) return true
-    if (text.includes('【数据与格式】')) return false
-    if (text.includes('规则：') && text.includes('1. 只返回真实数据')) return true
-    return false
-  }
-  return true
-}
-
-const COMPRESSED_PROMPT_CORE = `【数据】只输出真实行；看不清用???或""，禁猜测补全编造；勿把表头当数据；名/工号???或空→到离必空；每行单数组
-· 时间→HH:MM(24h)：6h→06:00，6h30/6.30/630→06:30，18h30→18:30
-· 日期→YYYY-MM-DD：17/05/2026、17-05-2026、17-05-26→2026-05-17
-· 表头→Pays/Country/Paese；Entrepôt/Warehouse/Magazzino；含员工签名/SIGNATURE/Signature/Firma/Signatura/签名关键词列(可有说明文字，非Firma e conferma主管栏)→SIGNATURE；Observations/Remarks/Osservazioni
-· PAUSE仅分钟整数；Entrepot仅读图，无/看不清→""，禁按国家猜AMS/PAR
-
-【SIGNATURE·11】读员工签名列单元格笔迹：可辨→转写，有笔迹看不清→???，空白→""；禁表头字面量
-· ???/模糊=已签字；""=未签字；签字横线划掉或整行删除线→isDeleted=true；勿写入标记列
-
-【标记·13】手写|模糊|正常|未出勤(\`;\`连接)
-· 夜班由系统自动计算，勿写入标记列；未出勤：到离皆空或???
-· 仅NO+姓名均非手写且非模糊/未出勤可「正常」；NO或姓名任一手写必含「手写」(它列手写不计)
-
-【其他】已删除：删线=true否则false；PAGE_NUM：页眉/页脚/底边页码(1,Page 1,1/5,P.1等)，有总页写当前/总，同页相同，无→""
-
-示例(勿照抄)：
-["1","Netherlands","AMS","2026-05-17","张三","中介A","MATIN","08:00","18:00","60","Dupont","备注","正常",false,""]
-["4","","","2026-05-17","???","中介D","SOIR","???","???","30","","","模糊;未出勤",false,""]`
-
-const defaultPrompts = {
-  default: `识别考勤表格(表头中/法/荷/意/西等，15字段列序固定)。每行一个JSON数组：
-[NO,Pays,Entrepot,Date,NOM_PRENOM,AGENCE_INTERIMAIRE,HORAIRES_DU_TRAVAIL,ARRIVEE,DEPAR,PAUSE,SIGNATURE,Observations,标记,已删除,PAGE_NUM]
-
-${COMPRESSED_PROMPT_CORE}`,
-  CN: `识别中国考勤表格(表头多语言，15字段列序固定)。每行一个JSON数组：
-[NO,Pays,Entrepot,Date,NOM_PRENOM,AGENCE_INTERIMAIRE,HORAIRES_DU_TRAVAIL,ARRIVEE,DEPAR,PAUSE,SIGNATURE,Observations,标记,已删除,PAGE_NUM]
-
-【数据】只输出真实行；看不清用???或""，禁猜测补全编造；勿把表头当数据；名/工号???或空→到离必空；每行单数组
-· 时间→HH:MM(24h)：6h→06:00，6h30/6.30/630→06:30，18h30→18:30
-· 日期→YYYY-MM-DD：2026-05-17等规范为YYYY-MM-DD
-· 表头→Pays/Country；Entrepôt/Warehouse；含员工签名/SIGNATURE/Signature/Firma/签名关键词列→SIGNATURE；Observations/备注
-· PAUSE仅分钟整数；Entrepot仅读图，无/看不清→""
-
-【SIGNATURE·11】读员工签名列单元格笔迹：可辨→转写，有笔迹看不清→???，空白→""；禁表头字面量
-· ???/模糊=已签字；""=未签字；签字横线划掉或整行删除线→isDeleted=true；勿写入标记列
-
-【标记·13】手写|模糊|正常|未出勤(\`;\`)；夜班由系统计算勿写入；未出勤到离空；仅NO+姓名均非手写可正常，任一手写必含手写
-
-【其他】已删除：删线=true；PAGE_NUM：页眉页脚页码，同页相同，无→""
-
-示例(勿照抄)：
-["1","中国","上海仓","2026-05-17","张三","中介A","上午","08:00","18:00","60","Dupont","备注","正常",false,""]
-["4","","","2026-05-17","???","中介D","下午","???","???","30","","","模糊;未出勤",false,""]`,
-  FR: `识别法国考勤表格(表头多语言，15字段列序固定)。每行一个JSON数组：
-[NO,Pays,Entrepot,Date,NOM_PRENOM,AGENCE_INTERIMAIRE,HORAIRES_DU_TRAVAIL,ARRIVEE,DEPAR,PAUSE,SIGNATURE,Observations,标记,已删除,PAGE_NUM]
-
-${COMPRESSED_PROMPT_CORE}`
-}
-
 const defaultContinuePrompt = '接续上文继续输出，格式与字段不变，不重复已输出行。'
+
+/** 配置页以库内容为准；库空则空编辑框，不再注入本地硬编码模板 */
+const applyPromptFromApi = (aiRes) => {
+  configs.aiPrompt = aiRes?.data?.ai_prompt || ''
+  configs.continuePrompt = aiRes?.data?.continue_prompt || defaultContinuePrompt
+}
 
 const defaultFieldMapping = [
   { aiField: 'NO', feishuField: 'NO', type: 'string', required: true, description: '工号' },
@@ -951,56 +864,18 @@ const reloadConfigs = async (silent = false) => {
   }
 };
 
-const applyLatestPrompts = async () => {
-  await resetPromptsToStandard()
-}
-
-const resetPromptsToStandard = async () => {
-  try {
-    await request({ url: '/config/reset-prompts', method: 'POST' })
-    message.success(t('config.aiConfig.applyLatestPromptsDone'))
-    promptLegacy.value = false
-    await reloadConfigs(true)
-  } catch (error) {
-    console.error('重置提示词失败:', error)
-    message.error(t('config.resetPromptFailed'))
-  }
-}
-
 const loadConfigs = async () => {
   loading.value = true
   try {
-    const [aiRes, feishuRes, countryRes, optionsRes, statusRes] = await Promise.all([
-      request({ url: '/config/ai-prompt', params: { country: selectedCountry.value } }),
-      request({ url: '/config/feishu', params: { country: selectedCountry.value } }),
+    const [countryRes, optionsRes] = await Promise.all([
       request({ url: '/config/current-country' }),
       request({ url: '/config/country-options' }),
-      request({ url: '/config/prompt-status' })
     ])
 
     if (optionsRes.data?.length) {
       countries.value = optionsRes.data
     }
 
-    const apiPrompt = aiRes.data.ai_prompt || ''
-    const legacyFromApi = aiRes.data.legacy_prompt === 'true' || aiRes.data.legacy_prompt === true
-    promptLegacy.value = legacyFromApi
-      || statusRes.data?.legacy === true
-      || isLegacyPromptText(apiPrompt)
-    configs.aiPrompt = (!promptLegacy.value && apiPrompt)
-      ? apiPrompt
-      : (defaultPrompts[selectedCountry.value] || defaultPrompts.default)
-    configs.continuePrompt = aiRes.data.continue_prompt || defaultContinuePrompt
-    configs.appToken = feishuRes.data.appToken || ''
-    configs.tableId = feishuRes.data.tableId || ''
-    configs.syncEnabled = feishuRes.data.syncEnabled !== false
-    
-    if (feishuRes.data.fieldMapping && Array.isArray(feishuRes.data.fieldMapping)) {
-      fieldMappings.value = feishuRes.data.fieldMapping
-    } else {
-      fieldMappings.value = JSON.parse(JSON.stringify(defaultFieldMapping))
-    }
-    
     currentWorkingCountry.value = countryRes.data.country || 'default'
     selectedCountry.value = currentWorkingCountry.value
     setCachedWorkingCountry(currentWorkingCountry.value)
@@ -1009,6 +884,28 @@ const loadConfigs = async () => {
       countryStore.options = optionsRes.data
     }
     countryStore.hydrated = true
+
+    // 国家确定后再拉提示词，避免先按旧国家取数再被工作国家覆盖
+    const promptRes = await request({
+      url: '/config/ai-prompt',
+      params: { country: selectedCountry.value },
+    })
+    applyPromptFromApi(promptRes)
+
+    const feishuForCountry = await request({
+      url: '/config/feishu',
+      params: { country: selectedCountry.value },
+    })
+    configs.appToken = feishuForCountry.data.appToken || ''
+    configs.tableId = feishuForCountry.data.tableId || ''
+    configs.syncEnabled = feishuForCountry.data.syncEnabled !== false
+
+    if (feishuForCountry.data.fieldMapping && Array.isArray(feishuForCountry.data.fieldMapping)) {
+      fieldMappings.value = feishuForCountry.data.fieldMapping
+    } else {
+      fieldMappings.value = JSON.parse(JSON.stringify(defaultFieldMapping))
+    }
+
     await loadCountryBundle(selectedCountry.value)
     await countryStore.loadBundle(selectedCountry.value)
   } catch (error) {
@@ -1025,14 +922,7 @@ const loadCountryConfigs = async () => {
       request({ url: '/config/ai-prompt', params: { country: selectedCountry.value } }),
       request({ url: '/config/feishu', params: { country: selectedCountry.value } })
     ])
-    const apiPrompt = aiRes.data.ai_prompt || ''
-    promptLegacy.value = aiRes.data.legacy_prompt === 'true'
-      || aiRes.data.legacy_prompt === true
-      || isLegacyPromptText(apiPrompt)
-    configs.aiPrompt = (!promptLegacy.value && apiPrompt)
-      ? apiPrompt
-      : (defaultPrompts[selectedCountry.value] || defaultPrompts.default)
-    configs.continuePrompt = aiRes.data.continue_prompt || defaultContinuePrompt
+    applyPromptFromApi(aiRes)
     configs.appToken = feishuRes.data.appToken || ''
     configs.tableId = feishuRes.data.tableId || ''
     configs.syncEnabled = feishuRes.data.syncEnabled !== false
@@ -1070,7 +960,12 @@ const saveAiConfig = async () => {
         continue_prompt: configs.continuePrompt
       }
     })
-    promptLegacy.value = isLegacyPromptText(configs.aiPrompt)
+    // 保存后立刻从库回读，确保展示与库一致
+    const aiRes = await request({
+      url: '/config/ai-prompt',
+      params: { country: selectedCountry.value },
+    })
+    applyPromptFromApi(aiRes)
     message.success(t('config.saveSuccess'))
     await loadCountryBundle(selectedCountry.value)
   } catch (error) {
@@ -1201,32 +1096,6 @@ const testFeishuConnection = async () => {
   }
 }
 
-const loadCountryTemplate = async () => {
-  try {
-    await request({ url: '/config/reload', method: 'POST' })
-    const aiRes = await request({
-      url: '/config/ai-prompt',
-      params: { country: selectedCountry.value }
-    })
-    const apiPrompt = aiRes.data.ai_prompt || ''
-    promptLegacy.value = aiRes.data.legacy_prompt === 'true'
-      || aiRes.data.legacy_prompt === true
-      || isLegacyPromptText(apiPrompt)
-    if (!promptLegacy.value && apiPrompt) {
-      configs.aiPrompt = apiPrompt
-      configs.continuePrompt = aiRes.data.continue_prompt || defaultContinuePrompt
-    } else {
-      configs.aiPrompt = defaultPrompts[selectedCountry.value] || defaultPrompts.default
-      configs.continuePrompt = defaultContinuePrompt
-    }
-    message.success(t('config.aiConfig.templateLoadSuccess'))
-  } catch (error) {
-    configs.aiPrompt = defaultPrompts[selectedCountry.value] || defaultPrompts.default
-    configs.continuePrompt = defaultContinuePrompt
-    message.success(t('config.aiConfig.templateLoadSuccess'))
-  }
-}
-
 const loadMappingTemplate = () => {
   fieldMappings.value = JSON.parse(JSON.stringify(defaultFieldMapping))
   message.success(t('config.aiConfig.templateLoadSuccess'))
@@ -1270,14 +1139,21 @@ const generateFieldMappingYaml = (mappings) => {
 const completeWizard = async () => {
   saving.value = true
   try {
-    const prompt = defaultPrompts[wizardCountry.value] || defaultPrompts.default
+    // 向导复用库中 default 提示词，不再注入前端硬编码模板
+    const defaultPromptRes = await request({
+      url: '/config/ai-prompt',
+      params: { country: 'default' },
+      silentError: true,
+    }).catch(() => null)
+    const prompt = defaultPromptRes?.data?.ai_prompt || ''
+    const continuePrompt = defaultPromptRes?.data?.continue_prompt || defaultContinuePrompt
     await request({
       url: '/config/ai-prompt',
       method: 'post',
       data: {
         country: wizardCountry.value,
         ai_prompt: prompt,
-        continue_prompt: defaultContinuePrompt
+        continue_prompt: continuePrompt
       }
     })
     
@@ -1326,10 +1202,6 @@ onMounted(async () => {
   display: flex;
   flex-direction: column;
   gap: $spacing-lg;
-}
-
-.prompt-legacy-alert {
-  margin-bottom: $spacing-md;
 }
 
 .country-bar {

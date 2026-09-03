@@ -6,6 +6,7 @@ import com.attendance.entity.TaskRecord;
 import org.junit.jupiter.api.Test;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 class TaskRecordExportSupportTest {
@@ -27,13 +28,53 @@ class TaskRecordExportSupportTest {
     }
 
     @Test
-    void formatAnomalyDescription_joinsAnomaliesAndUnreadable() {
+    void formatAnomalyDescription_joinsGroupedSummariesLikeConfirmPage() {
         JSONObject record = new JSONObject();
-        record.put("anomalies", new JSONArray().fluentAdd("missing.Date"));
+        record.put("Date", "2024-01-01");
+        record.put("NOM_PRENOM", "Alice");
+        record.put("ARRIVEE", "08:00");
+        record.put("DEPAR", "17:00");
+        record.put("PAUSE", "60");
+        record.put("anomalies", new JSONArray().fluentAdd("missing.Observations"));
         record.put("_unreadableFields", new JSONArray().fluentAdd("NOM_PRENOM"));
         String text = TaskRecordExportSupport.formatAnomalyDescription(record);
-        assertTrue(text.contains("日期未识别"));
         assertTrue(text.contains("看不清：姓名"));
+        assertTrue(text.contains("\n"));
+        assertTrue(text.startsWith("1. "));
+        assertFalse(text.contains("日期未识别"));
+    }
+
+    @Test
+    void formatAnomalyDescription_includesShiftVarianceSentence() {
+        JSONObject record = new JSONObject();
+        record.put("Date", "2024-01-01");
+        record.put("NOM_PRENOM", "Alice");
+        record.put("HORAIRES_DU_TRAVAIL", "08:00-17:00");
+        record.put("ARRIVEE", "07:30");
+        record.put("DEPAR", "18:00");
+        record.put("PAUSE", "60");
+        String text = TaskRecordExportSupport.formatAnomalyDescription(record);
+        assertTrue(text.contains("员工早到"));
+        assertTrue(text.contains("晚离开"));
+        assertTrue(text.startsWith("1. "));
+    }
+
+    @Test
+    void formatAnomalyDescription_marksAndManualFlagsFirst() {
+        JSONObject record = new JSONObject();
+        record.put("SmartMark", "模糊");
+        record.put("_manuallyAdded", true);
+        record.put("_manualCalibrated", true);
+        record.put("Date", "2024-01-01");
+        record.put("NOM_PRENOM", "Alice");
+        record.put("ARRIVEE", "08:00");
+        record.put("DEPAR", "17:00");
+        record.put("PAUSE", "60");
+        String text = TaskRecordExportSupport.formatAnomalyDescription(record);
+        assertTrue(text.contains("手工补录"));
+        assertTrue(text.contains("模糊"));
+        assertTrue(text.contains("人工校准"));
+        assertTrue(text.indexOf("手工补录") < text.indexOf("模糊"));
     }
 
     @Test

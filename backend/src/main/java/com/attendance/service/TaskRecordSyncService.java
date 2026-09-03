@@ -169,6 +169,8 @@ public class TaskRecordSyncService {
         tr.setPageNum(RecordJsonSupport.clampVarchar(
                 RecordJsonSupport.pickJson(row, "PAGE_NUM", "PageNum", "pageNum", "页码"), VARCHAR_32));
         tr.setSmartMark(RecordJsonSupport.pickJson(row, "SmartMark", "Mark", "smartMark", "标记"));
+        tr.setExceptionType(RecordJsonSupport.clampVarchar(
+                RecordJsonSupport.pickJson(row, "ExceptionType", "exceptionType"), VARCHAR_32));
         tr.setSignature(SignatureMarkResolver.resolveFromAiOutput(
                 rawAiSignature,
                 tr.isDeleted(),

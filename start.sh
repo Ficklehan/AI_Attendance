@@ -111,6 +111,7 @@ show_usage() {
     echo "  all            启动所有服务 (后端 dev + 前端)"
     echo "  backend        仅启动后端 (profile: dev, localhost:8080)"
     echo "  dev            同 use-local-dev：杀 8080 后前台启动 dev（推荐）"
+    echo "  restart-dev    本地前后端重启（先 stop 再 start，后台守护）"
     echo "  frontend       仅启动前端 (http://localhost:5175/clockai/)"
     echo "  init           初始化数据库"
     echo "  apply          ★ 改 production.yaml 后执行（render + 按 mode 重启）"
@@ -189,6 +190,9 @@ case "${1:-all}" in
         check_java
         check_maven
         exec bash "$PROJECT_DIR/scripts/use-local-dev.sh"
+        ;;
+    restart-dev|dev-restart)
+        exec bash "$PROJECT_DIR/scripts/restart-dev-daemon.sh"
         ;;
     frontend)
         start_frontend

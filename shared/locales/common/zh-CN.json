@@ -14,7 +14,7 @@
   },
   "recognition": {
     "marks": {
-      "normal": "正常",
+      "normal": "考勤正确",
       "handwriting": "手写",
       "blurred": "模糊",
       "nightShift": "夜班",
@@ -57,6 +57,7 @@
     "recognitionConcurrentLimit": "识别任务过多，请稍后再试",
     "taskNotFound": "任务不存在",
     "taskStatusCannotConfirm": "任务状态不允许确认",
+    "taskStatusCannotSaveDraft": "任务状态不允许保存草稿",
     "confirmRequiredFieldsMissing": "存在必填字段未填写的记录（含姓名），请补充后再提交",
     "taskAccessDenied": "无权限访问该任务",
     "fileAccessDenied": "无权限访问该文件",
@@ -69,6 +70,10 @@
     "imagesOnly": "只支持图片或 PDF 文件",
     "unrecognizedImageFormat": "无法识别文件格式，请使用 JPG/PNG 或 PDF",
     "mimoNotConfigured": "未配置 MIMO API Key，无法调用真实 AI。请在 backend/.env 填写 MIMO_API_KEY 后重启后端",
+    "deepseekNotConfigured": "未配置 DeepSeek API Key，无法调用真实 AI。请在 backend/.env 填写 DEEPSEEK_API_KEY 后重启后端",
+    "deepseekUnavailable": "DeepSeek 识别服务暂时不可用，请稍等 1～2 分钟后重试；若持续失败请联系管理员",
+    "deepseekInvalidModel": "DeepSeek 模型 ID 无效或未开通识图。请在 backend/.env 设置 DEEPSEEK_MODEL=deepseek-v4-flash-vision-exp 后执行 bash scripts/restart-dev-daemon.sh 重启",
+    "aiUnavailable": "AI 识别服务暂时不可用，请稍等 1～2 分钟后重试；若持续失败请联系管理员",
     "mimoUnavailable": "AI 识别服务暂时不可用（小米 MiMo 接口异常），请稍等 1～2 分钟后重试；若持续失败请联系管理员",
     "aiPromptNotFound": "未找到识别提示词，请检查 base-config/prompts.md",
     "aiContinuePromptNotFound": "未找到继续输出提示词，请检查 base-config/prompts.md",
@@ -115,14 +120,14 @@
     "maxLength": "{field} 最多 {max} 个字符"
   },
   "fieldFormat": {
-    "dateShort": "须为日期，如 2026-06-12",
-    "dateTooltip": "日期须为 YYYY-MM-DD；可识别 12/06/2026、12.06.2026 等明确格式。03/04/2026 等歧义日期请手动改为标准格式",
-    "shiftShort": "须含两个时间，如 8:00-18:00",
-    "shiftTooltip": "班次须包含开始与结束两个时间，例如 8:00-18:00 或 08h00-17h30",
-    "arrivalShort": "须为单个时间，如 08:30",
-    "arrivalTooltip": "到达时间须为单个时间点，例如 8:30、08:30 或 18h00",
-    "departureShort": "须为单个时间，如 18:00",
-    "departureTooltip": "离开时间须为单个时间点，例如 18:00、18h00 或 17:30",
+    "dateShort": "例如 2026-05-17",
+    "dateTooltip": "填写标准：YYYY-MM-DD，例如 2026-05-17",
+    "shiftShort": "例如 09:00-14:00",
+    "shiftTooltip": "填写标准：开始-结束，例如 09:00-14:00",
+    "arrivalShort": "点选或粘贴",
+    "arrivalTooltip": "点右侧时钟选择时间；也可直接粘贴，2026-09-03 08:30 会自动取 08:30，填 9:01 / 1 同样可以",
+    "departureShort": "点选或粘贴",
+    "departureTooltip": "点右侧时钟选择时间；也可直接粘贴，2026-09-03 17:30 会自动取 17:30，填 14:00 / 2 同样可以",
     "sameTimeShort": "到达与离开时间相同",
     "sameTimeTooltip": "到达时间与离开时间不能相同，请核对后修改"
   }

@@ -13,8 +13,22 @@ const { calculateRecordStats } = require('../../utils/recordDisplay')
 const {
   countRequiredMissing,
   showRequiredValidationModal,
+  findFirstValidationIssue,
 } = require('../../utils/confirmValidationDisplay')
-const { formatRecognitionEngine } = require('../../utils/engineLabel')
+const { formatRecognitionEngine, parsePromptCountryFromEngine } = require('../../utils/engineLabel')
+const {
+  syncRecordsExceptionType,
+  countPendingExceptionTypes,
+  buildExceptionTypeDeps,
+  buildExceptionTypeOptions,
+  onExceptionTypeChange,
+  isExceptionTypeSelectDisabled,
+  SNAPSHOT_FIELD_KEYS,
+  EXCEPTION_TYPE,
+  ensureExceptionType,
+  exceptionTypeDisabledHint,
+  isExceptionTypeMissingForSubmit,
+} = require('../../utils/exceptionTypeUi')
 const { getCountryLabel, getCountry, syncCountryFromServer } = require('../../utils/preferences')
 const {
   buildTaskImageList,
@@ -89,8 +103,9 @@ Page({
     recordsExpanded: false,
     issueCount: 0,
     submitCtaLabel: '',
-    showConfirmSheet: false,
     showCompletion: false,
+    showValidationModal: false,
+    validationModal: { title: '', summary: '', groups: [] },
     duplicateScope: 'confirmed_only',
     duplicateScopeConfirmedActive: true,
     duplicateScopeAllActive: false,
@@ -99,6 +114,11 @@ Page({
     expandedDuplicateKeys: [],
     expandedCalibrationKeys: [],
     expandedAnomalyKeys: [],
+    exceptionTypePickerOpenKeys: [],
+    pendingExceptionCount: 0,
+    pendingExceptionBannerText: '',
+    combinedValidationBannerText: '',
+    showValidationBanner: false,
     duplicateRefreshing: false,
     requiredMissingCount: 0,
     requiredValidationBannerText: '',
@@ -198,10 +218,8 @@ Page({
       texts: {
         retrySync: t('result.retrySync'),
         retryingSync: t('result.retryingSync'),
-        confirmTitle: t('result.confirmTitle'),
-        confirmContent: t('result.confirmContent'),
         confirmSubmit: t('result.confirmSubmit'),
-        sheetCancel: t('result.sheetCancel'),
+        validationModalOk: t('common.confirm'),
         completionTitle: t('result.completionTitle'),
         completionDesc: t('result.completionDesc'),
         completionTasks: t('result.completionTasks'),
@@ -251,6 +269,10 @@ Page({
         calibrationDetailTitle: t('calibration.historyTitle'),
         addManualRow: t('result.addManualRow'),
         addManualRowHint: t('result.addManualRowHint'),
+        exceptionTypeLabel: t('result.exceptionTypeRequired'),
+        exceptionTypePickHint: t('result.exceptionTypePickHint'),
+        exceptionTypeClickToChange: t('result.exceptionTypeClickToChange'),
+        pendingExceptionViewDetail: t('result.requiredValidationViewDetail'),
       },
       submitCtaLabel: t('result.confirmSubmit')
     })
@@ -258,6 +280,10 @@ Page({
 
   openRecordEdit: function (e) {
     const rowKey = e.currentTarget.dataset.rowKey
+    this.navigateToRecordEdit(rowKey)
+  },
+
+  navigateToRecordEdit: function (rowKey) {
     if (!rowKey) return
     if (!this.data.canSubmit) {
       tt.showToast({ title: t('recordEdit.notProcessed'), icon: 'none' })
@@ -268,14 +294,32 @@ Page({
     })
   },
 
+  needsCalibrationEdit: function (exceptionType) {
+    return exceptionType === EXCEPTION_TYPE.PAPER_OK_OCR_WRONG
+      || exceptionType === EXCEPTION_TYPE.PAPER_WRONG_TIME
+  },
+
+  expandExceptionTypePicker: function (e) {
+    if (!this.data.canSubmit) return
+    const rowKey = e.currentTarget.dataset.rowKey
+    if (!rowKey) return
+    const openKeys = this.data.exceptionTypePickerOpenKeys || []
+    if (openKeys.indexOf(rowKey) !== -1) return
+    this.setData({ exceptionTypePickerOpenKeys: openKeys.concat(rowKey) }, () => {
+      this.refreshDisplayRecords()
+    })
+  },
+
   applyRecordDraft: function (rowKey, draft) {
     if (!rowKey || !draft) return
     const regionCode = this.data.taskWorkRegionCode
+    const deps = buildExceptionTypeDeps()
     const records = (this.data.records || []).map((r) => {
       if (r._rowKey !== rowKey) return r
       let updated = { ...r, ...draft }
       updated = syncRecordPaysToTaskRegion(updated, regionCode, false, 'processed')
       refreshRecordNightShiftMark(updated)
+      ensureExceptionType(updated, deps)
       return updated
     })
     this.setData({ records }, () => {
@@ -449,8 +493,9 @@ Page({
           const payload = resolveTaskRecordsJson(task)
           const isConfirmed = task.status === 'confirmed'
           const records = parseRecords(payload, { isConfirmed })
+          syncRecordsExceptionType(records)
           const engine = task.aiRawOutput || ''
-          const promptCountry = engine.indexOf('mimo:') === 0 ? engine.slice(5) : (task.promptCountry || '')
+          const promptCountry = parsePromptCountryFromEngine(engine, task.promptCountry || '')
           const taskForRegion = this.buildTaskForRegion(task, promptCountry)
           this._taskForRegion = taskForRegion
           const workRegionState = this.resolveWorkRegionState(taskForRegion, records, isConfirmed)
@@ -581,13 +626,35 @@ Page({
     const dupExpanded = this.data.expandedDuplicateKeys || []
     const calExpanded = this.data.expandedCalibrationKeys || []
     const anomalyExpanded = this.data.expandedAnomalyKeys || []
-    return (rows || []).map((row) => ({
-      ...row,
-      duplicateExpanded: dupExpanded.indexOf(row._rowKey) !== -1,
-      calibrationExpanded: calExpanded.indexOf(row._rowKey) !== -1,
-      anomalyExpanded: anomalyExpanded.indexOf(row._rowKey) !== -1,
-      duplicateMemberPreview: (row.duplicateMembers || []).slice(0, 4)
-    }))
+    const canSubmit = this.data.canSubmit
+    const deps = buildExceptionTypeDeps()
+    const allOptions = buildExceptionTypeOptions()
+    return (rows || []).map((row) => {
+      const type = row.ExceptionType || ''
+      const disabled = isExceptionTypeSelectDisabled(row, deps)
+      const pending = canSubmit && isExceptionTypeMissingForSubmit(row, deps)
+      const pickerOpen = this.data.exceptionTypePickerOpenKeys || []
+      const collapsed = Boolean(type) && pickerOpen.indexOf(row._rowKey) === -1
+      const options = collapsed
+        ? allOptions.filter((opt) => opt.value === type)
+        : allOptions
+      return {
+        ...row,
+        duplicateExpanded: dupExpanded.indexOf(row._rowKey) !== -1,
+        calibrationExpanded: calExpanded.indexOf(row._rowKey) !== -1,
+        anomalyExpanded: anomalyExpanded.indexOf(row._rowKey) !== -1,
+        duplicateMemberPreview: (row.duplicateMembers || []).slice(0, 4),
+        showExceptionTypePicker: canSubmit && !row.isDeleted && !row.isAbsent,
+        exceptionTypeDisabled: disabled,
+        exceptionTypePending: pending,
+        exceptionTypeCollapsed: collapsed,
+        exceptionTypeOptions: options.map((opt) => ({
+          ...opt,
+          active: opt.value === type,
+        })),
+        exceptionTypeDisabledHint: exceptionTypeDisabledHint(row, deps),
+      }
+    })
   },
 
   toggleAnomalyExpand: function (e) {
@@ -611,24 +678,60 @@ Page({
   refreshRequiredValidation: function () {
     const { records, canSubmit } = this.data
     const requiredMissingCount = canSubmit ? countRequiredMissing(records) : 0
+    const pendingExceptionCount = canSubmit ? countPendingExceptionTypes(records) : 0
+    let combinedValidationBannerText = ''
+    if (requiredMissingCount > 0 && pendingExceptionCount > 0) {
+      combinedValidationBannerText = t('result.combinedValidationBanner', {
+        required: requiredMissingCount,
+        exception: pendingExceptionCount,
+      })
+      if (combinedValidationBannerText === 'result.combinedValidationBanner') {
+        combinedValidationBannerText =
+          `还有 ${requiredMissingCount} 条必填不完整、${pendingExceptionCount} 条未选异常类型`
+      }
+    } else if (requiredMissingCount > 0) {
+      combinedValidationBannerText = t('result.requiredValidationBanner', { count: requiredMissingCount })
+    } else if (pendingExceptionCount > 0) {
+      combinedValidationBannerText = t('result.pendingExceptionBanner', { count: pendingExceptionCount })
+    }
     this.setData({
       requiredMissingCount,
+      pendingExceptionCount,
       requiredValidationBannerText: requiredMissingCount > 0
         ? t('result.requiredValidationBanner', { count: requiredMissingCount })
         : '',
+      pendingExceptionBannerText: pendingExceptionCount > 0
+        ? t('result.pendingExceptionBanner', { count: pendingExceptionCount })
+        : '',
+      combinedValidationBannerText,
+      showValidationBanner: Boolean(combinedValidationBannerText),
     })
   },
 
   showRequiredValidationDetail: function () {
+    this.openValidationModal(this.data.records)
+  },
+
+  openValidationModal: function (records) {
     const self = this
-    showRequiredValidationModal(this.data.records, t, {
-      beforeModal: function (issue) {
+    showRequiredValidationModal(records, t, {
+      onShow: function (viewModel, issue) {
         if (issue && issue.rowKey) {
           self.scrollToValidationIssue(issue)
         }
+        self.setData({
+          showValidationModal: true,
+          validationModal: viewModel,
+        })
       },
     })
   },
+
+  closeValidationModal: function () {
+    this.setData({ showValidationModal: false })
+  },
+
+  noop: function () {},
 
   scrollToValidationIssue: function (issue) {
     if (!issue || !issue.rowKey) return
@@ -701,6 +804,52 @@ Page({
     })
   },
 
+  handleExceptionTypeSelect: function (e) {
+    if (!this.data.canSubmit) return
+    const rowKey = e.currentTarget.dataset.rowKey
+    const value = e.currentTarget.dataset.value
+    if (!rowKey || !value) return
+    const deps = buildExceptionTypeDeps()
+    const records = this.data.records || []
+    const index = records.findIndex((r) => r._rowKey === rowKey)
+    if (index < 0) return
+    const record = records[index]
+    if (isExceptionTypeSelectDisabled(record, deps)) {
+      const hint = exceptionTypeDisabledHint(record, deps)
+      if (hint) tt.showToast({ title: hint, icon: 'none' })
+      return
+    }
+    const current = record.ExceptionType || ''
+    const openKeys = this.data.exceptionTypePickerOpenKeys || []
+    const expanded = openKeys.indexOf(rowKey) !== -1
+    if (current && !expanded) {
+      this.setData({ exceptionTypePickerOpenKeys: openKeys.concat(rowKey) }, () => {
+        this.refreshDisplayRecords()
+      })
+      return
+    }
+    if (current === value && expanded) {
+      this.setData({
+        exceptionTypePickerOpenKeys: openKeys.filter((k) => k !== rowKey),
+      }, () => this.refreshDisplayRecords())
+      return
+    }
+    const next = records.slice()
+    const updated = { ...record }
+    onExceptionTypeChange(updated, value, SNAPSHOT_FIELD_KEYS)
+    next[index] = updated
+    this.setData({
+      records: next,
+      exceptionTypePickerOpenKeys: openKeys.filter((k) => k !== rowKey),
+    }, () => {
+      this.refreshStats()
+      this.refreshDisplayRecords()
+      if (this.needsCalibrationEdit(value)) {
+        this.navigateToRecordEdit(rowKey)
+      }
+    })
+  },
+
   handleAddManualRecord: function () {
     if (!this.data.canSubmit) return
     tt.navigateTo({
@@ -712,6 +861,7 @@ Page({
     if (!record) return
     const regionCode = this.data.taskWorkRegionCode
     const synced = syncRecordPaysToTaskRegion(record, regionCode, false, 'processed')
+    ensureExceptionType(synced, buildExceptionTypeDeps())
     const records = (this.data.records || []).concat(synced)
     const visibleCount = Math.max(this.data.visibleCount, records.length)
     this.setData({
@@ -820,33 +970,46 @@ Page({
     tt.navigateBack()
   },
 
-  noop: function () {},
-
-  closeConfirmSheet: function () {
-    this.setData({ showConfirmSheet: false })
-  },
-
   confirmSubmit: function () {
-    this.setData({ showConfirmSheet: true })
-  },
+    if (this.data.isSubmitting || !this.data.canSubmit) return
 
-  confirmSheetSubmit: function () {
-    this.setData({ showConfirmSheet: false })
+    const records = (this.data.records || []).map((r) => ({ ...r }))
+    syncRecordsExceptionType(records)
+    this.setData({ records })
+
+    const issue = findFirstValidationIssue(records)
+    if (showRequiredValidationModal(records, t, {
+      onShow: (viewModel) => {
+        if (issue && issue.rowKey) {
+          this.scrollToValidationIssue(issue)
+        }
+        this.setData({
+          showValidationModal: true,
+          validationModal: viewModel,
+        })
+      },
+    })) {
+      this.refreshRequiredValidation()
+      this.refreshDisplayRecords()
+      return
+    }
+
     if (this.data.duplicateCount > 0) {
       tt.showModal({
         title: this.data.texts.duplicateTag,
         content: this.data.duplicateBannerText,
         confirmText: this.data.texts.confirmSubmit,
-        cancelText: this.data.texts.sheetCancel,
+        cancelText: t('common.cancel'),
         success: (res) => {
           if (res.confirm) {
-            this.submitToFeishu()
+            this.submitToFeishu(records)
           }
-        }
+        },
       })
       return
     }
-    this.submitToFeishu()
+
+    this.submitToFeishu(records)
   },
 
   goTasksFromCompletion: function () {
@@ -862,14 +1025,20 @@ Page({
     this.setData({ showCompletion: false })
   },
 
-  submitToFeishu: function () {
-    if (showRequiredValidationModal(this.data.records, t)) {
-      return
+  submitToFeishu: function (preparedRecords) {
+    const sourceRecords = preparedRecords || this.data.records || []
+    if (!preparedRecords) {
+      const synced = sourceRecords.map((r) => ({ ...r }))
+      syncRecordsExceptionType(synced)
+      if (showRequiredValidationModal(synced, t)) {
+        return
+      }
+      preparedRecords = synced
     }
 
     this.setData({ isSubmitting: true })
 
-    const records = (this.data.records || []).map((r) => {
+    const records = preparedRecords.map((r) => {
       const copy = { ...r }
       refreshRecordNightShiftMark(copy)
       return copy

@@ -14,6 +14,7 @@ export const CALIBRATABLE_FIELDS = [
 ]
 
 export const FIELD_LABEL_KEYS = {
+  Pays: 'taskEdit.countryField',
   NO: 'taskEdit.workerNumber',
   Entrepot: 'taskEdit.warehouse',
   NOM_PRENOM: 'taskEdit.name',

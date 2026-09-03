@@ -28,6 +28,28 @@
     </view>
   </template>
 
+  <template name="exceptionTypeBlock">
+    <view tt:if="{{item.showExceptionTypePicker}}" class="exception-type-block {{item.exceptionTypePending ? 'is-pending' : ''}} {{item.exceptionTypeCollapsed ? 'is-collapsed' : ''}}">
+      <view class="exception-type-head">
+        <text class="exception-type-label">{{texts.exceptionTypeLabel}}</text>
+      </view>
+      <view class="exception-type-stack {{item.exceptionTypeDisabled ? 'is-disabled' : ''}} {{item.exceptionTypeCollapsed ? 'is-collapsed' : ''}} {{item.exceptionTypePending ? 'is-pending' : ''}}">
+        <view
+          tt:for="{{item.exceptionTypeOptions}}"
+          tt:for-item="opt"
+          tt:key="value"
+          class="exception-type-opt {{opt.active ? 'is-active' : ''}} exception-type-opt--{{opt.value}}"
+          data-row-key="{{item._rowKey}}"
+          data-value="{{opt.value}}"
+          catchtap="handleExceptionTypeSelect"
+        >
+          <text tt:if="{{opt.active}}" class="exception-type-opt-check">✓</text>
+          <text class="exception-type-opt-label">{{opt.label}}</text>
+        </view>
+      </view>
+    </view>
+  </template>
+
   <template name="calibrationHistoryBlock">
     <view tt:if="{{row.calibrationExpanded && row.calibrationHistory.length > 0}}" class="calibration-detail">
       <text class="calibration-detail-title">{{texts.calibrationDetailTitle}}</text>
@@ -74,7 +96,11 @@
           class="record-field-cell"
         >
           <text class="record-field-label">{{field.label}}</text>
-          <text class="record-field-value {{field.missing ? 'is-missing' : ''}} {{field.formatInvalid ? 'is-format-invalid' : ''}}">{{field.value}}</text>
+          <view tt:if="{{field.lineNo}}" class="record-field-value-inline">
+            <text class="record-line-no-inline">{{field.lineNo}}</text>
+            <text class="record-field-value {{field.missing ? 'is-missing' : ''}} {{field.formatInvalid ? 'is-format-invalid' : ''}}">{{field.value}}</text>
+          </view>
+          <text tt:else class="record-field-value {{field.missing ? 'is-missing' : ''}} {{field.formatInvalid ? 'is-format-invalid' : ''}}">{{field.value}}</text>
           <text tt:if="{{field.formatInvalid && field.formatHint}}" class="record-field-format-hint">{{field.formatHint}}</text>
         </view>
       </view>
@@ -199,11 +225,11 @@
           <text class="image-quality-text">{{imageQualityBannerText}}</text>
         </view>
         <view
-          tt:if="{{requiredMissingCount > 0}}"
-          class="required-validation-banner"
+          tt:if="{{showValidationBanner}}"
+          class="required-validation-banner {{pendingExceptionCount > 0 && requiredMissingCount === 0 ? 'is-exception' : ''}}"
           bindtap="showRequiredValidationDetail"
         >
-          <text class="required-validation-text">{{requiredValidationBannerText}}</text>
+          <text class="required-validation-text">{{combinedValidationBannerText}}</text>
           <text class="required-validation-link">{{texts.requiredValidationViewDetail}}</text>
         </view>
         <view
@@ -231,12 +257,15 @@
         >
           <view class="record-body">
             <view class="record-head">
-              <text class="record-title">{{item.titleText}}</text>
+              <view class="record-title-wrap">
+                <text tt:if="{{item.lineNo}}" class="record-line-no-tag">{{item.lineNo}}</text>
+                <text class="record-title">{{item.titleText}}</text>
+              </view>
               <template is="recordMarkTags" data="{{row: item}}" />
             </view>
             <template is="recordFieldLines" data="{{fieldRows: item.fieldRows}}" />
             <template is="anomalySummaryBlock" data="{{
-              text: item.anomalySummaryText,
+              text: item.recognitionNoteText,
               long: item.anomalySummaryLong,
               expanded: item.anomalyExpanded,
               rowKey: item._rowKey,
@@ -244,6 +273,7 @@
               expandText: texts.anomalyExpand,
               collapseText: texts.anomalyCollapse
             }}" />
+            <template is="exceptionTypeBlock" data="{{item: item, texts: texts}}" />
             <view tt:if="{{item.hasDuplicate}}" class="duplicate-tools">
               <text class="duplicate-tag">{{texts.duplicateTag}}</text>
               <text
@@ -306,12 +336,15 @@
           <view class="result-record-dot {{item.rowDotClass}}"></view>
           <view class="record-body">
             <view class="record-head">
-              <text class="record-title">{{item.titleText}}</text>
+              <view class="record-title-wrap">
+                <text tt:if="{{item.lineNo}}" class="record-line-no-tag">{{item.lineNo}}</text>
+                <text class="record-title">{{item.titleText}}</text>
+              </view>
               <template is="recordMarkTags" data="{{row: item}}" />
             </view>
             <template is="recordFieldLines" data="{{fieldRows: item.fieldRows}}" />
             <template is="anomalySummaryBlock" data="{{
-              text: item.anomalySummaryText,
+              text: item.recognitionNoteText,
               long: item.anomalySummaryLong,
               expanded: item.anomalyExpanded,
               rowKey: item._rowKey,
@@ -319,6 +352,7 @@
               expandText: texts.anomalyExpand,
               collapseText: texts.anomalyCollapse
             }}" />
+            <template is="exceptionTypeBlock" data="{{item: item, texts: texts}}" />
             <view tt:if="{{item.hasDuplicate}}" class="duplicate-tools">
               <text class="duplicate-tag">{{texts.duplicateTag}}</text>
               <text
@@ -385,12 +419,15 @@
           <view class="result-record-dot {{item.rowDotClass}}"></view>
           <view class="record-body">
             <view class="record-head">
-              <text class="record-title">{{item.titleText}}</text>
+              <view class="record-title-wrap">
+                <text tt:if="{{item.lineNo}}" class="record-line-no-tag">{{item.lineNo}}</text>
+                <text class="record-title">{{item.titleText}}</text>
+              </view>
               <template is="recordMarkTags" data="{{row: item}}" />
             </view>
             <template is="recordFieldLines" data="{{fieldRows: item.fieldRows}}" />
             <template is="anomalySummaryBlock" data="{{
-              text: item.anomalySummaryText,
+              text: item.recognitionNoteText,
               long: item.anomalySummaryLong,
               expanded: item.anomalyExpanded,
               rowKey: item._rowKey,
@@ -398,6 +435,7 @@
               expandText: texts.anomalyExpand,
               collapseText: texts.anomalyCollapse
             }}" />
+            <template is="exceptionTypeBlock" data="{{item: item, texts: texts}}" />
             <template
               is="recordActionLinks"
               data="{{
@@ -437,16 +475,28 @@
   </block>
 
   <view
-    tt:if="{{showConfirmSheet}}"
-    class="sheet-mask"
-    bindtap="closeConfirmSheet"
+    tt:if="{{showValidationModal}}"
+    class="sheet-mask validation-mask"
+    bindtap="closeValidationModal"
   >
-    <view class="sheet" catchtap="noop">
+    <view class="validation-sheet" catchtap="noop">
       <view class="sheet-handle"></view>
-      <text class="sheet-title">{{texts.confirmTitle}}</text>
-      <text class="sheet-desc">{{texts.confirmContent}}</text>
-      <view class="btn btn-primary" bindtap="confirmSheetSubmit">{{texts.confirmSubmit}}</view>
-      <view class="btn btn-secondary result-sheet-cancel" bindtap="closeConfirmSheet">{{texts.sheetCancel}}</view>
+      <text class="validation-sheet-title">{{validationModal.title}}</text>
+      <text class="validation-sheet-summary">{{validationModal.summary}}</text>
+      <scroll-view scroll-y class="validation-sheet-scroll" enhanced show-scrollbar="{{false}}">
+        <view
+          tt:for="{{validationModal.groups}}"
+          tt:key="id"
+          class="validation-group validation-group--{{item.issueType}}"
+        >
+          <text class="validation-group-title">{{item.title}}</text>
+          <text tt:if="{{item.hint}}" class="validation-group-hint">{{item.hint}}</text>
+          <text class="validation-group-records">{{item.records}}</text>
+        </view>
+      </scroll-view>
+      <view class="btn btn-primary validation-sheet-btn" bindtap="closeValidationModal">
+        {{texts.validationModalOk}}
+      </view>
     </view>
   </view>
 

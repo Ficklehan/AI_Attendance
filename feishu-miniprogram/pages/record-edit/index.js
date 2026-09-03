@@ -1,8 +1,8 @@
-const { t } = require('../../utils/i18n')
+const { t, tOr } = require('../../utils/i18n')
 const { isApiSuccess, getApiData, getApiMessage } = require('../../utils/response')
 const { apiCall } = require('../../utils/request')
 const { parseRecords } = require('../../utils/task')
-const { isAbsentRow, normalizePauseMinutes } = require('../../utils/recordDisplay')
+const { isAbsentRow, restoreAbsentRecord, normalizePauseMinutes } = require('../../utils/recordDisplay')
 const {
   CALIBRATABLE_FIELDS,
   normalizeCalibValue
@@ -18,6 +18,25 @@ const {
   resolveTaskWorkRegionBindingCode,
   resolveManualRecordCountryCode,
 } = require('../../utils/taskWorkRegion')
+const {
+  SNAPSHOT_FIELD_KEYS,
+  EXCEPTION_TYPE,
+  buildExceptionTypeDeps,
+  buildExceptionTypeOptions,
+  ensureExceptionType,
+  onExceptionTypeChange,
+  isExceptionTypeSelectDisabled,
+  exceptionTypeDisabledHint,
+  isCalibFieldEditable,
+  onCalibratableFieldFocus,
+  onCalibratableFieldChange,
+  shouldHighlightFieldForCalibration,
+} = require('../../utils/exceptionTypeUi')
+const {
+  enrichCalibFieldForPicker,
+  composeShift,
+  toPickerTime,
+} = require('../../utils/recordEditPickers')
 
 Page({
   data: {
@@ -29,6 +48,14 @@ Page({
     draft: {},
     fields: [],
     saving: false,
+    convertedFromAbsent: false,
+    exceptionType: '',
+    exceptionTypeOptions: [],
+    exceptionTypeDisabled: false,
+    exceptionTypeDisabledHint: '',
+    showFocusHint: false,
+    focusFieldBadgeText: '重点关注',
+    focusFieldsHintText: '请对照纸质表重点核对并修正：日期、班次、到达、离开、休息。',
     texts: {}
   },
 
@@ -93,12 +120,34 @@ Page({
     } catch (e) {
       console.warn('setNavigationBarTitle failed', e)
     }
+    const focusFieldBadgeText = tOr('recordEdit.focusFieldBadge', null, '重点关注')
+    const focusFieldsHintText = tOr(
+      'recordEdit.focusFieldsHint',
+      null,
+      '请对照纸质表重点核对并修正：日期、班次、到达、离开、休息。',
+    )
     this.setData({
+      focusFieldBadgeText,
+      focusFieldsHintText,
       texts: {
         hint: t(isAdd ? 'recordEdit.addHint' : 'recordEdit.hint'),
         save: t('recordEdit.save'),
         cancel: t('common.cancel'),
         paysLockedHint: t('recordEdit.paysLockedHint'),
+        exceptionTypeLabel: tOr('result.exceptionTypeRequired', null, '请选择异常类型'),
+        exceptionTypePickHint: tOr('result.exceptionTypePickHint', null, '点选其一确认 →'),
+        exceptionTypeLockedHint: tOr(
+          'recordEdit.exceptionTypeLockedHint',
+          null,
+          '已选「考勤正确」，班次/到达/离开等必填字段不可改；可改姓名、仓库、中介，或先改选异常类型。',
+        ),
+        pickDate: tOr('recordEdit.pickDate', null, '选择日期'),
+        pickTime: tOr('recordEdit.pickTime', null, '选择时间'),
+        absentRestoreHint: tOr(
+          'recordEdit.absentRestoreHint',
+          null,
+          '该行原为未出勤，请填写到达、离开等出勤信息后保存，即可改为正常出勤。',
+        ),
       }
     })
   },
@@ -151,7 +200,7 @@ Page({
     if (!record) {
       return false
     }
-    if (record.isDeleted || isAbsentRow(record)) {
+    if (record.isDeleted) {
       tt.showToast({ title: t('recordEdit.notEditable'), icon: 'none' })
       setTimeout(() => tt.navigateBack(), 600)
       return true
@@ -174,7 +223,8 @@ Page({
           return
         }
         const engine = task.aiRawOutput || ''
-        const promptCountry = engine.indexOf('mimo:') === 0 ? engine.slice(5) : (task.promptCountry || '')
+        const { parsePromptCountryFromEngine } = require('../../utils/engineLabel')
+        const promptCountry = parsePromptCountryFromEngine(engine, task.promptCountry || '')
         const taskForRegion = { ...task, promptCountry: promptCountry || task.promptCountry }
         const records = parseRecords(task.rawData || task.confirmedData, {
           isConfirmed: task.status === 'confirmed',
@@ -191,7 +241,7 @@ Page({
           tt.showToast({ title: t('recordEdit.recordNotFound'), icon: 'none' })
           return
         }
-        if (record.isDeleted || isAbsentRow(record)) {
+        if (record.isDeleted) {
           tt.showToast({ title: t('recordEdit.notEditable'), icon: 'none' })
           return
         }
@@ -207,7 +257,10 @@ Page({
   },
 
   initDraft: function (record) {
-    const synced = syncRecordPaysToTaskRegion(record, this.data.taskWorkRegionCode, false, 'processed')
+    const convertedFromAbsent = isAbsentRow(record)
+    let synced = { ...syncRecordPaysToTaskRegion(record, this.data.taskWorkRegionCode, false, 'processed') }
+    synced = restoreAbsentRecord(synced)
+    ensureExceptionType(synced, buildExceptionTypeDeps())
     this._sourceRecord = synced
     const draft = {}
     CALIBRATABLE_FIELDS.forEach((key) => {
@@ -219,19 +272,83 @@ Page({
       }
       draft[key] = v === undefined || v === null ? '' : v
     })
-    this.setData({ draft, paysExpanded: false }, () => {
+    this._openBaseline = {}
+    SNAPSHOT_FIELD_KEYS.forEach((key) => {
+      this._openBaseline[key] = draft[key] === undefined || draft[key] === null ? '' : draft[key]
+    })
+    CALIBRATABLE_FIELDS.forEach((key) => {
+      if (this._openBaseline[key] === undefined) {
+        this._openBaseline[key] = draft[key] === undefined || draft[key] === null ? '' : draft[key]
+      }
+    })
+    this.setData({ draft, paysExpanded: false, convertedFromAbsent }, () => {
       this.rebuildForm()
       this.refreshTexts()
     })
   },
 
   rebuildForm: function () {
-    const fields = buildCalibFormFields(this.data.draft, this._sourceRecord || {}, {
+    const source = this._sourceRecord || {}
+    const openBaseline = this._openBaseline || source._aiBaseline || null
+    const fields = buildCalibFormFields(this.data.draft, source, {
       taskWorkRegionCode: this.data.taskWorkRegionCode,
       paysExpanded: this.data.paysExpanded,
       isConfirmed: false,
+    }).map((field) => {
+      const merged = { ...source, ...this.data.draft, ExceptionType: source.ExceptionType }
+      const locked = !isCalibFieldEditable(merged, field.key)
+      const highlight = shouldHighlightFieldForCalibration(merged, field.key)
+      return enrichCalibFieldForPicker({
+        ...field,
+        locked,
+        highlight,
+      }, merged, openBaseline)
     })
-    this.setData({ fields })
+    const deps = buildExceptionTypeDeps()
+    const merged = { ...source, ...this.data.draft }
+    const allOptions = buildExceptionTypeOptions()
+    const type = source.ExceptionType || ''
+    this.setData({
+      fields,
+      exceptionType: type,
+      showFocusHint: type === EXCEPTION_TYPE.PAPER_OK_OCR_WRONG
+        || type === EXCEPTION_TYPE.PAPER_WRONG_TIME,
+      exceptionTypeDisabled: isExceptionTypeSelectDisabled(merged, deps),
+      exceptionTypeDisabledHint: exceptionTypeDisabledHint(merged, deps),
+      exceptionTypeOptions: allOptions.map((opt) => ({
+        ...opt,
+        active: opt.value === type,
+      })),
+    })
+  },
+
+  applyDraftField: function (key, value) {
+    if (!key) return
+    if (this._sourceRecord) {
+      onCalibratableFieldFocus(this._sourceRecord, SNAPSHOT_FIELD_KEYS)
+    }
+    const draft = { ...this.data.draft, [key]: value }
+    const { applyFieldNormalization } = require('../../utils/recognizedFieldNormalize')
+    applyFieldNormalization(draft, key)
+    if (this._sourceRecord) {
+      this._sourceRecord[key] = draft[key]
+      onCalibratableFieldChange(this._sourceRecord, SNAPSHOT_FIELD_KEYS)
+    }
+    this.setData({ draft }, () => this.rebuildForm())
+  },
+
+  onSelectExceptionType: function (e) {
+    const value = e.currentTarget.dataset.value
+    if (!value || !this._sourceRecord) return
+    const deps = buildExceptionTypeDeps()
+    const merged = { ...this._sourceRecord, ...this.data.draft }
+    if (isExceptionTypeSelectDisabled(merged, deps)) {
+      const hint = exceptionTypeDisabledHint(merged, deps)
+      if (hint) tt.showToast({ title: hint, icon: 'none' })
+      return
+    }
+    onExceptionTypeChange(this._sourceRecord, value, SNAPSHOT_FIELD_KEYS)
+    this.rebuildForm()
   },
 
   onFieldInput: function (e) {
@@ -240,10 +357,51 @@ Page({
     if (key === 'PAUSE') {
       value = String(value || '').replace(/[^\d]/g, '')
     }
+    this.applyDraftField(key, value)
+  },
+
+  onDatePickerChange: function (e) {
+    const key = e.currentTarget.dataset.key
+    const value = e.detail && e.detail.value
+    this.applyDraftField(key, value)
+  },
+
+  onTimePickerChange: function (e) {
+    const key = e.currentTarget.dataset.key
+    const value = e.detail && e.detail.value
+    this.applyDraftField(key, toPickerTime(value))
+  },
+
+  onTimeFieldInput: function (e) {
+    const key = e.currentTarget.dataset.key
+    if (!key) return
+    const value = e.detail.value
     const draft = { ...this.data.draft, [key]: value }
-    const { applyFieldNormalization } = require('../../utils/recognizedFieldNormalize')
-    applyFieldNormalization(draft, key)
-    this.setData({ draft }, () => this.rebuildForm())
+    const fields = (this.data.fields || []).map((field) => (
+      field.key === key ? { ...field, displayValue: value } : field
+    ))
+    this.setData({ draft, fields })
+  },
+
+  onTimeInputBlur: function (e) {
+    const key = e.currentTarget.dataset.key
+    if (!key) return
+    const { normalizeClockTime } = require('../../shared-js/recognizedTimeNormalizer')
+    const value = e.detail && e.detail.value != null ? e.detail.value : this.data.draft[key]
+    this.applyDraftField(key, normalizeClockTime(value))
+  },
+
+  onShiftPickerChange: function (e) {
+    const key = e.currentTarget.dataset.key
+    const part = e.currentTarget.dataset.part
+    const value = e.detail && e.detail.value
+    if (!key || !part) return
+    const current = String(this.data.draft[key] || '')
+    const { parseShiftParts } = require('../../utils/recordEditPickers')
+    const parts = parseShiftParts(current)
+    if (part === 'start') parts.start = toPickerTime(value, parts.start)
+    if (part === 'end') parts.end = toPickerTime(value, parts.end)
+    this.applyDraftField(key, composeShift(parts.start, parts.end))
   },
 
   togglePaysCountry: function (e) {
@@ -272,6 +430,15 @@ Page({
       }
       payload[key] = value
     })
+    const source = this._sourceRecord || {}
+    payload.ExceptionType = source.ExceptionType || ''
+    payload._exceptionTypeManual = source._exceptionTypeManual
+    payload.SmartMark = source.SmartMark
+    payload._restored = source._restored
+    if (source._prevMark !== undefined) payload._prevMark = source._prevMark
+    if (source.Mark !== undefined) payload.Mark = source.Mark
+    if (source._aiBaseline) payload._aiBaseline = source._aiBaseline
+    if (source._lastEditSnapshot) payload._lastEditSnapshot = source._lastEditSnapshot
     return payload
   },
 
@@ -310,11 +477,14 @@ Page({
     }
     this.setData({ saving: true })
     const draft = this.buildDraftPayload()
+    const record = (prev.data.records || []).find((r) => r._rowKey === this.data.rowKey)
     const changed = CALIBRATABLE_FIELDS.some((key) => {
-      const record = (prev.data.records || []).find((r) => r._rowKey === this.data.rowKey)
       if (!record) return true
       return normalizeCalibValue(record[key]) !== normalizeCalibValue(draft[key])
     })
+      || normalizeCalibValue(record && record.ExceptionType) !== normalizeCalibValue(draft.ExceptionType)
+      || Boolean(draft._restored) !== Boolean(record && record._restored)
+      || normalizeCalibValue(record && record.SmartMark) !== normalizeCalibValue(draft.SmartMark)
     if (!changed) {
       tt.showToast({ title: t('recordEdit.noChanges'), icon: 'none' })
       this.setData({ saving: false })

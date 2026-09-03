@@ -31,6 +31,7 @@ import {
   SafetyCertificateOutlined,
   FileSearchOutlined,
   BellOutlined,
+  ExperimentOutlined,
 } from '@ant-design/icons-vue'
 import { useAuthStore } from '@/stores/auth'
 import { SETTINGS_NAV, canAccessSettingsItem } from '@/utils/settingsAccess'
@@ -45,6 +46,7 @@ const ICONS = {
   '/settings/roles': SafetyCertificateOutlined,
   '/settings/reminders': BellOutlined,
   '/settings/audit': FileSearchOutlined,
+  '/settings/recognition-engine': ExperimentOutlined,
 }
 
 const navItems = computed(() =>

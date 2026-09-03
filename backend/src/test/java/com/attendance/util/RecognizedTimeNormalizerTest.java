@@ -12,6 +12,10 @@ class RecognizedTimeNormalizerTest {
         assertEquals("21:00", RecognizedTimeNormalizer.normalizeClockTime("21H"));
         assertEquals("08:30", RecognizedTimeNormalizer.normalizeClockTime("8:30"));
         assertEquals("18:00", RecognizedTimeNormalizer.normalizeClockTime("18h00"));
+        assertEquals("08:30", RecognizedTimeNormalizer.normalizeClockTime("2026-09-03 08:30:00"));
+        assertEquals("08:30", RecognizedTimeNormalizer.normalizeClockTime("2026-09-03T08:30:00.000Z"));
+        assertEquals("20:30", RecognizedTimeNormalizer.normalizeClockTime("9/3/2026 8:30:00 PM"));
+        assertEquals("08:30", RecognizedTimeNormalizer.normalizeClockTime("08:30:00"));
     }
 
     @Test

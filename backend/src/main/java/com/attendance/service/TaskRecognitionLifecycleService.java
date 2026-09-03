@@ -39,6 +39,9 @@ public class TaskRecognitionLifecycleService {
     @Autowired
     private TaskRecordSyncService taskRecordSyncService;
 
+    @Autowired
+    private RecognitionEngineConfigService recognitionEngineConfigService;
+
     public boolean isRecognitionHeartbeatFresh(String taskId, long maxAgeMs) {
         Task task = taskMapper.selectTaskByTaskId(taskId);
         if (task == null || task.getRecognitionHeartbeatAt() == null) {
@@ -183,7 +186,8 @@ public class TaskRecognitionLifecycleService {
     public void prepareTaskForRecognitionInternal(String taskId, boolean reset) {
         taskMapper.updateTaskStatus(taskId, "processing");
         if (reset) {
-            taskMapper.updateTaskRawDataProgress(taskId, "[]", "mimo", 0);
+            String plannedEngine = recognitionEngineConfigService.getEngine();
+            taskMapper.updateTaskRawDataProgress(taskId, "[]", plannedEngine, 0);
             clearRecognitionCheckpoint(taskId);
         }
         touchRecognitionHeartbeat(taskId);

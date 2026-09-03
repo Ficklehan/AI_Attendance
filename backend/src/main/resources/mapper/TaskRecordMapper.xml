@@ -33,6 +33,7 @@
         <result column="observations" property="observations"/>
         <result column="page_num" property="pageNum"/>
         <result column="smart_mark" property="smartMark"/>
+        <result column="exception_type" property="exceptionType"/>
         <result column="task_created_at" property="taskCreatedAt"/>
         <result column="user_name" property="userName"/>
     </resultMap>
@@ -44,7 +45,7 @@
         tr.line_no, tr.employee_id, tr.employee_no, tr.emp_name, tr.base_name, tr.country, tr.country_key,
         tr.warehouse, tr.warehouse_key, tr.work_date, tr.agency, tr.agency_key, tr.shift,
         tr.arrival, tr.departure, tr.pause_minutes, tr.signature, tr.observations, tr.page_num,
-        tr.smart_mark, tr.task_created_at,
+        tr.smart_mark, tr.exception_type, tr.task_created_at,
         COALESCE(u.real_name, u.username, '') AS user_name
     </sql>
 
@@ -140,6 +141,13 @@
                                     AND (
                                     <foreach collection="cond.keyword.split(';')" item="mv" separator=" OR ">
                                         tr.smart_mark LIKE CONCAT('%', #{mv}, '%')
+                                    </foreach>
+                                    )
+                                </when>
+                                <when test="cond.field == 'ExceptionType'">
+                                    AND (
+                                    <foreach collection="cond.keyword.split(';')" item="mv" separator=" OR ">
+                                        tr.exception_type = #{mv}
                                     </foreach>
                                     )
                                 </when>
@@ -253,6 +261,9 @@
                                 <when test="cond.field == 'SmartMark'">
                                     AND tr.smart_mark LIKE CONCAT('%', #{cond.keyword}, '%')
                                 </when>
+                                <when test="cond.field == 'ExceptionType'">
+                                    AND tr.exception_type = #{cond.keyword}
+                                </when>
                                 <when test="cond.field == 'createdAt'">
                                     AND DATE_FORMAT(tr.task_created_at, '%Y-%m-%d %H:%i:%s') LIKE CONCAT('%', #{cond.keyword}, '%')
                                 </when>
@@ -296,7 +307,7 @@
             task_id, user_id, row_key, record_index, deleted, task_status, file_key, image_urls,
             line_no, employee_id, employee_no, emp_name, base_name, country, country_key, warehouse, warehouse_key, work_date,
             agency, agency_key, shift, arrival, departure, pause_minutes, signature, observations,
-            page_num, smart_mark, task_created_at
+            page_num, smart_mark, exception_type, task_created_at
         ) VALUES
         <foreach collection="rows" item="r" separator=",">
             (
@@ -304,7 +315,7 @@
                 #{r.fileKey}, #{r.imageUrls}, #{r.lineNo}, #{r.employeeId}, #{r.employeeNo}, #{r.empName}, #{r.baseName},
                 #{r.country}, #{r.countryKey}, #{r.warehouse}, #{r.warehouseKey}, #{r.workDate},
                 #{r.agency}, #{r.agencyKey}, #{r.shift}, #{r.arrival}, #{r.departure},
-                #{r.pauseMinutes}, #{r.signature}, #{r.observations}, #{r.pageNum}, #{r.smartMark}, #{r.taskCreatedAt}
+                #{r.pauseMinutes}, #{r.signature}, #{r.observations}, #{r.pageNum}, #{r.smartMark}, #{r.exceptionType}, #{r.taskCreatedAt}
             )
         </foreach>
     </insert>
@@ -314,7 +325,7 @@
             task_id, user_id, row_key, record_index, deleted, task_status, file_key, image_urls,
             line_no, employee_id, employee_no, emp_name, base_name, country, country_key, warehouse, warehouse_key, work_date,
             agency, agency_key, shift, arrival, departure, pause_minutes, signature, observations,
-            page_num, smart_mark, task_created_at
+            page_num, smart_mark, exception_type, task_created_at
         ) VALUES
         <foreach collection="rows" item="r" separator=",">
             (
@@ -322,7 +333,7 @@
                 #{r.fileKey}, #{r.imageUrls}, #{r.lineNo}, #{r.employeeId}, #{r.employeeNo}, #{r.empName}, #{r.baseName},
                 #{r.country}, #{r.countryKey}, #{r.warehouse}, #{r.warehouseKey}, #{r.workDate},
                 #{r.agency}, #{r.agencyKey}, #{r.shift}, #{r.arrival}, #{r.departure},
-                #{r.pauseMinutes}, #{r.signature}, #{r.observations}, #{r.pageNum}, #{r.smartMark}, #{r.taskCreatedAt}
+                #{r.pauseMinutes}, #{r.signature}, #{r.observations}, #{r.pageNum}, #{r.smartMark}, #{r.exceptionType}, #{r.taskCreatedAt}
             )
         </foreach>
         ON DUPLICATE KEY UPDATE
@@ -352,6 +363,7 @@
             observations = VALUES(observations),
             page_num = VALUES(page_num),
             smart_mark = VALUES(smart_mark),
+            exception_type = VALUES(exception_type),
             task_created_at = VALUES(task_created_at),
             updated_at = CURRENT_TIMESTAMP
     </insert>

@@ -78,7 +78,8 @@ public class ImageQualityConfigService {
         dto.setBlockMalformedRowPercent(clampMalformedPercent(incoming.getBlockMalformedRowPercent(), dto.getBlockMalformedRowPercent()));
         dto.setWarnBlurRowPercent(warnBlur);
         dto.setWarnUnknownFieldPercent(warnUnknown);
-        dto.setPostRecognitionQualityEnabled(incoming.isPostRecognitionQualityEnabled());
+        // 产品约定：只拦上传前过糊；识别后质量检测永久关闭（结果照常展示）
+        dto.setPostRecognitionQualityEnabled(false);
         String statsScope = normalizeDenominator(incoming.getBlurRateDenominator(), null);
         if (statsScope == null) {
             statsScope = normalizeDenominator(

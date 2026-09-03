@@ -32,6 +32,7 @@ public class TaskRecord {
     private String observations;
     private String pageNum;
     private String smartMark;
+    private String exceptionType;
     private LocalDateTime taskCreatedAt;
     private String userName;
 
@@ -265,6 +266,14 @@ public class TaskRecord {
 
     public void setSmartMark(String smartMark) {
         this.smartMark = smartMark;
+    }
+
+    public String getExceptionType() {
+        return exceptionType;
+    }
+
+    public void setExceptionType(String exceptionType) {
+        this.exceptionType = exceptionType;
     }
 
     public LocalDateTime getTaskCreatedAt() {

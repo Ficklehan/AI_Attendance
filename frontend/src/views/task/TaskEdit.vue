@@ -2,7 +2,37 @@
   <div class="task-edit-container page-inner" :class="{ 'has-sticky-submit': canShowSubmitBar }">
     <div class="image-compare-layout" :class="{ 'image-compare-layout--dock-open': previewDockOpen }">
       <div class="image-compare-layout__main">
-    <PageShell :title="$t('taskEdit.title')" :subtitle="taskId">
+    <PageShell :title="$t('taskEdit.title')" :subtitle="taskId" inline-subtitle>
+      <template #meta>
+        <div
+          v-if="hasTaskWorkRegion"
+          class="task-header-meta"
+          :class="{ 'task-header-meta--warning': workRegionMismatch }"
+        >
+          <span class="task-header-meta__label">{{ $t('taskEdit.workRegionContextTitle') }}</span>
+          <span class="task-header-meta__value">{{ taskWorkRegionLabel }}</span>
+          <span class="task-header-meta__dot">·</span>
+          <span class="task-header-meta__hint">
+            {{ $t('taskEdit.workRegionContextSummary', {
+              region: taskWorkRegionLabel,
+              column: $t('taskEdit.countryField'),
+              code: taskWorkRegionBannerCode || taskWorkRegionDisplayCode || taskWorkRegionCode || '—',
+            }) }}
+          </span>
+          <a-tooltip overlay-class-name="task-header-meta-tooltip">
+            <template #title>
+              <ol class="task-header-meta__tooltip-steps">
+                <li>{{ $t('taskEdit.workRegionContextStep1', { column: $t('taskEdit.countryField') }) }}</li>
+                <li>{{ $t('taskEdit.workRegionContextStep2') }}</li>
+              </ol>
+            </template>
+            <InfoCircleOutlined class="task-header-meta__info" />
+          </a-tooltip>
+          <a-tag v-if="workRegionMismatch" color="warning" class="task-header-meta__badge">
+            {{ $t('taskEdit.workRegionMismatchBadge', { count: workRegionMismatchCount }) }}
+          </a-tag>
+        </div>
+      </template>
       <template #extra>
         <a-space wrap>
           <a-tag v-if="task?.status === 'cancelled'" color="default">{{ $t('tasks.statusCancelled') }}</a-tag>
@@ -66,16 +96,20 @@
       <StatOverview
         v-if="records.length > 0"
         :items="statItems"
+        single-row
+        clickable
+        :active-key="activeStatFilter"
+        :filter-hint="$t('taskEdit.statFilterHint')"
+        :clear-hint="$t('taskEdit.statFilterClearHint')"
+        @select="onStatFilterSelect"
       />
 
       <div v-if="previewImagesList.length > 0" class="task-image-files">
-        <div class="task-image-files__head">
+        <span class="task-image-files__title">
           <FileImageOutlined />
-          <span class="task-image-files__title">
-            {{ $t('taskEdit.originalImage') }}
-            <em>({{ previewImagesList.length }}{{ $t('tasks.images') }})</em>
-          </span>
-        </div>
+          {{ $t('taskEdit.originalImage') }}
+          <em>({{ previewImagesList.length }}{{ $t('tasks.images') }})</em>
+        </span>
         <ul class="task-image-files__list">
           <li
             v-for="(url, idx) in previewImagesList"
@@ -83,53 +117,102 @@
             class="task-image-files__item"
             :class="{ 'task-image-files__item--active': previewDockOpen && previewCurrentIndex === idx }"
           >
-            <button type="button" class="task-image-files__link" @click="openImagePreview(idx)">
-              <FileImageOutlined class="task-image-files__icon" />
+            <button
+              type="button"
+              class="task-image-files__link"
+              :title="$t('tasks.viewImage')"
+              @click="openImagePreview(idx)"
+            >
               <span class="task-image-files__name">{{ getFileName(url) }}</span>
-              <EyeOutlined class="task-image-files__view" />
             </button>
           </li>
         </ul>
       </div>
-      
-      <a-tabs v-model:active-key="activeTab" class="edit-tabs">
-        <a-tab-pane key="edit" :tab="$t('taskEdit.editData')">
-          <div
-            v-if="hasTaskWorkRegion"
-            class="work-region-context"
-            :class="{ 'work-region-context--warning': workRegionMismatch }"
-          >
-            <div class="work-region-context__head">
-              <span class="work-region-context__label">{{ $t('taskEdit.workRegionContextTitle') }}</span>
-              <span class="work-region-context__value">{{ taskWorkRegionLabel }}</span>
-              <a-tag v-if="workRegionMismatch" color="warning" class="work-region-context__badge">
-                {{ $t('taskEdit.workRegionMismatchBadge', { count: workRegionMismatchCount }) }}
-              </a-tag>
-            </div>
-            <p class="work-region-context__summary">
-              {{ $t('taskEdit.workRegionContextSummary', {
-                region: taskWorkRegionLabel,
-                column: $t('taskEdit.countryField'),
-                code: taskWorkRegionBannerCode || taskWorkRegionDisplayCode || taskWorkRegionCode || '—',
-              }) }}
-            </p>
-            <ol class="work-region-context__steps">
-              <li>{{ $t('taskEdit.workRegionContextStep1', { column: $t('taskEdit.countryField') }) }}</li>
-              <li>{{ $t('taskEdit.workRegionContextStep2') }}</li>
-            </ol>
-          </div>
-          <div class="table-toolbar">
+
+      <div class="edit-panel">
+          <div class="edit-toolbar">
+            <span class="edit-toolbar__title">{{ $t('taskEdit.editData') }}</span>
             <a-tooltip v-if="canShowSubmitBar" :title="$t('taskEdit.addManualRowHint')">
               <a-button
                 type="dashed"
                 size="small"
-                class="table-toolbar__add-row"
+                class="edit-toolbar__add-row"
                 @click="handleAddManualRecord"
               >
                 <template #icon><PlusOutlined /></template>
                 {{ $t('taskEdit.addManualRow') }}
               </a-button>
             </a-tooltip>
+            <span class="duplicate-scope-label">{{ $t('taskEdit.duplicateScopeLabel') }}</span>
+            <a-radio-group
+              v-model:value="duplicateScope"
+              size="small"
+              class="edit-toolbar__scope"
+              @change="handleDuplicateScopeChange"
+            >
+              <a-radio-button value="confirmed_only">{{ $t('taskEdit.duplicateScopeConfirmedOnly') }}</a-radio-button>
+              <a-radio-button value="confirmed_and_processing">{{ $t('taskEdit.duplicateScopeConfirmedAndProcessing') }}</a-radio-button>
+            </a-radio-group>
+            <div class="edit-toolbar__spacer" />
+            <div
+              v-if="reviewIssuesChipVisible"
+              class="edit-toolbar__issues"
+              role="group"
+              :aria-label="$t('taskEdit.reviewQuickView')"
+            >
+              <span class="edit-toolbar__issues-lead">
+                <FilterOutlined class="edit-toolbar__issues-icon" />
+                {{ $t('taskEdit.reviewQuickView') }}
+              </span>
+              <div class="edit-toolbar__issues-group">
+              <a-tooltip
+                v-if="submitValidationCount > 0 && !isConfirmedTask"
+                :title="activeStatFilter === 'submitBlocked'
+                  ? $t('taskEdit.reviewBlockedClearHint')
+                  : $t('taskEdit.reviewBlockedHint')"
+                :mouse-enter-delay="0"
+                :mouse-leave-delay="0"
+              >
+                <button
+                  type="button"
+                  class="edit-toolbar__issues-filter"
+                  :class="{ 'is-active': activeStatFilter === 'submitBlocked' }"
+                  :aria-pressed="activeStatFilter === 'submitBlocked'"
+                  @click="onStatFilterSelect('submitBlocked')"
+                >
+                  <span>{{ $t('taskEdit.reviewBlockedShort', { count: submitValidationCount }) }}</span>
+                  <CloseOutlined
+                    v-if="activeStatFilter === 'submitBlocked'"
+                    class="edit-toolbar__issues-clear"
+                    aria-hidden="true"
+                  />
+                </button>
+              </a-tooltip>
+              <a-tooltip
+                v-if="attentionAlertCount > 0"
+                :title="activeStatFilter === 'attention'
+                  ? $t('taskEdit.reviewAttentionClearHint')
+                  : $t('taskEdit.reviewAttentionHint')"
+                :mouse-enter-delay="0"
+                :mouse-leave-delay="0"
+              >
+                <button
+                  type="button"
+                  class="edit-toolbar__issues-filter"
+                  :class="{ 'is-active': activeStatFilter === 'attention' }"
+                  :aria-pressed="activeStatFilter === 'attention'"
+                  @click="onStatFilterSelect('attention')"
+                >
+                  <span>{{ $t('taskEdit.reviewAttentionShort', { count: attentionAlertCount }) }}</span>
+                  <CloseOutlined
+                    v-if="activeStatFilter === 'attention'"
+                    class="edit-toolbar__issues-clear"
+                    aria-hidden="true"
+                  />
+                </button>
+              </a-tooltip>
+              </div>
+            </div>
             <TableColumnSettings
               :columns="configurableColumns"
               :hidden-keys="hiddenKeys"
@@ -139,56 +222,6 @@
               @show-all="showAllColumns"
               @clear-freeze="clearFrozenKeys"
             />
-          </div>
-          <div class="duplicate-scope-bar">
-            <span class="duplicate-scope-label">{{ $t('taskEdit.duplicateScopeLabel') }}</span>
-            <a-radio-group
-              v-model:value="duplicateScope"
-              size="small"
-              @change="handleDuplicateScopeChange"
-            >
-              <a-radio-button value="confirmed_only">{{ $t('taskEdit.duplicateScopeConfirmedOnly') }}</a-radio-button>
-              <a-radio-button value="confirmed_and_processing">{{ $t('taskEdit.duplicateScopeConfirmedAndProcessing') }}</a-radio-button>
-            </a-radio-group>
-          </div>
-          <a-alert
-            v-if="submitValidationCount > 0 && !isConfirmedTask"
-            type="warning"
-            show-icon
-            class="required-validation-banner"
-          >
-            <template #message>
-              <span>{{ $t('taskEdit.submitValidationBanner', { count: submitValidationCount }) }}</span>
-              <a-button type="link" size="small" class="required-validation-detail-btn" @click="showRequiredValidationDetail">
-                {{ $t('taskEdit.requiredValidationViewDetail') }}
-              </a-button>
-            </template>
-          </a-alert>
-          <div v-if="anomalyAlertCount > 0" class="anomaly-hint">
-            <div class="anomaly-summary">
-              <ExclamationCircleOutlined class="anomaly-icon" />
-              <span class="anomaly-text">{{ $t('home.anomalyAlert', { count: anomalyAlertCount }) }}</span>
-              <a-button type="link" size="small" @click="toggleAnomalyDetail" class="anomaly-toggle">
-                {{ showAnomalyDetail ? $t('home.collapse') : $t('home.expand') }}
-              </a-button>
-            </div>
-            <div v-if="showAnomalyDetail" class="anomaly-detail-list">
-              <div v-for="(alert, idx) in anomalyAlertsDetail" :key="idx" class="anomaly-item">
-                <span class="anomaly-name">{{ alert.name }}</span>
-                <div class="anomaly-reasons">
-                  <TruncatedTag
-                    v-for="group in alert.groups"
-                    :key="group.category"
-                    :text="group.summary"
-                    :color="getAnomalyCategoryColor(group.category)"
-                    size="small"
-                  />
-                </div>
-              </div>
-              <div v-if="anomalyAlertsOverflow > 0" class="anomaly-more-hint">
-                {{ $t('taskEdit.anomalyAlertMore', { count: anomalyAlertsOverflow }) }}
-              </div>
-            </div>
           </div>
 
           <a-table 
@@ -213,23 +246,13 @@
                 :column="column"
                 :title="formatHeaderTitle(column.title)"
                 :compact="isNarrowHeaderColumn(column)"
+                :micro="isMicroHeaderColumn(column)"
+                :hint="resolveHeaderHint(column)"
                 :resizable="isColumnResizable(column)"
                 @sort="onSorterToggle"
                 @resize-start="(event) => startColumnResize(column, event)"
               >
                 <template #extra>
-                  <a-tooltip
-                    v-if="column.key === 'Pays' && hasTaskWorkRegion"
-                    :title="$t('taskEdit.workRegionPaysColumnHint', { region: taskWorkRegionLabel })"
-                  >
-                    <QuestionCircleOutlined class="col-format-hint-icon" @click.stop />
-                  </a-tooltip>
-                  <a-tooltip
-                    v-else-if="column.formatHintTooltipKey"
-                    :title="t(column.formatHintTooltipKey)"
-                  >
-                    <QuestionCircleOutlined class="col-format-hint-icon" @click.stop />
-                  </a-tooltip>
                   <TableHeaderFilter
                     v-if="column.searchField"
                     :title="formatHeaderTitle(column.title)"
@@ -302,212 +325,17 @@
               </div>
             </template>
             <template #bodyCell="{ column, record, index }">
-              <template v-if="column.key === 'serialNo'">
-                <RowStrikeText :muted="isRowMuted(record)" cell-class="cell-text cell-serial">{{ globalRowSerial(index) }}</RowStrikeText>
-              </template>
               <template v-if="column.key === 'anomalyReasons'">
-                <template v-for="anomalyGroups in [getRecordAnomalyGroups(record)]" :key="`${record._rowKey}-anomaly`">
-                  <div v-if="anomalyGroups.length > 0" class="inline-anomaly-tags">
-                    <TruncatedTag
-                      v-for="group in anomalyGroups"
-                      :key="group.category"
-                      :text="group.summary"
-                      :color="getAnomalyCategoryColor(group.category)"
-                      size="small"
-                    />
-                  </div>
-                  <RowStrikeText v-else :muted="isRowMuted(record)" cell-class="cell-muted">-</RowStrikeText>
-                </template>
-              </template>
-              <template v-if="column.key === 'PAGE_NUM'">
-                <a-input
-                  v-if="isRecordEditable(record)"
-                  v-model:value="record.PAGE_NUM"
-                  size="small"
-                  :bordered="false"
-                  :class="fieldInputClass(record, 'PAGE_NUM')"
-                  :style="mutedStrikeStyle(record)"
-                />
-                <RowStrikeText v-else :muted="isRowMuted(record)" :cell-class="fieldTextClass(record, 'PAGE_NUM')">{{ displayFieldValue(record.PAGE_NUM || record.pageNum) }}</RowStrikeText>
-              </template>
-              <template v-if="column.key === 'EMPLOYEE_NO'">
-                <RowStrikeText :muted="isRowMuted(record)" :cell-class="fieldTextClass(record, 'EMPLOYEE_NO')">{{ displayRecordField(record, 'EMPLOYEE_NO') }}</RowStrikeText>
-              </template>
-              <template v-if="column.key === 'NO'">
-                <a-input v-if="isRecordEditable(record)" v-model:value="record.NO" size="small" :class="fieldInputClass(record, 'NO')" :style="mutedStrikeStyle(record)" :bordered="false" :placeholder="fieldUnreadablePlaceholder(record, 'NO')" @change="onReadableFieldChange(record, 'NO')" />
-                <RowStrikeText v-else :muted="isRowMuted(record)" :cell-class="fieldTextClass(record, 'NO')">{{ displayRecordField(record, 'NO') }}</RowStrikeText>
-              </template>
-              <template v-if="column.key === 'Pays'">
-                <a-tooltip :title="paysFieldLockedHint">
-                  <a-select
-                    :value="resolveRecordPaysSelectCode(record)"
-                    :options="paysCountrySelectOptions"
-                    size="small"
-                    disabled
-                    :bordered="false"
-                    class="pays-country-select"
-                    :class="fieldTextClass(record, 'Pays')"
-                    :style="mutedStrikeStyle(record)"
-                  />
-                </a-tooltip>
-              </template>
-              <template v-if="column.key === 'Entrepot'">
-                <a-input v-if="isRecordEditable(record)" v-model:value="record.Entrepot" size="small" :class="fieldInputClass(record, 'Entrepot')" :style="mutedStrikeStyle(record)" :bordered="false" :placeholder="fieldUnreadablePlaceholder(record, 'Entrepot')" @change="onReadableFieldChange(record, 'Entrepot')" />
-                <RowStrikeText v-else :muted="isRowMuted(record)" :cell-class="fieldTextClass(record, 'Entrepot')">{{ displayRecordField(record, 'Entrepot') }}</RowStrikeText>
-              </template>
-              <template v-if="column.key === 'NOM_PRENOM'">
-                <div class="name-cell">
-                  <a-input
-                    v-if="isRecordEditable(record)"
-                    v-model:value="record.NOM_PRENOM"
-                    size="small"
-                    :class="fieldInputClass(record, 'NOM_PRENOM')"
-                    :style="mutedStrikeStyle(record)"
-                    :bordered="false"
-                    :placeholder="fieldUnreadablePlaceholder(record, 'NOM_PRENOM')"
-                    @change="onReadableFieldChange(record, 'NOM_PRENOM')"
-                  />
-                  <RowStrikeText v-else :muted="isRowMuted(record)" :cell-class="fieldTextClass(record, 'NOM_PRENOM')">{{ displayRecordField(record, 'NOM_PRENOM') }}</RowStrikeText>
-                  <div v-if="getDuplicateMeta(record)" class="duplicate-tools">
-                    <a-tag color="gold" size="small">{{ $t('taskEdit.duplicateTag') }}</a-tag>
-                    <a-button type="link" size="small" class="duplicate-link" @click="toggleDuplicateExpand(record)">
-                      {{ expandedDuplicateRowKeys.includes(record._rowKey) ? $t('taskEdit.collapseDetail') : $t('taskEdit.expandDetail') }}
-                    </a-button>
-                    <a-button
-                      v-if="!record._duplicateConfirmedUnique"
-                      type="link"
-                      size="small"
-                      class="duplicate-link"
-                      @click="confirmNotDuplicate(record)"
-                    >
-                      {{ $t('taskEdit.notDuplicate') }}
-                    </a-button>
-                  </div>
-                </div>
-              </template>
-              <template v-if="column.key === 'AGENCE_INTERIMAIRE'">
-                <a-input v-if="isRecordEditable(record)" v-model:value="record.AGENCE_INTERIMAIRE" size="small" :class="fieldInputClass(record, 'AGENCE_INTERIMAIRE')" :style="mutedStrikeStyle(record)" :bordered="false" :placeholder="fieldUnreadablePlaceholder(record, 'AGENCE_INTERIMAIRE')" @change="onReadableFieldChange(record, 'AGENCE_INTERIMAIRE')" />
-                <RowStrikeText v-else :muted="isRowMuted(record)" :cell-class="fieldTextClass(record, 'AGENCE_INTERIMAIRE')">{{ displayRecordField(record, 'AGENCE_INTERIMAIRE') }}</RowStrikeText>
-              </template>
-              <template v-if="column.key === 'HORAIRES_DU_TRAVAIL'">
-                <div class="format-field-cell" :id="fieldCellDomId(record, 'HORAIRES_DU_TRAVAIL')">
-                  <a-tooltip v-if="isRecordEditable(record)" :title="fieldFormatTooltip(record,'HORAIRES_DU_TRAVAIL')">
-                    <a-input
-                      v-model:value="record.HORAIRES_DU_TRAVAIL"
-                      size="small"
-                      :class="fieldInputClass(record, 'HORAIRES_DU_TRAVAIL')"
-                      :style="mutedStrikeStyle(record)"
-                      :bordered="false"
-                      :placeholder="fieldCellPlaceholder(record, 'HORAIRES_DU_TRAVAIL')"
-                      @change="onReadableFieldChange(record, 'HORAIRES_DU_TRAVAIL')"
-                      @blur="() => onFormatFieldBlur(record, 'HORAIRES_DU_TRAVAIL')"
-                    />
-                  </a-tooltip>
-                  <RowStrikeText v-else :muted="isRowMuted(record)" :cell-class="fieldTextClass(record, 'HORAIRES_DU_TRAVAIL')">{{ displayRecordField(record, 'HORAIRES_DU_TRAVAIL') }}</RowStrikeText>
-                  <div v-if="isFormatFieldInvalid(record, 'HORAIRES_DU_TRAVAIL')" class="format-hint-below">{{ fieldFormatTooltip(record,'HORAIRES_DU_TRAVAIL') }}</div>
-                </div>
-              </template>
-              <template v-if="column.key === 'Date'">
-                <div class="format-field-cell" :id="fieldCellDomId(record, 'Date')">
-                  <a-tooltip v-if="isRecordEditable(record)" :title="fieldFormatTooltip(record,'Date')">
-                    <a-date-picker
-                      v-model:value="record.Date"
-                      size="small"
-                      class="task-edit-date-picker"
-                      :class="fieldInputClass(record, 'Date')"
-                      :style="mutedStrikeStyle(record)"
-                      format="YYYY-MM-DD"
-                      value-format="YYYY-MM-DD"
-                      :bordered="false"
-                      :allow-clear="true"
-                      :placeholder="fieldCellPlaceholder(record, 'Date') || fieldFormatTooltip(record,'Date')"
-                      @change="onReadableFieldChange(record, 'Date')"
-                    />
-                  </a-tooltip>
-                  <RowStrikeText v-else :muted="isRowMuted(record)" :cell-class="fieldTextClass(record, 'Date')">{{ displayRecordField(record, 'Date') }}</RowStrikeText>
-                  <div v-if="isFormatFieldInvalid(record, 'Date')" class="format-hint-below">{{ fieldFormatTooltip(record,'Date') }}</div>
-                </div>
-              </template>
-              <template v-if="column.key === 'ARRIVEE'">
-                <div class="format-field-cell" :id="fieldCellDomId(record, 'ARRIVEE')">
-                  <a-tooltip v-if="isRecordEditable(record)" :title="fieldFormatTooltip(record,'ARRIVEE')">
-                    <a-input
-                      v-model:value="record.ARRIVEE"
-                      size="small"
-                      :class="fieldInputClass(record, 'ARRIVEE')"
-                      :style="mutedStrikeStyle(record)"
-                      :bordered="false"
-                      :placeholder="fieldCellPlaceholder(record, 'ARRIVEE')"
-                      @change="onReadableFieldChange(record, 'ARRIVEE')"
-                      @input="() => onTimeFieldInput(record, 'ARRIVEE')"
-                      @blur="() => onFormatFieldBlur(record, 'ARRIVEE')"
-                    />
-                  </a-tooltip>
-                  <RowStrikeText v-else :muted="isRowMuted(record)" :cell-class="fieldTextClass(record, 'ARRIVEE')">{{ displayRecordField(record, 'ARRIVEE') }}</RowStrikeText>
-                  <div v-if="showSameTimeHint(record, 'ARRIVEE')" class="format-hint-below format-same-time-hint">
-                    {{ sameTimeHintText(record) }}
-                  </div>
-                  <div v-else-if="isFormatFieldInvalid(record, 'ARRIVEE')" class="format-hint-below">{{ fieldFormatTooltip(record,'ARRIVEE') }}</div>
-                </div>
-              </template>
-              <template v-if="column.key === 'DEPAR'">
-                <div class="format-field-cell" :id="fieldCellDomId(record, 'DEPAR')">
-                  <a-tooltip v-if="isRecordEditable(record)" :title="fieldFormatTooltip(record,'DEPAR')">
-                    <a-input
-                      v-model:value="record.DEPAR"
-                      size="small"
-                      :class="fieldInputClass(record, 'DEPAR')"
-                      :style="mutedStrikeStyle(record)"
-                      :bordered="false"
-                      :placeholder="fieldCellPlaceholder(record, 'DEPAR')"
-                      @change="onReadableFieldChange(record, 'DEPAR')"
-                      @input="() => onTimeFieldInput(record, 'DEPAR')"
-                      @blur="() => onFormatFieldBlur(record, 'DEPAR')"
-                    />
-                  </a-tooltip>
-                  <RowStrikeText v-else :muted="isRowMuted(record)" :cell-class="fieldTextClass(record, 'DEPAR')">{{ displayRecordField(record, 'DEPAR') }}</RowStrikeText>
-                  <div v-if="showSameTimeHint(record, 'DEPAR')" class="format-hint-below format-same-time-hint">
-                    {{ sameTimeHintText(record) }}
-                  </div>
-                  <div v-else-if="isFormatFieldInvalid(record, 'DEPAR')" class="format-hint-below">{{ fieldFormatTooltip(record,'DEPAR') }}</div>
-                </div>
-              </template>
-              <template v-if="column.key === 'PAUSE'">
-                <a-input-number v-if="isRecordEditable(record)" v-model:value="record.PAUSE" size="small" :class="fieldInputClass(record, 'PAUSE')" :style="mutedStrikeStyle(record)" :bordered="false" :controls="false" :min="0" :precision="0" style="width: 100%" @blur="() => normalizeRecordPauseOnBlur(record)" />
-                <RowStrikeText v-else :muted="isRowMuted(record)" :cell-class="fieldTextClass(record, 'PAUSE')">{{ formatPauseDisplay(record.PAUSE) }}</RowStrikeText>
-              </template>
-              <template v-if="column.key === 'SIGNATURE'">
-                <a-select
-                  v-if="isRecordEditable(record)"
-                  v-model:value="record.SIGNATURE"
-                  size="small"
-                  :bordered="false"
-                  class="signature-mark-select"
-                  :placeholder="$t('taskEdit.signature')"
-                  allow-clear
-                >
-                  <a-select-option value="未签字">{{ $t('recognition.marks.unsigned') }}</a-select-option>
-                  <a-select-option value="已签字">{{ $t('recognition.marks.signed') }}</a-select-option>
-                </a-select>
-                <a-tag
-                  v-else
-                  :color="getSignatureMarkColor(getDisplaySignature(record.SIGNATURE, record))"
-                  class="signature-mark-tag"
-                  :class="rowMutedStrikeClass(record)"
-                  :style="mutedStrikeStyle(record)"
-                >
-                  {{ translateSignatureMark(getDisplaySignature(record.SIGNATURE, record), t) }}
-                </a-tag>
-              </template>
-              <template v-if="column.key === 'Observations'">
-                <a-input v-if="isRecordEditable(record)" v-model:value="record.Observations" size="small" :class="fieldInputClass(record, 'Observations')" :style="mutedStrikeStyle(record)" :bordered="false" :placeholder="fieldUnreadablePlaceholder(record, 'Observations')" @change="onReadableFieldChange(record, 'Observations')" />
-                <RowStrikeText v-else :muted="isRowMuted(record)" :cell-class="fieldTextClass(record, 'Observations')">{{ displayRecordField(record, 'Observations') }}</RowStrikeText>
-              </template>
-              <template v-if="column.key === 'SmartMark'">
-                <div class="mark-tags-cell">
-                  <template v-for="tag in getRecordMarkTags(record)" :key="tag.key">
+                <div v-if="hasAnomalyColumnContent(record)" class="recognition-note-list">
+                  <div
+                    v-for="(item, noteIdx) in getRecognitionNoteItems(record)"
+                    :key="item.key"
+                    class="recognition-note-list__item"
+                    :class="`recognition-note-list__item--${item.tone || 'default'}`"
+                  >
+                    <span class="recognition-note-list__index" aria-hidden="true">{{ noteIdx + 1 }}</span>
                     <a-popover
-                      v-if="tag.showCalibrationHistory"
+                      v-if="item.showCalibrationHistory"
                       placement="bottomLeft"
                       trigger="click"
                       overlay-class-name="calibration-history-popover"
@@ -536,22 +364,309 @@
                           </div>
                         </div>
                       </template>
-                      <a-tag :color="tag.color" size="small" class="mark-tag calibration-tag">
-                        {{ tag.label }}
-                      </a-tag>
+                      <button type="button" class="recognition-note-list__text recognition-note-list__text--link">
+                        {{ item.text }}
+                      </button>
                     </a-popover>
-                    <a-tag v-else :color="tag.color" size="small" class="mark-tag">{{ tag.label }}</a-tag>
-                  </template>
+                    <span v-else class="recognition-note-list__text">{{ item.text }}</span>
+                  </div>
+                </div>
+                <RowStrikeText v-else :muted="isRowMuted(record)" cell-class="cell-muted">-</RowStrikeText>
+              </template>
+              <template v-else-if="column.key === 'PAGE_NUM'">
+                <div class="page-num-with-line">
+                  <span class="record-line-no-tag">{{ recordLineNo(record) }}</span>
+                  <a-input
+                    v-if="isFieldEditable(record, 'PAGE_NUM')"
+                    v-model:value="record.PAGE_NUM"
+                    size="small"
+                    :bordered="false"
+                    :class="fieldInputClass(record, 'PAGE_NUM')"
+                    :style="mutedStrikeStyle(record)"
+                  />
+                  <RowStrikeText v-else :muted="isRowMuted(record)" :cell-class="fieldTextClass(record, 'PAGE_NUM')">{{ displayFieldValue(record.PAGE_NUM || record.pageNum) }}</RowStrikeText>
                 </div>
               </template>
-              <template v-if="column.key === 'workHours'">
+              <template v-else-if="column.key === 'EMPLOYEE_NO'">
+                <RowStrikeText :muted="isRowMuted(record)" :cell-class="fieldTextClass(record, 'EMPLOYEE_NO')">{{ displayRecordField(record, 'EMPLOYEE_NO') }}</RowStrikeText>
+              </template>
+              <template v-else-if="column.key === 'NO'">
+                <a-input v-if="isFieldEditable(record, 'NO')" v-model:value="record.NO" size="small" :class="fieldInputClass(record, 'NO')" :style="mutedStrikeStyle(record)" :bordered="false" :placeholder="fieldUnreadablePlaceholder(record, 'NO')" @change="onReadableFieldChange(record, 'NO')" />
+                <RowStrikeText v-else :muted="isRowMuted(record)" :cell-class="fieldTextClass(record, 'NO')">{{ displayRecordField(record, 'NO') }}</RowStrikeText>
+              </template>
+              <template v-else-if="column.key === 'Pays'">
+                <a-tooltip :title="paysFieldLockedHint">
+                  <a-select
+                    :value="resolveRecordPaysSelectCode(record)"
+                    :options="paysCountrySelectOptions"
+                    size="small"
+                    disabled
+                    :bordered="false"
+                    class="pays-country-select"
+                    :class="fieldTextClass(record, 'Pays')"
+                    :style="mutedStrikeStyle(record)"
+                  />
+                </a-tooltip>
+              </template>
+              <template v-else-if="column.key === 'Entrepot'">
+                <div class="field-with-change-hint">
+                  <a-input v-if="isFieldEditable(record, 'Entrepot')" v-model:value="record.Entrepot" size="small" :class="fieldInputClass(record, 'Entrepot')" :style="mutedStrikeStyle(record)" :bordered="false" :placeholder="fieldUnreadablePlaceholder(record, 'Entrepot')" @focus="onCalibratableFieldFocusHandler(record)" @change="onReadableFieldChange(record, 'Entrepot')" />
+                  <RowStrikeText v-else :muted="isRowMuted(record)" :cell-class="fieldTextClass(record, 'Entrepot')">{{ displayRecordField(record, 'Entrepot') }}</RowStrikeText>
+                  <FieldChangeHint :hint="getFieldChangeHint(record, 'Entrepot')" />
+                </div>
+              </template>
+              <template v-else-if="column.key === 'NOM_PRENOM'">
+                <div class="name-cell field-with-change-hint">
+                  <a-input
+                    v-if="isFieldEditable(record, 'NOM_PRENOM')"
+                    v-model:value="record.NOM_PRENOM"
+                    size="small"
+                    :class="fieldInputClass(record, 'NOM_PRENOM')"
+                    :style="mutedStrikeStyle(record)"
+                    :bordered="false"
+                    :placeholder="fieldUnreadablePlaceholder(record, 'NOM_PRENOM')"
+                    @focus="onCalibratableFieldFocusHandler(record)"
+                    @change="onReadableFieldChange(record, 'NOM_PRENOM')"
+                  />
+                  <RowStrikeText v-else :muted="isRowMuted(record)" :cell-class="fieldTextClass(record, 'NOM_PRENOM')">{{ displayRecordField(record, 'NOM_PRENOM') }}</RowStrikeText>
+                  <FieldChangeHint :hint="getFieldChangeHint(record, 'NOM_PRENOM')" />
+                  <div v-if="getDuplicateMeta(record)" class="duplicate-tools">
+                    <a-tag color="gold" size="small">{{ $t('taskEdit.duplicateTag') }}</a-tag>
+                    <a-button type="link" size="small" class="duplicate-link" @click="toggleDuplicateExpand(record)">
+                      {{ expandedDuplicateRowKeys.includes(record._rowKey) ? $t('taskEdit.collapseDetail') : $t('taskEdit.expandDetail') }}
+                    </a-button>
+                    <a-button
+                      v-if="!record._duplicateConfirmedUnique"
+                      type="link"
+                      size="small"
+                      class="duplicate-link"
+                      @click="confirmNotDuplicate(record)"
+                    >
+                      {{ $t('taskEdit.notDuplicate') }}
+                    </a-button>
+                  </div>
+                </div>
+              </template>
+              <template v-else-if="column.key === 'AGENCE_INTERIMAIRE'">
+                <div class="field-with-change-hint">
+                  <a-input v-if="isFieldEditable(record, 'AGENCE_INTERIMAIRE')" v-model:value="record.AGENCE_INTERIMAIRE" size="small" :class="fieldInputClass(record, 'AGENCE_INTERIMAIRE')" :style="mutedStrikeStyle(record)" :bordered="false" :placeholder="fieldUnreadablePlaceholder(record, 'AGENCE_INTERIMAIRE')" @focus="onCalibratableFieldFocusHandler(record)" @change="onReadableFieldChange(record, 'AGENCE_INTERIMAIRE')" />
+                  <RowStrikeText v-else :muted="isRowMuted(record)" :cell-class="fieldTextClass(record, 'AGENCE_INTERIMAIRE')">{{ displayRecordField(record, 'AGENCE_INTERIMAIRE') }}</RowStrikeText>
+                  <FieldChangeHint :hint="getFieldChangeHint(record, 'AGENCE_INTERIMAIRE')" />
+                </div>
+              </template>
+              <template v-else-if="column.key === 'HORAIRES_DU_TRAVAIL'">
+                <div class="format-field-cell" :id="fieldCellDomId(record, 'HORAIRES_DU_TRAVAIL')">
+                  <a-tooltip v-if="isFieldEditable(record, 'HORAIRES_DU_TRAVAIL')" :title="fieldFormatTooltip(record,'HORAIRES_DU_TRAVAIL')">
+                    <a-input
+                      v-model:value="record.HORAIRES_DU_TRAVAIL"
+                      size="small"
+                      :class="fieldInputClass(record, 'HORAIRES_DU_TRAVAIL')"
+                      :style="mutedStrikeStyle(record)"
+                      :bordered="false"
+                      :placeholder="fieldCellPlaceholder(record, 'HORAIRES_DU_TRAVAIL')"
+                      @focus="onCalibratableFieldFocusHandler(record)"
+                      @change="onReadableFieldChange(record, 'HORAIRES_DU_TRAVAIL')"
+                      @pressEnter="(e) => onFormatFieldPressEnter(record, 'HORAIRES_DU_TRAVAIL', e)"
+                      @blur="() => onFormatFieldBlur(record, 'HORAIRES_DU_TRAVAIL')"
+                    />
+                  </a-tooltip>
+                  <RowStrikeText v-else :muted="isRowMuted(record)" :cell-class="fieldTextClass(record, 'HORAIRES_DU_TRAVAIL')">{{ displayRecordField(record, 'HORAIRES_DU_TRAVAIL') }}</RowStrikeText>
+                  <FieldChangeHint :hint="getFieldChangeHint(record, 'HORAIRES_DU_TRAVAIL')" />
+                  <div v-if="showFormatHintBelow(record, 'HORAIRES_DU_TRAVAIL')" class="format-hint-below">{{ fieldFormatTooltip(record,'HORAIRES_DU_TRAVAIL') }}</div>
+                </div>
+              </template>
+              <template v-else-if="column.key === 'Date'">
+                <div class="format-field-cell" :id="fieldCellDomId(record, 'Date')">
+                  <a-tooltip v-if="isFieldEditable(record, 'Date')" :title="fieldFormatTooltip(record,'Date')">
+                    <a-date-picker
+                      :value="datePickerValue(record.Date)"
+                      size="small"
+                      class="task-edit-date-picker"
+                      :class="fieldInputClass(record, 'Date')"
+                      :style="mutedStrikeStyle(record)"
+                      format="YYYY-MM-DD"
+                      value-format="YYYY-MM-DD"
+                      :bordered="false"
+                      :allow-clear="true"
+                      :placeholder="dateFieldPlaceholder(record)"
+                      @focus="onCalibratableFieldFocusHandler(record)"
+                      @update:value="(v) => onDatePickerUpdate(record, v)"
+                    />
+                  </a-tooltip>
+                  <RowStrikeText v-else :muted="isRowMuted(record)" :cell-class="fieldTextClass(record, 'Date')">{{ displayRecordField(record, 'Date') }}</RowStrikeText>
+                  <FieldChangeHint :hint="getFieldChangeHint(record, 'Date')" />
+                  <div v-if="showFormatHintBelow(record, 'Date')" class="format-hint-below">{{ fieldFormatTooltip(record,'Date') }}</div>
+                </div>
+              </template>
+              <template v-else-if="column.key === 'ARRIVEE'">
+                <div class="format-field-cell" :id="fieldCellDomId(record, 'ARRIVEE')">
+                  <a-tooltip v-if="isFieldEditable(record, 'ARRIVEE')" :title="fieldFormatTooltip(record,'ARRIVEE')">
+                    <ClockTimeField
+                      :value="record.ARRIVEE"
+                      size="small"
+                      embedded
+                      :bordered="false"
+                      :input-class="fieldInputClass(record, 'ARRIVEE')"
+                      :input-style="mutedStrikeStyle(record)"
+                      :placeholder="fieldCellPlaceholder(record, 'ARRIVEE')"
+                      @focus="onCalibratableFieldFocusHandler(record)"
+                      @update:value="(v) => onClockTimeUpdate(record, 'ARRIVEE', v)"
+                      @input="() => onTimeFieldInput(record, 'ARRIVEE')"
+                      @commit="() => onFormatFieldBlur(record, 'ARRIVEE')"
+                    />
+                  </a-tooltip>
+                  <RowStrikeText v-else :muted="isRowMuted(record)" :cell-class="fieldTextClass(record, 'ARRIVEE')">{{ displayRecordField(record, 'ARRIVEE') }}</RowStrikeText>
+                  <FieldChangeHint
+                    :hint="getFieldChangeHint(record, 'ARRIVEE')"
+                    show-restore
+                    @restore="restoreFieldOriginal(record, 'ARRIVEE')"
+                  />
+                  <div v-if="showSameTimeHint(record, 'ARRIVEE')" class="format-hint-below format-same-time-hint">
+                    {{ sameTimeHintText(record) }}
+                  </div>
+                  <div v-else-if="showFormatHintBelow(record, 'ARRIVEE')" class="format-hint-below">{{ fieldFormatTooltip(record,'ARRIVEE') }}</div>
+                </div>
+              </template>
+              <template v-else-if="column.key === 'DEPAR'">
+                <div class="format-field-cell" :id="fieldCellDomId(record, 'DEPAR')">
+                  <a-tooltip v-if="isFieldEditable(record, 'DEPAR')" :title="fieldFormatTooltip(record,'DEPAR')">
+                    <ClockTimeField
+                      :value="record.DEPAR"
+                      size="small"
+                      embedded
+                      :bordered="false"
+                      :input-class="fieldInputClass(record, 'DEPAR')"
+                      :input-style="mutedStrikeStyle(record)"
+                      :placeholder="fieldCellPlaceholder(record, 'DEPAR')"
+                      @focus="onCalibratableFieldFocusHandler(record)"
+                      @update:value="(v) => onClockTimeUpdate(record, 'DEPAR', v)"
+                      @input="() => onTimeFieldInput(record, 'DEPAR')"
+                      @commit="() => onFormatFieldBlur(record, 'DEPAR')"
+                    />
+                  </a-tooltip>
+                  <RowStrikeText v-else :muted="isRowMuted(record)" :cell-class="fieldTextClass(record, 'DEPAR')">{{ displayRecordField(record, 'DEPAR') }}</RowStrikeText>
+                  <FieldChangeHint
+                    :hint="getFieldChangeHint(record, 'DEPAR')"
+                    show-restore
+                    @restore="restoreFieldOriginal(record, 'DEPAR')"
+                  />
+                  <div v-if="showSameTimeHint(record, 'DEPAR')" class="format-hint-below format-same-time-hint">
+                    {{ sameTimeHintText(record) }}
+                  </div>
+                  <div v-else-if="showFormatHintBelow(record, 'DEPAR')" class="format-hint-below">{{ fieldFormatTooltip(record,'DEPAR') }}</div>
+                </div>
+              </template>
+              <template v-else-if="column.key === 'PAUSE'">
+                <div class="field-with-change-hint">
+                  <a-input-number v-if="isFieldEditable(record, 'PAUSE')" v-model:value="record.PAUSE" size="small" :class="fieldInputClass(record, 'PAUSE')" :style="mutedStrikeStyle(record)" :bordered="false" :controls="false" :min="0" :precision="0" style="width: 100%" @focus="onCalibratableFieldFocusHandler(record)" @blur="() => normalizeRecordPauseOnBlur(record)" />
+                  <RowStrikeText v-else :muted="isRowMuted(record)" :cell-class="fieldTextClass(record, 'PAUSE')">{{ formatPauseDisplay(record.PAUSE) }}</RowStrikeText>
+                  <FieldChangeHint :hint="getFieldChangeHint(record, 'PAUSE')" />
+                </div>
+              </template>
+              <template v-else-if="column.key === 'SIGNATURE'">
+                <a-select
+                  v-if="isFieldEditable(record, 'SIGNATURE')"
+                  v-model:value="record.SIGNATURE"
+                  size="small"
+                  :bordered="false"
+                  class="signature-mark-select"
+                  popup-class-name="task-edit-select-dropdown-sm"
+                  :placeholder="$t('taskEdit.signature')"
+                  allow-clear
+                >
+                  <a-select-option value="未签字">{{ $t('recognition.marks.unsigned') }}</a-select-option>
+                  <a-select-option value="已签字">{{ $t('recognition.marks.signed') }}</a-select-option>
+                </a-select>
+                <a-tag
+                  v-else
+                  :color="getSignatureMarkColor(getDisplaySignature(record.SIGNATURE, record))"
+                  class="signature-mark-tag"
+                  :class="rowMutedStrikeClass(record)"
+                  :style="mutedStrikeStyle(record)"
+                >
+                  {{ translateSignatureMark(getDisplaySignature(record.SIGNATURE, record), t) }}
+                </a-tag>
+              </template>
+              <template v-else-if="column.key === 'Observations'">
+                <a-input v-if="isFieldEditable(record, 'Observations')" v-model:value="record.Observations" size="small" :class="fieldInputClass(record, 'Observations')" :style="mutedStrikeStyle(record)" :bordered="false" :placeholder="fieldUnreadablePlaceholder(record, 'Observations')" @change="onReadableFieldChange(record, 'Observations')" />
+                <RowStrikeText v-else :muted="isRowMuted(record)" :cell-class="fieldTextClass(record, 'Observations')">{{ displayRecordField(record, 'Observations') }}</RowStrikeText>
+              </template>
+              <template v-else-if="column.key === 'ExceptionType'">
+                <div :id="fieldCellDomId(record, 'ExceptionType')" class="exception-type-cell">
+                  <a-tooltip
+                    v-if="isRecordEditable(record) && !isExceptionTypeExempt(record, isAbsentRow)"
+                    :title="exceptionTypeDisabledHint(record)"
+                    placement="left"
+                    :mouse-enter-delay="0"
+                    :mouse-leave-delay="0"
+                    :open="isExceptionTypeSelectDisabled(record, exceptionTypeDeps) ? undefined : false"
+                  >
+                    <div
+                      class="exception-type-stack"
+                      :class="{
+                        'is-collapsed': isExceptionTypePickerCollapsed(record),
+                        'is-pending': isExceptionTypeMissingForSubmit(record, exceptionTypeDeps),
+                      }"
+                      role="radiogroup"
+                      :aria-label="$t('taskEdit.mark')"
+                      :aria-expanded="isExceptionTypePickerCollapsed(record) ? 'false' : 'true'"
+                      :aria-disabled="isExceptionTypeSelectDisabled(record, exceptionTypeDeps) ? 'true' : 'false'"
+                    >
+                      <a-tooltip
+                        v-for="opt in visibleExceptionTypeOptions(record)"
+                        :key="opt.value"
+                        :title="opt.title"
+                        placement="left"
+                        :mouse-enter-delay="0"
+                        :mouse-leave-delay="0"
+                        :open="isExceptionTypeSelectDisabled(record, exceptionTypeDeps) ? false : undefined"
+                      >
+                        <button
+                          type="button"
+                          role="radio"
+                          class="exception-type-stack__opt"
+                          :class="[
+                            `exception-type-stack__opt--${opt.value}`,
+                            {
+                              'is-active': normalizeExceptionType(record.ExceptionType) === opt.value,
+                              'is-disabled': isExceptionTypeSelectDisabled(record, exceptionTypeDeps),
+                            },
+                          ]"
+                          :aria-checked="normalizeExceptionType(record.ExceptionType) === opt.value"
+                          :aria-label="opt.title"
+                          :disabled="isExceptionTypeSelectDisabled(record, exceptionTypeDeps)"
+                          @click="handleExceptionTypeSelect(record, opt.value)"
+                        >
+                          <span
+                            v-if="normalizeExceptionType(record.ExceptionType) === opt.value"
+                            class="exception-type-stack__check"
+                            aria-hidden="true"
+                          >✓</span>
+                          <span class="exception-type-stack__label">{{ opt.label }}</span>
+                        </button>
+                      </a-tooltip>
+                    </div>
+                  </a-tooltip>
+                  <RowStrikeText v-else :muted="isRowMuted(record)" cell-class="cell-text exception-type-readonly">
+                    {{ exceptionTypeDisplayLabel(record) }}
+                  </RowStrikeText>
+                </div>
+              </template>
+              <template v-else-if="column.key === 'workHours'">
                 <RowStrikeText :muted="isRowMuted(record)" cell-class="work-hours">{{ calculateWorkHours(record) }}</RowStrikeText>
               </template>
-              <template v-if="column.key === 'action'">
-                <div class="table-action-cell table-action-cell--icons-mixed">
-                  <span class="table-action-cell__slot">
+              <template v-else-if="column.key === 'action'">
+                <div
+                  class="table-action-cell"
+                  :class="(isConfirmedTask && canCalibrateRecord && !record.isDeleted)
+                    ? 'table-action-cell--icons-mixed'
+                    : 'table-action-cell--icons table-action-cell--icons-1'"
+                >
+                  <span
+                    v-if="isConfirmedTask && canCalibrateRecord && !record.isDeleted"
+                    class="table-action-cell__slot"
+                  >
                     <a-button
-                      v-if="isConfirmedTask && canCalibrateRecord && !record.isDeleted"
                       type="link"
                       size="small"
                       @click="openCalibration(record)"
@@ -563,6 +678,8 @@
                     <a-tooltip
                       v-if="!(isConfirmedTask && canCalibrateRecord && !record.isDeleted)"
                       :title="(record?.isDeleted || isAbsentRow(record)) ? $t('taskEdit.restore') : $t('common.delete')"
+                      :mouse-enter-delay="0"
+                      :mouse-leave-delay="0"
                     >
                       <a-button
                         v-if="record?.isDeleted || isAbsentRow(record)"
@@ -600,8 +717,7 @@
               {{ $t('taskEdit.scrollLoadMore', { loaded: visibleTableRecords.length, total: tableRecords.length }) }}
             </span>
           </div>
-        </a-tab-pane>
-      </a-tabs>
+        </div>
     </a-card>
 
     <Teleport to="body">
@@ -659,14 +775,16 @@ import { ref, computed, shallowRef, onMounted, onUnmounted, watch, h, nextTick }
 import { useRoute, useRouter } from 'vue-router'
 import { useI18n } from 'vue-i18n'
 import { message, Modal as aModal } from 'ant-design-vue'
-import { DeleteOutlined, UndoOutlined, ExclamationCircleOutlined, FileImageOutlined, EyeOutlined, UploadOutlined, DownloadOutlined, QuestionCircleOutlined, LoadingOutlined, PlusOutlined } from '@ant-design/icons-vue'
-import { getTaskDetail, getTaskProgress, confirmTask, deleteTask, retryFeishuSync, calibrateTaskRecord } from '@/api/task'
+import { DeleteOutlined, UndoOutlined, CloseOutlined, FileImageOutlined, UploadOutlined, DownloadOutlined, LoadingOutlined, PlusOutlined, InfoCircleOutlined, FilterOutlined } from '@ant-design/icons-vue'
+import { getTaskDetail, getTaskProgress, confirmTask, saveTaskDraft, deleteTask, retryFeishuSync, calibrateTaskRecord } from '@/api/task'
 import { useAuthStore } from '@/stores/auth'
 import { fileNameFromImageUrl } from '@/utils/imageUrl'
 import StatOverview from '@/components/StatOverview.vue'
 import PageShell from '@/components/PageShell.vue'
 import TruncatedTag from '@/components/TruncatedTag.vue'
 import RowStrikeText from '@/components/RowStrikeText.vue'
+import ClockTimeField from '@/components/ClockTimeField.vue'
+import FieldChangeHint from '@/components/FieldChangeHint.vue'
 import ImagePreviewModal from '@/components/ImagePreviewModal.vue'
 import ImageCompareDockShell from '@/components/ImageCompareDockShell.vue'
 import { useTaskImagePreview } from '@/composables/useTaskImagePreview'
@@ -707,6 +825,25 @@ import {
   refreshNightShiftInSmartMark,
   getRawSmartMark,
 } from '@/utils/recognitionLabels'
+import {
+  EXCEPTION_TYPE,
+  EXCEPTION_TYPE_VALUES,
+  EXCEPTION_TYPE_I18N_KEYS,
+  EXCEPTION_TYPE_SHORT_I18N_KEYS,
+  SNAPSHOT_FIELD_KEYS,
+  CALIBRATION_HIGHLIGHT_FIELDS,
+  ensureExceptionType,
+  isExceptionTypeSelectDisabled,
+  isExceptionTypeExempt,
+  canEditRequiredFields,
+  onExceptionTypeChange,
+  onCalibratableFieldFocus,
+  onCalibratableFieldChange,
+  normalizeExceptionType,
+  ensureAiBaseline,
+  isExceptionTypeMissingForSubmit,
+} from '@/utils/exceptionType'
+import { hasRequiredMissing } from '@/utils/requiredRecordFields'
 import FieldFilterControl from '@/components/FieldFilterControl.vue'
 import TableColumnSettings from '@/components/TableColumnSettings.vue'
 import { useColumnFreeze } from '@/composables/useColumnFreeze'
@@ -742,18 +879,17 @@ import {
   normalizePersonName,
   normalizeLabelText,
 } from '@/utils/recognizedTextNormalizer'
-import { normalizeDate } from '@/utils/recognizedDateNormalizer'
+import { isValidCanonicalDate, normalizeDate } from '@/utils/recognizedDateNormalizer'
 import { loadNightShiftRules } from '@/utils/nightShiftRules'
-import { isNonTimeFieldLabel } from '@/utils/recognizedTimeNormalizer'
+import { isNonTimeFieldLabel, normalizeClockTime, normalizeShiftSchedule } from '@/utils/recognizedTimeNormalizer'
 import { createManualTaskRecord } from '@/utils/manualTaskRecord'
 
-const { t } = useI18n()
+const { t, locale } = useI18n()
 const route = useRoute()
 const router = useRouter()
 const authStore = useAuthStore()
 
 const taskId = computed(() => route.params.taskId)
-const activeTab = ref('edit')
 const TABLE_SCROLL_BATCH = 50
 const visibleRowCount = ref(TABLE_SCROLL_BATCH)
 const loadingMoreTableRows = ref(false)
@@ -807,17 +943,23 @@ const {
   getDisplaySmartMark,
   getSmartMarkDisplay,
   getRecordAnomalyReasons,
+  getRecognitionNoteItems,
   getRecordAnomalyGroups,
-  getRowClassName,
+  getRecordShiftVarianceSentence,
+  getFieldChangeHint,
+  hasAnomalyColumnContent,
+  getRowClassName: getBaseRowClassName,
   getMarkColor,
   getRowTypeLabel,
   getRowTypeDotClass,
   getAnomalyTagColor,
   getAnomalyCategoryColor,
   getAnomalyTagClass,
-  countAnomalyRecords,
-  buildAnomalyAlertsSlice,
-  clearRowCache,
+  countAttentionRecords,
+  recordMatchesStatFilter,
+  needsAttentionRecord,
+  clearRowCache: clearRowDisplayCache,
+  invalidateRowCache: invalidateRowDisplayCache,
 } = useTaskEditRecordDisplay(records, getDuplicateMeta, {
   isAbsentRow,
   hasManualCalibration,
@@ -829,7 +971,136 @@ const {
   ),
 })
 
+/** 与行展示缓存同生命周期：编辑单行时勿清空全表工时计算结果 */
+const workHoursMemo = new Map()
+const clearRowCache = () => {
+  clearRowDisplayCache()
+  workHoursMemo.clear()
+}
+const invalidateRowCache = (record) => {
+  invalidateRowDisplayCache(record)
+  const rowKey = record?._rowKey
+  if (rowKey) workHoursMemo.delete(rowKey)
+}
+
+const exceptionTypeDeps = {
+  hasRequiredMissing,
+  hasFormatInvalid: (record) => {
+    if (!record) return false
+    const keys = ['Date', 'HORAIRES_DU_TRAVAIL', 'ARRIVEE', 'DEPAR']
+    return keys.some((field) => isFormatFieldInvalid(record, field))
+  },
+  isAbsentRow,
+  hasRecognitionNotes: (record) => hasAnomalyColumnContent(record),
+}
+
+const exceptionTypeSelectOptions = computed(() =>
+  EXCEPTION_TYPE_VALUES.map((value) => ({
+    value,
+    label: t(EXCEPTION_TYPE_SHORT_I18N_KEYS[value]),
+    title: t(EXCEPTION_TYPE_I18N_KEYS[value]),
+  })),
+)
+
+/** 已选任意异常类型时只显示当前项；点击已选项再展开以便改选 */
+const exceptionTypePickerOpen = ref({})
+
+const isExceptionTypePickerCollapsed = (record) => {
+  const type = normalizeExceptionType(record?.ExceptionType)
+  if (!type) return false
+  return !exceptionTypePickerOpen.value[getRowKey(record)]
+}
+
+const visibleExceptionTypeOptions = (record) => {
+  const type = normalizeExceptionType(record?.ExceptionType)
+  if (!isExceptionTypePickerCollapsed(record) || !type) return exceptionTypeSelectOptions.value
+  return exceptionTypeSelectOptions.value.filter((opt) => opt.value === type)
+}
+
+const syncRecordExceptionType = (record) => {
+  if (!record) return
+  const prev = normalizeExceptionType(record.ExceptionType)
+  ensureExceptionType(record, exceptionTypeDeps)
+  const next = normalizeExceptionType(record.ExceptionType)
+  if (prev === next) return
+  // 类型被清空/变更时强制行刷新，避免仍锁字段
+  const idx = records.value.findIndex((r) => r && r._rowKey === record._rowKey)
+  if (idx >= 0) {
+    records.value[idx] = { ...records.value[idx] }
+  }
+  invalidateRowCache(record)
+}
+
+const handleExceptionTypeSelect = (record, value) => {
+  if (isExceptionTypeSelectDisabled(record, exceptionTypeDeps)) return
+  const rowKey = getRowKey(record)
+  const current = normalizeExceptionType(record.ExceptionType)
+  const expanded = !!exceptionTypePickerOpen.value[rowKey]
+  if (current && !expanded) {
+    exceptionTypePickerOpen.value = { ...exceptionTypePickerOpen.value, [rowKey]: true }
+    return
+  }
+  if (value === current && expanded) {
+    const next = { ...exceptionTypePickerOpen.value }
+    delete next[rowKey]
+    exceptionTypePickerOpen.value = next
+    return
+  }
+  onExceptionTypeChange(record, value, SNAPSHOT_FIELD_KEYS)
+  const next = { ...exceptionTypePickerOpen.value }
+  delete next[rowKey]
+  exceptionTypePickerOpen.value = next
+  invalidateRowCache(record)
+  const idx = records.value.findIndex((r) => r && r._rowKey === record._rowKey)
+  if (idx >= 0) {
+    records.value[idx] = { ...records.value[idx] }
+  }
+  scheduleAnomalyCountUpdate(true)
+  scheduleDraftSave(true)
+}
+
+/** 识别错误 / 纸质错误均框出日期·班次·到离·休息 */
+const shouldHighlightFieldForCalibration = (record, field) => {
+  const type = normalizeExceptionType(record?.ExceptionType)
+  if (type !== EXCEPTION_TYPE.PAPER_OK_OCR_WRONG && type !== EXCEPTION_TYPE.PAPER_WRONG_TIME) {
+    return false
+  }
+  const keys = Array.isArray(CALIBRATION_HIGHLIGHT_FIELDS) && CALIBRATION_HIGHLIGHT_FIELDS.length
+    ? CALIBRATION_HIGHLIGHT_FIELDS
+    : ['Date', 'HORAIRES_DU_TRAVAIL', 'ARRIVEE', 'DEPAR', 'PAUSE']
+  return keys.includes(field)
+}
+
+const exceptionTypeDisabledHint = (record) => {
+  if (!isExceptionTypeSelectDisabled(record, exceptionTypeDeps)) return ''
+  if (hasRequiredMissing(record)) {
+    const text = t('taskEdit.exceptionTypeDisabledMissing')
+    return text !== 'taskEdit.exceptionTypeDisabledMissing'
+      ? text
+      : '请先补全必填信息后再选择异常类型'
+  }
+  if (exceptionTypeDeps.hasFormatInvalid(record)) {
+    const text = t('taskEdit.exceptionTypeDisabledFormat')
+    return text !== 'taskEdit.exceptionTypeDisabledFormat'
+      ? text
+      : '请先修正格式错误后再选择异常类型'
+  }
+  return ''
+}
+
+const exceptionTypeDisplayLabel = (record) => {
+  if (isExceptionTypeExempt(record, isAbsentRow)) return '-'
+  const type = normalizeExceptionType(record?.ExceptionType)
+  if (!type) return '-'
+  const shortKey = EXCEPTION_TYPE_SHORT_I18N_KEYS[type]
+  return shortKey ? t(shortKey) : type
+}
+
 const fieldInputClass = (record, field) => {
+  // 已删除 / 未出勤：不提示缺填或格式说明
+  if (isRowMuted(record)) {
+    return { 'row-muted-strike-text': true }
+  }
   const requiredEmpty = isRequiredFieldEmpty(record, field)
   const formatInvalid = requiredInputClass(record, field)['format-invalid']
   const unreadable = isFieldUnreadable(record, field) && !requiredEmpty && !formatInvalid
@@ -837,13 +1108,16 @@ const fieldInputClass = (record, field) => {
     ...requiredInputClass(record, field),
     'field-unreadable-cell': unreadable,
   }
-  if (isRowMuted(record)) {
-    classes['row-muted-strike-text'] = true
+  if (shouldHighlightFieldForCalibration(record, field)) {
+    classes['exception-calibrate-required'] = true
   }
   return classes
 }
 
 const fieldTextClass = (record, field) => {
+  if (isRowMuted(record)) {
+    return { 'cell-text': true, 'row-muted-strike-text': true }
+  }
   const requiredEmpty = isRequiredFieldEmpty(record, field)
   const formatInvalid = requiredTextClass(record, field)['format-invalid-display']
   let classes
@@ -856,8 +1130,8 @@ const fieldTextClass = (record, field) => {
   } else {
     classes = { 'cell-text': true }
   }
-  if (isRowMuted(record)) {
-    classes = { ...classes, 'row-muted-strike-text': true }
+  if (shouldHighlightFieldForCalibration(record, field)) {
+    classes = { ...classes, 'exception-calibrate-required-display': true }
   }
   return classes
 }
@@ -933,6 +1207,7 @@ const sameTimeHintText = (record) => {
 }
 
 const fieldFormatTooltip = (record, field) => {
+  if (isRowMuted(record)) return ''
   if ((field === 'ARRIVEE' || field === 'DEPAR') && isArrivalDepartureSameTime(record)) {
     return sameTimeHintText(record)
   }
@@ -941,7 +1216,13 @@ const fieldFormatTooltip = (record, field) => {
 }
 
 const showSameTimeHint = (record, field) => (
-  (field === 'ARRIVEE' || field === 'DEPAR') && isArrivalDepartureSameTime(record)
+  !isRowMuted(record)
+  && (field === 'ARRIVEE' || field === 'DEPAR')
+  && isArrivalDepartureSameTime(record)
+)
+
+const showFormatHintBelow = (record, field) => (
+  !isRowMuted(record) && isFormatFieldInvalid(record, field)
 )
 
 const fieldCellDomId = (record, field) => {
@@ -954,19 +1235,57 @@ const customTableRow = (record) => ({
 })
 
 const onTimeFieldInput = (record, field) => {
-  clearRowCache()
+  invalidateRowCache(record)
+  syncRecordExceptionType(record)
   if (field === 'ARRIVEE' || field === 'DEPAR') {
     scheduleAnomalyCountUpdate(true)
     scheduleRequiredMissingCountUpdate(true)
   }
 }
 
+const onClockTimeUpdate = (record, field, value) => {
+  if (!record) return
+  record[field] = value == null ? '' : value
+  onTimeFieldInput(record, field)
+}
+
+const restoreFieldOriginal = (record, field) => {
+  if (!record || !field || !record._aiBaseline || typeof record._aiBaseline !== 'object') return
+  if (!Object.prototype.hasOwnProperty.call(record._aiBaseline, field)) return
+  const original = record._aiBaseline[field]
+  record[field] = original === undefined || original === null ? '' : original
+  if (field === 'ARRIVEE' || field === 'DEPAR' || field === 'HORAIRES_DU_TRAVAIL' || field === 'Date') {
+    applyFieldNormalization(record, field, { coerceTime: true })
+  }
+  if (field === 'PAUSE') {
+    normalizeRecordPauseOnBlur(record)
+    return
+  }
+  onReadableFieldChange(record, field)
+}
+
+/** 编辑前拍 AI 基线，保证识别说明能显示「由什么 → 改成什么」 */
+const onCalibratableFieldFocusHandler = (record) => {
+  onCalibratableFieldFocus(record, SNAPSHOT_FIELD_KEYS)
+}
+
 const onFormatFieldBlur = (record, field) => {
-  clearRowCache()
+  applyFieldNormalization(record, field, { coerceTime: true })
+  clearFieldUnreadable(record, field)
+  onCalibratableFieldChange(record, SNAPSHOT_FIELD_KEYS)
+  syncRecordExceptionType(record)
+  invalidateRowCache(record)
   scheduleRequiredMissingCountUpdate(true)
   if (field === 'ARRIVEE' || field === 'DEPAR' || field === 'HORAIRES_DU_TRAVAIL' || field === 'Date') {
     scheduleAnomalyCountUpdate(true)
   }
+}
+
+const onFormatFieldPressEnter = (record, field, event) => {
+  applyFieldNormalization(record, field, { coerceTime: true })
+  onFormatFieldBlur(record, field)
+  const target = event && event.target
+  if (target && typeof target.blur === 'function') target.blur()
 }
 
 const scrollToFirstValidationIssue = async (issue) => {
@@ -989,13 +1308,41 @@ const scrollToFirstValidationIssue = async (issue) => {
   window.setTimeout(() => el.classList.remove('validation-cell-flash'), 2200)
 }
 
-const applyFieldNormalization = (record, field) => {
+/** DatePicker 只接受合法 YYYY-MM-DD；识别乱码/歧义日期传 null，避免面板出现 Invalid Date / NaN */
+const datePickerValue = (raw) => {
+  const str = raw == null ? '' : String(raw).trim()
+  return isValidCanonicalDate(str) ? str : null
+}
+
+const dateFieldPlaceholder = (record) => {
+  const str = record?.Date == null ? '' : String(record.Date).trim()
+  if (str && !isValidCanonicalDate(str)) return str
+  return fieldCellPlaceholder(record, 'Date') || fieldFormatTooltip(record, 'Date')
+}
+
+const onDatePickerUpdate = (record, value) => {
   if (!record) return
+  record.Date = value || ''
+  onReadableFieldChange(record, 'Date')
+}
+
+const applyFieldNormalization = (record, field, options = {}) => {
+  if (!record) return
+  const coerceTime = options.coerceTime === true
   if (field === 'NO') record.NO = normalizeWorkerNo(record.NO)
   if (field === 'NOM_PRENOM') record.NOM_PRENOM = normalizePersonName(record.NOM_PRENOM)
   if (field === 'Entrepot') record.Entrepot = normalizeLabelText(record.Entrepot)
   if (field === 'AGENCE_INTERIMAIRE') record.AGENCE_INTERIMAIRE = normalizeLabelText(record.AGENCE_INTERIMAIRE)
   if (field === 'Date') record.Date = normalizeDate(record.Date)
+  // 时间友好转换仅在失焦/回车时做，避免输入「1」时立刻变成 01:00
+  if (coerceTime && (field === 'ARRIVEE' || field === 'DEPAR')) {
+    const next = normalizeClockTime(record[field])
+    if (next !== undefined && next !== null) record[field] = next
+  }
+  if (coerceTime && field === 'HORAIRES_DU_TRAVAIL') {
+    const next = normalizeShiftSchedule(record[field])
+    if (next !== undefined && next !== null) record[field] = next
+  }
   if (TIME_DISPLAY_FIELDS.includes(field) && isNonTimeFieldLabel(record[field])) {
     record[field] = ''
     if (!Array.isArray(record._unreadableFields)) {
@@ -1014,17 +1361,24 @@ const onReadableFieldChange = (record, field) => {
   if (field === 'ARRIVEE' || field === 'DEPAR' || field === 'HORAIRES_DU_TRAVAIL' || field === 'Date') {
     refreshRecordNightShiftMark(record)
   }
-  clearRowCache()
-  if (field === 'ARRIVEE' || field === 'DEPAR') {
+  onCalibratableFieldChange(record, SNAPSHOT_FIELD_KEYS)
+  syncRecordExceptionType(record)
+  invalidateRowCache(record)
+  if (field === 'ARRIVEE' || field === 'DEPAR' || field === 'HORAIRES_DU_TRAVAIL' || field === 'PAUSE') {
     scheduleAnomalyCountUpdate(true)
   }
+  scheduleDraftSave()
 }
 
 const getRowAnomalyReasons = (record) => getRecordAnomalyReasons(record)
 
 const rawData = ref('')
-const showAnomalyDetail = ref(false)
-const ANOMALY_DETAIL_LIMIT = 20
+const activeStatFilter = ref('')
+
+const onStatFilterSelect = (key) => {
+  activeStatFilter.value = activeStatFilter.value === key ? '' : (key || '')
+  resetVisibleTableRows()
+}
 const VALIDATION_BANNER_DEBOUNCE_MS = 450
 const {
   previewImagesList,
@@ -1138,7 +1492,7 @@ const scheduleRequiredMissingCountUpdate = (immediate = false) => {
   }, VALIDATION_BANNER_DEBOUNCE_MS)
 }
 
-const anomalyAlertCount = ref(0)
+const attentionAlertCount = ref(0)
 let anomalyCountDebounceTimer = null
 const scheduleAnomalyCountUpdate = (immediate = false) => {
   if (anomalyCountDebounceTimer) {
@@ -1146,32 +1500,25 @@ const scheduleAnomalyCountUpdate = (immediate = false) => {
     anomalyCountDebounceTimer = null
   }
   if (immediate) {
-    anomalyAlertCount.value = countAnomalyRecords(records.value)
+    attentionAlertCount.value = countAttentionRecords(records.value)
     return
   }
   anomalyCountDebounceTimer = window.setTimeout(() => {
     anomalyCountDebounceTimer = null
-    anomalyAlertCount.value = countAnomalyRecords(records.value)
+    attentionAlertCount.value = countAttentionRecords(records.value)
   }, VALIDATION_BANNER_DEBOUNCE_MS)
 }
 
-const anomalyAlertsDetail = computed(() => {
-  if (!showAnomalyDetail.value) return []
-  return buildAnomalyAlertsSlice(records.value, ANOMALY_DETAIL_LIMIT)
+const reviewIssuesChipVisible = computed(() => {
+  const blocked = !isConfirmedTask.value && submitValidationCount.value > 0
+  return blocked || attentionAlertCount.value > 0
 })
 
-const anomalyAlertsOverflow = computed(() => {
-  if (!showAnomalyDetail.value) return 0
-  return Math.max(0, anomalyAlertCount.value - anomalyAlertsDetail.value.length)
+const submitBlockedLineSet = computed(() => {
+  if (isConfirmedTask.value) return new Set()
+  const issues = collectSubmitValidationIssues(records.value, collectConfirmValidationIssues)
+  return new Set(issues.map((issue) => issue.line))
 })
-
-const toggleAnomalyDetail = () => {
-  const next = !showAnomalyDetail.value
-  showAnomalyDetail.value = next
-  if (next) {
-    scheduleAnomalyCountUpdate(true)
-  }
-}
 
 const showRequiredValidationDetail = async () => {
   const issues = collectSubmitValidationIssues(records.value, collectConfirmValidationIssues)
@@ -1185,6 +1532,22 @@ const canCalibrateRecord = computed(
 )
 const isRecordEditable = (record) =>
   !isConfirmedTask.value && !isRecordDeleted(record) && !isAbsentRow(record)
+
+/** 姓名 / 仓库 / 中介：不因「考勤正确」锁死，行可编辑时随时可改 */
+const EXCEPTION_TYPE_UNLOCKED_FIELDS = new Set([
+  'NOM_PRENOM',
+  'Entrepot',
+  'AGENCE_INTERIMAIRE',
+])
+
+const isFieldEditable = (record, field) => {
+  if (!isRecordEditable(record)) return false
+  if (EXCEPTION_TYPE_UNLOCKED_FIELDS.has(field)) return true
+  // 格式不正确时始终允许改该字段，避免被「考勤正确」锁死
+  if (isFormatFieldInvalid(record, field)) return true
+  if (isConfiguredRequiredField(field) && !canEditRequiredFields(record)) return false
+  return true
+}
 
 const calibrationVisible = ref(false)
 const calibrationRecord = ref(null)
@@ -1250,18 +1613,34 @@ const refreshSyncStatusOnly = async () => {
 }
 
 const ROW_MUTED_EXEMPT_KEYS = new Set(['action'])
-const ROW_MUTED_BG = '#F5F3F7'
 const ROW_MUTED_TEXT = '#73707F'
 const ROW_MUTED_STRIKE_DELETED = '#D94040'
 const ROW_MUTED_STRIKE_ABSENT = '#B8860B'
 
 const isRecordDeleted = (record) => Boolean(record?.isDeleted || record?.deleted)
-
+const isRowMuted = (record) => isRecordDeleted(record) || isAbsentRow(record)
 const resolveRowMutedStrikeColor = (record) => (
   isRecordDeleted(record) ? ROW_MUTED_STRIKE_DELETED : ROW_MUTED_STRIKE_ABSENT
 )
 
-const isRowMuted = (record) => isRecordDeleted(record) || isAbsentRow(record)
+const getRowClassName = (record) => {
+  const base = getBaseRowClassName(record) || ''
+  // 未出勤 / 已删除：仅删除线，不加底纹，绝不叠待确认底
+  if (
+    isRowMuted(record)
+    || base.includes('deleted-row')
+    || base.includes('absent-row')
+  ) {
+    return base
+  }
+  if (
+    !isConfirmedTask.value
+    && isExceptionTypeMissingForSubmit(record, exceptionTypeDeps)
+  ) {
+    return [base, 'exception-type-pending-row'].filter(Boolean).join(' ')
+  }
+  return base
+}
 
 const rowMutedStrikeClass = (record) => (isRowMuted(record) ? 'row-muted-strike-text' : '')
 
@@ -1278,18 +1657,23 @@ const mutedStrikeStyle = (record) => {
 
 const mergeCellProps = (props, columnKey) => {
   const wrapKeys = ['anomalyReasons']
-  const wrapClass = wrapKeys.includes(columnKey) ? 'cell-wrap' : ''
-  if (!wrapClass && !props.class) return props
-  const cls = [props.class, wrapClass].filter(Boolean).join(' ')
-  return { ...props, class: cls || undefined }
+  const centerKeys = new Set(['ExceptionType', 'action'])
+  const classes = [
+    props.class,
+    wrapKeys.includes(columnKey) ? 'cell-wrap' : '',
+    centerKeys.has(columnKey) ? 'cell-v-middle cell-h-center' : 'cell-v-middle cell-h-left',
+  ].filter(Boolean)
+  if (!classes.length) return props
+  return { ...props, class: classes.join(' ') }
 }
 
 const cellStyle = (record, rowIndex, columnKey) => {
   if (!record) return {}
   if (isRowMuted(record)) {
     const exempt = ROW_MUTED_EXEMPT_KEYS.has(columnKey)
+    // 未出勤/删除：白底无底纹，仅删除线 + 弱化字色
     const style = {
-      backgroundColor: ROW_MUTED_BG,
+      backgroundColor: '#FFFFFF',
       color: ROW_MUTED_TEXT,
       fontStyle: 'italic',
     }
@@ -1304,11 +1688,29 @@ const cellStyle = (record, rowIndex, columnKey) => {
     }, columnKey)
   }
   const fieldKey = columnKey
+  const calibrate = fieldKey && shouldHighlightFieldForCalibration(record, fieldKey)
   if ((fieldKey === 'ARRIVEE' || fieldKey === 'DEPAR') && isArrivalDepartureSameTime(record)) {
-    return mergeCellProps({ class: 'format-time-cell format-time-cell--invalid' }, columnKey)
+    return mergeCellProps({
+      class: calibrate
+        ? 'format-time-cell format-time-cell--invalid exception-calibrate-required-cell'
+        : 'format-time-cell format-time-cell--invalid',
+    }, columnKey)
   }
   if (fieldKey && isConfiguredRequiredField(fieldKey) && isRequiredFieldEmpty(record, fieldKey)) {
-    return mergeCellProps({ class: 'required-field-cell' }, columnKey)
+    return mergeCellProps({
+      class: calibrate ? 'required-field-cell exception-calibrate-required-cell' : 'required-field-cell',
+    }, columnKey)
+  }
+  if (calibrate) {
+    return mergeCellProps({ class: 'exception-calibrate-required-cell' }, columnKey)
+  }
+  if (
+    columnKey === 'ExceptionType'
+    && !isConfirmedTask.value
+    && !isRowMuted(record)
+    && isExceptionTypeMissingForSubmit(record, exceptionTypeDeps)
+  ) {
+    return mergeCellProps({ class: 'exception-type-pending-cell' }, columnKey)
   }
   if (fieldKey === 'Pays' && taskWorkRegionCode.value && isPaysRegionMismatch(record.Pays, taskWorkRegionCode.value)) {
     return mergeCellProps({ class: 'work-region-mismatch-cell' }, columnKey)
@@ -1319,24 +1721,43 @@ const cellStyle = (record, rowIndex, columnKey) => {
   return mergeCellProps({}, columnKey)
 }
 
-const baseColumns = computed(() => buildRecognitionTableColumns(t, {
-  requiredFieldKeys: confirmRequiredFields.value,
-  cellStyle,
-  includeWorkHours: true,
-  searchFields: true,
-  fixedAction: true,
-  actionColumnWidth: 88,
-}))
+const baseColumns = computed(() => {
+  void locale.value
+  return buildRecognitionTableColumns(t, {
+    requiredFieldKeys: confirmRequiredFields.value,
+    cellStyle,
+    includeWorkHours: true,
+    searchFields: true,
+    fixedAction: true,
+    actionColumnWidth: 40,
+    useExceptionTypeColumn: true,
+    exceptionTypeColumnWidth: 96,
+    compactIdentityColumns: true,
+    includeSerialNoColumn: false,
+    fixedAnomalyReasons: true,
+    anomalyReasonsColumnWidth: 220,
+  })
+})
 const { columns: sortedColumns, onSorterToggle, sortRows } = useTableColumnSort(baseColumns, { customHeader: true })
 
 const filteredRecords = computed(() => {
+  let list = records.value
+  const statKey = activeStatFilter.value
+  if (statKey === 'submitBlocked') {
+    const lines = submitBlockedLineSet.value
+    list = list.filter((_, idx) => lines.has(idx + 1))
+  } else if (statKey === 'anomaly' || statKey === 'attention') {
+    list = list.filter((row) => needsAttentionRecord(row))
+  } else if (statKey) {
+    list = list.filter((row) => recordMatchesStatFilter(row, statKey))
+  }
   const active = Object.entries(headerFilters.value).filter(([, v]) => {
     if (Array.isArray(v)) return v.length > 0
     if (v && typeof v === 'object') return Boolean(v.from?.trim() || v.to?.trim())
     return String(v || '').trim() !== ''
   })
-  if (!active.length) return records.value
-  return records.value.filter((row) => active.every(([field, value]) => {
+  if (!active.length) return list
+  return list.filter((row) => active.every(([field, value]) => {
     const column = sortedColumns.value.find((c) => c.searchField === field)
     const filterType = resolveColumnFilterType(column || { searchField: field })
     const keyword = serializeFilterValue(filterType, value)
@@ -1376,7 +1797,11 @@ const bindTableLoadMoreObserver = () => {
   }
 }
 
-const globalRowSerial = (index) => index + 1
+const recordLineNo = (record) => {
+  if (!record || !record._rowKey) return ''
+  const idx = records.value.findIndex((r) => r && r._rowKey === record._rowKey)
+  return idx >= 0 ? idx + 1 : ''
+}
 
 const resetTableColumnsLock = () => {
   columnsLocked.value = false
@@ -1385,11 +1810,15 @@ const resetTableColumnsLock = () => {
 
 const { columns: sizedColumns } = useAutoSizedColumns(sortedColumns, tableRecords, {
   enabled: computed(() => !columnsLocked.value),
-  actionWidth: isConfirmedTask.value && canCalibrateRecord.value ? 88 : 50,
+  actionWidth: isConfirmedTask.value && canCalibrateRecord.value ? 72 : 40,
+  defaultMin: 56,
+  defaultMax: 160,
+  bodyFont: '12px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif',
+  font: '600 11px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif',
   getCellSample: (col, record) => {
     if (col.key === 'workHours') return calculateWorkHours(record)
     if (col.key === 'anomalyReasons') {
-      return getRecordAnomalyGroups(record).map((group) => group.summary).join('; ')
+      return getRecordAnomalyReasons(record).join('; ')
     }
     if (col.key === 'PAUSE') return formatPauseDisplay(record.PAUSE)
     if (col.key === 'PAGE_NUM') return displayFieldValue(record.PAGE_NUM || record.pageNum)
@@ -1408,7 +1837,10 @@ const {
   columns: resizedColumns,
   isColumnResizable,
   startColumnResize,
-} = useTableColumnResize('task-edit', effectiveSizedColumns)
+} = useTableColumnResize('task-edit-v4', effectiveSizedColumns, {
+  nonResizableKeys: ['action', 'ExceptionType', 'PAGE_NUM', 'NO', 'EMPLOYEE_NO'],
+  minWidth: 28,
+})
 
 watch(
   () => sizedColumns.value,
@@ -1420,8 +1852,17 @@ watch(
   { immediate: true },
 )
 
+watch(locale, () => {
+  clearRowCache()
+  const titleByKey = new Map((baseColumns.value || []).map((col) => [col.key, col.title]))
+  if (!titleByKey.size || !lockedSizedColumns.value.length) return
+  lockedSizedColumns.value = lockedSizedColumns.value.map((col) => (
+    titleByKey.has(col.key) ? { ...col, title: titleByKey.get(col.key) } : col
+  ))
+})
+
 const {
-  frozenColumns: columns,
+  frozenColumns: frozenDisplayColumns,
   hiddenKeys,
   frozenKeys,
   configurableColumns,
@@ -1429,8 +1870,31 @@ const {
   setFrozenKeys,
   showAllColumns,
   clearFrozenKeys,
-} = useColumnFreeze('task-edit', resizedColumns, { defaultFrozen: ['serialNo', 'PAGE_NUM', 'NO'] })
+} = useColumnFreeze('task-edit-v4', resizedColumns, {
+  defaultFrozen: ['PAGE_NUM', 'NO'],
+  defaultHidden: ['EMPLOYEE_NO'],
+  preserveRightFixed: true,
+})
 
+const MICRO_ID_WIDTH = {
+  PAGE_NUM: 40,
+  NO: 32,
+  EMPLOYEE_NO: 56,
+}
+
+const columns = computed(() =>
+  (frozenDisplayColumns.value || []).map((col) => {
+    const forced = MICRO_ID_WIDTH[col.key]
+    if (!forced) return col
+    return {
+      ...col,
+      width: forced,
+      minWidth: forced,
+      maxWidth: forced,
+      autoWidth: false,
+    }
+  }),
+)
 const scrollX = computed(() => sumTableScrollX(columns.value))
 
 const isHeaderFilterActive = (field) => {
@@ -1489,9 +1953,32 @@ const isAuxHeaderColumn = (column) => {
   return key.includes('EXPAND_COLUMN') || key.includes('SELECTION_COLUMN')
 }
 
-const NARROW_HEADER_COLUMN_KEYS = new Set(['NO', 'PAGE_NUM', 'Pays', 'PAUSE', 'EMPLOYEE_NO'])
+const NARROW_HEADER_COLUMN_KEYS = new Set([
+  'NO', 'PAGE_NUM', 'Pays', 'PAUSE', 'EMPLOYEE_NO', 'ARRIVEE', 'DEPAR', 'workHours', 'SIGNATURE',
+  'Observations', 'Date', 'HORAIRES_DU_TRAVAIL',
+])
+
+const MICRO_HEADER_COLUMN_KEYS = new Set(['PAGE_NUM', 'NO', 'EMPLOYEE_NO'])
 
 const isNarrowHeaderColumn = (column) => NARROW_HEADER_COLUMN_KEYS.has(column?.key)
+
+const isMicroHeaderColumn = (column) => MICRO_HEADER_COLUMN_KEYS.has(column?.key)
+
+const resolveHeaderHint = (column) => {
+  if (!column) return ''
+  if (column.key === 'Pays' && hasTaskWorkRegion.value) {
+    return t('taskEdit.workRegionPaysColumnHint', { region: taskWorkRegionLabel.value })
+  }
+  if (column.key === 'ExceptionType') {
+    const text = t('taskEdit.exceptionTypeColumnHint')
+    return text && text !== 'taskEdit.exceptionTypeColumnHint' ? text : ''
+  }
+  if (column.formatHintTooltipKey) {
+    const text = t(column.formatHintTooltipKey)
+    return text && text !== column.formatHintTooltipKey ? text : ''
+  }
+  return ''
+}
 
 const formatHeaderTitle = (title) => {
   if (Array.isArray(title)) {
@@ -1568,6 +2055,7 @@ const handleCalibrationSubmit = async ({ rowKey, updates, reason }) => {
 const loadTask = async (silent = false, options = {}) => {
   const { reloadRecords = true } = options
   if (!silent) loading.value = true
+  draftSaveBlocked = true
   try {
     const response = await getTaskDetail(taskId.value)
     task.value = response.data
@@ -1592,7 +2080,7 @@ const loadTask = async (silent = false, options = {}) => {
     resetVisibleTableRows()
     resetTableColumnsLock()
     clearRowCache()
-    showAnomalyDetail.value = false
+    activeStatFilter.value = ''
     
     const dataPayload = resolveTaskRecordsJson(task.value)
     if (dataPayload) {
@@ -1609,6 +2097,9 @@ const loadTask = async (silent = false, options = {}) => {
         const signatureMark = computeSignatureMark(normalized)
         normalized.SIGNATURE = signatureMark
         normalized.CHECKER = signatureMark
+        refreshRecordNightShiftMark(normalized)
+        syncRecordExceptionType(normalized)
+        ensureAiBaseline(normalized, SNAPSHOT_FIELD_KEYS)
         return normalized
       })
       await fetchConfirmedDuplicateHints()
@@ -1628,6 +2119,7 @@ const loadTask = async (silent = false, options = {}) => {
     message.error(t('taskEdit.loadingFailed'))
     console.error(error)
   } finally {
+    draftSaveBlocked = false
     if (!silent) loading.value = false
   }
 }
@@ -1663,8 +2155,19 @@ const handleExportExcel = async () => {
   try {
     const token = getToken()
     const locale = encodeURIComponent(currentExportLocale())
+    const exportRecords = records.value.map((record) => {
+      const normalized = stripRecordMetadata(sanitizeRecordPlaceholders(normalizeRecordPause({ ...record })))
+      // 保留 AI 基线供「修改前后」sheet；去掉仅前端用的行键
+      delete normalized._rowKey
+      return normalized
+    })
     const response = await fetch(`${API_BASE_PATH}/local/export/${taskId.value}/xlsx?locale=${locale}`, {
-      headers: token ? { Authorization: `Bearer ${token}` } : {}
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        ...(token ? { Authorization: `Bearer ${token}` } : {}),
+      },
+      body: JSON.stringify({ records: exportRecords }),
     })
     const contentType = response.headers.get('content-type') || ''
     if (!response.ok || contentType.includes('application/json')) {
@@ -1750,11 +2253,14 @@ const handleAddManualRecord = () => {
   const signatureMark = computeSignatureMark(normalized)
   normalized.SIGNATURE = signatureMark
   normalized.CHECKER = signatureMark
+  syncRecordExceptionType(normalized)
+  ensureAiBaseline(normalized, SNAPSHOT_FIELD_KEYS)
   records.value = [...records.value, normalized]
-  clearRowCache()
+  invalidateRowCache(normalized)
   scheduleDuplicateRecheck(0)
   scheduleRequiredMissingCountUpdate(true)
   scheduleAnomalyCountUpdate(true)
+  scheduleDraftSave(true)
   if (visibleRowCount.value < records.value.length) {
     visibleRowCount.value = records.value.length
   }
@@ -1770,7 +2276,8 @@ const toggleDelete = (record, index) => {
     record.SmartMark = '正常'
     record._restored = true
     records.value.splice(index, 1, record)
-    clearRowCache()
+    invalidateRowCache(record)
+    scheduleDraftSave(true)
     return
   }
   record.isDeleted = !record.isDeleted
@@ -1785,45 +2292,47 @@ const toggleDelete = (record, index) => {
       record.SmartMark = '正常'
     }
   }
+  syncRecordExceptionType(record)
   records.value.splice(index, 1, record)
-  clearRowCache()
+  invalidateRowCache(record)
   scheduleDuplicateRecheck(0)
+  scheduleDraftSave(true)
 }
 
 const calculateWorkHours = (record) => {
-  if (record?.isDeleted || isAbsentRow(record)) {
-    return '-'
+  const rowKey = record?._rowKey
+  const fp = `${record?.isDeleted ? 1 : 0}|${record?.ARRIVEE || ''}|${record?.DEPAR || ''}|${record?.PAUSE ?? ''}|${isAbsentRow(record) ? 1 : 0}`
+  if (rowKey) {
+    const hit = workHoursMemo.get(rowKey)
+    if (hit && hit.fp === fp) return hit.value
   }
-  
-  const arriveTime = record?.ARRIVEE
-  const departTime = record?.DEPAR
-  const pauseMinutes = normalizePauseMinutes(record?.PAUSE)
-  
-  if (!arriveTime || !departTime || arriveTime === '???' || departTime === '???') {
-    return '-'
+
+  let value = '-'
+  if (!(record?.isDeleted || isAbsentRow(record))) {
+    const arriveTime = record?.ARRIVEE
+    const departTime = record?.DEPAR
+    const pauseMinutes = normalizePauseMinutes(record?.PAUSE)
+
+    if (arriveTime && departTime && arriveTime !== '???' && departTime !== '???') {
+      const arriveMinutes = parseTimeToMinutes(arriveTime)
+      const departMinutes = parseTimeToMinutes(departTime)
+      if (arriveMinutes !== null && departMinutes !== null) {
+        let totalMinutes = departMinutes - arriveMinutes
+        if (totalMinutes < 0) totalMinutes += 24 * 60
+        const pause = (pauseMinutes !== null && pauseMinutes !== undefined && pauseMinutes !== '') ? Number(pauseMinutes) : 0
+        const workMinutes = totalMinutes - pause
+        if (workMinutes >= 0) value = (workMinutes / 60).toFixed(2)
+      }
+    }
   }
-  
-  const arriveMinutes = parseTimeToMinutes(arriveTime)
-  const departMinutes = parseTimeToMinutes(departTime)
-  
-  if (arriveMinutes === null || departMinutes === null) {
-    return '-'
+
+  if (rowKey) {
+    workHoursMemo.set(rowKey, { fp, value })
+    if (workHoursMemo.size > 800) {
+      workHoursMemo.delete(workHoursMemo.keys().next().value)
+    }
   }
-  
-  let totalMinutes = departMinutes - arriveMinutes
-  if (totalMinutes < 0) {
-    totalMinutes += 24 * 60
-  }
-  
-  const pause = (pauseMinutes !== null && pauseMinutes !== undefined && pauseMinutes !== '') ? Number(pauseMinutes) : 0
-  const workMinutes = totalMinutes - pause
-  
-  if (workMinutes < 0) {
-    return '-'
-  }
-  
-  const workHours = (workMinutes / 60).toFixed(2)
-  return workHours
+  return value
 }
 
 const parseTimeToMinutes = (timeStr) => {
@@ -1910,6 +2419,11 @@ const normalizeRecordPauseOnBlur = (record) => {
   if (!record) return
   const minutes = normalizePauseMinutes(record.PAUSE)
   record.PAUSE = minutes === '' ? null : Number(minutes)
+  onCalibratableFieldChange(record, SNAPSHOT_FIELD_KEYS)
+  syncRecordExceptionType(record)
+  invalidateRowCache(record)
+  scheduleAnomalyCountUpdate(true)
+  scheduleDraftSave()
 }
 
 const refreshRecordNightShiftMark = (record) => {
@@ -1931,7 +2445,62 @@ const refreshRecordNightShiftMark = (record) => {
   }
 }
 
+/** 确认前草稿：保留 ExceptionType / 手动标记 / AI 基线，刷新不丢 */
+const DRAFT_SAVE_DEBOUNCE_MS = 700
+let draftSaveTimer = null
+let draftSavePromise = null
+let draftSaveQueued = false
+let draftSaveBlocked = false
+
+const buildDraftPayload = () => records.value.map((record) => {
+  const normalized = sanitizeRecordPlaceholders(normalizeRecordPause({ ...record }))
+  refreshRecordNightShiftMark(normalized)
+  return normalized
+})
+
+const flushDraftSave = async () => {
+  if (draftSaveTimer) {
+    window.clearTimeout(draftSaveTimer)
+    draftSaveTimer = null
+  }
+  if (draftSaveBlocked || loading.value || isConfirmedTask.value) return
+  if (!taskId.value || task.value?.status !== 'processed') return
+  if (!records.value.length) return
+  if (draftSavePromise) {
+    draftSaveQueued = true
+    return draftSavePromise
+  }
+  const data = buildDraftPayload()
+  draftSavePromise = saveTaskDraft(taskId.value, { data })
+    .catch((error) => {
+      console.warn('save draft failed', error)
+    })
+    .finally(() => {
+      draftSavePromise = null
+      if (draftSaveQueued) {
+        draftSaveQueued = false
+        void flushDraftSave()
+      }
+    })
+  return draftSavePromise
+}
+
+const scheduleDraftSave = (immediate = false) => {
+  if (draftSaveBlocked || loading.value || isConfirmedTask.value) return
+  if (!taskId.value || task.value?.status !== 'processed') return
+  if (draftSaveTimer) window.clearTimeout(draftSaveTimer)
+  if (immediate) {
+    void flushDraftSave()
+    return
+  }
+  draftSaveTimer = window.setTimeout(() => {
+    draftSaveTimer = null
+    void flushDraftSave()
+  }, DRAFT_SAVE_DEBOUNCE_MS)
+}
+
 const handleSubmit = async () => {
+  records.value.forEach((record) => syncRecordExceptionType(record))
   const preparedRecords = records.value.map((record) => {
     const normalized = stripRecordMetadata(sanitizeRecordPlaceholders(normalizeRecordPause(record)))
     refreshRecordNightShiftMark(normalized)
@@ -1971,6 +2540,11 @@ const handleSubmit = async () => {
   })
   
   submitting.value = true
+  draftSaveBlocked = true
+  if (draftSaveTimer) {
+    window.clearTimeout(draftSaveTimer)
+    draftSaveTimer = null
+  }
   try {
     await confirmTask(taskId.value, { 
       data: preparedRecords,
@@ -1982,6 +2556,7 @@ const handleSubmit = async () => {
     message.error(t('taskEdit.submitFailed'))
     console.error(error)
   } finally {
+    draftSaveBlocked = false
     submitting.value = false
   }
 }
@@ -2031,13 +2606,37 @@ onUnmounted(() => {
   expandedDuplicateRowKeys.value = []
   if (requiredValidationDebounceTimer) window.clearTimeout(requiredValidationDebounceTimer)
   if (anomalyCountDebounceTimer) window.clearTimeout(anomalyCountDebounceTimer)
+  if (draftSaveTimer) window.clearTimeout(draftSaveTimer)
+  void flushDraftSave()
   tableLoadMoreObserver?.disconnect()
   tableLoadMoreObserver = null
   clearSyncPoll()
 })
 
-watch(taskId, () => {
+watch(taskId, async (nextId, prevId) => {
+  if (draftSaveTimer) {
+    window.clearTimeout(draftSaveTimer)
+    draftSaveTimer = null
+  }
+  const prevStatus = task.value?.status
+  const snapshot = records.value
+  if (
+    prevId
+    && prevId !== nextId
+    && prevStatus === 'processed'
+    && Array.isArray(snapshot)
+    && snapshot.length > 0
+  ) {
+    try {
+      await saveTaskDraft(prevId, {
+        data: snapshot.map((record) => sanitizeRecordPlaceholders(normalizeRecordPause({ ...record }))),
+      })
+    } catch (error) {
+      console.warn('flush draft on task switch failed', error)
+    }
+  }
   if (isComponentMounted) {
+    activeStatFilter.value = ''
     resetVisibleTableRows()
     resetTableColumnsLock()
     clearRowCache()
@@ -2066,7 +2665,7 @@ const DUPLICATE_WATCH_FIELDS = [
 const VALIDATION_WATCH_FIELDS = [
   'NO', 'NOM_PRENOM', 'Pays', 'Entrepot', 'Date', 'AGENCE_INTERIMAIRE',
   'HORAIRES_DU_TRAVAIL', 'ARRIVEE', 'DEPAR', 'PAUSE', 'SIGNATURE', 'Observations', 'PAGE_NUM',
-  'SmartMark', 'Mark', 'isDeleted', '_duplicateConfirmedUnique', '_unreadableFields',
+  'SmartMark', 'Mark', 'ExceptionType', 'isDeleted', '_duplicateConfirmedUnique', '_unreadableFields',
 ]
 
 function buildRecordsFieldSignature(list, fields) {
@@ -2114,6 +2713,38 @@ watch(headerFilters, () => {
     padding-bottom: calc(80px + env(safe-area-inset-bottom, 0px));
   }
 
+  .image-compare-layout {
+    gap: $space-3;
+    min-height: 0;
+  }
+
+  :deep(.page-shell) {
+    margin-bottom: 8px;
+    gap: 8px 12px;
+  }
+
+  :deep(.page-shell__title) {
+    font-size: $font-size-xl;
+    line-height: 1.2;
+  }
+
+  :deep(.page-shell__meta) {
+    margin-top: 2px;
+  }
+
+  .edit-card {
+    border-radius: $radius-lg;
+    box-shadow: $shadow-xs;
+
+    :deep(.ant-card-body) {
+      padding: 10px 14px 12px;
+    }
+  }
+
+  :deep(.stat-overview.single-row) {
+    margin-bottom: 8px;
+  }
+
   .record-count {
     font-size: 13px;
     color: $primary;
@@ -2123,9 +2754,52 @@ watch(headerFilters, () => {
     border: 1px solid $border-accent;
   }
 
-  .edit-card {
-    border-radius: $radius-lg;
-    box-shadow: $shadow-xs;
+  .task-header-meta {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 6px;
+    font-size: $font-size-sm;
+    color: $text-secondary;
+    line-height: 1.5;
+
+    &--warning {
+      .task-header-meta__value {
+        color: $warning-dark;
+      }
+    }
+
+    &__label {
+      font-weight: $font-weight-semibold;
+      color: $text-tertiary;
+    }
+
+    &__value {
+      font-weight: $font-weight-semibold;
+      color: $text-primary;
+    }
+
+    &__dot {
+      color: $text-tertiary;
+    }
+
+    &__hint {
+      color: $text-secondary;
+    }
+
+    &__info {
+      color: $text-tertiary;
+      cursor: help;
+      font-size: 13px;
+
+      &:hover {
+        color: $primary;
+      }
+    }
+
+    &__badge {
+      margin: 0;
+    }
   }
 
   .page-header {
@@ -2197,14 +2871,128 @@ watch(headerFilters, () => {
     font-size: 14px;
   }
 
-  .edit-tabs {
-    :deep(.ant-tabs-nav) {
-      margin-bottom: 20px;
+  .edit-panel {
+    margin-top: 4px;
+  }
+
+  .edit-toolbar {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 6px 10px;
+    margin-bottom: 8px;
+    min-height: 28px;
+
+    &__title {
+      font-size: $font-size-base;
+      font-weight: $font-weight-semibold;
+      color: $text-strong;
+      white-space: nowrap;
+    }
+
+    &__add-row {
+      flex-shrink: 0;
+    }
+
+    &__scope {
+      flex-shrink: 0;
+    }
+
+    &__spacer {
+      flex: 1 1 auto;
+      min-width: 8px;
+    }
+
+    &__issues {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      flex: none;
+      height: 32px;
+      padding: 0;
+      border: 0;
+      background: transparent;
+      color: $text-primary;
+    }
+
+    &__issues-lead {
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      font-size: 13px;
+      font-weight: $font-weight-medium;
+      color: $text-secondary;
+      white-space: nowrap;
+      flex-shrink: 0;
+      pointer-events: none;
+    }
+
+    &__issues-icon {
+      color: $text-secondary;
+      font-size: 14px;
+      flex-shrink: 0;
+    }
+
+    &__issues-group {
+      display: inline-flex;
+      align-items: stretch;
+      height: 32px;
+      overflow: hidden;
+      border: 1px solid #eaecf0;
+      border-radius: 6px;
+      background: linear-gradient(180deg, #fafbfc 0%, #f2f4f7 100%);
+    }
+
+    &__issues-filter {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      margin: 0;
+      height: 100%;
+      padding: 0 12px;
+      border: 0;
+      border-radius: 0;
+      background: transparent;
+      color: $text-primary;
+      font-size: 13px;
+      font-weight: $font-weight-medium;
+      line-height: 1.2;
+      white-space: nowrap;
+      cursor: pointer;
+      text-decoration: none;
+
+      &:hover:not(.is-active) {
+        color: $text-strong;
+        background: rgba(255, 255, 255, 0.7);
+      }
+
+      &.is-active {
+        color: $text-strong;
+        background: #fff;
+        font-weight: $font-weight-semibold;
+        text-decoration: none;
+      }
+    }
+
+    &__issues-group :deep(> span) {
+      display: inline-flex;
+      min-width: 0;
+      height: 100%;
+    }
+
+    &__issues-group :deep(> span + span) .edit-toolbar__issues-filter {
+      box-shadow: inset 1px 0 0 #eaecf0;
+    }
+
+    &__issues-clear {
+      font-size: 11px;
+      opacity: 0.7;
+      flex-shrink: 0;
     }
   }
 
   .cell-text {
-    font-size: 13px;
+    font-size: 12px;
     color: $text-primary;
   }
 
@@ -2214,11 +3002,12 @@ watch(headerFilters, () => {
   }
 
   .anomaly-hint {
-    margin-bottom: 20px;
-    padding: 14px 18px;
+    margin-bottom: 10px;
+    padding: 8px 12px;
     background: $warning-light;
     border-radius: 10px;
     border-left: 4px solid $warning;
+    overflow: visible;
 
     .anomaly-summary {
       display: flex;
@@ -2246,8 +3035,14 @@ watch(headerFilters, () => {
 
     .anomaly-detail-list {
       margin-top: 14px;
-      padding-top: 14px;
+      padding: 10px 8px 4px;
       border-top: 1px solid rgba(60, 60, 67, 0.12);
+      max-height: min(42vh, 360px);
+      overflow-y: auto;
+      overflow-x: hidden;
+      background: rgba(255, 251, 230, 0.9);
+      border-radius: 0 0 8px 8px;
+      min-height: 48px;
 
       .anomaly-more-hint {
         padding-top: 8px;
@@ -2257,10 +3052,15 @@ watch(headerFilters, () => {
 
       .anomaly-item {
         display: flex;
-        align-items: center;
+        align-items: flex-start;
         gap: 12px;
-        padding: 8px 0;
+        padding: 8px 4px;
         font-size: 13px;
+        border-bottom: 1px solid rgba(60, 60, 67, 0.06);
+
+        &:last-child {
+          border-bottom: none;
+        }
 
         .anomaly-index {
           display: inline-flex;
@@ -2280,93 +3080,25 @@ watch(headerFilters, () => {
           color: $text-primary;
           font-weight: $font-weight-semibold;
           min-width: 120px;
+          flex-shrink: 0;
         }
 
         .anomaly-reasons {
           display: flex;
-          gap: 8px;
           flex-wrap: wrap;
-          align-items: center;
-          min-width: 0;
+          gap: 8px;
           flex: 1;
+          min-width: 0;
         }
       }
     }
   }
 
-  .table-toolbar {
-    display: flex;
-    align-items: center;
-    justify-content: flex-end;
-    gap: 10px;
-    margin-bottom: 12px;
-
-    &__add-row {
-      margin-right: auto;
-    }
-  }
-
-  .duplicate-scope-bar {
-    display: flex;
-    align-items: center;
-    gap: 10px;
-    margin-bottom: 12px;
-  }
-
-  .work-region-context {
-    margin-bottom: 14px;
-    padding: 12px 14px;
-    border-radius: $radius-md;
-    border: 1px solid rgba($primary-color, 0.12);
-    background: rgba($primary-color, 0.03);
-
-    &--warning {
-      border-color: rgba($warning-color, 0.35);
-      background: rgba($warning-color, 0.06);
-    }
-
-    &__head {
-      display: flex;
-      align-items: center;
-      flex-wrap: wrap;
-      gap: 8px;
-      margin-bottom: 6px;
-    }
-
-    &__label {
-      font-size: $font-size-sm;
-      font-weight: $font-weight-semibold;
-      color: $text-secondary;
-    }
-
-    &__value {
-      font-size: $font-size-sm;
-      font-weight: $font-weight-semibold;
-      color: $text-primary;
-    }
-
-    &__badge {
-      margin: 0;
-    }
-
-    &__summary {
-      margin: 0 0 8px;
-      font-size: $font-size-sm;
-      color: $text-secondary;
-      line-height: 1.55;
-    }
-
-    &__steps {
-      margin: 0;
-      padding-left: 1.2em;
-      font-size: $font-size-sm;
-      color: $text-tertiary;
-      line-height: 1.6;
-
-      li + li {
-        margin-top: 2px;
-      }
-    }
+  .duplicate-scope-label {
+    font-size: $font-size-sm;
+    color: $text-secondary;
+    font-weight: $font-weight-semibold;
+    white-space: nowrap;
   }
 
   :deep(.work-region-mismatch-cell) {
@@ -2376,6 +3108,18 @@ watch(headerFilters, () => {
   :deep(.pays-country-select) {
     width: 100%;
     min-width: 0;
+    font-size: 12px;
+
+    .ant-select-selector {
+      font-size: 12px !important;
+      padding-inline: 2px !important;
+    }
+
+    .ant-select-selection-item,
+    .ant-select-selection-placeholder {
+      font-size: 12px !important;
+      line-height: 22px !important;
+    }
 
     &.ant-select-disabled .ant-select-selector {
       color: inherit;
@@ -2384,10 +3128,24 @@ watch(headerFilters, () => {
     }
   }
 
-  .duplicate-scope-label {
-    font-size: $font-size-sm;
-    color: $text-secondary;
-    font-weight: $font-weight-semibold;
+  :deep(.signature-mark-select) {
+    width: 100%;
+    font-size: 12px;
+
+    .ant-select-selector {
+      font-size: 12px !important;
+      padding-inline: 2px !important;
+    }
+
+    .ant-select-selection-item,
+    .ant-select-selection-placeholder {
+      font-size: 12px !important;
+      line-height: 22px !important;
+    }
+  }
+
+  :deep(.signature-mark-tag) {
+    font-size: 12px;
   }
 
   .table-scroll-load-more {
@@ -2462,6 +3220,248 @@ watch(headerFilters, () => {
       }
     }
 
+    .recognition-note-list {
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      align-items: flex-start;
+      gap: 2px;
+      width: 100%;
+      min-width: 0;
+      text-align: left;
+      line-height: 1.3;
+      font-size: 11px;
+    }
+
+    .recognition-note-list__item {
+      display: flex;
+      align-items: flex-start;
+      gap: 4px;
+      width: 100%;
+      min-width: 0;
+    }
+
+    .recognition-note-list__index {
+      flex: none;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      width: 12px;
+      height: 12px;
+      margin-top: 2px;
+      border-radius: 999px;
+      font-size: 9px;
+      font-weight: 600;
+      font-variant-numeric: tabular-nums;
+      line-height: 1;
+      color: #fff;
+      background: $text-tertiary;
+      box-shadow: 0 0 0 1px rgba(28, 26, 46, 0.04);
+    }
+
+    .recognition-note-list__text {
+      min-width: 0;
+      flex: 1;
+      padding-top: 0;
+      font-weight: 400;
+      letter-spacing: 0;
+      white-space: normal;
+      word-break: break-word;
+      color: $text-primary;
+    }
+
+    .recognition-note-list__text--link {
+      margin: 0;
+      padding: 0;
+      border: 0;
+      background: transparent;
+      cursor: pointer;
+      text-align: left;
+      font: inherit;
+      font-weight: 400;
+      color: inherit;
+
+      &:hover {
+        text-decoration: underline;
+      }
+    }
+
+    .recognition-note-list__item--night {
+      .recognition-note-list__index {
+        background: linear-gradient(135deg, #7C5CFF 0%, #9B7BFF 100%);
+      }
+      .recognition-note-list__text {
+        color: #6B4FE0;
+      }
+    }
+
+    .recognition-note-list__item--shift {
+      .recognition-note-list__index {
+        background: $accent-gradient;
+      }
+      .recognition-note-list__text {
+        color: $accent-dark;
+      }
+    }
+
+    .recognition-note-list__item--danger {
+      .recognition-note-list__index {
+        background: linear-gradient(135deg, $danger 0%, lighten($danger, 6%) 100%);
+      }
+      .recognition-note-list__text {
+        color: $danger-dark;
+      }
+    }
+
+    .recognition-note-list__item--warning {
+      .recognition-note-list__index {
+        background: linear-gradient(135deg, #E8A317 0%, $warning 100%);
+      }
+      .recognition-note-list__text {
+        color: $warning-dark;
+      }
+    }
+
+    .recognition-note-list__item--accent {
+      .recognition-note-list__index {
+        background: $accent-gradient;
+      }
+      .recognition-note-list__text {
+        color: $accent-dark;
+      }
+    }
+
+    .recognition-note-list__item--primary {
+      .recognition-note-list__index {
+        background: $primary-gradient;
+      }
+      .recognition-note-list__text {
+        color: $primary-dark;
+      }
+    }
+
+    .recognition-note-list__item--success {
+      .recognition-note-list__index {
+        background: linear-gradient(135deg, $success-dark 0%, $success 100%);
+      }
+      .recognition-note-list__text {
+        color: $success-dark;
+      }
+    }
+
+    .recognition-note-list__item--default {
+      .recognition-note-list__index {
+        background: linear-gradient(135deg, #8A8796 0%, $text-secondary 100%);
+      }
+      .recognition-note-list__text {
+        color: $text-strong;
+      }
+    }
+
+    :deep(th.col-micro-id),
+    :deep(td.col-micro-id) {
+      padding-left: 2px !important;
+      padding-right: 2px !important;
+    }
+
+    :deep(th.col-micro-id) {
+      .table-sortable-header {
+        justify-content: center;
+      }
+
+      .table-sortable-header__title {
+        justify-content: center;
+        flex: 0 1 auto;
+      }
+    }
+
+    :deep(td.cell-v-middle) {
+      vertical-align: middle !important;
+    }
+
+    :deep(td.cell-h-center) {
+      text-align: center !important;
+    }
+
+    :deep(td.cell-h-left) {
+      text-align: left !important;
+
+      .ant-input,
+      .ant-input-number-input,
+      .ant-picker-input > input,
+      .ant-select-selection-item,
+      .cell-text,
+      .work-hours,
+      .recognition-note-list {
+        text-align: left;
+      }
+
+      .ant-input-number {
+        width: 100%;
+      }
+
+      .recognition-note-list {
+        align-items: flex-start;
+      }
+
+      .recognition-note-list__item {
+        justify-content: flex-start;
+      }
+    }
+
+    :deep(td.cell-h-center .inline-anomaly-tags) {
+      justify-content: center;
+    }
+
+    :deep(td.cell-h-center .exception-type-cell),
+    :deep(td.cell-h-center .table-action-cell) {
+      margin-inline: auto;
+    }
+
+    .exception-type-cell {
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      align-items: stretch;
+      min-height: 100%;
+      width: 100%;
+    }
+
+    .table-action-cell {
+      justify-content: center;
+      width: auto;
+      max-width: 100%;
+      margin-inline: auto;
+    }
+
+    .table-action-cell--icons-1 {
+      width: 32px;
+    }
+
+    .table-action-cell--icons-mixed {
+      width: auto;
+      min-width: 32px;
+      max-width: 72px;
+    }
+
+    .format-field-cell {
+      :deep(.ant-input),
+      :deep(.ant-picker),
+      :deep(.ant-input-number) {
+        padding-left: 2px !important;
+        padding-right: 2px !important;
+      }
+
+      :deep(.clock-time-field .ant-input-affix-wrapper) {
+        padding-left: 2px !important;
+        padding-right: 3px !important;
+      }
+
+      :deep(.clock-time-field .ant-input-affix-wrapper > input.ant-input) {
+        padding-right: 0 !important;
+      }
+    }
+
     .cell-muted {
       color: $text-tertiary;
     }
@@ -2473,6 +3473,10 @@ watch(headerFilters, () => {
 
     :deep(.ant-table-thead > tr > th) {
       overflow: visible;
+      padding: 4px 4px !important;
+      font-size: 11px;
+      line-height: 1.2;
+      font-weight: 600;
     }
 
     :deep(.ant-table-expand-icon-col),
@@ -2492,21 +3496,35 @@ watch(headerFilters, () => {
 
     :deep(.ant-table-expanded-row > td) {
       overflow: visible;
-      padding: 12px 16px !important;
+      padding: 8px 12px !important;
       background: transparent;
     }
 
     :deep(.ant-table-tbody > tr > td) {
       border-bottom: 1px solid $border;
+      padding: 3px 4px !important;
+      vertical-align: top;
+      line-height: 1.25;
+      font-size: 12px;
     }
 
     :deep(.ant-table-tbody > tr:hover > td) {
       background: $bg-muted !important;
     }
 
+    /* 未出勤/删除：强制白底，压过通用 hover 的 $bg-muted */
+    :deep(.ant-table-tbody > tr.deleted-row > td),
+    :deep(.ant-table-tbody > tr.absent-row > td),
+    :deep(.ant-table-tbody > tr.deleted-row:hover > td),
+    :deep(.ant-table-tbody > tr.absent-row:hover > td) {
+      background: #FFFFFF !important;
+      background-color: #FFFFFF !important;
+    }
+
     :deep(.ant-input) {
-      font-size: 13px;
-      padding: 4px 8px;
+      font-size: 12px;
+      padding: 1px 4px;
+      line-height: 1.3;
       border-radius: $radius-sm;
       background: transparent;
       transition: all $duration-base $ease-smooth;
@@ -2518,10 +3536,11 @@ watch(headerFilters, () => {
     }
 
     :deep(.ant-input-number) {
-      font-size: 13px;
+      font-size: 12px;
 
       .ant-input-number-input {
-        padding: 4px 8px;
+        padding: 1px 4px;
+        height: 22px;
       }
     }
 
@@ -2573,7 +3592,7 @@ watch(headerFilters, () => {
   }
 
   .required-validation-banner {
-    margin-bottom: 12px;
+    margin-bottom: 8px;
 
     .required-validation-detail-btn {
       padding: 0 0 0 8px;
@@ -2601,6 +3620,229 @@ watch(headerFilters, () => {
       border-color: transparent !important;
       color: $required-empty-text;
     }
+  }
+
+  /* 需校准字段：去掉左侧色条；红框 + 明显浅红填充，表示可改 */
+  :deep(.exception-calibrate-required-cell) {
+    background: transparent !important;
+    box-shadow: none;
+  }
+
+  :deep(.exception-calibrate-required) {
+    border: 1px solid $danger !important;
+    border-radius: $radius-sm;
+    background: rgba($danger, 0.16) !important;
+    box-shadow: none !important;
+
+    &:hover,
+    &:focus,
+    &.ant-input-number-focused,
+    &.ant-picker-focused {
+      border-color: $danger-dark !important;
+      box-shadow: 0 0 0 2px $danger-ring !important;
+      background: rgba($danger, 0.22) !important;
+    }
+
+    .ant-picker-input > input,
+    input {
+      background: transparent !important;
+    }
+  }
+
+  .exception-calibrate-required-display {
+    border: 1px solid $danger;
+    border-radius: $radius-sm;
+    padding: 1px 4px;
+    background: rgba($danger, 0.16);
+    box-shadow: none;
+  }
+
+  :deep(.exception-type-pending-cell) {
+    background: transparent !important;
+    box-shadow: none;
+    vertical-align: middle !important;
+  }
+
+  /*
+   * 待确认：纸面轻洗（$accent-light）+ 左侧珊瑚条。
+   * 不铺饱和橙；行动点交给异常类型分段控件。未出勤/删除不加此类。
+   */
+  :deep(.exception-type-pending-row > td) {
+    background: $accent-light !important;
+  }
+
+  :deep(.exception-type-pending-row > td:first-child) {
+    box-shadow: inset 3px 0 0 $accent;
+  }
+
+  :deep(.exception-type-pending-row:hover > td) {
+    background: mix($accent-light, $accent, 8%) !important;
+  }
+
+  :deep(.exception-type-pending-row.deleted-row > td),
+  :deep(.exception-type-pending-row.absent-row > td),
+  :deep(.exception-type-pending-row.deleted-row:hover > td),
+  :deep(.exception-type-pending-row.absent-row:hover > td) {
+    background: #FFFFFF !important;
+  }
+
+  :deep(.exception-type-pending-row.deleted-row > td:first-child),
+  :deep(.exception-type-pending-row.absent-row > td:first-child) {
+    box-shadow: none;
+  }
+
+  :deep(.exception-type-pending-row > td.exception-type-pending-cell) {
+    background: transparent !important;
+  }
+
+  :deep(.exception-type-pending-row .recognition-note-list__text) {
+    padding: 0;
+    border-radius: 0;
+    background: transparent;
+    box-shadow: none;
+  }
+
+  :deep(.exception-type-pending-row .delete-btn.ant-btn-dangerous),
+  :deep(.exception-type-pending-row .delete-btn) {
+    color: rgba($danger-dark, 0.78) !important;
+
+    &:hover,
+    &:focus {
+      color: $danger-dark !important;
+      background: rgba($danger, 0.1) !important;
+    }
+  }
+
+  .exception-type-cell {
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    width: 100%;
+  }
+
+  .exception-type-stack {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    width: 100%;
+    min-width: 0;
+
+    &.is-collapsed .exception-type-stack__opt.is-active {
+      cursor: pointer;
+    }
+
+    /* 外层禁用态、以及每个选项上的 a-tooltip 包一层，需撑满窄列 */
+    :deep(> .ant-tooltip-disabled-compatible-wrapper),
+    :deep(> span) {
+      display: block !important;
+      width: 100%;
+    }
+  }
+
+  .exception-type-stack__opt {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 3px;
+    width: 100%;
+    margin: 0;
+    padding: 3px 4px;
+    border: 1px solid rgba($border, 0.85);
+    border-radius: 4px;
+    background: $bg-surface;
+    color: $text-tertiary;
+    font-size: 11px;
+    font-weight: $font-weight-medium;
+    line-height: 1.25;
+    text-align: center;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    cursor: pointer;
+    transition: background $duration-fast $ease-smooth,
+      border-color $duration-fast $ease-smooth,
+      color $duration-fast $ease-smooth;
+
+    .exception-type-stack__check {
+      flex: none;
+      font-size: 10px;
+      font-weight: $font-weight-bold;
+      line-height: 1;
+    }
+
+    .exception-type-stack__label {
+      min-width: 0;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    &:hover:not(:disabled):not(.is-active) {
+      border-color: rgba($text-secondary, 0.4);
+      color: $text-secondary;
+      background: $bg-muted;
+    }
+
+    &:focus-visible {
+      outline: 2px solid rgba($primary, 0.3);
+      outline-offset: 1px;
+    }
+
+    /* 选中：深绿 / 深橙 / 深红底 + 白字 */
+    &.is-active {
+      font-weight: $font-weight-semibold;
+      border-color: transparent;
+      color: #fff;
+    }
+
+    &.is-active.exception-type-stack__opt--attendance_ok {
+      background: $success-dark;
+    }
+
+    &.is-active.exception-type-stack__opt--paper_ok_ocr_wrong {
+      background: $warning-dark;
+    }
+
+    &.is-active.exception-type-stack__opt--paper_wrong_time {
+      background: $danger-dark;
+    }
+
+    &:disabled,
+    &.is-disabled {
+      cursor: not-allowed;
+      opacity: 0.42;
+    }
+  }
+
+  /*
+   * 待选：三颗独立幽灵按钮（圆角、浅填、珊瑚描边），
+   * 能看出可点，又贴合 $accent-light 行底。写在 opt 默认样式之后。
+   */
+  .exception-type-stack.is-pending {
+    gap: 3px;
+    padding: 0;
+    border: 0;
+    background: transparent;
+
+    .exception-type-stack__opt:not(.is-active) {
+      border: 1px solid rgba($accent-dark, 0.28);
+      border-radius: 5px;
+      background: rgba(255, 255, 255, 0.55);
+      color: $accent-dark;
+      font-weight: $font-weight-semibold;
+      box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.7);
+
+      &:hover:not(:disabled) {
+        background: rgba(255, 255, 255, 0.88);
+        border-color: $accent-dark;
+        color: darken($accent-dark, 6%);
+        box-shadow: 0 1px 2px rgba($accent-dark, 0.12);
+      }
+    }
+  }
+
+  .exception-type-readonly {
+    font-size: 12px;
   }
 
   .required-empty-display {
@@ -2642,13 +3884,15 @@ watch(headerFilters, () => {
 
   :deep(.task-edit-date-picker) {
     width: 100%;
+    font-size: 12px;
 
     &.ant-picker {
-      padding: 0 4px;
+      padding: 0 2px;
     }
 
     .ant-picker-input > input {
-      font-size: 12px;
+      font-size: 12px !important;
+      padding: 0 2px;
     }
   }
 
@@ -2685,12 +3929,18 @@ watch(headerFilters, () => {
     vertical-align: -0.1em;
   }
 
-  .format-field-cell {
+  .format-field-cell,
+  .field-with-change-hint {
     width: 100%;
     min-width: 0;
+    display: flex;
+    flex-direction: column;
+    align-items: stretch;
+    justify-content: flex-start;
   }
 
-  :deep(.format-time-cell) {
+  :deep(.format-time-cell),
+  :deep(.exception-calibrate-required-cell) {
     overflow: visible !important;
     vertical-align: top !important;
   }
@@ -2701,6 +3951,18 @@ watch(headerFilters, () => {
     line-height: 1.4;
     color: $format-invalid-text;
     white-space: normal;
+  }
+
+  .field-change-hint {
+    margin-top: 1px;
+    max-width: 100%;
+    font-size: 9px;
+    line-height: 1.2;
+    font-weight: $font-weight-semibold;
+    color: $danger-dark;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
   }
 
   .format-same-time-hint {
@@ -2722,31 +3984,28 @@ watch(headerFilters, () => {
   }
 
   .task-image-files {
-    margin-bottom: $space-4;
-    padding: $space-3 $space-4;
-    border-radius: $radius-lg;
-    border: 1px solid $border-light;
-    background: $bg-muted;
-
-    &__head {
-      display: flex;
-      align-items: center;
-      gap: $space-2;
-      margin-bottom: $space-2;
-      color: $text-secondary;
-      font-size: $font-size-sm;
-    }
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 4px 10px;
+    margin-bottom: 6px;
+    padding: 2px 0;
+    border: none;
+    background: transparent;
 
     &__title {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
       font-weight: $font-weight-semibold;
-      color: $text-strong;
-      font-size: $font-size-base;
+      color: $text-secondary;
+      font-size: $font-size-sm;
+      white-space: nowrap;
 
       em {
         font-style: normal;
         font-weight: $font-weight-normal;
-        color: $text-secondary;
-        margin-left: 4px;
+        color: $text-tertiary;
       }
     }
 
@@ -2755,60 +4014,47 @@ watch(headerFilters, () => {
       margin: 0;
       padding: 0;
       display: flex;
-      flex-direction: column;
-      gap: $space-2;
+      flex-wrap: wrap;
+      align-items: center;
+      gap: 4px 12px;
+      min-width: 0;
+      flex: 1 1 auto;
     }
 
     &__item {
       margin: 0;
+      min-width: 0;
 
-      &--active .task-image-files__link {
-        border-color: $primary;
-        box-shadow: 0 0 0 2px rgba($primary, 0.16);
-        background: rgba($primary, 0.04);
+      &--active .task-image-files__name {
+        color: $primary;
+        font-weight: $font-weight-semibold;
       }
     }
 
     &__link {
-      width: 100%;
-      display: flex;
+      display: inline-flex;
       align-items: center;
-      gap: $space-3;
-      padding: $space-3 $space-4;
-      border: 1px solid $border;
-      border-radius: $radius-md;
-      background: $bg-surface;
+      max-width: 100%;
+      padding: 0;
+      border: none;
+      background: transparent;
       cursor: pointer;
       text-align: left;
-      transition: border-color $duration-fast, box-shadow $duration-fast;
 
-      &:hover {
-        border-color: $primary;
-        box-shadow: 0 2px 8px rgba($primary, 0.1);
+      &:hover .task-image-files__name,
+      &:focus-visible .task-image-files__name {
+        color: $primary;
+        text-decoration: underline;
       }
     }
 
-    &__icon {
-      font-size: 18px;
-      color: $primary;
-      flex-shrink: 0;
-    }
-
     &__name {
-      flex: 1;
-      min-width: 0;
-      font-size: $font-size-base;
+      font-size: $font-size-sm;
       font-weight: $font-weight-medium;
       color: $text-strong;
       overflow: hidden;
       text-overflow: ellipsis;
       white-space: nowrap;
-    }
-
-    &__view {
-      font-size: 16px;
-      color: $text-tertiary;
-      flex-shrink: 0;
     }
   }
 
@@ -2904,7 +4150,8 @@ watch(headerFilters, () => {
     .ant-table-tbody > tr.deleted-row,
     .ant-table-tbody > tr.absent-row {
       td {
-        background-color: $bg-muted !important;
+        background: #FFFFFF !important;
+        background-color: #FFFFFF !important;
         color: $text-secondary !important;
       }
     }
@@ -2938,7 +4185,8 @@ watch(headerFilters, () => {
 
     .ant-table-tbody > tr.deleted-row:hover > td,
     .ant-table-tbody > tr.absent-row:hover > td {
-      background-color: $bg-muted !important;
+      background: #FFFFFF !important;
+      background-color: #FFFFFF !important;
     }
 
     .ant-table-tbody > tr.deleted-row > td:not(.row-muted-exempt-cell) {
@@ -3087,6 +4335,16 @@ watch(headerFilters, () => {
     gap: 20px;
     max-width: 1200px;
     margin: 0 auto;
+  }
+}
+</style>
+
+<style lang="scss">
+.task-edit-select-dropdown-sm {
+  .ant-select-item {
+    font-size: 12px !important;
+    min-height: 28px;
+    line-height: 28px;
   }
 }
 </style>
