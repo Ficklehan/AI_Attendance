@@ -338,3 +338,36 @@
 .home-page .home-content .home-thumb-img {
   border: 1rpx solid var(--border);
 }
+
+.home-progress {
+  margin-top: var(--sp-4);
+  padding: var(--sp-4);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12rpx;
+  text-align: center;
+}
+
+.home-progress-spin {
+  width: 56rpx;
+  height: 56rpx;
+}
+
+.home-progress-title {
+  font-size: 30rpx;
+  font-weight: 700;
+  color: var(--text-1);
+}
+
+.home-progress-rows {
+  font-size: 26rpx;
+  font-weight: 600;
+  color: var(--primary);
+}
+
+.home-progress-hint {
+  font-size: 24rpx;
+  line-height: 1.5;
+  color: var(--text-3);
+}

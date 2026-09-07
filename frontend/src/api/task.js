@@ -38,6 +38,27 @@ export const getTaskProgress = (taskId) => {
   })
 }
 
+/** 识别事件追赶（afterSeq 游标） */
+export const getRecognitionEvents = (taskId, params = {}) => {
+  return request({
+    url: `/tasks/${taskId}/events`,
+    method: 'get',
+    params,
+    silentError: true,
+  })
+}
+
+/** 识别事件长轮询 */
+export const waitRecognitionEvents = (taskId, params = {}) => {
+  return request({
+    url: `/tasks/${taskId}/events/wait`,
+    method: 'get',
+    params,
+    timeout: 35000,
+    silentError: true,
+  })
+}
+
 export const confirmTask = (taskId, data) => {
   return request({
     url: `/tasks/${taskId}/confirm`,

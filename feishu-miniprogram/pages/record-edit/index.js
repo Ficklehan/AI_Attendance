@@ -143,6 +143,7 @@ Page({
         ),
         pickDate: tOr('recordEdit.pickDate', null, '选择日期'),
         pickTime: tOr('recordEdit.pickTime', null, '选择时间'),
+        swapMonthDay: tOr('recordEdit.swapMonthDay', null, '月日'),
         absentRestoreHint: tOr(
           'recordEdit.absentRestoreHint',
           null,
@@ -364,6 +365,18 @@ Page({
     const key = e.currentTarget.dataset.key
     const value = e.detail && e.detail.value
     this.applyDraftField(key, value)
+  },
+
+  onSwapMonthDay: function (e) {
+    const key = e.currentTarget.dataset.key
+    if (!key) return
+    const { swapDateMonthDay } = require('../../shared-js/recognizedDateNormalizer')
+    const next = swapDateMonthDay(this.data.draft[key])
+    if (!next) {
+      tt.showToast({ title: tOr('recordEdit.swapMonthDayUnavailable', null, '该日期无法对调月日'), icon: 'none' })
+      return
+    }
+    this.applyDraftField(key, next)
   },
 
   onTimePickerChange: function (e) {

@@ -5,7 +5,8 @@ const {
   fetchTaskSummary,
   toStatusSummary,
   fetchFirstReviewTask,
-  shouldReloadTaskData
+  shouldReloadTaskData,
+  markTaskDataDirty
 } = require('../../utils/taskSummary')
 const { taskApi } = require('../../utils/api')
 const { t, getLocale, localeToLanguageKey } = require('../../utils/i18n')
@@ -17,6 +18,12 @@ const {
   syncCountryFromServer,
   redirectToCountrySetupIfNeeded,
 } = require('../../utils/preferences')
+const {
+  runUploadAndWatch,
+  runBatchUploadAndWatch,
+  pollTaskUntilDone,
+} = require('../../utils/recognitionUpload')
+const { translateErrorMessage } = require('../../utils/translateError')
 
 const HOME_TEXT_FALLBACK = {
   navTitle: '识别',
@@ -41,6 +48,8 @@ const HOME_TEXT_FALLBACK = {
   statusCompleted: '已完成',
   viewAll: '查看全部',
   recognizing: '识别中...',
+  progressThenDetail: '识别中只显示进度，完成后进入任务详情核对',
+  progressRows: '已识别 {count} 条',
   primaryCtaScan: '拍照识别',
   primaryCtaReview: '去核对 ({count})',
   primaryCtaQueue: '开始识别 ({count})',
@@ -67,6 +76,9 @@ Page({
     recentTasks: [],
     processingTasks: [],
     isRecognizing: false,
+    recognizeStatus: '',
+    rowCount: 0,
+    progressRowsText: '',
     countryConfigured: false,
     todaySummary: '',
     primaryCtaLabel: '',
@@ -146,6 +158,7 @@ Page({
         processingHint: homeText('processingHint'),
         reviewHint: homeText('reviewHint'),
         recognizing: homeText('recognizing'),
+        progressThenDetail: homeText('progressThenDetail'),
         recentTasks: homeText('recentTasks'),
         viewAll: homeText('viewAll'),
         noTasks: homeText('noTasks'),
@@ -206,12 +219,14 @@ Page({
   },
 
   goToCamera: function () {
+    if (this.data.isRecognizing) return
     runWithCountryGate(() => {
       tt.navigateTo({ url: '/pages/camera/index' })
     })
   },
 
   chooseImage: function () {
+    if (this.data.isRecognizing) return
     runWithCountryGate(() => {
       tt.chooseImage({
         count: 9,
@@ -245,6 +260,7 @@ Page({
   },
 
   clearImages: function () {
+    if (this.data.isRecognizing) return
     tt.showModal({
       title: t('home.clearConfirmTitle'),
       content: t('home.clearConfirmContent'),
@@ -261,7 +277,8 @@ Page({
 
   startRecognition: function () {
     runWithCountryGate(() => {
-      if (!this.data.imageList.length) {
+      if (this.data.isRecognizing) return
+    if (!this.data.imageList.length) {
         tt.showToast({ title: t('home.selectImageFirst'), icon: 'none' })
         return
       }
@@ -305,25 +322,74 @@ Page({
       .filter(Boolean)
     if (!paths.length || this.data.isRecognizing) return
 
-    this.setData({ imageList: [], isRecognizing: false })
+    this.setData({
+      isRecognizing: true,
+      recognizeStatus: homeText('recognizing'),
+      rowCount: 0,
+      progressRowsText: ''
+    })
     this.refreshTexts()
 
-    if (paths.length === 1) {
-      tt.navigateTo({
-        url: `/pages/recognizing/index?imagePath=${encodeURIComponent(paths[0])}`
-      })
+    const onProgress = (progress) => this.applyRecognizeProgress(progress)
+    const shouldAbort = () => false
+    const run = paths.length === 1
+      ? runUploadAndWatch(paths[0], { onProgress, shouldAbort })
+      : runBatchUploadAndWatch(paths[0], paths.slice(1), { onProgress, shouldAbort })
+
+    run
+      .then((result) => this.handleHomeRecognitionResult(result))
+      .catch((err) => this.handleHomeRecognitionError(err))
+  },
+
+  applyRecognizeProgress: function (progress) {
+    if (!progress) return
+    const rowCount = progress.rowCount || this.data.rowCount || 0
+    let recognizeStatus = homeText('recognizing')
+    if (progress.status === 'uploading') {
+      recognizeStatus = progress.uploadLabel || t('recognizing.statusUploading')
+    } else if (progress.status === 'processing') {
+      if (rowCount > 0) {
+        recognizeStatus = t('recognizing.statusProcessingRows', { count: rowCount })
+      } else {
+        recognizeStatus = t('recognizing.statusProcessingEarly')
+      }
+    } else if (progress.status === 'processed') {
+      recognizeStatus = t('recognizing.statusProcessed')
+    }
+    this.setData({
+      recognizeStatus,
+      rowCount,
+      progressRowsText: rowCount > 0 ? homeText('progressRows', { count: rowCount }) : ''
+    })
+  },
+
+  handleHomeRecognitionResult: function (result) {
+    if (!result || result.aborted) {
+      this.setData({ isRecognizing: false })
+      this.refreshTexts()
       return
     }
-
-    try {
-      const app = getApp()
-      app.globalData.recognitionQueue = paths.slice(1)
-    } catch (e) {
-      console.warn('recognitionQueue unavailable', e)
+    const taskId = result.taskId || (result.task && (result.task.taskId || result.task.id))
+    if (taskId) {
+      markTaskDataDirty()
+      this.setData({ imageList: [], isRecognizing: false, rowCount: 0 })
+      this.refreshTexts()
+      tt.navigateTo({ url: `/pages/result/index?id=${taskId}` })
+      return
     }
+    this.setData({ isRecognizing: false })
+    this.refreshTexts()
+  },
 
-    tt.navigateTo({
-      url: `/pages/recognizing/index?mode=batch&batchTotal=${paths.length}&imagePath=${encodeURIComponent(paths[0])}`
+  handleHomeRecognitionError: function (err) {
+    this.setData({ isRecognizing: false })
+    this.refreshTexts()
+    const message = translateErrorMessage(err, t('home.recognizeError'))
+    tt.showModal({
+      title: t('home.recognizeFail'),
+      content: message,
+      showCancel: false,
+      confirmText: t('recognizing.errorConfirm')
     })
   },
 
@@ -375,7 +441,20 @@ Page({
     const status = e.currentTarget.dataset.status
     if (!taskId) return
     if (status === 'processing') {
-      tt.navigateTo({ url: `/pages/recognizing/index?taskId=${taskId}` })
+      if (this.data.isRecognizing) return
+      this.setData({
+        isRecognizing: true,
+        recognizeStatus: homeText('recognizing'),
+        rowCount: 0,
+        progressRowsText: ''
+      })
+      this.refreshTexts()
+      pollTaskUntilDone(taskId, {
+        onProgress: (progress) => this.applyRecognizeProgress(progress),
+        shouldAbort: () => false
+      })
+        .then((result) => this.handleHomeRecognitionResult(Object.assign({ taskId }, result || {})))
+        .catch((err) => this.handleHomeRecognitionError(err))
       return
     }
     tt.navigateTo({ url: `/pages/result/index?id=${taskId}` })

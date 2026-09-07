@@ -184,9 +184,11 @@ public class ConfigController {
         String content = recognitionPromptService.getAiPromptFresh("default");
         Map<String, Object> body = new HashMap<>();
         body.put("legacy", recognitionPromptService.isLegacyPromptInDatabase()
-                || recognitionPromptService.isMissingPageNumPromptInDatabase());
+                || recognitionPromptService.isMissingPageNumPromptInDatabase()
+                || recognitionPromptService.isMissingDateRawPromptInDatabase());
         body.put("hasNewFields", content != null && content.contains("Pays,Entrepot"));
         body.put("hasPageNum", content != null && content.contains("PAGE_NUM"));
+        body.put("hasDateRaw", content != null && content.contains("DATE_RAW"));
         body.put("storage", "database");
         body.put("rowCount", recognitionPromptService.countRows());
         return Result.success(body);
@@ -331,13 +333,22 @@ public class ConfigController {
     }
 
     /**
-     * 重置识别提示词为标准模板（强制覆盖所有国家）。
-     * 建议在确认后使用。
+     * 重置识别提示词为标准模板。
+     * 不传 country：覆盖全部国家。传入 country：只覆盖该国家（配置页「应用最新模板」）。
      */
     @PostMapping("/reset-prompts")
-    public Result<Void> resetPromptsToStandard() {
+    public Result<Void> resetPromptsToStandard(
+            @RequestParam(required = false) String country) {
         requireAdmin();
         try {
+            if (country != null && !country.trim().isEmpty()) {
+                boolean ok = recognitionPromptService.applyCanonicalForCountry(country);
+                if (!ok) {
+                    return Result.error(500, "未找到该国家的标准提示词模板");
+                }
+                log.info("识别提示词已重置为标准模板: country={}", country);
+                return Result.success(null, "已将当前国家识别提示词重置为标准模板");
+            }
             int seeded = recognitionPromptService.seedFromCanonical(true);
             log.info("识别提示词已重置为标准模板: countries={}", seeded);
             return Result.success(null, "已将识别提示词重置为标准模板（" + seeded + " 个国家）");

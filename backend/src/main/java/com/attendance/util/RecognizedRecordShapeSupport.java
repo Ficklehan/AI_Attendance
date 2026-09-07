@@ -20,7 +20,8 @@ public final class RecognizedRecordShapeSupport {
 
     public static final String PARSE_MALFORMED_KEY = "_parseMalformed";
     public static final String PARSE_MALFORMED_REASON_KEY = "_parseMalformedReason";
-    public static final int EXPECTED_FIELD_COUNT = 15;
+    public static final int LEGACY_FIELD_COUNT = 15;
+    public static final int EXPECTED_FIELD_COUNT = 16;
     /** @deprecated 使用 {@link com.attendance.dto.ImageQualityConfigDTO#getBlockMalformedRowPercent()} */
     @Deprecated
     public static final double MALFORMED_RATIO_FAIL_THRESHOLD = 0.10;
@@ -83,7 +84,7 @@ public final class RecognizedRecordShapeSupport {
             return Collections.emptyList();
         }
         int size = itemArray.size();
-        if (size == 16 && looksLikeMergedBlob(stringValue(itemArray.get(0)))
+        if ((size == 16 || size == 17) && looksLikeMergedBlob(stringValue(itemArray.get(0)))
                 && looksLikeValidNo(stringValue(itemArray.get(1)))) {
             List<JSONArray> rows = new ArrayList<>(2);
             JSONArray first = trySplitMergedBlob(stringValue(itemArray.get(0)));
@@ -91,24 +92,31 @@ public final class RecognizedRecordShapeSupport {
                 rows.add(first);
             }
             JSONArray second = new JSONArray();
-            for (int i = 1; i < 16; i++) {
+            for (int i = 1; i < size; i++) {
                 second.add(itemArray.get(i));
             }
             rows.add(second);
             return rows;
         }
         if (size > EXPECTED_FIELD_COUNT && size % EXPECTED_FIELD_COUNT == 0) {
-            List<JSONArray> rows = new ArrayList<>();
-            for (int offset = 0; offset < size; offset += EXPECTED_FIELD_COUNT) {
-                JSONArray chunk = new JSONArray();
-                for (int i = 0; i < EXPECTED_FIELD_COUNT; i++) {
-                    chunk.add(itemArray.get(offset + i));
-                }
-                rows.add(chunk);
-            }
-            return rows;
+            return chunkRows(itemArray, EXPECTED_FIELD_COUNT);
+        }
+        if (size > LEGACY_FIELD_COUNT && size % LEGACY_FIELD_COUNT == 0) {
+            return chunkRows(itemArray, LEGACY_FIELD_COUNT);
         }
         return Collections.singletonList(itemArray);
+    }
+
+    private static List<JSONArray> chunkRows(JSONArray itemArray, int width) {
+        List<JSONArray> rows = new ArrayList<>();
+        for (int offset = 0; offset < itemArray.size(); offset += width) {
+            JSONArray chunk = new JSONArray();
+            for (int i = 0; i < width; i++) {
+                chunk.add(itemArray.get(offset + i));
+            }
+            rows.add(chunk);
+        }
+        return rows;
     }
 
     public static JSONArray trySplitMergedBlob(String blob) {
@@ -250,7 +258,7 @@ public final class RecognizedRecordShapeSupport {
     }
 
     public static boolean isRawFieldCountValid(int count) {
-        return count == 14 || count == EXPECTED_FIELD_COUNT;
+        return count == 14 || count == LEGACY_FIELD_COUNT || count == EXPECTED_FIELD_COUNT;
     }
 
     public static boolean isNormalizedShapeMalformed(JSONObject record, int rawFieldCount) {
@@ -273,6 +281,40 @@ public final class RecognizedRecordShapeSupport {
             return true;
         }
         return false;
+    }
+
+    /**
+     * 16 字段 DATE_RAW 行曾被误标为结构异常。对象形态本身正常则去掉该标记。
+     * 真正的粘连行（merged_row_recovered）不清除。
+     */
+    public static boolean clearStaleMalformedFlag(JSONObject record) {
+        if (record == null || !record.getBooleanValue(PARSE_MALFORMED_KEY)) {
+            return false;
+        }
+        String reason = safe(record.getString(PARSE_MALFORMED_REASON_KEY));
+        if ("merged_row_recovered".equals(reason)) {
+            return false;
+        }
+        if (isNormalizedShapeMalformed(record, 0)) {
+            return false;
+        }
+        record.remove(PARSE_MALFORMED_KEY);
+        record.remove(PARSE_MALFORMED_REASON_KEY);
+        return true;
+    }
+
+    public static boolean clearStaleMalformedFlags(JSONArray records) {
+        if (records == null || records.isEmpty()) {
+            return false;
+        }
+        boolean changed = false;
+        for (int i = 0; i < records.size(); i++) {
+            JSONObject row = records.getJSONObject(i);
+            if (clearStaleMalformedFlag(row)) {
+                changed = true;
+            }
+        }
+        return changed;
     }
 
     public static void markMalformed(JSONObject record, String reason) {

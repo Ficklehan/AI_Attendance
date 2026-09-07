@@ -24,9 +24,13 @@ export function buildRecognitionTableColumns(t, options = {}) {
     requiredFieldKeys = DEFAULT_CONFIRM_VALIDATION.requiredFields,
     compactIdentityColumns = false,
     includeSerialNoColumn = true,
+    includePageNumColumn = true,
+    includeNoColumn = true,
+    fitOneScreen = false,
   } = options
 
   const requiredKeys = requiredFieldKeys || []
+  const dense = compactIdentityColumns && fitOneScreen
 
   const filterMeta = getRecognitionFieldFilterMeta()
   const withSearch = (col) => {
@@ -89,7 +93,7 @@ export function buildRecognitionTableColumns(t, options = {}) {
         className: 'col-micro-id',
         sorter: false,
       },
-      Pays: { width: 76, autoWidth: false, minWidth: 68, maxWidth: 88, density: 'compact' },
+      Pays: { width: 76, autoWidth: false, minWidth: 76, maxWidth: 76, density: 'compact' },
     }
     : {
       serialNo: { width: 44, autoWidth: false },
@@ -100,16 +104,27 @@ export function buildRecognitionTableColumns(t, options = {}) {
     }
 
   const timeCompact = compactIdentityColumns
-    ? {
-      Date: { width: 100, autoWidth: false, minWidth: 92, maxWidth: 108, density: 'compact' },
-      HORAIRES_DU_TRAVAIL: { width: 92, autoWidth: false, minWidth: 84, maxWidth: 100, density: 'compact' },
-      ARRIVEE: { width: 96, autoWidth: false, minWidth: 88, maxWidth: 108, density: 'compact', align: 'center' },
-      DEPAR: { width: 96, autoWidth: false, minWidth: 88, maxWidth: 108, density: 'compact', align: 'center' },
-      PAUSE: { width: 48, autoWidth: false, minWidth: 44, maxWidth: 56, density: 'compact', align: 'center' },
-      workHours: { width: 48, autoWidth: false, minWidth: 44, maxWidth: 56, density: 'compact', align: 'center' },
-      Observations: { width: 52, autoWidth: false, minWidth: 44, maxWidth: 64, density: 'compact' },
-      SIGNATURE: { width: 52, autoWidth: false, minWidth: 44, maxWidth: 60, density: 'compact' },
-    }
+    ? (dense
+      ? {
+        Date: { width: 86, autoWidth: false, minWidth: 86, maxWidth: 86, density: 'compact' },
+        HORAIRES_DU_TRAVAIL: { width: 68, autoWidth: false, minWidth: 64, maxWidth: 72, density: 'compact' },
+        ARRIVEE: { width: 48, autoWidth: false, minWidth: 44, maxWidth: 52, density: 'compact', align: 'center' },
+        DEPAR: { width: 48, autoWidth: false, minWidth: 44, maxWidth: 52, density: 'compact', align: 'center' },
+        PAUSE: { width: 32, autoWidth: false, minWidth: 28, maxWidth: 36, density: 'compact', align: 'center' },
+        workHours: { width: 36, autoWidth: false, minWidth: 32, maxWidth: 40, density: 'compact', align: 'center' },
+        Observations: { width: 36, autoWidth: false, minWidth: 32, maxWidth: 40, density: 'compact' },
+        SIGNATURE: { width: 36, autoWidth: false, minWidth: 32, maxWidth: 40, density: 'compact' },
+      }
+      : {
+        Date: { width: 128, autoWidth: false, minWidth: 128, maxWidth: 128, density: 'compact' },
+        HORAIRES_DU_TRAVAIL: { width: 92, autoWidth: false, minWidth: 84, maxWidth: 100, density: 'compact' },
+        ARRIVEE: { width: 96, autoWidth: false, minWidth: 88, maxWidth: 108, density: 'compact', align: 'center' },
+        DEPAR: { width: 96, autoWidth: false, minWidth: 88, maxWidth: 108, density: 'compact', align: 'center' },
+        PAUSE: { width: 48, autoWidth: false, minWidth: 44, maxWidth: 56, density: 'compact', align: 'center' },
+        workHours: { width: 48, autoWidth: false, minWidth: 44, maxWidth: 56, density: 'compact', align: 'center' },
+        Observations: { width: 52, autoWidth: false, minWidth: 44, maxWidth: 64, density: 'compact' },
+        SIGNATURE: { width: 52, autoWidth: false, minWidth: 44, maxWidth: 60, density: 'compact' },
+      })
     : {}
 
   const cols = []
@@ -125,21 +140,27 @@ export function buildRecognitionTableColumns(t, options = {}) {
     })
   }
 
-  cols.push(
-    col({
+  if (includePageNumColumn) {
+    cols.push(col({
       title: t('taskEdit.pageNumber'),
       dataIndex: 'PAGE_NUM',
       key: 'PAGE_NUM',
       customCell: bindCellStyle(cellStyle, 'PAGE_NUM'),
       ...identity.PAGE_NUM,
-    }),
-    col({
+    }))
+  }
+
+  if (includeNoColumn) {
+    cols.push(col({
       title: titleFor('NO', 'taskEdit.workerNumber'),
       dataIndex: 'NO',
       key: 'NO',
       customCell: bindCellStyle(cellStyle, 'NO'),
       ...identity.NO,
-    }),
+    }))
+  }
+
+  cols.push(
     col({
       title: t('taskEdit.employeeNo'),
       dataIndex: 'EMPLOYEE_NO',
@@ -152,13 +173,19 @@ export function buildRecognitionTableColumns(t, options = {}) {
       dataIndex: 'Pays',
       key: 'Pays',
       customCell: bindCellStyle(cellStyle, 'Pays'),
-      ...identity.Pays,
+      ...(dense
+        ? { width: 56, autoWidth: false, minWidth: 56, maxWidth: 56, density: 'compact' }
+        : identity.Pays),
     }),
     requiredCol('Entrepot', {
       title: titleFor('Entrepot', 'taskEdit.warehouse'),
       dataIndex: 'Entrepot',
       key: 'Entrepot',
-      maxWidth: compactIdentityColumns ? 120 : undefined,
+      ...(dense
+        ? { width: 56, minWidth: 56, maxWidth: 56, autoWidth: false, density: 'compact' }
+        : compactIdentityColumns
+          ? { width: 72, minWidth: 72, maxWidth: 72, autoWidth: false, density: 'compact' }
+          : {}),
       customCell: bindCellStyle(cellStyle, 'Entrepot'),
     }),
     requiredCol('Date', {
@@ -166,7 +193,6 @@ export function buildRecognitionTableColumns(t, options = {}) {
       dataIndex: 'Date',
       key: 'Date',
       formatHintTooltipKey: 'fieldFormat.dateTooltip',
-      maxWidth: compactIdentityColumns ? 108 : undefined,
       customCell: bindCellStyle(cellStyle, 'Date'),
       ...timeCompact.Date,
     }),
@@ -175,14 +201,22 @@ export function buildRecognitionTableColumns(t, options = {}) {
       dataIndex: 'NOM_PRENOM',
       key: 'NOM_PRENOM',
       ellipsis: false,
-      maxWidth: compactIdentityColumns ? 160 : undefined,
+      ...(dense
+        ? { width: 108, minWidth: 108, maxWidth: 108, autoWidth: false, density: 'compact' }
+        : compactIdentityColumns
+          ? { width: 176, minWidth: 176, maxWidth: 176, autoWidth: false, density: 'compact' }
+          : {}),
       customCell: bindCellStyle(cellStyle, 'NOM_PRENOM'),
     }),
     requiredCol('AGENCE_INTERIMAIRE', {
       title: titleFor('AGENCE_INTERIMAIRE', 'taskEdit.agency'),
       dataIndex: 'AGENCE_INTERIMAIRE',
       key: 'AGENCE_INTERIMAIRE',
-      maxWidth: compactIdentityColumns ? 120 : undefined,
+      ...(dense
+        ? { width: 72, minWidth: 72, maxWidth: 72, autoWidth: false, density: 'compact' }
+        : compactIdentityColumns
+          ? { width: 100, minWidth: 100, maxWidth: 100, autoWidth: false, density: 'compact' }
+          : {}),
       customCell: bindCellStyle(cellStyle, 'AGENCE_INTERIMAIRE'),
     }),
     requiredCol('HORAIRES_DU_TRAVAIL', {
@@ -190,7 +224,7 @@ export function buildRecognitionTableColumns(t, options = {}) {
       dataIndex: 'HORAIRES_DU_TRAVAIL',
       key: 'HORAIRES_DU_TRAVAIL',
       formatHintTooltipKey: 'fieldFormat.shiftTooltip',
-      maxWidth: compactIdentityColumns ? 100 : undefined,
+      maxWidth: dense ? 72 : (compactIdentityColumns ? 100 : undefined),
       density: compactIdentityColumns ? 'compact' : undefined,
       customCell: bindCellStyle(cellStyle, 'HORAIRES_DU_TRAVAIL'),
       ...timeCompact.HORAIRES_DU_TRAVAIL,
@@ -199,8 +233,7 @@ export function buildRecognitionTableColumns(t, options = {}) {
       title: titleFor('ARRIVEE', 'taskEdit.arrival'),
       dataIndex: 'ARRIVEE',
       key: 'ARRIVEE',
-      formatHintTooltipKey: 'fieldFormat.arrivalTooltip',
-      maxWidth: compactIdentityColumns ? 108 : undefined,
+      maxWidth: dense ? 52 : (compactIdentityColumns ? 108 : undefined),
       density: compactIdentityColumns ? 'compact' : undefined,
       customCell: bindCellStyle(cellStyle, 'ARRIVEE'),
       ...timeCompact.ARRIVEE,
@@ -209,8 +242,7 @@ export function buildRecognitionTableColumns(t, options = {}) {
       title: titleFor('DEPAR', 'taskEdit.departure'),
       dataIndex: 'DEPAR',
       key: 'DEPAR',
-      formatHintTooltipKey: 'fieldFormat.departureTooltip',
-      maxWidth: compactIdentityColumns ? 108 : undefined,
+      maxWidth: dense ? 52 : (compactIdentityColumns ? 108 : undefined),
       density: compactIdentityColumns ? 'compact' : undefined,
       customCell: bindCellStyle(cellStyle, 'DEPAR'),
       ...timeCompact.DEPAR,
@@ -220,7 +252,7 @@ export function buildRecognitionTableColumns(t, options = {}) {
       dataIndex: 'PAUSE',
       key: 'PAUSE',
       ellipsis: false,
-      maxWidth: compactIdentityColumns ? 56 : undefined,
+      maxWidth: dense ? 36 : (compactIdentityColumns ? 56 : undefined),
       density: compactIdentityColumns ? 'compact' : undefined,
       customCell: bindCellStyle(cellStyle, 'PAUSE'),
       ...timeCompact.PAUSE,
@@ -245,14 +277,14 @@ export function buildRecognitionTableColumns(t, options = {}) {
       dataIndex: 'SIGNATURE',
       key: 'SIGNATURE',
       customCell: bindCellStyle(cellStyle, 'SIGNATURE'),
-      ...(timeCompact.SIGNATURE || { maxWidth: compactIdentityColumns ? 60 : undefined }),
+      ...(timeCompact.SIGNATURE || { maxWidth: dense ? 40 : (compactIdentityColumns ? 60 : undefined) }),
     }),
     col({
       title: t('taskEdit.observations'),
       dataIndex: 'Observations',
       key: 'Observations',
       customCell: bindCellStyle(cellStyle, 'Observations'),
-      ...(timeCompact.Observations || { maxWidth: compactIdentityColumns ? 64 : undefined }),
+      ...(timeCompact.Observations || { maxWidth: dense ? 40 : (compactIdentityColumns ? 64 : undefined) }),
     }),
   )
 
@@ -265,12 +297,12 @@ export function buildRecognitionTableColumns(t, options = {}) {
     }
     if (options.fixedAnomalyReasons) {
       anomalyCol.autoWidth = false
-      anomalyCol.width = options.anomalyReasonsColumnWidth || 220
-      anomalyCol.minWidth = options.anomalyReasonsColumnWidth || 220
+      anomalyCol.width = options.anomalyReasonsColumnWidth || (dense ? 132 : 220)
+      anomalyCol.minWidth = options.anomalyReasonsColumnWidth || (dense ? 132 : 220)
       anomalyCol.fixed = 'right'
       anomalyCol.align = 'center'
     } else {
-      anomalyCol.minWidth = 160
+      anomalyCol.minWidth = dense ? 120 : 160
     }
     cols.push(anomalyCol)
   }
@@ -283,7 +315,7 @@ export function buildRecognitionTableColumns(t, options = {}) {
       key: 'ExceptionType',
       className: 'col-required-header',
       autoWidth: false,
-      width: options.exceptionTypeColumnWidth || 96,
+      width: options.exceptionTypeColumnWidth || (dense ? 72 : 96),
       fixed: 'right',
       align: 'center',
       ellipsis: false,

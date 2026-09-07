@@ -70,6 +70,13 @@
               </view>
             </view>
           </block>
+
+          <view tt:if="{{isRecognizing}}" class="home-progress card-flush">
+            <view class="spinner home-progress-spin"></view>
+            <text class="home-progress-title">{{recognizeStatus || texts.recognizing}}</text>
+            <text tt:if="{{rowCount > 0}}" class="home-progress-rows">{{progressRowsText}}</text>
+            <text class="home-progress-hint">{{texts.progressThenDetail}}</text>
+          </view>
         </view>
 
         <view class="home-zone home-zone-secondary">

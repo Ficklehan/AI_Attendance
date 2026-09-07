@@ -144,7 +144,9 @@ public class TaskRecordSyncService {
         tr.setWarehouse(warehouse);
         tr.setWarehouseKey(RecordJsonSupport.upper(warehouse));
         String workDate = RecordJsonSupport.clampVarchar(
-                RecognizedDateNormalizer.normalizeDate(RecordJsonSupport.pickJson(row, "Date", "DATE")),
+                RecognizedDateNormalizer.applyDateWithRaw(
+                        RecordJsonSupport.pickJson(row, "Date", "DATE"),
+                        RecordJsonSupport.pickJson(row, "DATE_RAW", "DateRaw", "dateRaw")),
                 VARCHAR_32);
         tr.setWorkDate(workDate);
         String agency = RecordJsonSupport.pickJson(row, "AGENCE_INTERIMAIRE", "AGENCE", "Agency");

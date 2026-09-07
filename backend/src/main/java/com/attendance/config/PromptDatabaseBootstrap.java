@@ -45,6 +45,7 @@ public class PromptDatabaseBootstrap implements ApplicationRunner {
             boolean force = promptProperties.isForceSeedOnStartup();
             boolean legacy = recognitionPromptService.isLegacyPromptInDatabase();
             boolean missingPageNum = recognitionPromptService.isMissingPageNumPromptInDatabase();
+            boolean missingDateRaw = recognitionPromptService.isMissingDateRawPromptInDatabase();
             boolean outdatedSeed = recognitionPromptService.isOutdatedSeedInDatabase();
 
             if (rows == 0 && promptProperties.isImportMarkdownWhenEmpty()) {
@@ -61,12 +62,13 @@ public class PromptDatabaseBootstrap implements ApplicationRunner {
                 }
             }
 
-            if (rows == 0 || force || legacy || missingPageNum || outdatedSeed) {
-                // 仅空库 / 显式 force / 确认旧版结构才强制覆盖；版本升级与补 PAGE_NUM 不覆盖 user_modified
+            if (rows == 0 || force || legacy || missingPageNum || missingDateRaw || outdatedSeed) {
+                // 空库 / 显式 force / 确认旧版结构：覆盖全部。
+                // DATE_RAW 是输出契约字段：缺它的国家（含 user_modified）也强制套用最新模板，配置页才能看到改后正文。
                 boolean useForce = force || legacy || rows == 0;
-                int seeded = recognitionPromptService.seedFromCanonical(useForce);
-                log.info("提示词数据库播种: rows={}, legacy={}, missingPageNum={}, outdatedSeed={}, force={}, seeded={}",
-                        rows, legacy, missingPageNum, outdatedSeed, useForce, seeded);
+                int seeded = recognitionPromptService.seedFromCanonical(useForce, missingDateRaw);
+                log.info("提示词数据库播种: rows={}, legacy={}, missingPageNum={}, missingDateRaw={}, outdatedSeed={}, force={}, seeded={}",
+                        rows, legacy, missingPageNum, missingDateRaw, outdatedSeed, useForce, seeded);
             } else {
                 recognitionPromptService.seedFromCanonical(false);
                 log.info("提示词数据库已存在且非旧版，仅补全缺失国家/版本（不覆盖用户自定义）");

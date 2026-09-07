@@ -96,7 +96,9 @@ public final class RecognizedTextNormalizer {
             record.put("AGENCE_INTERIMAIRE", normalizeLabelText(String.valueOf(record.get("AGENCE_INTERIMAIRE"))));
         }
         if (record.containsKey("Date")) {
-            record.put("Date", RecognizedDateNormalizer.normalizeDate(String.valueOf(record.get("Date"))));
+            String dateRaw = record.get("DATE_RAW") == null ? "" : String.valueOf(record.get("DATE_RAW"));
+            record.put("Date", RecognizedDateNormalizer.applyDateWithRaw(
+                    String.valueOf(record.get("Date")), dateRaw));
         }
         if (record.containsKey("WorkDate")) {
             record.put("WorkDate", RecognizedDateNormalizer.normalizeDate(String.valueOf(record.get("WorkDate"))));

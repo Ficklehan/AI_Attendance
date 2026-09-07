@@ -184,6 +184,14 @@
           </template>
 
           <a-form layout="vertical">
+            <a-alert
+              v-if="configs.aiPrompt && !configs.aiPrompt.includes('DATE_RAW')"
+              type="warning"
+              show-icon
+              :message="t('config.aiConfig.legacyPromptTitle')"
+              :description="t('config.aiConfig.legacyPromptDesc')"
+              style="margin-bottom: 16px"
+            />
             <a-form-item :label="t('config.aiConfig.aiPrompt')">
               <template #label>
                 <span>
@@ -217,9 +225,14 @@
             </a-form-item>
 
             <a-form-item>
-              <a-button type="primary" @click="saveAiConfig" :loading="saving">
-                {{ t('common.save') }}
-              </a-button>
+              <a-space>
+                <a-button type="primary" @click="saveAiConfig" :loading="saving">
+                  {{ t('common.save') }}
+                </a-button>
+                <a-button :loading="applyingPrompts" @click="applyLatestPrompts">
+                  {{ t('config.aiConfig.applyLatestPrompts') }}
+                </a-button>
+              </a-space>
             </a-form-item>
           </a-form>
         </a-card>
@@ -662,6 +675,7 @@ const wizardAppToken = ref('')
 const wizardTableId = ref('')
 const loading = ref(false)
 const saving = ref(false)
+const applyingPrompts = ref(false)
 const testingConnection = ref(false)
 const feishuConnected = ref(false)
 const selectedCountry = ref('default')
@@ -821,7 +835,7 @@ const wizardSteps = [
   { titleKey: 'config.wizard.step5', descKey: 'config.wizard.step5Desc' }
 ]
 
-const defaultContinuePrompt = '接续上文继续输出，格式与字段不变，不重复已输出行。'
+const defaultContinuePrompt = '接续上文继续输出，格式与字段不变（含第16位 DATE_RAW），不重复已输出行。'
 
 /** 配置页以库内容为准；库空则空编辑框，不再注入本地硬编码模板 */
 const applyPromptFromApi = (aiRes) => {
@@ -973,6 +987,34 @@ const saveAiConfig = async () => {
   } finally {
     saving.value = false
   }
+}
+
+const applyLatestPrompts = () => {
+  Modal.confirm({
+    title: t('config.aiConfig.applyLatestPrompts'),
+    content: t('config.aiConfig.restoreDefaultConfirm'),
+    onOk: async () => {
+      applyingPrompts.value = true
+      try {
+        await request({
+          url: '/config/reset-prompts',
+          method: 'post',
+          params: { country: selectedCountry.value },
+        })
+        const aiRes = await request({
+          url: '/config/ai-prompt',
+          params: { country: selectedCountry.value },
+        })
+        applyPromptFromApi(aiRes)
+        message.success(t('config.aiConfig.applyLatestPromptsDone'))
+        await loadCountryBundle(selectedCountry.value)
+      } catch (error) {
+        console.error('应用最新提示词失败:', error)
+      } finally {
+        applyingPrompts.value = false
+      }
+    },
+  })
 }
 
 const saveFeishuConfig = async () => {

@@ -100,7 +100,7 @@ Page({
       absent: 0,
       deleted: 0
     },
-    recordsExpanded: false,
+    recordsExpanded: true,
     issueCount: 0,
     submitCtaLabel: '',
     showCompletion: false,
@@ -751,57 +751,30 @@ Page({
   },
 
   refreshDisplayRecords: function () {
-    const { records, visibleCount, recordsExpanded, canSubmit } = this.data
+    const { records, canSubmit } = this.data
     const allBuilt = this.attachDuplicateUi(buildDisplayRecords(records, records.length))
     const allIssues = allBuilt.filter((row) => row.hasAnomaly && !row.isDeleted)
-    const issueRecords = allIssues.slice(0, 8)
     const issueCount = allIssues.length
     let submitCtaLabel = t('result.confirmSubmit')
     if (canSubmit && issueCount > 0) {
       submitCtaLabel = t('result.confirmSubmitWithIssues', { count: issueCount })
     }
-    const finish = (payload) => {
-      this.setData(payload, () => {
-        this.refreshRequiredValidation()
-        this.refreshPageTexts()
-      })
-    }
-    if (recordsExpanded) {
-      const displayRecords = this.attachDuplicateUi(buildDisplayRecords(records, visibleCount))
-      finish({
-        displayRecords,
-        issueRecords,
-        issueCount,
-        submitCtaLabel,
-        hasMore: visibleCount < records.length
-      })
-      return
-    }
-    if (issueCount > 0) {
-      finish({
-        displayRecords: [],
-        issueRecords,
-        issueCount,
-        submitCtaLabel,
-        hasMore: false
-      })
-      return
-    }
-    const preview = allBuilt.slice(0, Math.min(5, allBuilt.length))
-    finish({
-      displayRecords: preview,
+    this.setData({
+      displayRecords: allBuilt,
       issueRecords: [],
-      issueCount: 0,
+      issueCount,
       submitCtaLabel,
-      hasMore: preview.length < allBuilt.length
+      recordsExpanded: true,
+      visibleCount: records.length,
+      hasMore: false,
+    }, () => {
+      this.refreshRequiredValidation()
+      this.refreshPageTexts()
     })
   },
 
   toggleRecordsExpanded: function () {
-    const recordsExpanded = !this.data.recordsExpanded
-    this.setData({ recordsExpanded, visibleCount: PAGE_SIZE }, () => {
-      this.refreshDisplayRecords()
-    })
+    // 明细默认全部展开，保留空实现避免旧绑定报错
   },
 
   handleExceptionTypeSelect: function (e) {

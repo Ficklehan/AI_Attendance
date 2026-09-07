@@ -73,6 +73,28 @@
   opacity: 0.65;
 }
 
+.date-field-row {
+  display: flex;
+  align-items: center;
+  gap: 12rpx;
+}
+
+.date-field-row picker {
+  flex: 1;
+  min-width: 0;
+}
+
+.date-swap-btn {
+  flex-shrink: 0;
+  padding: 10rpx 16rpx;
+  border-radius: 10rpx;
+  border: 1rpx solid #91caff;
+  background: #e6f4ff;
+  color: #1677ff;
+  font-size: 24rpx;
+  font-weight: 600;
+}
+
 .focus-fields-banner {
   margin-top: 16rpx;
   padding: 12rpx 16rpx;

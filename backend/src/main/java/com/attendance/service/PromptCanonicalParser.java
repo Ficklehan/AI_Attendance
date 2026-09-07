@@ -7,10 +7,19 @@ import java.util.regex.Pattern;
 
 /**
  * 从内置 canonical/prompts.md 解析各国提示词（仅用于播种，运行时以 DB 为准）。
+ * 文件级标题：{@code ## 主要识别提示词} / {@code ## 继续输出提示词} / {@code ## 法国 (FR) - 识别提示词}。
+ * 正文里的 {@code ## 1.} 或内嵌 {@code ```json} 不算文件级标题，不会截断。
  */
 public final class PromptCanonicalParser {
 
     private static final String DEFAULT_CONTINUE = "请接续上文继续输出，不要重复已有内容，保持相同格式。";
+
+    /** 文件级章节标题：default 两节 + 各国识别/继续。 */
+    private static final Pattern FILE_HEADING = Pattern.compile(
+            "(?m)^##\\s+(?:主要识别提示词|继续输出提示词|.+\\([A-Z]{2}\\).+(?:识别提示词|继续提示词))\\s*$");
+
+    private static final Pattern COUNTRY_HEADING = Pattern.compile(
+            "(?m)^##+\\s*[^\\n]*\\(([A-Z]{2})\\)[^\\n]*?(识别提示词|继续提示词)[^\\n]*$");
 
     private PromptCanonicalParser() {
     }
@@ -21,21 +30,21 @@ public final class PromptCanonicalParser {
             return result;
         }
 
-        String defaultAi = extractSection(markdown, "主要识别提示词", "```markdown", "```");
-        String defaultContinue = extractSection(markdown, "继续输出提示词", "```markdown", "```");
+        String defaultAi = extractNamedSection(markdown, "主要识别提示词");
+        String defaultContinue = extractNamedSection(markdown, "继续输出提示词");
         if (defaultAi != null && !defaultAi.trim().isEmpty()) {
             result.put("default", new ParsedPrompt(defaultAi.trim(),
                     fallbackContinue(defaultContinue)));
         }
 
-        Pattern countryPattern = Pattern.compile(
-                "##+\\s*[^\\n]*\\(([A-Z]{2})\\)[^\\n]*?(识别提示词|继续提示词)[^\\n]*\\n(.*?)```markdown(.*?)```",
-                Pattern.DOTALL);
-        Matcher matcher = countryPattern.matcher(markdown);
+        Matcher matcher = COUNTRY_HEADING.matcher(markdown);
         while (matcher.find()) {
             String code = matcher.group(1);
             String kind = matcher.group(2);
-            String body = matcher.group(4).trim();
+            String body = extractFenceFromRange(markdown, matcher.end(), nextFileHeadingStart(markdown, matcher.end()));
+            if (body == null || body.isEmpty()) {
+                continue;
+            }
             ParsedPrompt existing = result.get(code);
             if (existing == null) {
                 existing = new ParsedPrompt("", DEFAULT_CONTINUE);
@@ -64,24 +73,84 @@ public final class PromptCanonicalParser {
         return value.trim();
     }
 
-    private static String extractSection(String content, String sectionName, String codeStart, String codeEnd) {
-        String regex = "(?:##+\\s*)" + Pattern.quote(sectionName) + "(.*?)(?=##|$)";
-        Pattern sectionPattern = Pattern.compile(regex, Pattern.DOTALL);
-        Matcher sectionMatcher = sectionPattern.matcher(content);
-        if (!sectionMatcher.find()) {
+    private static String extractNamedSection(String markdown, String sectionName) {
+        Pattern heading = Pattern.compile("(?m)^##+\\s*" + Pattern.quote(sectionName) + "\\s*$");
+        Matcher hm = heading.matcher(markdown);
+        if (!hm.find()) {
             return null;
         }
-        String sectionContent = sectionMatcher.group(1);
-        int startIdx = sectionContent.indexOf(codeStart);
-        if (startIdx == -1) {
-            return sectionContent.trim();
+        return extractFenceFromRange(markdown, hm.end(), nextFileHeadingStart(markdown, hm.end()));
+    }
+
+    private static int nextFileHeadingStart(String markdown, int from) {
+        Matcher next = FILE_HEADING.matcher(markdown);
+        if (next.find(from)) {
+            return next.start();
         }
-        startIdx += codeStart.length();
-        int endIdx = sectionContent.indexOf(codeEnd, startIdx);
-        if (endIdx == -1) {
-            return sectionContent.substring(startIdx).trim();
+        return markdown.length();
+    }
+
+    /**
+     * 取区间内 {@code ```markdown} 到该区间最后一个行首 {@code ```} 之间的正文。
+     * 这样正文里的 {@code ```json} 示例不会提前截断。
+     */
+    private static String extractFenceFromRange(String markdown, int from, int to) {
+        if (from < 0 || to <= from || from >= markdown.length()) {
+            return null;
         }
-        return sectionContent.substring(startIdx, endIdx).trim();
+        int end = Math.min(to, markdown.length());
+        String section = markdown.substring(from, end);
+        int fenceTag = indexOfFenceTag(section, "```markdown");
+        if (fenceTag < 0) {
+            return section.trim();
+        }
+        int contentStart = skipFenceLine(section, fenceTag + "```markdown".length());
+        int close = lastLineStartFence(section, contentStart);
+        if (close < 0) {
+            return section.substring(contentStart).trim();
+        }
+        return section.substring(contentStart, close).trim();
+    }
+
+    private static int indexOfFenceTag(String text, String tag) {
+        int idx = 0;
+        while (true) {
+            int found = text.indexOf(tag, idx);
+            if (found < 0) {
+                return -1;
+            }
+            if (found == 0 || text.charAt(found - 1) == '\n') {
+                return found;
+            }
+            idx = found + tag.length();
+        }
+    }
+
+    private static int skipFenceLine(String text, int afterTag) {
+        int i = afterTag;
+        if (i < text.length() && text.charAt(i) == '\r') {
+            i++;
+        }
+        if (i < text.length() && text.charAt(i) == '\n') {
+            i++;
+        }
+        return i;
+    }
+
+    private static int lastLineStartFence(String text, int from) {
+        int last = -1;
+        int idx = from;
+        while (idx < text.length()) {
+            int found = text.indexOf("```", idx);
+            if (found < 0) {
+                break;
+            }
+            if (found == 0 || text.charAt(found - 1) == '\n') {
+                last = found;
+            }
+            idx = found + 3;
+        }
+        return last;
     }
 
     public static final class ParsedPrompt {

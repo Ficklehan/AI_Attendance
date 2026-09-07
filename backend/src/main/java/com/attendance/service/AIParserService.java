@@ -851,9 +851,9 @@ public class AIParserService {
             return;
         }
         List<JSONArray> expanded = RecognizedRecordShapeSupport.expandMergedRowArrays(itemArray);
-        boolean mergedSixteen = itemArray.size() == 16
+        boolean mergedSticky = (itemArray.size() == 16 || itemArray.size() == 17)
                 && RecognizedRecordShapeSupport.looksLikeMergedBlob(String.valueOf(itemArray.get(0)));
-        JSONArray recoveredFirst = mergedSixteen
+        JSONArray recoveredFirst = mergedSticky
                 ? RecognizedRecordShapeSupport.trySplitMergedBlob(String.valueOf(itemArray.get(0)))
                 : null;
         for (int i = 0; i < expanded.size(); i++) {
@@ -862,7 +862,7 @@ public class AIParserService {
                 pushRecordArray(candidate, extractedRecords, seenRecords, callback);
                 continue;
             }
-            boolean recoveredFromMerge = mergedSixteen && i == 0 && recoveredFirst != null
+            boolean recoveredFromMerge = mergedSticky && i == 0 && recoveredFirst != null
                     && candidate.toJSONString().equals(recoveredFirst.toJSONString());
             pushSingleRecordArray(candidate, recoveredFromMerge, extractedRecords, seenRecords, callback);
         }
@@ -1088,7 +1088,7 @@ public class AIParserService {
             normalized.put("NO", record.get(0));
             normalized.put("Pays", record.get(1));
             normalized.put("Entrepot", record.get(2));
-            normalized.put("Date", RecognizedDateNormalizer.normalizeDate(String.valueOf(record.get(3))));
+            normalized.put("Date", String.valueOf(record.get(3)));
             normalized.put("NOM_PRENOM", record.get(4));
             normalized.put("AGENCE_INTERIMAIRE", record.get(5));
             normalized.put("HORAIRES_DU_TRAVAIL", record.get(6));
@@ -1099,8 +1099,7 @@ public class AIParserService {
             normalized.put("Observations", record.get(11));
             normalized.put("Mark", record.get(12));
             normalized.put("isDeleted", record.get(13));
-            normalized.put("PAGE_NUM", record.size() > 14
-                    ? PageNumberNormalizer.sanitize(String.valueOf(record.get(14))) : "");
+            applyPageAndDateRaw(normalized, record);
         } else {
             normalized.put("NO", record.size() > 0 ? record.get(0) : "");
             normalized.put("Pays", "");
@@ -1118,15 +1117,21 @@ public class AIParserService {
             normalized.put("Mark", record.size() > 9 ? record.get(9) : "");
             normalized.put("isDeleted", record.size() > 10 ? record.get(10) : false);
             normalized.put("PAGE_NUM", "");
+            normalized.put("DATE_RAW", "");
         }
         if (!normalized.containsKey("PAGE_NUM")) {
             normalized.put("PAGE_NUM", "");
+        }
+        if (!normalized.containsKey("DATE_RAW")) {
+            normalized.put("DATE_RAW", "");
         }
         normalized.put("PAGE_NUM", PageNumberNormalizer.sanitize(normalized.getString("PAGE_NUM")));
         RecognizedAgencyShiftCorrector.correctSwappedFields(normalized);
         RecognizedTextNormalizer.normalizeRecordTextFields(normalized);
         normalized.put("Entrepot", RecognizedTextNormalizer.normalizeLabelText(normalized.getString("Entrepot")));
-        normalized.put("Date", RecognizedDateNormalizer.normalizeDate(normalized.getString("Date")));
+        normalized.put("DATE_RAW", RecognizedDateNormalizer.sanitizeDateRaw(normalized.getString("DATE_RAW")));
+        normalized.put("Date", RecognizedDateNormalizer.applyDateWithRaw(
+                normalized.getString("Date"), normalized.getString("DATE_RAW")));
         normalized.put("HORAIRES_DU_TRAVAIL",
                 RecognizedTimeNormalizer.normalizeShiftSchedule(normalized.getString("HORAIRES_DU_TRAVAIL")));
         normalized.put("ARRIVEE", RecognizedTimeNormalizer.normalizeClockTime(normalized.getString("ARRIVEE")));
@@ -1157,6 +1162,21 @@ public class AIParserService {
 
         RecognizedFieldSanitizer.annotateAndSanitizeRecord(normalized);
         return normalized;
+    }
+
+    /**
+     * 第15位 PAGE_NUM、第16位 DATE_RAW。
+     * 若模型把三段日期写进第15位，则与页码对调。
+     */
+    private static void applyPageAndDateRaw(JSONObject normalized, JSONArray record) {
+        String pageToken = record.size() > 14 ? String.valueOf(record.get(14)) : "";
+        String rawToken = record.size() > 15 ? String.valueOf(record.get(15)) : "";
+        if (RecognizedDateNormalizer.isDateRawToken(pageToken) && !RecognizedDateNormalizer.isDateRawToken(rawToken)) {
+            rawToken = pageToken;
+            pageToken = record.size() > 15 ? String.valueOf(record.get(15)) : "";
+        }
+        normalized.put("PAGE_NUM", pageToken);
+        normalized.put("DATE_RAW", rawToken);
     }
 
     private static boolean isClockTime(String value) {

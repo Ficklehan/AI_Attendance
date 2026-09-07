@@ -8,20 +8,26 @@ import com.attendance.dto.request.DeleteTaskRequest;
 import com.attendance.dto.request.TaskQuery;
 import com.attendance.dto.response.EmployeeRecordDTO;
 import com.attendance.dto.response.TaskListDTO;
+import com.attendance.dto.response.RecognitionEventPageDTO;
 import com.attendance.dto.response.TaskProgressDTO;
 import com.attendance.dto.response.TaskSummaryDTO;
 import com.attendance.entity.Task;
 import com.attendance.entity.TaskListRow;
 import com.attendance.service.AuditLogService;
 import com.attendance.service.ConfigService;
+import com.attendance.service.RecognitionEventService;
 import com.attendance.service.TaskService;
 import com.attendance.service.UserService;
 import com.attendance.util.CountryResolver;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.MediaType;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
+
+import javax.servlet.http.HttpServletResponse;
 
 import javax.validation.Valid;
 import java.util.ArrayList;
@@ -44,6 +50,9 @@ public class TaskController {
     
     @Autowired
     private ConfigService configService;
+
+    @Autowired
+    private RecognitionEventService recognitionEventService;
 
     @GetMapping
     public Result<PageResult<TaskListDTO>> getTaskList(TaskQuery query) {
@@ -68,6 +77,32 @@ public class TaskController {
     @GetMapping("/{taskId}/progress")
     public Result<TaskProgressDTO> getTaskProgress(@PathVariable String taskId) {
         return Result.success(taskService.getTaskProgress(taskId));
+    }
+
+    @GetMapping("/{taskId}/events")
+    public Result<RecognitionEventPageDTO> getRecognitionEvents(
+            @PathVariable String taskId,
+            @RequestParam(value = "afterSeq", defaultValue = "0") int afterSeq,
+            @RequestParam(value = "limit", defaultValue = "100") int limit) {
+        return Result.success(recognitionEventService.listEventsForCurrentUser(taskId, afterSeq, limit));
+    }
+
+    @GetMapping("/{taskId}/events/wait")
+    public Result<RecognitionEventPageDTO> waitRecognitionEvents(
+            @PathVariable String taskId,
+            @RequestParam(value = "afterSeq", defaultValue = "0") int afterSeq,
+            @RequestParam(value = "timeoutMs", defaultValue = "25000") long timeoutMs) {
+        return Result.success(recognitionEventService.waitEventsForCurrentUser(taskId, afterSeq, timeoutMs));
+    }
+
+    @GetMapping(value = "/{taskId}/events/stream", produces = MediaType.TEXT_EVENT_STREAM_VALUE)
+    public SseEmitter streamRecognitionEvents(
+            @PathVariable String taskId,
+            @RequestParam(value = "afterSeq", defaultValue = "0") int afterSeq,
+            HttpServletResponse response) {
+        response.setHeader("Cache-Control", "no-cache");
+        response.setHeader("X-Accel-Buffering", "no");
+        return recognitionEventService.streamEventsForCurrentUser(taskId, afterSeq);
     }
 
     @GetMapping("/{taskId:^(?!records$)(?!stats$)(?!summary$).+}")

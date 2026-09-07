@@ -4,6 +4,9 @@ server:
     context-path: /clockai/api
   # 反向代理(nginx)后按 X-Forwarded-* 解析真实协议/域名，保证导出图片链接等使用公网地址
   forward-headers-strategy: framework
+  tomcat:
+    connection-timeout: 60000
+    keep-alive-timeout: 60000
 
 spring:
   profiles:
@@ -18,6 +21,9 @@ spring:
     port: ${REDIS_PORT:6379}
     password: ${REDIS_PASSWORD:}
     timeout: 3000ms
+  mvc:
+    async:
+      request-timeout: 3600000
   servlet:
     multipart:
       enabled: true
@@ -104,8 +110,8 @@ attendance:
       - "*"
     allow-credentials: true
   prompt:
-    # 内置标准模板版本；升级表头/字段后递增，启动时会刷新未自定义的国家提示词
-    seed-version: 9
+    # 内置标准模板版本；升级表头/字段后递增。缺 DATE_RAW 的国家（含用户改过的）会强制刷新，以便配置页看到最新正文
+    seed-version: 12
     seed-on-startup: true
     # 设为 true 时每次启动强制覆盖全部国家提示词（等同重新初始化）
     force-seed-on-startup: false

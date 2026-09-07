@@ -175,7 +175,7 @@ export function useTaskEditRecordDisplay(records, getDuplicateMeta, { isAbsentRo
     if (rowKey) rowCache.delete(rowKey)
   }
 
-  /** 任务确认页汇总：按异常类型 / 班次偏差口径，不再用 SmartMark 手写·模糊·夜班 */
+  /** 任务确认页汇总：按异常类型 / 班次偏差口径；未出勤含删除与未出勤识别类型 */
   const stats = computed(() => {
     void locale.value
     const next = {
@@ -184,14 +184,15 @@ export function useTaskEditRecordDisplay(records, getDuplicateMeta, { isAbsentRo
       ocrWrong: 0,
       paperWrong: 0,
       shiftVariance: 0,
-      deleted: 0,
+      absent: 0,
     }
     for (const record of records.value || []) {
-      if (record?.isDeleted) {
-        next.deleted++
+      if (record?.isDeleted || record?.deleted) {
+        next.absent++
         continue
       }
       if (typeof isAbsentRow === 'function' && isAbsentRow(record)) {
+        next.absent++
         continue
       }
       if (getRecordShiftVarianceSentence(record)) {
@@ -237,7 +238,7 @@ export function useTaskEditRecordDisplay(records, getDuplicateMeta, { isAbsentRo
     },
     {
       key: 'paperWrong',
-      variant: 'absent',
+      variant: 'paperWrong',
       value: stats.value.paperWrong,
       label: t('taskEdit.statsPaperWrong'),
     },
@@ -248,10 +249,10 @@ export function useTaskEditRecordDisplay(records, getDuplicateMeta, { isAbsentRo
       label: t('taskEdit.statsShiftVariance'),
     },
     {
-      key: 'deleted',
-      variant: 'deleted',
-      value: stats.value.deleted,
-      label: t('taskEdit.statsDeleted'),
+      key: 'absent',
+      variant: 'absent',
+      value: stats.value.absent,
+      label: t('taskEdit.statsAbsent'),
     },
   ]
   })
@@ -260,8 +261,9 @@ export function useTaskEditRecordDisplay(records, getDuplicateMeta, { isAbsentRo
   const recordMatchesStatFilter = (record, filterKey) => {
     if (!filterKey) return true
     if (!record) return false
-    if (filterKey === 'deleted') {
-      return Boolean(record.isDeleted || record.deleted)
+    if (filterKey === 'absent' || filterKey === 'deleted') {
+      if (record.isDeleted || record.deleted) return true
+      return typeof isAbsentRow === 'function' && isAbsentRow(record)
     }
     if (filterKey === 'attention' || filterKey === 'anomaly') {
       return needsAttentionRecord(record)
@@ -460,6 +462,11 @@ export function useTaskEditRecordDisplay(records, getDuplicateMeta, { isAbsentRo
     return fieldChangeLines
   }
 
+  const hasRecordFieldChanges = (record) => {
+    if (!record || record.isDeleted || isAbsentRow?.(record)) return false
+    return getRecordFieldChangeDiffs(record).length > 0
+  }
+
   /** 单元格下方小字：旧值 → 新值（不含字段名）；已删除/未出勤不展示 */
   const getFieldChangeHint = (record, field) => {
     if (!record || !field) return ''
@@ -506,6 +513,16 @@ const ANOMALY_CATEGORY_FALLBACK = {
   other: '其他异常',
 }
 
+/** 16 字段 DATE_RAW 行曾被误标结构异常，展示时忽略。 */
+function shouldShowParseMalformed(record) {
+  if (!record?._parseMalformed) return false
+  if (record._parseMalformedReason === 'merged_row_recovered') return true
+  if (record._parseMalformedReason === 'invalid_field_shape' && String(record.DATE_RAW || '').trim()) {
+    return false
+  }
+  return true
+}
+
   const getAnomalyCategoryLabel = (category) => {
     const key = ANOMALY_CATEGORY_I18N[category]
     if (key) {
@@ -548,7 +565,7 @@ const ANOMALY_CATEGORY_FALLBACK = {
       addItem('format', sameTimeLabel !== 'fieldFormat.sameTimeShort' ? sameTimeLabel : '到达与离开时间相同')
     }
 
-    if (record._parseMalformed) {
+    if (shouldShowParseMalformed(record)) {
       const malformedLabel = t('taskEdit.parseMalformedShort')
       addItem('format', malformedLabel !== 'taskEdit.parseMalformedShort' ? malformedLabel : '结构异常')
     }
@@ -655,7 +672,7 @@ const ANOMALY_CATEGORY_FALLBACK = {
     let rowClassName = ''
     if (record?.isDeleted || record?.deleted) rowClassName = 'deleted-row'
     else if (typeof isAbsentRow === 'function' && isAbsentRow(record)) rowClassName = 'absent-row'
-    else if (record?._parseMalformed) rowClassName = 'parse-malformed-row'
+    else if (shouldShowParseMalformed(record)) rowClassName = 'parse-malformed-row'
     else if (record?._manuallyAdded) rowClassName = 'manual-added-row'
     else {
       const mark = getDisplaySmartMark(record)
@@ -808,6 +825,7 @@ const ANOMALY_CATEGORY_FALLBACK = {
     getRecordShiftVariancePhrases,
     getRecordShiftVarianceSentence,
     getRecordFieldChangeLines,
+    hasRecordFieldChanges,
     getFieldChangeHint,
     hasAnomalyColumnContent,
     getRowClassName,

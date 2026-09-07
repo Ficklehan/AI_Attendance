@@ -58,18 +58,26 @@
         </block>
 
         <block tt:elif="{{item.inputType === 'date'}}">
-          <picker
-            mode="date"
-            value="{{item.pickerValue}}"
-            disabled="{{item.locked}}"
-            data-key="{{item.key}}"
-            bindchange="onDatePickerChange"
-          >
-            <view class="field-input-shell picker-shell {{item.missing ? 'is-required-empty' : ''}} {{item.formatInvalid ? 'is-format-invalid' : ''}} {{item.highlight ? 'is-calib-highlight' : ''}} {{item.locked ? 'is-locked' : ''}}">
-              <text class="field-picker-value">{{item.displayValue || texts.pickDate}}</text>
-              <text class="field-picker-chevron">▼</text>
-            </view>
-          </picker>
+          <view class="date-field-row">
+            <picker
+              mode="date"
+              value="{{item.pickerValue}}"
+              disabled="{{item.locked}}"
+              data-key="{{item.key}}"
+              bindchange="onDatePickerChange"
+            >
+              <view class="field-input-shell picker-shell {{item.missing ? 'is-required-empty' : ''}} {{item.formatInvalid ? 'is-format-invalid' : ''}} {{item.highlight ? 'is-calib-highlight' : ''}} {{item.locked ? 'is-locked' : ''}}">
+                <text class="field-picker-value">{{item.displayValue || texts.pickDate}}</text>
+                <text class="field-picker-chevron">▼</text>
+              </view>
+            </picker>
+            <view
+              tt:if="{{item.canSwapMonthDay}}"
+              class="date-swap-btn"
+              data-key="{{item.key}}"
+              catchtap="onSwapMonthDay"
+            >{{texts.swapMonthDay}}</view>
+          </view>
         </block>
 
         <block tt:elif="{{item.inputType === 'time'}}">

@@ -1,11 +1,19 @@
 <template>
   <span
     class="copyable-cell"
-    :class="{ 'copyable-cell--block': block }"
+    :class="{
+      'copyable-cell--block': block,
+      'copyable-cell--shrink': autoShrink,
+    }"
     @mouseenter="hovered = true"
     @mouseleave="hovered = false"
   >
-    <span class="copyable-cell__content" :title="displayText || undefined">
+    <span
+      class="copyable-cell__content"
+      :class="{ 'cell-text': autoShrink }"
+      :title="displayText || undefined"
+      v-auto-shrink-font="autoShrink ? shrinkOptions : false"
+    >
       <slot>{{ displayText }}</slot>
     </span>
     <a-tooltip v-if="canCopy" :title="$t('common.copy')">
@@ -29,6 +37,7 @@ import { message } from 'ant-design-vue'
 import { CopyOutlined } from '@ant-design/icons-vue'
 import { copyTextToClipboard } from '@/utils/clipboard'
 import { formatTableCellText } from '@/utils/tableCopy'
+import { vAutoShrinkFont } from '@/directives/autoShrinkFont'
 
 const props = defineProps({
   text: {
@@ -39,6 +48,18 @@ const props = defineProps({
     type: Boolean,
     default: false,
   },
+  autoShrink: {
+    type: Boolean,
+    default: false,
+  },
+  shrinkMax: {
+    type: Number,
+    default: 12,
+  },
+  shrinkMin: {
+    type: Number,
+    default: 7,
+  },
 })
 
 const { t } = useI18n()
@@ -47,6 +68,11 @@ const copied = ref(false)
 
 const displayText = computed(() => formatTableCellText(props.text))
 const canCopy = computed(() => displayText.value !== '')
+const shrinkOptions = computed(() => ({
+  max: props.shrinkMax,
+  min: props.shrinkMin,
+  wrap: false,
+}))
 
 let copiedTimer = null
 
@@ -80,12 +106,21 @@ const handleCopy = async () => {
     width: 100%;
   }
 
+  &--shrink {
+    width: 100%;
+  }
+
   &__content {
     min-width: 0;
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
     user-select: text;
+  }
+
+  &--shrink &__content {
+    flex: 1;
+    text-overflow: clip;
   }
 
   &__btn {

@@ -57,6 +57,31 @@ class RecognizedRecordShapeSupportTest {
     }
 
     @Test
+    void validSixteenFieldDateRawRow_isNotMalformed() {
+        JSONArray row = JSON.parseArray(
+                "[\"19\",\"France\",\"MILANO\",\"2026-09-02\",\"CHRISTIAN MOHAMMAD\",\"Tempus\","
+                        + "\"08:00-17:00\",\"08:30\",\"17:30\",\"0\",\"已签字\",\"\",\"正常\",\"false\",\"\",\"09/02/2026\"]");
+        assertEquals(1, RecognizedRecordShapeSupport.expandMergedRowArrays(row).size());
+        assertTrue(RecognizedRecordShapeSupport.isRawFieldCountValid(16));
+        com.alibaba.fastjson.JSONObject record = new com.alibaba.fastjson.JSONObject();
+        record.put("NO", "19");
+        record.put("Pays", "France");
+        record.put("Entrepot", "MILANO");
+        assertFalse(RecognizedRecordShapeSupport.isNormalizedShapeMalformed(record, 16));
+    }
+
+    @Test
+    void clearStaleMalformedFlag_removesFalsePositiveFromDateRawRows() {
+        com.alibaba.fastjson.JSONObject record = new com.alibaba.fastjson.JSONObject();
+        record.put("NO", "19");
+        record.put("Pays", "France");
+        record.put("Entrepot", "MILANO");
+        RecognizedRecordShapeSupport.markMalformed(record, "invalid_field_shape");
+        assertTrue(RecognizedRecordShapeSupport.clearStaleMalformedFlag(record));
+        assertFalse(record.getBooleanValue(RecognizedRecordShapeSupport.PARSE_MALFORMED_KEY));
+    }
+
+    @Test
     void malformedRatio_counts_flagged_rows() {
         com.alibaba.fastjson.JSONObject a = new com.alibaba.fastjson.JSONObject();
         RecognizedRecordShapeSupport.markMalformed(a, "test");

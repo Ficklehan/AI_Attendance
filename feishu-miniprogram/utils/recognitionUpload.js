@@ -344,6 +344,7 @@ function pollTaskUntilDone(taskId, options) {
 
           if (options && options.onProgress) {
             options.onProgress({
+              taskId,
               status: status === 'processed' ? 'processed' : 'processing',
               rowCount,
               engine,
@@ -462,6 +463,7 @@ function startTaskRecognition(taskId, country, options) {
     }
     if (onProgress) {
       onProgress({
+        taskId,
         status: 'processing',
         rowCount: 0,
         engine: preferredEngine,
@@ -606,6 +608,7 @@ function runUploadAndWatch(filePath, options) {
 
       if (onProgress) {
         onProgress({
+          taskId,
           status: 'processing',
           rowCount: 0,
           engine,
@@ -669,6 +672,7 @@ function startRecognition(filePath, onProgress) {
 
       if (onProgress) {
         onProgress({
+          taskId,
           status: 'processing',
           rowCount: 0,
           engine,

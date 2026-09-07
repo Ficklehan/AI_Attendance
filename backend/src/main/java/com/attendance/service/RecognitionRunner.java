@@ -52,11 +52,14 @@ public class RecognitionRunner {
     private RecognitionModelRuntime recognitionModelRuntime;
 
     @Autowired
+    private RecognitionEventService recognitionEventService;
+
+    @Autowired
     @Qualifier("recognitionExecutor")
     private Executor recognitionExecutor;
 
     private static final int PROGRESS_COUNT_EVERY = 5;
-    private static final int FULL_RAW_FLUSH_EVERY = 15;
+    private static final int FULL_RAW_FLUSH_EVERY = 20;
     public static final int RECOGNITION_TIMEOUT_SECONDS = 900;
 
     public static class RecognitionOutcome {
@@ -123,7 +126,8 @@ public class RecognitionRunner {
                     fileBytes, originalFilename, "application/pdf");
             return runMultiplePages(pages, promptCountry, workingCountry, trace, progressTaskId);
         }
-        return runSingleImage(fileBytes, originalFilename, promptCountry, workingCountry, trace, progressTaskId, null);
+        return runSingleImage(fileBytes, originalFilename, promptCountry, workingCountry, trace,
+                progressTaskId, null, progressTaskId, null);
     }
 
     public RecognitionOutcome runMultiplePages(List<UploadMediaSupport.ImagePage> pages, String promptCountry,
@@ -134,7 +138,8 @@ public class RecognitionRunner {
         }
         if (pages.size() == 1) {
             UploadMediaSupport.ImagePage only = pages.get(0);
-            return runSingleImage(only.getBytes(), only.getLabel(), promptCountry, workingCountry, trace, progressTaskId, null);
+            return runSingleImage(only.getBytes(), only.getLabel(), promptCountry, workingCountry, trace,
+                    progressTaskId, null, progressTaskId, Integer.valueOf(0));
         }
         List<JSONObject> merged = new ArrayList<>();
         String finalEngine = null;
@@ -150,7 +155,8 @@ public class RecognitionRunner {
                 trace.step("pdf_page_start", meta);
             }
             RecognitionOutcome outcome = runSingleImage(
-                    page.getBytes(), page.getLabel(), promptCountry, workingCountry, trace, progressTaskId, merged);
+                    page.getBytes(), page.getLabel(), promptCountry, workingCountry, trace,
+                    progressTaskId, merged, progressTaskId, Integer.valueOf(i));
             merged.addAll(outcome.getRecords());
             finalEngine = outcome.getEngine();
             if (outcome.getPromptCountry() != null && !outcome.getPromptCountry().trim().isEmpty()) {
@@ -171,12 +177,21 @@ public class RecognitionRunner {
     private RecognitionOutcome runSingleImage(byte[] fileBytes, String originalFilename, String promptCountry,
                                               String workingCountry, RecognitionTrace trace,
                                               String progressTaskId) throws Exception {
-        return runSingleImage(fileBytes, originalFilename, promptCountry, workingCountry, trace, progressTaskId, null);
+        return runSingleImage(fileBytes, originalFilename, promptCountry, workingCountry, trace,
+                progressTaskId, null, progressTaskId, null);
     }
 
     private RecognitionOutcome runSingleImage(byte[] fileBytes, String originalFilename, String promptCountry,
                                               String workingCountry, RecognitionTrace trace,
                                               String progressTaskId, List<JSONObject> mergedBaseline) throws Exception {
+        return runSingleImage(fileBytes, originalFilename, promptCountry, workingCountry, trace,
+                progressTaskId, mergedBaseline, progressTaskId, null);
+    }
+
+    private RecognitionOutcome runSingleImage(byte[] fileBytes, String originalFilename, String promptCountry,
+                                              String workingCountry, RecognitionTrace trace,
+                                              String progressTaskId, List<JSONObject> mergedBaseline,
+                                              String eventTaskId, Integer imageIndex) throws Exception {
         final List<JSONObject> baseline = mergedBaseline != null ? mergedBaseline : new ArrayList<>();
         List<JSONObject> records = new ArrayList<>();
         final Exception[] error = {null};
@@ -286,6 +301,7 @@ public class RecognitionRunner {
         if (progressTaskId != null && !records.isEmpty()) {
             flushMergedProgress(progressTaskId, baseline, records, engineTag);
         }
+        publishPageDoneEvent(eventTaskId, imageIndex, records);
 
         for (JSONObject record : records) {
             RecordCountryDefaults.applyMissingPays(record, workingCountry);
@@ -346,6 +362,11 @@ public class RecognitionRunner {
         }
 
         List<JSONObject> merged = resuming ? loadExistingRecords(task, checkpoint) : new ArrayList<>();
+        try {
+            recognitionEventService.beginRun(taskId, merged);
+        } catch (Exception e) {
+            log.warn("重置识别事件流失败: taskId={}", taskId, e);
+        }
         String finalEngine = task.getAiRawOutput();
         String finalCountry = configCountry;
         String workingCountry = task.getPromptCountry() != null && !task.getPromptCountry().trim().isEmpty()
@@ -390,7 +411,8 @@ public class RecognitionRunner {
             }
             for (UploadMediaSupport.ImagePage page : pages) {
                 RecognitionOutcome outcome = runSingleImage(
-                        page.getBytes(), page.getLabel(), configCountry, workingCountry, trace, taskId, merged);
+                        page.getBytes(), page.getLabel(), configCountry, workingCountry, trace,
+                        taskId, merged, taskId, Integer.valueOf(i));
                 merged.addAll(outcome.getRecords());
                 finalEngine = outcome.getEngine();
                 if (outcome.getPromptCountry() != null && !outcome.getPromptCountry().trim().isEmpty()) {
@@ -455,7 +477,7 @@ public class RecognitionRunner {
                     }
                     taskService.touchRecognitionHeartbeat(taskId);
                     ImageSliceResult slice = collectRecordsForImage(
-                            taskId, fileKey, configCountry, workingCountry, trace, systemRecovery);
+                            taskId, fileKey, configCountry, workingCountry, trace, systemRecovery, imageIndex);
                     perImageRecords.put(imageIndex, slice.records);
                     if (slice.engine != null) {
                         perImageEngine.put(imageIndex, slice.engine);
@@ -553,7 +575,7 @@ public class RecognitionRunner {
 
     private ImageSliceResult collectRecordsForImage(String taskId, String fileKey, String configCountry,
                                                     String workingCountry, RecognitionTrace trace,
-                                                    boolean systemRecovery) throws Exception {
+                                                    boolean systemRecovery, int imageIndex) throws Exception {
         byte[] fileBytes = systemRecovery
                 ? taskService.readUploadedImageBytesForTask(taskId, fileKey)
                 : taskService.readUploadedImageBytes(fileKey);
@@ -569,7 +591,8 @@ public class RecognitionRunner {
         String imageCountry = configCountry;
         for (UploadMediaSupport.ImagePage page : pages) {
             RecognitionOutcome outcome = runSingleImage(
-                    page.getBytes(), page.getLabel(), configCountry, workingCountry, trace, null);
+                    page.getBytes(), page.getLabel(), configCountry, workingCountry, trace,
+                    null, null, taskId, Integer.valueOf(imageIndex));
             imageRecords.addAll(outcome.getRecords());
             imageEngine = outcome.getEngine();
             if (outcome.getPromptCountry() != null && !outcome.getPromptCountry().trim().isEmpty()) {
@@ -608,7 +631,23 @@ public class RecognitionRunner {
         flushProgress(taskId, combined, engineTag);
     }
 
+    private void publishPageDoneEvent(String taskId, Integer imageIndex, List<JSONObject> pageRecords) {
+        if (taskId == null) {
+            return;
+        }
+        try {
+            int count = pageRecords == null ? 0 : pageRecords.size();
+            recognitionEventService.publishPageDone(taskId, imageIndex, count, pageRecords);
+        } catch (Exception e) {
+            log.warn("发布识别分页事件失败: taskId={}", taskId, e);
+        }
+    }
+
     private void flushProgress(String taskId, List<JSONObject> records, String engineTag) {
+        flushProgress(taskId, records, engineTag, false);
+    }
+
+    private void flushProgress(String taskId, List<JSONObject> records, String engineTag, boolean forceRaw) {
         if (taskId == null || records == null) {
             return;
         }
@@ -616,7 +655,7 @@ public class RecognitionRunner {
             int size = records.size();
             taskService.touchRecognitionHeartbeat(taskId);
             taskService.updateTaskRecognitionProgress(taskId, size, engineTag);
-            if (size > 0 && (size % FULL_RAW_FLUSH_EVERY == 0 || size <= FULL_RAW_FLUSH_EVERY)) {
+            if (forceRaw || (size > 0 && (size % FULL_RAW_FLUSH_EVERY == 0 || size <= FULL_RAW_FLUSH_EVERY))) {
                 JSONArray arr = new JSONArray();
                 arr.addAll(records);
                 taskService.updateTaskRawDataProgress(taskId, arr.toJSONString(), engineTag);
@@ -631,7 +670,7 @@ public class RecognitionRunner {
 
     private void saveCheckpoint(String taskId, RecognitionCheckpoint checkpoint,
                                 List<JSONObject> records, String engineTag) {
-        flushProgress(taskId, records, engineTag);
+        flushProgress(taskId, records, engineTag, true);
         taskService.saveRecognitionCheckpoint(taskId, checkpoint);
     }
 

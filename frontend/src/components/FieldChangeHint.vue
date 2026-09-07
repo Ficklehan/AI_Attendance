@@ -37,12 +37,13 @@ const restoreTitle = computed(() => {
 .field-change-hint {
   display: inline-flex;
   align-items: center;
-  gap: 2px;
-  margin-top: 1px;
+  gap: 1px;
+  margin-top: 0;
   max-width: 100%;
   min-width: 0;
-  font-size: 9px;
-  line-height: 1.2;
+  height: 11px;
+  font-size: 8px;
+  line-height: 1;
   font-weight: 600;
   color: #a8071a;
 }
@@ -65,12 +66,12 @@ const restoreTitle = computed(() => {
   border: 0;
   background: transparent;
   color: inherit;
-  font-size: 9px;
+  font-size: 8px;
   line-height: 1;
   cursor: pointer;
 
   :deep(.anticon) {
-    font-size: 9px;
+    font-size: 8px;
   }
 
   &:hover,

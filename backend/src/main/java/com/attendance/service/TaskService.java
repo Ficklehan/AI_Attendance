@@ -29,6 +29,7 @@ import com.attendance.security.TaskAccessService;
 import com.attendance.util.RecordFeishuPrepareSupport;
 import com.attendance.util.RecognizedDateNormalizer;
 import com.attendance.util.RecognizedFieldSanitizer;
+import com.attendance.util.RecognizedRecordShapeSupport;
 import com.attendance.util.RecognizedTextNormalizer;
 import com.attendance.util.RecognitionFailureMessages;
 import com.attendance.util.RecordJsonSupport;
@@ -271,7 +272,32 @@ public class TaskService {
         String userId = com.attendance.security.SecurityUtils.getCurrentUserId();
         task.setCanConfirm(taskAccessService.canConfirmTask(userId, task));
         maybeRepairTaskRecords(task);
+        maybeClearStaleMalformedFlags(task);
         return task;
+    }
+
+    /** 16 字段 DATE_RAW 行曾被误标结构异常；打开详情时去掉误标。 */
+    private void maybeClearStaleMalformedFlags(Task task) {
+        if (task == null) {
+            return;
+        }
+        String raw = task.getRawData();
+        if (RecordJsonSupport.isBlank(raw)) {
+            return;
+        }
+        try {
+            JSONArray rows = JSON.parseArray(raw);
+            if (!RecognizedRecordShapeSupport.clearStaleMalformedFlags(rows)) {
+                return;
+            }
+            String json = rows.toJSONString();
+            task.setRawData(json);
+            if ("processed".equalsIgnoreCase(task.getStatus())) {
+                taskMapper.updateTaskDraftRawData(task.getTaskId(), json, rows.size());
+            }
+        } catch (Exception e) {
+            log.warn("清除过期结构异常标记失败: taskId={}", task.getTaskId(), e);
+        }
     }
 
     /** 确认后合并逻辑修复前可能写入双倍行；打开详情时按合并结果校正 task_records。 */
@@ -427,6 +453,15 @@ public class TaskService {
             }
             RecognizedFieldSanitizer.sanitizeRecordPlaceholders(record);
             RecognizedTextNormalizer.normalizeRecordFields(record);
+            if (record instanceof JSONObject) {
+                RecognizedRecordShapeSupport.clearStaleMalformedFlag((JSONObject) record);
+            } else {
+                JSONObject asJson = new JSONObject(record);
+                if (RecognizedRecordShapeSupport.clearStaleMalformedFlag(asJson)) {
+                    record.remove("_parseMalformed");
+                    record.remove("_parseMalformedReason");
+                }
+            }
             refreshNightShiftSmartMark(record, task.getPromptCountry());
         }
         String rawData = JSON.toJSONString(data);

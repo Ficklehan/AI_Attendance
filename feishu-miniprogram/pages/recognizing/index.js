@@ -47,7 +47,6 @@ Page({
       hint: t('recognizing.hint')
     })
     tt.setNavigationBarTitle({ title: t('recognizing.navTitle') })
-
     this._startTime = Date.now()
     this._elapsedTimer = setInterval(() => {
       const sec = Math.floor((Date.now() - this._startTime) / 1000)
@@ -112,6 +111,9 @@ Page({
   },
 
   applyProgress: function (progress) {
+    if (progress && progress.taskId) {
+      this._sharedTaskId = progress.taskId
+    }
     const engineLabel = progress.engineLabel || ''
     const countryText = progress.promptCountry
       ? getCountryLabel(progress.promptCountry)
@@ -147,7 +149,7 @@ Page({
       statusText,
       engineText: engineLabel,
       countryText,
-      rowCount: progress.rowCount || 0,
+      rowCount: progress.rowCount || this.data.rowCount || 0,
       currentStep
     })
   },

@@ -42,6 +42,9 @@ public class TaskRecognitionLifecycleService {
     @Autowired
     private RecognitionEngineConfigService recognitionEngineConfigService;
 
+    @Autowired
+    private RecognitionEventService recognitionEventService;
+
     public boolean isRecognitionHeartbeatFresh(String taskId, long maxAgeMs) {
         Task task = taskMapper.selectTaskByTaskId(taskId);
         if (task == null || task.getRecognitionHeartbeatAt() == null) {
@@ -119,6 +122,17 @@ public class TaskRecognitionLifecycleService {
         taskMapper.updateTaskRawData(taskId, rawData, aiRawOutput, rowCount);
         log.info("更新任务AI解析结果: taskId={}, recordCount={}", taskId, rowCount);
         taskRecordSyncService.syncFromTaskId(taskId);
+        try {
+            Object records = null;
+            try {
+                records = JSON.parseArray(rawData);
+            } catch (Exception ignored) {
+                records = null;
+            }
+            recognitionEventService.publishComplete(taskId, rowCount, records);
+        } catch (Exception e) {
+            log.warn("发布识别完成事件失败: taskId={}", taskId, e);
+        }
     }
 
     @Transactional
@@ -189,6 +203,12 @@ public class TaskRecognitionLifecycleService {
             String plannedEngine = recognitionEngineConfigService.getEngine();
             taskMapper.updateTaskRawDataProgress(taskId, "[]", plannedEngine, 0);
             clearRecognitionCheckpoint(taskId);
+            try {
+                recognitionEventService.deleteByTaskId(taskId);
+                recognitionEventService.publishStatus(taskId, "processing");
+            } catch (Exception e) {
+                log.warn("重置识别事件失败: taskId={}", taskId, e);
+            }
         }
         touchRecognitionHeartbeat(taskId);
     }
@@ -215,6 +235,11 @@ public class TaskRecognitionLifecycleService {
         int partialRows = task != null ? countJsonArrayRows(task.getRawData()) : 0;
         if (partialRows <= 0) {
             taskMapper.updateTaskRawDataProgress(taskId, "[]", "", 0);
+        }
+        try {
+            recognitionEventService.publishError(taskId, errorMessage, errorArgs);
+        } catch (Exception e) {
+            log.warn("发布识别失败事件失败: taskId={}", taskId, e);
         }
     }
 }

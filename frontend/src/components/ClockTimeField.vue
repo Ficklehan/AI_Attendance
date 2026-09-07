@@ -1,38 +1,51 @@
 <template>
   <div
     class="clock-time-field"
-    :class="{ 'clock-time-field--embedded': embedded }"
+    :class="rootClass"
     @paste.capture="onPaste"
   >
-    <a-input
-      :value="displayValue"
-      :size="size"
-      :bordered="bordered"
-      :disabled="disabled"
-      :placeholder="placeholder"
-      :class="inputClass"
+    <div
+      class="clock-time-field__box"
+      :class="boxClass"
       :style="inputStyle"
-      autocomplete="off"
-      spellcheck="false"
-      @focus="onInputFocus"
-      @update:value="onType"
-      @blur="onBlur"
-      @keydown="onKeydown"
+      :title="placeholder || undefined"
+      @mousedown="onBoxMouseDown"
     >
-      <template #suffix>
-        <button
-          type="button"
-          class="clock-time-field__trigger"
-          tabindex="-1"
-          aria-label="HH:mm"
-          :disabled="disabled"
-          @mousedown.prevent
-          @click.stop="openPicker"
-        >
-          <ClockCircleOutlined />
-        </button>
-      </template>
-    </a-input>
+      <input
+        ref="keyInput"
+        class="clock-time-field__key"
+        :disabled="disabled"
+        inputmode="numeric"
+        autocomplete="off"
+        spellcheck="false"
+        aria-label="HH:mm"
+        @focus="onInputFocus"
+        @blur="onBlur"
+        @keydown="onKeydown"
+      >
+      <span
+        class="clock-time-field__seg"
+        :class="{ 'is-active': focused && draft.segment === 'hour' }"
+        @mousedown.prevent="selectSegment('hour')"
+      >{{ hourText }}</span>
+      <span class="clock-time-field__colon">:</span>
+      <span
+        class="clock-time-field__seg"
+        :class="{ 'is-active': focused && draft.segment === 'minute' }"
+        @mousedown.prevent="selectSegment('minute')"
+      >{{ minuteText }}</span>
+      <button
+        type="button"
+        class="clock-time-field__trigger"
+        tabindex="-1"
+        aria-label="HH:mm"
+        :disabled="disabled"
+        @mousedown.prevent
+        @click.stop="openPicker"
+      >
+        <ClockCircleOutlined />
+      </button>
+    </div>
     <div ref="pickerPopupHost" class="clock-time-field__popup-host" aria-hidden="true" />
     <a-time-picker
       class="clock-time-field__host"
@@ -56,12 +69,19 @@
 </template>
 
 <script setup>
-import { computed, onBeforeUnmount, ref, watch } from 'vue'
+import { computed, nextTick, onBeforeUnmount, ref, watch } from 'vue'
 import { ClockCircleOutlined } from '@ant-design/icons-vue'
 import {
-  isCanonicalClockTime,
-  normalizeClockTime,
-} from '@/utils/recognizedTimeNormalizer'
+  applyClockBackspace,
+  applyClockDigit,
+  commitClockDraft,
+  draftFromCanonicalClock,
+  draftFromClockValue,
+  draftFromPastedText,
+  moveClockSegment,
+  segmentText,
+} from '@/utils/clockTimeSegments'
+import { isCanonicalClockTime } from '@/utils/recognizedTimeNormalizer'
 
 const props = defineProps({
   value: { type: [String, Number], default: '' },
@@ -76,18 +96,37 @@ const props = defineProps({
 
 const emit = defineEmits(['update:value', 'focus', 'commit', 'input'])
 
-const pickerOpen = ref(false)
+const keyInput = ref(null)
 const pickerPopupHost = ref(null)
+const focused = ref(false)
+const draft = ref(draftFromClockValue(props.value))
+const pickerOpen = ref(false)
 const pendingClock = ref('')
 const skipConfirmOnClose = ref(false)
 const confirming = ref(false)
 
-const displayValue = computed(() => (props.value == null ? '' : String(props.value)))
+const hourText = computed(() => segmentText(draft.value.hour))
+const minuteText = computed(() => segmentText(draft.value.minute))
 
 const canonicalValue = computed(() => {
   const raw = String(props.value ?? '').trim()
   return isCanonicalClockTime(raw) ? raw : undefined
 })
+
+const rootClass = computed(() => ({
+  'clock-time-field--embedded': props.embedded,
+  'clock-time-field--focused': focused.value,
+}))
+
+const boxClass = computed(() => [
+  props.inputClass,
+  {
+    'is-focused': focused.value,
+    'is-disabled': props.disabled,
+    'is-bordered': props.bordered && !props.embedded,
+    [`is-${props.size}`]: true,
+  },
+])
 
 const getPopupContainer = () => pickerPopupHost.value || document.body
 
@@ -98,8 +137,8 @@ const pad2 = (n) => String(n).padStart(2, '0')
 const clockFromPickerDate = (date) => {
   if (date == null || date === '') return ''
   if (typeof date === 'string') {
-    const next = normalizeClockTime(date)
-    return isCanonicalClockTime(next) ? String(next) : ''
+    const parsed = draftFromPastedText(date) || draftFromCanonicalClock(date)
+    return parsed ? parsed.clock : ''
   }
   if (typeof date.format === 'function') {
     return date.format('HH:mm')
@@ -113,20 +152,29 @@ const clockFromPickerDate = (date) => {
   return ''
 }
 
-const commitNormalized = (raw) => {
-  const next = normalizeClockTime(raw)
-  const value = next === undefined || next === null ? '' : String(next)
-  emit('update:value', value)
-  emit('commit', value)
+const focusKeyInput = () => {
+  if (props.disabled) return
+  nextTick(() => {
+    keyInput.value?.focus()
+  })
 }
 
-const applyClock = (clock, fallbackRaw) => {
-  if (isCanonicalClockTime(clock)) {
-    emit('update:value', clock)
-    emit('commit', clock)
-    return
-  }
-  commitNormalized(fallbackRaw)
+const applyDraft = (next, { emitComplete = true } = {}) => {
+  draft.value = next
+  if (!emitComplete || next.hour.length !== 2 || next.minute.length !== 2) return
+  const clock = `${next.hour}:${next.minute}`
+  emit('update:value', clock)
+  emit('input', clock)
+}
+
+const commitDraftValue = () => {
+  const value = commitClockDraft(draft.value)
+  const synced = draftFromClockValue(value)
+  synced.segment = draft.value.segment === 'minute' ? 'minute' : 'hour'
+  draft.value = synced
+  emit('update:value', value)
+  emit('commit', value)
+  return value
 }
 
 const clickPickerOk = () => {
@@ -138,7 +186,7 @@ const clickPickerOk = () => {
   return true
 }
 
-const confirmLikeOk = (fallbackRaw) => {
+const confirmLikeOk = () => {
   if (confirming.value) return
   if (pickerOpen.value && clickPickerOk()) return
   confirming.value = true
@@ -146,7 +194,13 @@ const confirmLikeOk = (fallbackRaw) => {
   const clock = pendingClock.value
   pendingClock.value = ''
   pickerOpen.value = false
-  applyClock(clock, fallbackRaw)
+  if (isCanonicalClockTime(clock)) {
+    applyDraft(draftFromCanonicalClock(clock), { emitComplete: false })
+    emit('update:value', clock)
+    emit('commit', clock)
+  } else {
+    commitDraftValue()
+  }
   queueMicrotask(() => {
     confirming.value = false
     skipConfirmOnClose.value = false
@@ -162,28 +216,39 @@ const closePickerWithoutConfirm = () => {
   })
 }
 
-const onType = (next) => {
-  closePickerWithoutConfirm()
-  emit('update:value', next)
-  emit('input', next)
+const onBoxMouseDown = (event) => {
+  if (props.disabled) return
+  if (event.target.closest('.clock-time-field__trigger')) return
+  event.preventDefault()
+  if (!event.target.closest('.clock-time-field__seg')) {
+    draft.value = moveClockSegment(draft.value, 'hour')
+  }
+  focusKeyInput()
+}
+
+const selectSegment = (segment) => {
+  if (props.disabled) return
+  draft.value = moveClockSegment(draft.value, segment)
+  focusKeyInput()
 }
 
 const onInputFocus = () => {
+  focused.value = true
   emit('focus')
-  openPicker()
 }
 
 const openPicker = () => {
   if (props.disabled) return
-  pendingClock.value = canonicalValue.value || pendingClock.value || ''
+  pendingClock.value = commitClockDraft(draft.value) || canonicalValue.value || pendingClock.value || ''
   pickerOpen.value = true
+  focusKeyInput()
 }
 
 const onPickerOpenChange = (open) => {
   if (open) {
     skipConfirmOnClose.value = false
     pickerOpen.value = true
-    if (!pendingClock.value) pendingClock.value = canonicalValue.value || ''
+    if (!pendingClock.value) pendingClock.value = commitClockDraft(draft.value) || canonicalValue.value || ''
     return
   }
   if (skipConfirmOnClose.value || confirming.value) {
@@ -194,7 +259,7 @@ const onPickerOpenChange = (open) => {
     pickerOpen.value = false
     return
   }
-  confirmLikeOk(props.value)
+  confirmLikeOk()
 }
 
 const onPanelSelect = (date) => {
@@ -209,7 +274,13 @@ const onPick = (next) => {
   const clock = clockFromPickerDate(next)
   pendingClock.value = ''
   pickerOpen.value = false
-  applyClock(clock, next)
+  if (isCanonicalClockTime(clock)) {
+    applyDraft(draftFromCanonicalClock(clock), { emitComplete: false })
+    emit('update:value', clock)
+    emit('commit', clock)
+  } else {
+    commitDraftValue()
+  }
   queueMicrotask(() => {
     confirming.value = false
     skipConfirmOnClose.value = false
@@ -218,13 +289,14 @@ const onPick = (next) => {
 
 const onPaste = (event) => {
   const text = event.clipboardData?.getData('text') || event.clipboardData?.getData('text/plain') || ''
-  const next = normalizeClockTime(text)
-  if (!isCanonicalClockTime(next)) return
+  const pasted = draftFromPastedText(text)
+  if (!pasted) return
   event.preventDefault()
   event.stopPropagation()
   closePickerWithoutConfirm()
-  emit('update:value', next)
-  emit('commit', next)
+  applyDraft(pasted, { emitComplete: false })
+  emit('update:value', pasted.clock)
+  emit('commit', pasted.clock)
 }
 
 const isPickerDropdownTarget = (node) => {
@@ -234,37 +306,76 @@ const isPickerDropdownTarget = (node) => {
 
 const onBlur = (event) => {
   const related = event?.relatedTarget
-  if (isPickerDropdownTarget(related)) return
-  const typed = event?.target?.value
+  if (isPickerDropdownTarget(related)) {
+    focusKeyInput()
+    return
+  }
+  focused.value = false
   if (pickerOpen.value) {
-    confirmLikeOk(typed == null ? props.value : typed)
+    confirmLikeOk()
     return
   }
   if (confirming.value || skipConfirmOnClose.value) return
-  commitNormalized(typed == null ? props.value : typed)
+  commitDraftValue()
 }
 
 const onKeydown = (event) => {
-  if (event.key === 'Escape' && pickerOpen.value) {
+  if (event.key === 'Escape') {
     event.preventDefault()
     closePickerWithoutConfirm()
+    draft.value = draftFromClockValue(props.value)
+    keyInput.value?.blur()
     return
   }
   if (event.key === 'Enter') {
     event.preventDefault()
     event.stopPropagation()
     if (pickerOpen.value) {
-      confirmLikeOk(event?.target?.value ?? props.value)
+      confirmLikeOk()
       return
     }
     if (confirming.value || skipConfirmOnClose.value) return
-    commitNormalized(event?.target?.value ?? props.value)
-    if (event.target && typeof event.target.blur === 'function') event.target.blur()
+    commitDraftValue()
+    keyInput.value?.blur()
+    return
+  }
+  if (event.key === 'Tab') {
+    if (!event.shiftKey && draft.value.segment === 'hour') {
+      event.preventDefault()
+      draft.value = moveClockSegment(draft.value, 'minute')
+      return
+    }
+    if (event.shiftKey && draft.value.segment === 'minute') {
+      event.preventDefault()
+      draft.value = moveClockSegment(draft.value, 'hour')
+    }
+    return
+  }
+  if (event.key === 'ArrowRight' || event.key === ':') {
+    event.preventDefault()
+    draft.value = moveClockSegment(draft.value, 'minute')
+    return
+  }
+  if (event.key === 'ArrowLeft') {
+    event.preventDefault()
+    draft.value = moveClockSegment(draft.value, 'hour')
+    return
+  }
+  if (event.key === 'Backspace') {
+    event.preventDefault()
+    closePickerWithoutConfirm()
+    applyDraft(applyClockBackspace(draft.value), { emitComplete: false })
     return
   }
   if (event.key === 'ArrowDown' || event.key === 'F4') {
     event.preventDefault()
     openPicker()
+    return
+  }
+  if (/^\d$/.test(event.key)) {
+    event.preventDefault()
+    closePickerWithoutConfirm()
+    applyDraft(applyClockDigit(draft.value, event.key))
   }
 }
 
@@ -279,9 +390,14 @@ const onDocumentKeydown = (event) => {
   if (event.key === 'Enter') {
     event.preventDefault()
     event.stopPropagation()
-    confirmLikeOk(props.value)
+    confirmLikeOk()
   }
 }
+
+watch(() => props.value, (value) => {
+  if (focused.value || confirming.value) return
+  draft.value = draftFromClockValue(value)
+})
 
 watch(pickerOpen, (open) => {
   if (open) {
@@ -303,48 +419,73 @@ defineExpose({ openPicker })
   position: relative;
   width: 100%;
   min-width: 0;
+}
 
-  :deep(.ant-input-affix-wrapper) {
-    display: inline-flex;
-    align-items: center;
-    width: 100%;
-    min-width: 0;
-    padding: 0 4px 0 4px;
-    border: 1px solid transparent;
-    border-radius: 4px;
-    background: #fff;
+.clock-time-field__box {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  width: 100%;
+  min-width: 0;
+  min-height: 22px;
+  padding: 0 4px;
+  border: 1px solid transparent;
+  border-radius: 4px;
+  background: #fff;
+  color: inherit;
+  font-size: inherit;
+  line-height: 1.2;
+  cursor: text;
 
-    &.ant-input-affix-wrapper-focused,
-    &:focus-within {
-      border-color: #d9d9d9;
-    }
-
-    > input.ant-input {
-      border: 0 !important;
-      box-shadow: none !important;
-      outline: none !important;
-      background: transparent !important;
-      appearance: none;
-    }
+  &.is-bordered,
+  &.is-focused {
+    border-color: #d9d9d9;
   }
 
-  :deep(.ant-input-suffix) {
-    margin-inline-start: 0;
-    padding: 0;
+  &.is-disabled {
+    cursor: default;
+    opacity: 0.65;
   }
 }
 
-.clock-time-field--embedded {
-  :deep(.ant-input-affix-wrapper) {
-    padding: 1px 3px 1px 2px !important;
-    background: transparent;
-    box-shadow: none;
-  }
+.clock-time-field--embedded .clock-time-field__box {
+  padding: 1px 3px 1px 2px;
+  background: transparent;
+  box-shadow: none;
+  font-size: 12px;
+}
 
-  :deep(.ant-input-affix-wrapper > input.ant-input) {
-    font-size: 12px;
-    padding: 0 2px !important;
+.clock-time-field__key {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: 0;
+  border: 0;
+  opacity: 0;
+  pointer-events: none;
+}
+
+.clock-time-field__seg {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 1.15em;
+  padding: 0 1px;
+  border-radius: 2px;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+
+  &.is-active {
+    color: #fff;
+    background: $primary;
   }
+}
+
+.clock-time-field__colon {
+  margin: 0 1px;
+  color: inherit;
+  opacity: 0.65;
 }
 
 .clock-time-field__trigger {
@@ -353,6 +494,7 @@ defineExpose({ openPicker })
   justify-content: center;
   width: 12px;
   height: 12px;
+  margin-left: auto;
   padding: 0;
   border: 0;
   background: transparent;

@@ -93,40 +93,27 @@
         </template>
       </a-alert>
 
-      <StatOverview
-        v-if="records.length > 0"
-        :items="statItems"
-        single-row
-        clickable
-        :active-key="activeStatFilter"
-        :filter-hint="$t('taskEdit.statFilterHint')"
-        :clear-hint="$t('taskEdit.statFilterClearHint')"
-        @select="onStatFilterSelect"
-      />
+      <div
+        v-if="records.length > 0 || previewImagesList.length > 0"
+        class="task-summary-row"
+      >
+        <StatOverview
+          v-if="records.length > 0"
+          :items="statItems"
+          single-row
+          clickable
+          :active-key="activeStatFilter"
+          :filter-hint="$t('taskEdit.statFilterHint')"
+          :clear-hint="$t('taskEdit.statFilterClearHint')"
+          @select="onStatFilterSelect"
+        />
 
-      <div v-if="previewImagesList.length > 0" class="task-image-files">
-        <span class="task-image-files__title">
-          <FileImageOutlined />
-          {{ $t('taskEdit.originalImage') }}
-          <em>({{ previewImagesList.length }}{{ $t('tasks.images') }})</em>
-        </span>
-        <ul class="task-image-files__list">
-          <li
-            v-for="(url, idx) in previewImagesList"
-            :key="`${url}-${idx}`"
-            class="task-image-files__item"
-            :class="{ 'task-image-files__item--active': previewDockOpen && previewCurrentIndex === idx }"
-          >
-            <button
-              type="button"
-              class="task-image-files__link"
-              :title="$t('tasks.viewImage')"
-              @click="openImagePreview(idx)"
-            >
-              <span class="task-image-files__name">{{ getFileName(url) }}</span>
-            </button>
-          </li>
-        </ul>
+        <TaskImageChips
+          v-if="previewImagesList.length > 0"
+          :urls="previewImagesList"
+          :active-index="previewDockOpen ? previewCurrentIndex : -1"
+          @select="openImagePreview"
+        />
       </div>
 
       <div class="edit-panel">
@@ -248,9 +235,8 @@
                 :compact="isNarrowHeaderColumn(column)"
                 :micro="isMicroHeaderColumn(column)"
                 :hint="resolveHeaderHint(column)"
-                :resizable="isColumnResizable(column)"
+                :resizable="false"
                 @sort="onSorterToggle"
-                @resize-start="(event) => startColumnResize(column, event)"
               >
                 <template #extra>
                   <TableHeaderFilter
@@ -326,7 +312,7 @@
             </template>
             <template #bodyCell="{ column, record, index }">
               <template v-if="column.key === 'anomalyReasons'">
-                <div v-if="hasAnomalyColumnContent(record)" class="recognition-note-list">
+                <div v-if="hasAnomalyColumnContent(record)" class="recognition-note-list" v-auto-shrink-font="{ max: 11, min: 8 }">
                   <div
                     v-for="(item, noteIdx) in getRecognitionNoteItems(record)"
                     :key="item.key"
@@ -388,35 +374,41 @@
                 </div>
               </template>
               <template v-else-if="column.key === 'EMPLOYEE_NO'">
-                <RowStrikeText :muted="isRowMuted(record)" :cell-class="fieldTextClass(record, 'EMPLOYEE_NO')">{{ displayRecordField(record, 'EMPLOYEE_NO') }}</RowStrikeText>
+                <div class="field-with-change-hint" v-auto-shrink-font="{ max: 12, min: 8 }">
+                  <RowStrikeText :muted="isRowMuted(record)" :cell-class="fieldTextClass(record, 'EMPLOYEE_NO')">{{ displayRecordField(record, 'EMPLOYEE_NO') }}</RowStrikeText>
+                </div>
               </template>
               <template v-else-if="column.key === 'NO'">
-                <a-input v-if="isFieldEditable(record, 'NO')" v-model:value="record.NO" size="small" :class="fieldInputClass(record, 'NO')" :style="mutedStrikeStyle(record)" :bordered="false" :placeholder="fieldUnreadablePlaceholder(record, 'NO')" @change="onReadableFieldChange(record, 'NO')" />
-                <RowStrikeText v-else :muted="isRowMuted(record)" :cell-class="fieldTextClass(record, 'NO')">{{ displayRecordField(record, 'NO') }}</RowStrikeText>
+                <div class="field-with-change-hint" v-auto-shrink-font="{ max: 12, min: 8 }">
+                  <a-input v-if="isFieldEditable(record, 'NO')" v-model:value="record.NO" size="small" :class="fieldInputClass(record, 'NO')" :style="mutedStrikeStyle(record)" :bordered="false" :placeholder="fieldUnreadablePlaceholder(record, 'NO')" @change="onReadableFieldChange(record, 'NO')" />
+                  <RowStrikeText v-else :muted="isRowMuted(record)" :cell-class="fieldTextClass(record, 'NO')">{{ displayRecordField(record, 'NO') }}</RowStrikeText>
+                </div>
               </template>
               <template v-else-if="column.key === 'Pays'">
-                <a-tooltip :title="paysFieldLockedHint">
-                  <a-select
-                    :value="resolveRecordPaysSelectCode(record)"
-                    :options="paysCountrySelectOptions"
-                    size="small"
-                    disabled
-                    :bordered="false"
-                    class="pays-country-select"
-                    :class="fieldTextClass(record, 'Pays')"
-                    :style="mutedStrikeStyle(record)"
-                  />
-                </a-tooltip>
+                <div class="field-with-change-hint" v-auto-shrink-font="{ max: 12, min: 8 }">
+                  <a-tooltip :title="paysFieldLockedHint">
+                    <a-select
+                      :value="resolveRecordPaysSelectCode(record)"
+                      :options="paysCountrySelectOptions"
+                      size="small"
+                      disabled
+                      :bordered="false"
+                      class="pays-country-select"
+                      :class="fieldTextClass(record, 'Pays')"
+                      :style="mutedStrikeStyle(record)"
+                    />
+                  </a-tooltip>
+                </div>
               </template>
               <template v-else-if="column.key === 'Entrepot'">
-                <div class="field-with-change-hint">
+                <div class="field-with-change-hint" v-auto-shrink-font>
                   <a-input v-if="isFieldEditable(record, 'Entrepot')" v-model:value="record.Entrepot" size="small" :class="fieldInputClass(record, 'Entrepot')" :style="mutedStrikeStyle(record)" :bordered="false" :placeholder="fieldUnreadablePlaceholder(record, 'Entrepot')" @focus="onCalibratableFieldFocusHandler(record)" @change="onReadableFieldChange(record, 'Entrepot')" />
                   <RowStrikeText v-else :muted="isRowMuted(record)" :cell-class="fieldTextClass(record, 'Entrepot')">{{ displayRecordField(record, 'Entrepot') }}</RowStrikeText>
                   <FieldChangeHint :hint="getFieldChangeHint(record, 'Entrepot')" />
                 </div>
               </template>
               <template v-else-if="column.key === 'NOM_PRENOM'">
-                <div class="name-cell field-with-change-hint">
+                <div class="name-cell field-with-change-hint" v-auto-shrink-font="{ min: 7, wrap: false, reserveChars: 2 }">
                   <a-input
                     v-if="isFieldEditable(record, 'NOM_PRENOM')"
                     v-model:value="record.NOM_PRENOM"
@@ -424,11 +416,12 @@
                     :class="fieldInputClass(record, 'NOM_PRENOM')"
                     :style="mutedStrikeStyle(record)"
                     :bordered="false"
+                    :title="record.NOM_PRENOM || ''"
                     :placeholder="fieldUnreadablePlaceholder(record, 'NOM_PRENOM')"
                     @focus="onCalibratableFieldFocusHandler(record)"
                     @change="onReadableFieldChange(record, 'NOM_PRENOM')"
                   />
-                  <RowStrikeText v-else :muted="isRowMuted(record)" :cell-class="fieldTextClass(record, 'NOM_PRENOM')">{{ displayRecordField(record, 'NOM_PRENOM') }}</RowStrikeText>
+                  <RowStrikeText v-else :muted="isRowMuted(record)" :cell-class="fieldTextClass(record, 'NOM_PRENOM')" :title="displayRecordField(record, 'NOM_PRENOM')">{{ displayRecordField(record, 'NOM_PRENOM') }}</RowStrikeText>
                   <FieldChangeHint :hint="getFieldChangeHint(record, 'NOM_PRENOM')" />
                   <div v-if="getDuplicateMeta(record)" class="duplicate-tools">
                     <a-tag color="gold" size="small">{{ $t('taskEdit.duplicateTag') }}</a-tag>
@@ -448,14 +441,14 @@
                 </div>
               </template>
               <template v-else-if="column.key === 'AGENCE_INTERIMAIRE'">
-                <div class="field-with-change-hint">
+                <div class="field-with-change-hint" v-auto-shrink-font>
                   <a-input v-if="isFieldEditable(record, 'AGENCE_INTERIMAIRE')" v-model:value="record.AGENCE_INTERIMAIRE" size="small" :class="fieldInputClass(record, 'AGENCE_INTERIMAIRE')" :style="mutedStrikeStyle(record)" :bordered="false" :placeholder="fieldUnreadablePlaceholder(record, 'AGENCE_INTERIMAIRE')" @focus="onCalibratableFieldFocusHandler(record)" @change="onReadableFieldChange(record, 'AGENCE_INTERIMAIRE')" />
                   <RowStrikeText v-else :muted="isRowMuted(record)" :cell-class="fieldTextClass(record, 'AGENCE_INTERIMAIRE')">{{ displayRecordField(record, 'AGENCE_INTERIMAIRE') }}</RowStrikeText>
                   <FieldChangeHint :hint="getFieldChangeHint(record, 'AGENCE_INTERIMAIRE')" />
                 </div>
               </template>
               <template v-else-if="column.key === 'HORAIRES_DU_TRAVAIL'">
-                <div class="format-field-cell" :id="fieldCellDomId(record, 'HORAIRES_DU_TRAVAIL')">
+                <div class="format-field-cell" v-auto-shrink-font :id="fieldCellDomId(record, 'HORAIRES_DU_TRAVAIL')">
                   <a-tooltip v-if="isFieldEditable(record, 'HORAIRES_DU_TRAVAIL')" :title="fieldFormatTooltip(record,'HORAIRES_DU_TRAVAIL')">
                     <a-input
                       v-model:value="record.HORAIRES_DU_TRAVAIL"
@@ -477,44 +470,76 @@
               </template>
               <template v-else-if="column.key === 'Date'">
                 <div class="format-field-cell" :id="fieldCellDomId(record, 'Date')">
-                  <a-tooltip v-if="isFieldEditable(record, 'Date')" :title="fieldFormatTooltip(record,'Date')">
-                    <a-date-picker
-                      :value="datePickerValue(record.Date)"
-                      size="small"
-                      class="task-edit-date-picker"
-                      :class="fieldInputClass(record, 'Date')"
-                      :style="mutedStrikeStyle(record)"
-                      format="YYYY-MM-DD"
-                      value-format="YYYY-MM-DD"
-                      :bordered="false"
-                      :allow-clear="true"
-                      :placeholder="dateFieldPlaceholder(record)"
-                      @focus="onCalibratableFieldFocusHandler(record)"
-                      @update:value="(v) => onDatePickerUpdate(record, v)"
-                    />
-                  </a-tooltip>
+                  <div
+                    v-if="isFieldEditable(record, 'Date') || canSwapRecordDate(record)"
+                    class="date-field-row"
+                  >
+                    <div class="date-field-main">
+                      <a-tooltip v-if="isFieldEditable(record, 'Date')" :title="fieldFormatTooltip(record,'Date')">
+                        <a-date-picker
+                          :value="datePickerValue(record.Date)"
+                          size="small"
+                          class="task-edit-date-picker"
+                          :class="fieldInputClass(record, 'Date')"
+                          :style="mutedStrikeStyle(record)"
+                          format="YYYY-MM-DD"
+                          value-format="YYYY-MM-DD"
+                          :bordered="false"
+                          :allow-clear="false"
+                          :placeholder="dateFieldPlaceholder(record)"
+                          @focus="onCalibratableFieldFocusHandler(record)"
+                          @update:value="(v) => onDatePickerUpdate(record, v)"
+                        >
+                          <template #suffixIcon>
+                            <span class="date-picker-suffix-hidden" />
+                          </template>
+                        </a-date-picker>
+                      </a-tooltip>
+                      <span
+                        v-else
+                        class="date-field-text"
+                        :class="fieldTextClass(record, 'Date')"
+                      >{{ displayRecordField(record, 'Date') }}</span>
+                    </div>
+                    <a-tooltip
+                      v-if="canSwapRecordDate(record)"
+                      :title="$t('taskEdit.swapMonthDayHint', { from: record.Date, to: swapDateTarget(record) })"
+                    >
+                      <button
+                        type="button"
+                        class="date-swap-btn"
+                        :aria-label="$t('taskEdit.swapMonthDayHint', { from: record.Date, to: swapDateTarget(record) })"
+                        @click.stop="swapRecordDateMonthDay(record)"
+                      >
+                        {{ $t('taskEdit.swapMonthDay') }}
+                      </button>
+                    </a-tooltip>
+                  </div>
                   <RowStrikeText v-else :muted="isRowMuted(record)" :cell-class="fieldTextClass(record, 'Date')">{{ displayRecordField(record, 'Date') }}</RowStrikeText>
-                  <FieldChangeHint :hint="getFieldChangeHint(record, 'Date')" />
+                  <FieldChangeHint
+                    :hint="getFieldChangeHint(record, 'Date')"
+                    show-restore
+                    @restore="restoreFieldOriginal(record, 'Date')"
+                  />
                   <div v-if="showFormatHintBelow(record, 'Date')" class="format-hint-below">{{ fieldFormatTooltip(record,'Date') }}</div>
                 </div>
               </template>
               <template v-else-if="column.key === 'ARRIVEE'">
-                <div class="format-field-cell" :id="fieldCellDomId(record, 'ARRIVEE')">
-                  <a-tooltip v-if="isFieldEditable(record, 'ARRIVEE')" :title="fieldFormatTooltip(record,'ARRIVEE')">
-                    <ClockTimeField
-                      :value="record.ARRIVEE"
-                      size="small"
-                      embedded
-                      :bordered="false"
-                      :input-class="fieldInputClass(record, 'ARRIVEE')"
-                      :input-style="mutedStrikeStyle(record)"
-                      :placeholder="fieldCellPlaceholder(record, 'ARRIVEE')"
-                      @focus="onCalibratableFieldFocusHandler(record)"
-                      @update:value="(v) => onClockTimeUpdate(record, 'ARRIVEE', v)"
-                      @input="() => onTimeFieldInput(record, 'ARRIVEE')"
-                      @commit="() => onFormatFieldBlur(record, 'ARRIVEE')"
-                    />
-                  </a-tooltip>
+                <div class="format-field-cell" v-auto-shrink-font :id="fieldCellDomId(record, 'ARRIVEE')">
+                  <ClockTimeField
+                    v-if="isFieldEditable(record, 'ARRIVEE')"
+                    :value="record.ARRIVEE"
+                    size="small"
+                    embedded
+                    :bordered="false"
+                    :input-class="fieldInputClass(record, 'ARRIVEE')"
+                    :input-style="mutedStrikeStyle(record)"
+                    :placeholder="fieldCellPlaceholder(record, 'ARRIVEE')"
+                    @focus="onCalibratableFieldFocusHandler(record)"
+                    @update:value="(v) => onClockTimeUpdate(record, 'ARRIVEE', v)"
+                    @input="() => onTimeFieldInput(record, 'ARRIVEE')"
+                    @commit="() => onFormatFieldBlur(record, 'ARRIVEE')"
+                  />
                   <RowStrikeText v-else :muted="isRowMuted(record)" :cell-class="fieldTextClass(record, 'ARRIVEE')">{{ displayRecordField(record, 'ARRIVEE') }}</RowStrikeText>
                   <FieldChangeHint
                     :hint="getFieldChangeHint(record, 'ARRIVEE')"
@@ -524,26 +549,24 @@
                   <div v-if="showSameTimeHint(record, 'ARRIVEE')" class="format-hint-below format-same-time-hint">
                     {{ sameTimeHintText(record) }}
                   </div>
-                  <div v-else-if="showFormatHintBelow(record, 'ARRIVEE')" class="format-hint-below">{{ fieldFormatTooltip(record,'ARRIVEE') }}</div>
                 </div>
               </template>
               <template v-else-if="column.key === 'DEPAR'">
-                <div class="format-field-cell" :id="fieldCellDomId(record, 'DEPAR')">
-                  <a-tooltip v-if="isFieldEditable(record, 'DEPAR')" :title="fieldFormatTooltip(record,'DEPAR')">
-                    <ClockTimeField
-                      :value="record.DEPAR"
-                      size="small"
-                      embedded
-                      :bordered="false"
-                      :input-class="fieldInputClass(record, 'DEPAR')"
-                      :input-style="mutedStrikeStyle(record)"
-                      :placeholder="fieldCellPlaceholder(record, 'DEPAR')"
-                      @focus="onCalibratableFieldFocusHandler(record)"
-                      @update:value="(v) => onClockTimeUpdate(record, 'DEPAR', v)"
-                      @input="() => onTimeFieldInput(record, 'DEPAR')"
-                      @commit="() => onFormatFieldBlur(record, 'DEPAR')"
-                    />
-                  </a-tooltip>
+                <div class="format-field-cell" v-auto-shrink-font :id="fieldCellDomId(record, 'DEPAR')">
+                  <ClockTimeField
+                    v-if="isFieldEditable(record, 'DEPAR')"
+                    :value="record.DEPAR"
+                    size="small"
+                    embedded
+                    :bordered="false"
+                    :input-class="fieldInputClass(record, 'DEPAR')"
+                    :input-style="mutedStrikeStyle(record)"
+                    :placeholder="fieldCellPlaceholder(record, 'DEPAR')"
+                    @focus="onCalibratableFieldFocusHandler(record)"
+                    @update:value="(v) => onClockTimeUpdate(record, 'DEPAR', v)"
+                    @input="() => onTimeFieldInput(record, 'DEPAR')"
+                    @commit="() => onFormatFieldBlur(record, 'DEPAR')"
+                  />
                   <RowStrikeText v-else :muted="isRowMuted(record)" :cell-class="fieldTextClass(record, 'DEPAR')">{{ displayRecordField(record, 'DEPAR') }}</RowStrikeText>
                   <FieldChangeHint
                     :hint="getFieldChangeHint(record, 'DEPAR')"
@@ -553,43 +576,46 @@
                   <div v-if="showSameTimeHint(record, 'DEPAR')" class="format-hint-below format-same-time-hint">
                     {{ sameTimeHintText(record) }}
                   </div>
-                  <div v-else-if="showFormatHintBelow(record, 'DEPAR')" class="format-hint-below">{{ fieldFormatTooltip(record,'DEPAR') }}</div>
                 </div>
               </template>
               <template v-else-if="column.key === 'PAUSE'">
-                <div class="field-with-change-hint">
+                <div class="field-with-change-hint" v-auto-shrink-font>
                   <a-input-number v-if="isFieldEditable(record, 'PAUSE')" v-model:value="record.PAUSE" size="small" :class="fieldInputClass(record, 'PAUSE')" :style="mutedStrikeStyle(record)" :bordered="false" :controls="false" :min="0" :precision="0" style="width: 100%" @focus="onCalibratableFieldFocusHandler(record)" @blur="() => normalizeRecordPauseOnBlur(record)" />
                   <RowStrikeText v-else :muted="isRowMuted(record)" :cell-class="fieldTextClass(record, 'PAUSE')">{{ formatPauseDisplay(record.PAUSE) }}</RowStrikeText>
                   <FieldChangeHint :hint="getFieldChangeHint(record, 'PAUSE')" />
                 </div>
               </template>
               <template v-else-if="column.key === 'SIGNATURE'">
-                <a-select
-                  v-if="isFieldEditable(record, 'SIGNATURE')"
-                  v-model:value="record.SIGNATURE"
-                  size="small"
-                  :bordered="false"
-                  class="signature-mark-select"
-                  popup-class-name="task-edit-select-dropdown-sm"
-                  :placeholder="$t('taskEdit.signature')"
-                  allow-clear
-                >
-                  <a-select-option value="未签字">{{ $t('recognition.marks.unsigned') }}</a-select-option>
-                  <a-select-option value="已签字">{{ $t('recognition.marks.signed') }}</a-select-option>
-                </a-select>
-                <a-tag
-                  v-else
-                  :color="getSignatureMarkColor(getDisplaySignature(record.SIGNATURE, record))"
-                  class="signature-mark-tag"
-                  :class="rowMutedStrikeClass(record)"
-                  :style="mutedStrikeStyle(record)"
-                >
-                  {{ translateSignatureMark(getDisplaySignature(record.SIGNATURE, record), t) }}
-                </a-tag>
+                <div class="field-with-change-hint" v-auto-shrink-font="{ max: 12, min: 8 }">
+                  <a-select
+                    v-if="isFieldEditable(record, 'SIGNATURE')"
+                    v-model:value="record.SIGNATURE"
+                    size="small"
+                    :bordered="false"
+                    class="signature-mark-select"
+                    popup-class-name="task-edit-select-dropdown-sm"
+                    :placeholder="$t('taskEdit.signature')"
+                    allow-clear
+                  >
+                    <a-select-option value="未签字">{{ $t('recognition.marks.unsigned') }}</a-select-option>
+                    <a-select-option value="已签字">{{ $t('recognition.marks.signed') }}</a-select-option>
+                  </a-select>
+                  <a-tag
+                    v-else
+                    :color="getSignatureMarkColor(getDisplaySignature(record.SIGNATURE, record))"
+                    class="signature-mark-tag"
+                    :class="rowMutedStrikeClass(record)"
+                    :style="mutedStrikeStyle(record)"
+                  >
+                    {{ translateSignatureMark(getDisplaySignature(record.SIGNATURE, record), t) }}
+                  </a-tag>
+                </div>
               </template>
               <template v-else-if="column.key === 'Observations'">
-                <a-input v-if="isFieldEditable(record, 'Observations')" v-model:value="record.Observations" size="small" :class="fieldInputClass(record, 'Observations')" :style="mutedStrikeStyle(record)" :bordered="false" :placeholder="fieldUnreadablePlaceholder(record, 'Observations')" @change="onReadableFieldChange(record, 'Observations')" />
-                <RowStrikeText v-else :muted="isRowMuted(record)" :cell-class="fieldTextClass(record, 'Observations')">{{ displayRecordField(record, 'Observations') }}</RowStrikeText>
+                <div class="field-with-change-hint" v-auto-shrink-font>
+                  <a-input v-if="isFieldEditable(record, 'Observations')" v-model:value="record.Observations" size="small" :class="fieldInputClass(record, 'Observations')" :style="mutedStrikeStyle(record)" :bordered="false" :placeholder="fieldUnreadablePlaceholder(record, 'Observations')" @change="onReadableFieldChange(record, 'Observations')" />
+                  <RowStrikeText v-else :muted="isRowMuted(record)" :cell-class="fieldTextClass(record, 'Observations')">{{ displayRecordField(record, 'Observations') }}</RowStrikeText>
+                </div>
               </template>
               <template v-else-if="column.key === 'ExceptionType'">
                 <div :id="fieldCellDomId(record, 'ExceptionType')" class="exception-type-cell">
@@ -653,7 +679,9 @@
                 </div>
               </template>
               <template v-else-if="column.key === 'workHours'">
-                <RowStrikeText :muted="isRowMuted(record)" cell-class="work-hours">{{ calculateWorkHours(record) }}</RowStrikeText>
+                <div class="field-with-change-hint" v-auto-shrink-font="{ max: 12, min: 8 }">
+                  <RowStrikeText :muted="isRowMuted(record)" cell-class="work-hours">{{ calculateWorkHours(record) }}</RowStrikeText>
+                </div>
               </template>
               <template v-else-if="column.key === 'action'">
                 <div
@@ -775,11 +803,11 @@ import { ref, computed, shallowRef, onMounted, onUnmounted, watch, h, nextTick }
 import { useRoute, useRouter } from 'vue-router'
 import { useI18n } from 'vue-i18n'
 import { message, Modal as aModal } from 'ant-design-vue'
-import { DeleteOutlined, UndoOutlined, CloseOutlined, FileImageOutlined, UploadOutlined, DownloadOutlined, LoadingOutlined, PlusOutlined, InfoCircleOutlined, FilterOutlined } from '@ant-design/icons-vue'
+import { DeleteOutlined, UndoOutlined, CloseOutlined, UploadOutlined, DownloadOutlined, LoadingOutlined, PlusOutlined, InfoCircleOutlined, FilterOutlined } from '@ant-design/icons-vue'
 import { getTaskDetail, getTaskProgress, confirmTask, saveTaskDraft, deleteTask, retryFeishuSync, calibrateTaskRecord } from '@/api/task'
 import { useAuthStore } from '@/stores/auth'
-import { fileNameFromImageUrl } from '@/utils/imageUrl'
 import StatOverview from '@/components/StatOverview.vue'
+import TaskImageChips from '@/components/TaskImageChips.vue'
 import PageShell from '@/components/PageShell.vue'
 import TruncatedTag from '@/components/TruncatedTag.vue'
 import RowStrikeText from '@/components/RowStrikeText.vue'
@@ -795,6 +823,7 @@ import TableHeaderFilter from '@/components/TableHeaderFilter.vue'
 import { useTableColumnSort } from '@/composables/useTableColumnSort'
 import { useAutoSizedColumns } from '@/composables/useAutoSizedColumns'
 import { useTableColumnResize } from '@/composables/useTableColumnResize'
+import { vAutoShrinkFont } from '@/directives/autoShrinkFont'
 import { sumTableScrollX } from '@/utils/tableAutoColumns'
 import { translateApiError } from '@/utils/translateError'
 import { currentExportLocale } from '@/utils/exportLocale'
@@ -879,7 +908,7 @@ import {
   normalizePersonName,
   normalizeLabelText,
 } from '@/utils/recognizedTextNormalizer'
-import { isValidCanonicalDate, normalizeDate } from '@/utils/recognizedDateNormalizer'
+import { isValidCanonicalDate, normalizeDate, swapDateMonthDay } from '@/utils/recognizedDateNormalizer'
 import { loadNightShiftRules } from '@/utils/nightShiftRules'
 import { isNonTimeFieldLabel, normalizeClockTime, normalizeShiftSchedule } from '@/utils/recognizedTimeNormalizer'
 import { createManualTaskRecord } from '@/utils/manualTaskRecord'
@@ -947,6 +976,7 @@ const {
   getRecordAnomalyGroups,
   getRecordShiftVarianceSentence,
   getFieldChangeHint,
+  hasRecordFieldChanges,
   hasAnomalyColumnContent,
   getRowClassName: getBaseRowClassName,
   getMarkColor,
@@ -1194,6 +1224,9 @@ const fieldCellPlaceholder = (record, field) => {
   if ((field === 'ARRIVEE' || field === 'DEPAR') && isArrivalDepartureSameTime(record)) {
     return t('fieldFormat.sameTimeShort')
   }
+  if (field === 'ARRIVEE' || field === 'DEPAR') {
+    return undefined
+  }
   if (isFormatFieldInvalid(record, field)) {
     const keys = getFormatHintKeys(field, { record, isSameArrivalDeparture: isArrivalDepartureSameTime })
     if (keys) return t(keys.short)
@@ -1208,8 +1241,8 @@ const sameTimeHintText = (record) => {
 
 const fieldFormatTooltip = (record, field) => {
   if (isRowMuted(record)) return ''
-  if ((field === 'ARRIVEE' || field === 'DEPAR') && isArrivalDepartureSameTime(record)) {
-    return sameTimeHintText(record)
+  if (field === 'ARRIVEE' || field === 'DEPAR') {
+    return isArrivalDepartureSameTime(record) ? sameTimeHintText(record) : ''
   }
   const keys = getFormatHintKeys(field, { record, isSameArrivalDeparture: isArrivalDepartureSameTime })
   return keys ? t(keys.tooltip) : ''
@@ -1323,6 +1356,23 @@ const dateFieldPlaceholder = (record) => {
 const onDatePickerUpdate = (record, value) => {
   if (!record) return
   record.Date = value || ''
+  onReadableFieldChange(record, 'Date')
+}
+
+const swapDateTarget = (record) => swapDateMonthDay(record?.Date)
+
+/** 考勤正确时日期选择器仍锁定，但月日对调始终可用 */
+const canSwapRecordDate = (record) => {
+  if (!record || !isRecordEditable(record)) return false
+  return !!swapDateMonthDay(record.Date)
+}
+
+const swapRecordDateMonthDay = (record) => {
+  if (!canSwapRecordDate(record)) return
+  const next = swapDateMonthDay(record.Date)
+  if (!next) return
+  onCalibratableFieldFocusHandler(record)
+  record.Date = next
   onReadableFieldChange(record, 'Date')
 }
 
@@ -1625,21 +1675,23 @@ const resolveRowMutedStrikeColor = (record) => (
 
 const getRowClassName = (record) => {
   const base = getBaseRowClassName(record) || ''
+  const extras = []
+  if (hasRecordFieldChanges(record)) extras.push('has-field-changes')
   // 未出勤 / 已删除：仅删除线，不加底纹，绝不叠待确认底
   if (
     isRowMuted(record)
     || base.includes('deleted-row')
     || base.includes('absent-row')
   ) {
-    return base
+    return [base, ...extras].filter(Boolean).join(' ')
   }
   if (
     !isConfirmedTask.value
     && isExceptionTypeMissingForSubmit(record, exceptionTypeDeps)
   ) {
-    return [base, 'exception-type-pending-row'].filter(Boolean).join(' ')
+    extras.push('exception-type-pending-row')
   }
-  return base
+  return [base, ...extras].filter(Boolean).join(' ')
 }
 
 const rowMutedStrikeClass = (record) => (isRowMuted(record) ? 'row-muted-strike-text' : '')
@@ -1716,7 +1768,7 @@ const cellStyle = (record, rowIndex, columnKey) => {
     return mergeCellProps({ class: 'work-region-mismatch-cell' }, columnKey)
   }
   if ((record?.SmartMark || '').includes('模糊')) {
-    return mergeCellProps({ style: { backgroundColor: '#FFF9EC' } }, columnKey)
+    return mergeCellProps({ style: { backgroundColor: '#FFF3DC' } }, columnKey)
   }
   return mergeCellProps({}, columnKey)
 }
@@ -1835,18 +1887,23 @@ const effectiveSizedColumns = computed(() => (
 
 const {
   columns: resizedColumns,
-  isColumnResizable,
-  startColumnResize,
+  clearColumnWidths,
 } = useTableColumnResize('task-edit-v4', effectiveSizedColumns, {
-  nonResizableKeys: ['action', 'ExceptionType', 'PAGE_NUM', 'NO', 'EMPLOYEE_NO'],
+  nonResizableKeys: [
+    'action', 'ExceptionType', 'PAGE_NUM', 'NO', 'EMPLOYEE_NO', 'Pays', 'Entrepot', 'Date',
+    'NOM_PRENOM', 'AGENCE_INTERIMAIRE', 'HORAIRES_DU_TRAVAIL', 'ARRIVEE', 'DEPAR', 'PAUSE',
+    'workHours', 'SIGNATURE', 'Observations', 'anomalyReasons', 'SmartMark',
+  ],
   minWidth: 28,
 })
+
+clearColumnWidths()
 
 watch(
   () => sizedColumns.value,
   (cols) => {
     if (columnsLocked.value || !cols?.length || !records.value.length) return
-    lockedSizedColumns.value = cols.map((col) => ({ ...col }))
+    lockedSizedColumns.value = cols.map((col) => ({ ...col, resizable: false }))
     columnsLocked.value = true
   },
   { immediate: true },
@@ -1872,7 +1929,7 @@ const {
   clearFrozenKeys,
 } = useColumnFreeze('task-edit-v4', resizedColumns, {
   defaultFrozen: ['PAGE_NUM', 'NO'],
-  defaultHidden: ['EMPLOYEE_NO'],
+  defaultHidden: ['EMPLOYEE_NO', 'DATE_RAW', 'SIGNATURE_RAW'],
   preserveRightFixed: true,
 })
 
@@ -1885,14 +1942,17 @@ const MICRO_ID_WIDTH = {
 const columns = computed(() =>
   (frozenDisplayColumns.value || []).map((col) => {
     const forced = MICRO_ID_WIDTH[col.key]
-    if (!forced) return col
-    return {
-      ...col,
-      width: forced,
-      minWidth: forced,
-      maxWidth: forced,
-      autoWidth: false,
-    }
+    const next = forced
+      ? {
+        ...col,
+        width: forced,
+        minWidth: forced,
+        maxWidth: forced,
+        autoWidth: false,
+        resizable: false,
+      }
+      : { ...col, resizable: false }
+    return next
   }),
 )
 const scrollX = computed(() => sumTableScrollX(columns.value))
@@ -2234,11 +2294,6 @@ const handleReupload = () => {
 
 const openImagePreview = (index) => {
   openImagePreviewAt(index)
-}
-
-const getFileName = (url) => {
-  const name = fileNameFromImageUrl(url)
-  return name || t('taskEdit.unknownFile')
 }
 
 const handleAddManualRecord = () => {
@@ -2719,17 +2774,31 @@ watch(headerFilters, () => {
   }
 
   :deep(.page-shell) {
-    margin-bottom: 8px;
-    gap: 8px 12px;
+    margin-top: -4px;
+    margin-bottom: 4px;
+    gap: 4px 10px;
+    align-items: center;
+  }
+
+  :deep(.page-shell__title-row) {
+    gap: 2px 8px;
   }
 
   :deep(.page-shell__title) {
     font-size: $font-size-xl;
-    line-height: 1.2;
+    line-height: 1.15;
+  }
+
+  :deep(.page-shell__inline-subtitle) {
+    line-height: 1.15;
   }
 
   :deep(.page-shell__meta) {
-    margin-top: 2px;
+    margin-top: 0;
+  }
+
+  :deep(.page-shell__extra) {
+    gap: 6px;
   }
 
   .edit-card {
@@ -2737,31 +2806,38 @@ watch(headerFilters, () => {
     box-shadow: $shadow-xs;
 
     :deep(.ant-card-body) {
-      padding: 10px 14px 12px;
+      padding: 8px 12px 10px;
     }
   }
 
-  :deep(.stat-overview.single-row) {
-    margin-bottom: 8px;
+  .task-summary-row {
+    display: flex;
+    align-items: center;
+    justify-content: flex-start;
+    flex-wrap: wrap;
+    gap: 6px 10px;
+    margin-bottom: 6px;
+    min-height: 0;
   }
 
   .record-count {
     font-size: 13px;
     color: $primary;
     background: $primary-light;
-    padding: 4px 12px;
+    padding: 2px 10px;
     border-radius: $radius-xl;
     border: 1px solid $border-accent;
+    line-height: 22px;
   }
 
   .task-header-meta {
     display: flex;
     align-items: center;
     flex-wrap: wrap;
-    gap: 6px;
+    gap: 4px;
     font-size: $font-size-sm;
     color: $text-secondary;
-    line-height: 1.5;
+    line-height: 1.25;
 
     &--warning {
       .task-header-meta__value {
@@ -2872,16 +2948,16 @@ watch(headerFilters, () => {
   }
 
   .edit-panel {
-    margin-top: 4px;
+    margin-top: 2px;
   }
 
   .edit-toolbar {
     display: flex;
     align-items: center;
     flex-wrap: wrap;
-    gap: 6px 10px;
-    margin-bottom: 8px;
-    min-height: 28px;
+    gap: 4px 8px;
+    margin-bottom: 6px;
+    min-height: 26px;
 
     &__title {
       font-size: $font-size-base;
@@ -3165,23 +3241,34 @@ watch(headerFilters, () => {
 
   .edit-table {
     .name-cell {
+      width: 100%;
       min-width: 0;
-    }
-
-    .name-cell :deep(.ant-input) {
-      white-space: normal;
-    }
-
-    .name-cell .cell-text {
-      white-space: normal;
-      word-break: break-word;
-      line-height: 1.35;
-    }
-
-    .name-cell {
+      max-width: 100%;
+      box-sizing: border-box;
       display: flex;
       flex-direction: column;
       gap: 4px;
+    }
+
+    .name-cell :deep(.ant-input) {
+      width: 100% !important;
+      min-width: 0 !important;
+      max-width: 100%;
+      padding-left: 2px !important;
+      padding-right: 2px !important;
+      overflow: hidden;
+      text-overflow: clip;
+      white-space: nowrap;
+    }
+
+    .name-cell .cell-text {
+      display: block;
+      width: 100%;
+      overflow: visible;
+      text-overflow: clip;
+      white-space: nowrap;
+      word-break: normal;
+      line-height: 1.35;
     }
 
     .mark-tags-cell {
@@ -3473,9 +3560,9 @@ watch(headerFilters, () => {
 
     :deep(.ant-table-thead > tr > th) {
       overflow: visible;
-      padding: 4px 4px !important;
+      padding: 3px 4px !important;
       font-size: 11px;
-      line-height: 1.2;
+      line-height: 1.15;
       font-weight: 600;
     }
 
@@ -3502,9 +3589,9 @@ watch(headerFilters, () => {
 
     :deep(.ant-table-tbody > tr > td) {
       border-bottom: 1px solid $border;
-      padding: 3px 4px !important;
+      padding: 2px 3px !important;
       vertical-align: top;
-      line-height: 1.25;
+      line-height: 1.2;
       font-size: 12px;
     }
 
@@ -3546,6 +3633,107 @@ watch(headerFilters, () => {
 
     :deep(.ant-input-number-focused) {
       box-shadow: 0 0 0 2px rgba($primary, 0.15);
+    }
+
+    /* 有修改前后：各列控件区同高；hint 在控件下方固定槽位垂直居中 */
+    $field-change-control-h: 22px;
+    $field-change-hint-slot: 11px;
+    $field-change-stack-h: $field-change-control-h + $field-change-hint-slot;
+    $field-change-pad-y: 4px;
+
+    :deep(.ant-table-tbody > tr.has-field-changes > td) {
+      position: relative;
+      vertical-align: middle !important;
+      padding-top: $field-change-pad-y !important;
+      padding-bottom: $field-change-pad-y !important;
+    }
+
+    :deep(.ant-table-tbody > tr.has-field-changes > td.format-time-cell),
+    :deep(.ant-table-tbody > tr.has-field-changes > td.exception-calibrate-required-cell),
+    :deep(.ant-table-tbody > tr.has-field-changes > td.cell-v-middle) {
+      vertical-align: middle !important;
+    }
+
+    :deep(.ant-table-tbody > tr.has-field-changes .format-field-cell),
+    :deep(.ant-table-tbody > tr.has-field-changes .field-with-change-hint:not(.name-cell)) {
+      position: relative;
+      box-sizing: border-box;
+      justify-content: flex-start;
+      gap: 0;
+      height: $field-change-stack-h;
+      min-height: $field-change-stack-h;
+      max-height: $field-change-stack-h;
+      padding-bottom: $field-change-hint-slot;
+      overflow: visible;
+    }
+
+    :deep(.ant-table-tbody > tr.has-field-changes .format-field-cell > .clock-time-field),
+    :deep(.ant-table-tbody > tr.has-field-changes .format-field-cell > .date-field-row),
+    :deep(.ant-table-tbody > tr.has-field-changes .format-field-cell > .ant-input),
+    :deep(.ant-table-tbody > tr.has-field-changes .format-field-cell > .ant-picker),
+    :deep(.ant-table-tbody > tr.has-field-changes .format-field-cell > .ant-tooltip),
+    :deep(.ant-table-tbody > tr.has-field-changes .format-field-cell > .ant-tooltip-disabled-compatible-wrapper),
+    :deep(.ant-table-tbody > tr.has-field-changes .field-with-change-hint:not(.name-cell) > .ant-input),
+    :deep(.ant-table-tbody > tr.has-field-changes .field-with-change-hint:not(.name-cell) > .ant-input-number),
+    :deep(.ant-table-tbody > tr.has-field-changes .field-with-change-hint:not(.name-cell) > .ant-select),
+    :deep(.ant-table-tbody > tr.has-field-changes .field-with-change-hint:not(.name-cell) > span),
+    :deep(.ant-table-tbody > tr.has-field-changes .field-with-change-hint:not(.name-cell) > s) {
+      flex: 0 0 $field-change-control-h;
+      height: $field-change-control-h !important;
+      min-height: $field-change-control-h !important;
+      max-height: $field-change-control-h !important;
+    }
+
+    :deep(.ant-table-tbody > tr.has-field-changes .format-field-cell .clock-time-field__box),
+    :deep(.ant-table-tbody > tr.has-field-changes .format-field-cell .ant-input),
+    :deep(.ant-table-tbody > tr.has-field-changes .format-field-cell .ant-picker),
+    :deep(.ant-table-tbody > tr.has-field-changes .field-with-change-hint:not(.name-cell) .ant-input),
+    :deep(.ant-table-tbody > tr.has-field-changes .field-with-change-hint:not(.name-cell) .ant-input-number),
+    :deep(.ant-table-tbody > tr.has-field-changes .field-with-change-hint:not(.name-cell) .ant-input-number-input) {
+      height: $field-change-control-h !important;
+      min-height: $field-change-control-h !important;
+    }
+
+    :deep(.ant-table-tbody > tr.has-field-changes .exception-type-cell),
+    :deep(.ant-table-tbody > tr.has-field-changes .table-action-cell) {
+      justify-content: center;
+      min-height: 0;
+    }
+
+    :deep(.ant-table-tbody > tr.has-field-changes .format-field-cell > .field-change-hint),
+    :deep(.ant-table-tbody > tr.has-field-changes .field-with-change-hint:not(.name-cell) > .field-change-hint) {
+      position: absolute;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      z-index: 1;
+      display: inline-flex;
+      align-items: center;
+      margin: 0;
+      width: 100%;
+      max-width: 100%;
+      height: $field-change-hint-slot;
+      min-height: $field-change-hint-slot;
+      font-size: 8px;
+      line-height: 1;
+    }
+
+    :deep(.ant-table-tbody > tr.has-field-changes .name-cell) {
+      gap: 0;
+    }
+
+    :deep(.ant-table-tbody > tr.has-field-changes .name-cell > .field-change-hint) {
+      position: static;
+      display: inline-flex;
+      align-items: center;
+      margin: 0;
+      height: $field-change-hint-slot;
+      min-height: $field-change-hint-slot;
+    }
+
+    :deep(.ant-table-tbody > tr.has-field-changes .duplicate-tools),
+    :deep(.ant-table-tbody > tr.has-field-changes .format-hint-below) {
+      margin-top: 2px;
     }
   }
 
@@ -3882,17 +4070,94 @@ watch(headerFilters, () => {
     }
   }
 
-  :deep(.task-edit-date-picker) {
+  .date-field-row {
+    display: flex;
+    align-items: center;
+    gap: 2px;
+    min-width: 0;
     width: 100%;
+  }
+
+  .date-field-main {
+    flex: 1 1 auto;
+    min-width: 0;
+    max-width: 100%;
+    overflow: visible;
+
+    :deep(.ant-tooltip-disabled-compatible-wrapper) {
+      display: block;
+      width: 100%;
+      min-width: 0;
+    }
+  }
+
+  .date-field-text {
+    display: block;
+    min-width: 0;
+    overflow: visible;
+    white-space: nowrap;
+    font-size: 12px;
+    line-height: 16px;
+    font-variant-numeric: tabular-nums;
+  }
+
+  .date-swap-btn {
+    flex: 0 0 auto;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    height: 16px;
+    padding: 0 3px;
+    border: 1px solid rgba(24, 144, 255, 0.28);
+    border-radius: 3px;
+    background: #f0f7ff;
+    color: #1677ff;
+    cursor: pointer;
+    white-space: nowrap;
+    font-size: 10px;
+    font-weight: 600;
+    line-height: 14px;
+
+    &:hover,
+    &:focus-visible {
+      background: #e6f4ff;
+      border-color: #1677ff;
+    }
+  }
+
+  .date-picker-suffix-hidden {
+    display: none;
+  }
+
+  :deep(.task-edit-date-picker .ant-picker-suffix) {
+    display: none !important;
+  }
+
+  :deep(.task-edit-date-picker) {
+    display: block;
+    min-width: 0 !important;
+    width: 100%;
+    max-width: 100%;
     font-size: 12px;
 
     &.ant-picker {
-      padding: 0 2px;
+      min-width: 0 !important;
+      padding: 0 1px;
+    }
+
+    .ant-picker-input {
+      width: 100%;
+      min-width: 0;
     }
 
     .ant-picker-input > input {
+      width: 100% !important;
+      min-width: 0 !important;
       font-size: 12px !important;
-      padding: 0 2px;
+      font-variant-numeric: tabular-nums;
+      padding: 0 1px;
+      overflow: visible;
+      text-overflow: clip;
     }
   }
 
@@ -3939,6 +4204,33 @@ watch(headerFilters, () => {
     justify-content: flex-start;
   }
 
+  .cell-auto-shrink {
+    min-width: 0;
+    max-width: 100%;
+
+    :deep(.ant-input),
+    :deep(.ant-input-number-input),
+    :deep(.ant-picker-input > input),
+    :deep(.ant-select-selection-item),
+    :deep(.ant-select-selection-placeholder),
+    :deep(.cell-text),
+    :deep(.work-hours),
+    :deep(.recognition-note-list__text),
+    :deep(.clock-time-field),
+    :deep(.clock-time-field__seg),
+    :deep(.clock-time-field__colon),
+    :deep(.signature-mark-tag) {
+      font-size: inherit !important;
+      text-overflow: clip;
+    }
+
+    :deep(.ant-input-number-input),
+    :deep(.ant-select-selection-item),
+    :deep(.ant-select-selection-placeholder) {
+      line-height: 1.3 !important;
+    }
+  }
+
   :deep(.format-time-cell),
   :deep(.exception-calibrate-required-cell) {
     overflow: visible !important;
@@ -3954,10 +4246,11 @@ watch(headerFilters, () => {
   }
 
   .field-change-hint {
-    margin-top: 1px;
+    margin-top: 0;
     max-width: 100%;
-    font-size: 9px;
-    line-height: 1.2;
+    height: 11px;
+    font-size: 8px;
+    line-height: 1;
     font-weight: $font-weight-semibold;
     color: $danger-dark;
     white-space: nowrap;
@@ -3981,81 +4274,6 @@ watch(headerFilters, () => {
   @keyframes validation-cell-flash {
     0%, 100% { box-shadow: none; }
     15%, 45% { box-shadow: 0 0 0 2px rgba($warning, 0.55); border-radius: $radius-sm; }
-  }
-
-  .task-image-files {
-    display: flex;
-    align-items: center;
-    flex-wrap: wrap;
-    gap: 4px 10px;
-    margin-bottom: 6px;
-    padding: 2px 0;
-    border: none;
-    background: transparent;
-
-    &__title {
-      display: inline-flex;
-      align-items: center;
-      gap: 6px;
-      font-weight: $font-weight-semibold;
-      color: $text-secondary;
-      font-size: $font-size-sm;
-      white-space: nowrap;
-
-      em {
-        font-style: normal;
-        font-weight: $font-weight-normal;
-        color: $text-tertiary;
-      }
-    }
-
-    &__list {
-      list-style: none;
-      margin: 0;
-      padding: 0;
-      display: flex;
-      flex-wrap: wrap;
-      align-items: center;
-      gap: 4px 12px;
-      min-width: 0;
-      flex: 1 1 auto;
-    }
-
-    &__item {
-      margin: 0;
-      min-width: 0;
-
-      &--active .task-image-files__name {
-        color: $primary;
-        font-weight: $font-weight-semibold;
-      }
-    }
-
-    &__link {
-      display: inline-flex;
-      align-items: center;
-      max-width: 100%;
-      padding: 0;
-      border: none;
-      background: transparent;
-      cursor: pointer;
-      text-align: left;
-
-      &:hover .task-image-files__name,
-      &:focus-visible .task-image-files__name {
-        color: $primary;
-        text-decoration: underline;
-      }
-    }
-
-    &__name {
-      font-size: $font-size-sm;
-      font-weight: $font-weight-medium;
-      color: $text-strong;
-      overflow: hidden;
-      text-overflow: ellipsis;
-      white-space: nowrap;
-    }
   }
 
   .action-bar {

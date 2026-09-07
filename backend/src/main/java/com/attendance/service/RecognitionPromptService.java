@@ -23,6 +23,7 @@ public class RecognitionPromptService {
 
     private final ConcurrentHashMap<String, String> aiPromptCache = new ConcurrentHashMap<>();
     private final ConcurrentHashMap<String, String> continuePromptCache = new ConcurrentHashMap<>();
+    private volatile boolean dateRawContractReady;
 
     @Autowired
     private RecognitionPromptMapper recognitionPromptMapper;
@@ -31,6 +32,7 @@ public class RecognitionPromptService {
     private PromptProperties promptProperties;
 
     public String getAiPrompt(String country) {
+        ensureDateRawContract();
         String code = normalizeCountry(country);
         String effective = resolveEffectivePromptCountry(code);
         return aiPromptCache.computeIfAbsent(effective, this::loadAiPromptFromDb);
@@ -38,6 +40,7 @@ public class RecognitionPromptService {
 
     /** 配置页直读库，绕过内存缓存，保证保存后立刻看到最新文案 */
     public String getAiPromptFresh(String country) {
+        ensureDateRawContract();
         String code = normalizeCountry(country);
         String effective = resolveEffectivePromptCountry(code);
         String prompt = loadAiPromptFromDb(effective);
@@ -160,6 +163,20 @@ public class RecognitionPromptService {
         return !prompt.contains("PAGE_NUM");
     }
 
+    /** 任一国家正文缺少 DATE_RAW 时，配置页仍会显示 15 字段旧稿。 */
+    public boolean isMissingDateRawPromptInDatabase() {
+        List<RecognitionPrompt> rows = recognitionPromptMapper.selectAll();
+        if (rows == null || rows.isEmpty()) {
+            return true;
+        }
+        for (RecognitionPrompt row : rows) {
+            if (isMissingDateRaw(row)) {
+                return true;
+            }
+        }
+        return false;
+    }
+
     public long countRows() {
         return recognitionPromptMapper.countAll();
     }
@@ -170,14 +187,76 @@ public class RecognitionPromptService {
      * @param force true=覆盖全部（初始化场景）；false=仅补全/升级未自定义行
      */
     public int seedFromCanonical(boolean force) {
+        return seedFromCanonical(force, false);
+    }
+
+    /**
+     * @param forceMissingDateRaw true 时，即使用户改过，缺少 DATE_RAW 的国家也强制套用最新模板
+     */
+    public int seedFromCanonical(boolean force, boolean forceMissingDateRaw) {
         String markdown = readCanonicalResource();
         if (markdown == null || markdown.trim().isEmpty()) {
             log.error("内置 canonical/prompts.md 为空，无法播种");
             return 0;
         }
+        return applyParsedSeeds(PromptCanonicalParser.parse(markdown), force, forceMissingDateRaw);
+    }
+
+    /** 把指定国家的正文强制换成内置最新模板，供配置页「应用最新模板」。 */
+    public boolean applyCanonicalForCountry(String country) {
+        String markdown = readCanonicalResource();
+        if (markdown == null || markdown.trim().isEmpty()) {
+            return false;
+        }
+        String code = normalizeCountry(country);
         Map<String, PromptCanonicalParser.ParsedPrompt> parsed = PromptCanonicalParser.parse(markdown);
+        PromptCanonicalParser.ParsedPrompt p = parsed.get(code);
+        if (p == null || !p.isValid()) {
+            p = parsed.get("default");
+        }
+        if (p == null || !p.isValid()) {
+            return false;
+        }
+        RecognitionPrompt row = new RecognitionPrompt();
+        row.setCountryCode(code);
+        row.setAiPrompt(p.aiPrompt);
+        row.setContinuePrompt(p.continuePrompt);
+        row.setSeedVersion(promptProperties.getSeedVersion());
+        row.setUserModified(false);
+        recognitionPromptMapper.upsertForceSeed(row);
+        clearPromptCache();
+        log.info("已将识别提示词重置为标准模板: country={}", code);
+        return true;
+    }
+
+    public int seedFromMarkdownContent(String markdown, boolean force) {
+        return applyParsedSeeds(PromptCanonicalParser.parse(markdown), force, false);
+    }
+
+    /**
+     * 配置页/识别读取前：把仍缺 DATE_RAW 的国家（含用户改过的）写成最新模板。
+     */
+    public void ensureDateRawContract() {
+        if (dateRawContractReady) {
+            return;
+        }
+        synchronized (this) {
+            if (dateRawContractReady) {
+                return;
+            }
+            if (isMissingDateRawPromptInDatabase()) {
+                seedFromCanonical(false, true);
+            }
+            dateRawContractReady = true;
+        }
+    }
+
+    private int applyParsedSeeds(Map<String, PromptCanonicalParser.ParsedPrompt> parsed,
+                                 boolean force,
+                                 boolean forceMissingDateRaw) {
         int version = promptProperties.getSeedVersion();
         int count = 0;
+        int forcedMissing = 0;
         for (Map.Entry<String, PromptCanonicalParser.ParsedPrompt> entry : parsed.entrySet()) {
             PromptCanonicalParser.ParsedPrompt p = entry.getValue();
             if (!p.isValid()) {
@@ -189,42 +268,28 @@ public class RecognitionPromptService {
             row.setContinuePrompt(p.continuePrompt);
             row.setSeedVersion(version);
             row.setUserModified(false);
-            if (force) {
+            RecognitionPrompt existing = (!force && forceMissingDateRaw)
+                    ? recognitionPromptMapper.selectByCountry(entry.getKey())
+                    : null;
+            boolean overwriteMissing = forceMissingDateRaw && isMissingDateRaw(existing);
+            if (force || overwriteMissing) {
                 recognitionPromptMapper.upsertForceSeed(row);
+                if (overwriteMissing && !force) {
+                    forcedMissing++;
+                }
             } else {
                 recognitionPromptMapper.upsertSystemSeed(row);
             }
             count++;
         }
-        log.info("识别提示词播种完成: countries={}, force={}, seedVersion={}", count, force, version);
+        log.info("识别提示词播种完成: countries={}, force={}, forceMissingDateRaw={}, upgradedMissingDateRaw={}, seedVersion={}",
+                count, force, forceMissingDateRaw, forcedMissing, version);
         clearPromptCache();
         return count;
     }
 
-    public int seedFromMarkdownContent(String markdown, boolean force) {
-        Map<String, PromptCanonicalParser.ParsedPrompt> parsed = PromptCanonicalParser.parse(markdown);
-        int version = promptProperties.getSeedVersion();
-        int count = 0;
-        for (Map.Entry<String, PromptCanonicalParser.ParsedPrompt> entry : parsed.entrySet()) {
-            PromptCanonicalParser.ParsedPrompt p = entry.getValue();
-            if (!p.isValid()) {
-                continue;
-            }
-            RecognitionPrompt row = new RecognitionPrompt();
-            row.setCountryCode(entry.getKey());
-            row.setAiPrompt(p.aiPrompt);
-            row.setContinuePrompt(p.continuePrompt);
-            row.setSeedVersion(version);
-            row.setUserModified(false);
-            if (force) {
-                recognitionPromptMapper.upsertForceSeed(row);
-            } else {
-                recognitionPromptMapper.upsertSystemSeed(row);
-            }
-            count++;
-        }
-        clearPromptCache();
-        return count;
+    private static boolean isMissingDateRaw(RecognitionPrompt row) {
+        return row == null || row.getAiPrompt() == null || !row.getAiPrompt().contains("DATE_RAW");
     }
 
     public List<String> listCountryCodes() {

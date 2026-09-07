@@ -30,7 +30,7 @@ const DEFAULT_MAX_BY_KEY = {
   DEPAR: 96,
   PAUSE: 56,
   workHours: 56,
-  Date: 108,
+  Date: 148,
   SIGNATURE: 60,
 }
 

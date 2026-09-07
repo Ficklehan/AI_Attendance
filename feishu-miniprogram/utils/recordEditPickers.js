@@ -4,7 +4,7 @@
 const { t, tOr } = require('./i18n')
 const { parseShiftSchedule } = require('../shared-js/shiftVarianceCore')
 const { normalizeClockTime } = require('../shared-js/recognizedTimeNormalizer')
-const { normalizeDate } = require('../shared-js/recognizedDateNormalizer')
+const { normalizeDate, swapDateMonthDay } = require('../shared-js/recognizedDateNormalizer')
 const { getBaselineFieldDiffs } = require('../shared-js/exceptionTypeCore')
 
 function pad2(n) {
@@ -89,6 +89,8 @@ function enrichCalibFieldForPicker(field, record, openBaseline) {
     out.inputType = 'date'
     out.pickerValue = toPickerDate(value)
     out.displayValue = value || out.pickerValue
+    out.swapTarget = swapDateMonthDay(value)
+    out.canSwapMonthDay = !!out.swapTarget
   } else if (key === 'ARRIVEE' || key === 'DEPAR') {
     out.inputType = 'time'
     out.pickerValue = toPickerTime(value, key === 'DEPAR' ? '18:00' : '09:00')

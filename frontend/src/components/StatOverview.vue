@@ -42,15 +42,25 @@
           <circle cx="20" cy="10" r="0.7" fill="currentColor" opacity="0.3"/>
         </svg>
         <!-- Absent / X Circle -->
-        <svg v-else-if="item.key === 'absent' || item.key === 'paperWrong'" width="20" height="20" viewBox="0 0 24 24" fill="none">
+        <svg v-else-if="item.key === 'absent'" width="20" height="20" viewBox="0 0 24 24" fill="none">
           <circle cx="12" cy="12" r="9" stroke="currentColor" stroke-width="2"/>
           <path d="M15 9L9 15M9 9L15 15" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
         </svg>
-        <!-- Deleted / Trash -->
-        <svg v-else width="20" height="20" viewBox="0 0 24 24" fill="none">
+        <!-- Paper wrong -->
+        <svg v-else-if="item.key === 'paperWrong'" width="20" height="20" viewBox="0 0 24 24" fill="none">
+          <circle cx="12" cy="12" r="9" stroke="currentColor" stroke-width="2"/>
+          <path d="M15 9L9 15M9 9L15 15" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+        </svg>
+        <!-- Deleted / Trash (legacy) -->
+        <svg v-else-if="item.key === 'deleted'" width="20" height="20" viewBox="0 0 24 24" fill="none">
           <path d="M3 6H21" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
           <path d="M8 6V4C8 3.44772 8.44772 3 9 3H15C15.5523 3 16 3.44772 16 4V6" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
           <path d="M5 6L6 20C6 20.5523 6.44772 21 7 21H17C17.5523 21 18 20.5523 18 20L19 6" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+        </svg>
+        <svg v-else width="20" height="20" viewBox="0 0 24 24" fill="none">
+          <circle cx="12" cy="12" r="9" stroke="currentColor" stroke-width="2"/>
+          <path d="M12 8V12" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+          <circle cx="12" cy="16" r="1" fill="currentColor"/>
         </svg>
       </div>
       <div class="stat-card__info">
@@ -94,34 +104,72 @@ const onCardClick = (item) => {
   &.single-row {
     display: flex;
     flex-wrap: nowrap;
-    gap: 8px;
+    justify-content: flex-start;
+    align-items: center;
+    gap: 6px;
     overflow-x: auto;
-    margin-bottom: 12px;
+    margin-bottom: 0;
 
     .stat-card {
-      flex: 1 1 0;
+      flex: 0 0 auto;
+      width: auto;
       min-width: 0;
-      padding: 8px 10px;
-      gap: 8px;
-    }
-
-    .stat-card__icon-wrap {
-      width: 28px;
-      height: 28px;
+      min-height: 32px;
+      padding: 0 12px;
+      gap: 6px;
       border-radius: 6px;
+      background: #e6f4ff;
+      border: 1px solid #91caff;
 
-      svg {
-        width: 15px;
-        height: 15px;
+      &:hover {
+        background: #bae0ff;
+        border-color: #1677ff;
+      }
+
+      &.is-empty {
+        opacity: 1;
+        background: #f0f7ff;
+        border-color: #bae0ff;
+      }
+
+      &.is-active {
+        background: #e6f4ff;
+        border-color: #1677ff;
+        box-shadow: inset 3px 0 0 #1677ff;
       }
     }
 
+    .stat-card__icon-wrap {
+      width: 18px;
+      height: 18px;
+      border-radius: 4px;
+      color: #1677ff;
+
+      svg {
+        width: 14px;
+        height: 14px;
+      }
+    }
+
+    .stat-card__info {
+      display: flex;
+      align-items: baseline;
+      gap: 6px;
+    }
+
     .stat-card__value {
-      font-size: 18px;
+      order: 2;
+      font-size: 15px;
+      line-height: 1.2;
+      color: #0958d9;
     }
 
     .stat-card__label {
-      font-size: 12px;
+      order: 1;
+      margin-top: 0;
+      font-size: 13px;
+      line-height: 1.2;
+      color: #1677ff;
     }
   }
 
@@ -235,5 +283,29 @@ const onCardClick = (item) => {
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
+}
+
+.stat-overview.single-row.clickable .stat-card {
+  &:hover {
+    background: #bae0ff;
+    border-color: #1677ff;
+  }
+
+  &.is-active,
+  &.is-active.normal,
+  &.is-active.attendanceOk,
+  &.is-active.blurred,
+  &.is-active.pendingException,
+  &.is-active.handwriting,
+  &.is-active.ocrWrong,
+  &.is-active.absent,
+  &.is-active.paperWrong,
+  &.is-active.night,
+  &.is-active.shiftVariance,
+  &.is-active.deleted {
+    background: #e6f4ff;
+    border-color: #1677ff;
+    box-shadow: inset 3px 0 0 #1677ff;
+  }
 }
 </style>

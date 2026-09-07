@@ -59,7 +59,7 @@ public final class RecognizedFieldSanitizer {
     private static final String[] RECORD_TEXT_KEYS = {
             "Pays", "Entrepot", "Date", "WorkDate", "NOM_PRENOM", "Name", "NO",
             "AGENCE_INTERIMAIRE", "HORAIRES_DU_TRAVAIL", "ARRIVEE", "DEPAR", "DEPART",
-            "Observations", "PAGE_NUM", "pageNum"
+            "Observations", "PAGE_NUM", "pageNum", "DATE_RAW"
     };
 
     /** 确认提交前将占位符归一为空字符串（不含 PAUSE、签名列）。 */

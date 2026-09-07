@@ -1,0 +1,40 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+    "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.attendance.mapper.TaskRecognitionEventMapper">
+
+    <resultMap id="BaseResultMap" type="com.attendance.entity.TaskRecognitionEvent">
+        <id column="id" property="id"/>
+        <result column="task_id" property="taskId"/>
+        <result column="seq" property="seq"/>
+        <result column="event_type" property="eventType"/>
+        <result column="payload" property="payload"/>
+        <result column="image_index" property="imageIndex"/>
+        <result column="created_at" property="createdAt"/>
+    </resultMap>
+
+    <sql id="Base_Column_List">
+        id, task_id, seq, event_type, payload, image_index, created_at
+    </sql>
+
+    <insert id="insert" useGeneratedKeys="true" keyProperty="id">
+        INSERT INTO task_recognition_event (task_id, seq, event_type, payload, image_index, created_at)
+        VALUES (#{taskId}, #{seq}, #{eventType}, #{payload}, #{imageIndex}, NOW())
+    </insert>
+
+    <select id="selectMaxSeq" resultType="java.lang.Integer">
+        SELECT MAX(seq) FROM task_recognition_event WHERE task_id = #{taskId}
+    </select>
+
+    <select id="selectAfterSeq" resultMap="BaseResultMap">
+        SELECT <include refid="Base_Column_List"/>
+        FROM task_recognition_event
+        WHERE task_id = #{taskId} AND seq &gt; #{afterSeq}
+        ORDER BY seq ASC
+        LIMIT #{limit}
+    </select>
+
+    <delete id="deleteByTaskId">
+        DELETE FROM task_recognition_event WHERE task_id = #{taskId}
+    </delete>
+</mapper>
