@@ -225,6 +225,7 @@ import { message, Modal } from 'ant-design-vue'
 import {
   CalendarOutlined,
   FileTextOutlined,
+  PrinterOutlined,
   HomeOutlined,
   TeamOutlined,
   UnorderedListOutlined,
@@ -329,6 +330,7 @@ const menuItems = computed(() => {
       children: [
         { path: '/records', labelKey: 'clockai.menu.records', icon: CalendarOutlined },
         { path: '/agency-bills', labelKey: 'clockai.menu.agencyBills', icon: FileTextOutlined },
+        { path: '/print-sheet', labelKey: 'clockai.menu.printSheet', icon: PrinterOutlined },
       ],
     },
     { path: '/employees', labelKey: 'nav.employees', icon: TeamOutlined, permission: 'employees' },

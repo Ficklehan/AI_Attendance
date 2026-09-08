@@ -64,7 +64,7 @@ public class PromptDatabaseBootstrap implements ApplicationRunner {
 
             if (rows == 0 || force || legacy || missingPageNum || missingDateRaw || outdatedSeed) {
                 // 空库 / 显式 force / 确认旧版结构：覆盖全部。
-                // DATE_RAW 是输出契约字段：缺它的国家（含 user_modified）也强制套用最新模板，配置页才能看到改后正文。
+                // DATE_RAW / 页头共用是输出契约：缺它们的国家（含 user_modified）也强制套用最新模板，配置页才能看到改后正文。
                 boolean useForce = force || legacy || rows == 0;
                 int seeded = recognitionPromptService.seedFromCanonical(useForce, missingDateRaw);
                 log.info("提示词数据库播种: rows={}, legacy={}, missingPageNum={}, missingDateRaw={}, outdatedSeed={}, force={}, seeded={}",

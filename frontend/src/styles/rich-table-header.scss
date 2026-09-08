@@ -163,6 +163,126 @@ $table-cell-padding-x: 10px;
     text-align: inherit;
   }
 
+  .recognition-note-list {
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: flex-start;
+    gap: 2px;
+    width: 100%;
+    min-width: 0;
+    text-align: left;
+    line-height: 1.3;
+    font-size: 11px;
+  }
+
+  .recognition-note-list__item {
+    display: flex;
+    align-items: flex-start;
+    gap: 4px;
+    width: 100%;
+    min-width: 0;
+  }
+
+  .recognition-note-list__index {
+    flex: none;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 12px;
+    height: 12px;
+    margin-top: 2px;
+    border-radius: 999px;
+    font-size: 9px;
+    font-weight: 600;
+    font-variant-numeric: tabular-nums;
+    line-height: 1;
+    color: #fff;
+    background: $text-tertiary;
+    box-shadow: 0 0 0 1px rgba(28, 26, 46, 0.04);
+  }
+
+  .recognition-note-list__text {
+    min-width: 0;
+    flex: 1;
+    font-weight: 400;
+    white-space: normal;
+    word-break: break-word;
+    color: $text-primary;
+  }
+
+  .recognition-note-list__item--night {
+    .recognition-note-list__index {
+      background: linear-gradient(135deg, #7C5CFF 0%, #9B7BFF 100%);
+    }
+    .recognition-note-list__text {
+      color: #6B4FE0;
+    }
+  }
+
+  .recognition-note-list__item--shift {
+    .recognition-note-list__index {
+      background: $accent-gradient;
+    }
+    .recognition-note-list__text {
+      color: $accent-dark;
+    }
+  }
+
+  .recognition-note-list__item--danger {
+    .recognition-note-list__index {
+      background: linear-gradient(135deg, $danger 0%, lighten($danger, 6%) 100%);
+    }
+    .recognition-note-list__text {
+      color: $danger-dark;
+    }
+  }
+
+  .recognition-note-list__item--warning {
+    .recognition-note-list__index {
+      background: linear-gradient(135deg, #E8A317 0%, $warning 100%);
+    }
+    .recognition-note-list__text {
+      color: $warning-dark;
+    }
+  }
+
+  .recognition-note-list__item--accent {
+    .recognition-note-list__index {
+      background: $accent-gradient;
+    }
+    .recognition-note-list__text {
+      color: $accent-dark;
+    }
+  }
+
+  .recognition-note-list__item--primary {
+    .recognition-note-list__index {
+      background: $primary-gradient;
+    }
+    .recognition-note-list__text {
+      color: $primary-dark;
+    }
+  }
+
+  .recognition-note-list__item--success {
+    .recognition-note-list__index {
+      background: linear-gradient(135deg, $success-dark 0%, $success 100%);
+    }
+    .recognition-note-list__text {
+      color: $success-dark;
+    }
+  }
+
+  .recognition-note-list__item--default {
+    .recognition-note-list__index {
+      background: linear-gradient(135deg, #8A8796 0%, $text-secondary 100%);
+    }
+    .recognition-note-list__text {
+      color: $text-strong;
+    }
+  }
+
   .status-cell {
     display: inline-flex;
     flex-wrap: wrap;

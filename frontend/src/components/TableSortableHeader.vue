@@ -5,13 +5,15 @@
       alignClass,
       {
         'table-sortable-header--has-filter': hasFilter,
-        'table-sortable-header--has-sort': sortable,
+        'table-sortable-header--has-sort': showSortIcon,
+        'table-sortable-header--sort-on-title': titleSorts,
+        'table-sortable-header--is-sorted': !!column.sortOrder,
         'table-sortable-header--compact': compact,
         'table-sortable-header--micro': micro,
       },
     ]"
   >
-    <div v-if="sortable" class="table-sortable-header__leading">
+    <div v-if="showSortIcon" class="table-sortable-header__leading">
       <a-tooltip :title="t('common.sortColumn')" placement="top">
         <button
           type="button"
@@ -35,13 +37,27 @@
     </div>
 
     <div class="table-sortable-header__title" :title="hint ? undefined : titleText">
-      <a-tooltip v-if="hint" :title="hint" placement="top">
-        <span class="table-sortable-header__title-text table-sortable-header__title-text--hinted">{{ title }}</span>
-      </a-tooltip>
-      <span v-else class="table-sortable-header__title-text">{{ title }}</span>
+      <button
+        v-if="titleSorts"
+        type="button"
+        class="table-sortable-header__title-btn"
+        :aria-label="sortAriaLabel"
+        @click.stop="handleSorterClick"
+      >
+        <a-tooltip v-if="hint" :title="hint" placement="top">
+          <span class="table-sortable-header__title-text table-sortable-header__title-text--hinted">{{ title }}</span>
+        </a-tooltip>
+        <span v-else class="table-sortable-header__title-text">{{ title }}</span>
+      </button>
+      <template v-else>
+        <a-tooltip v-if="hint" :title="hint" placement="top">
+          <span class="table-sortable-header__title-text table-sortable-header__title-text--hinted">{{ title }}</span>
+        </a-tooltip>
+        <span v-else class="table-sortable-header__title-text">{{ title }}</span>
+      </template>
     </div>
 
-    <div v-if="hasFilter" class="table-sortable-header__trailing">
+    <div v-if="hasFilter" class="table-sortable-header__trailing" @click.stop @mousedown.stop>
       <slot name="extra" />
     </div>
 
@@ -68,6 +84,8 @@ const props = defineProps({
   micro: { type: Boolean, default: false },
   hint: { type: String, default: '' },
   resizable: { type: Boolean, default: false },
+  /** 点击字段名排序；紧凑表头默认开启，不再单独占一列排序箭头 */
+  sortOnTitle: { type: Boolean, default: undefined },
 })
 
 const emit = defineEmits(['sort', 'resize-start'])
@@ -75,6 +93,8 @@ const slots = useSlots()
 const { t } = useI18n()
 
 const sortable = computed(() => columnIsSortable(props.column))
+const titleSorts = computed(() => sortable.value && (props.sortOnTitle ?? props.compact))
+const showSortIcon = computed(() => sortable.value && !titleSorts.value)
 const hasFilter = computed(() => typeof slots.extra === 'function')
 
 const alignClass = computed(() => {
@@ -148,6 +168,20 @@ $icon-gap: 4px;
 }
 
 .table-sortable-header__title-text {
+  pointer-events: auto;
+}
+
+.table-sortable-header__title-btn {
+  display: block;
+  width: 100%;
+  max-width: 100%;
+  min-width: 0;
+  margin: 0;
+  padding: 0;
+  border: none;
+  background: transparent;
+  cursor: pointer;
+  text-align: inherit;
   pointer-events: auto;
 }
 
@@ -261,20 +295,22 @@ $icon-gap: 4px;
   }
 }
 
-$table-compact-icon-size: 18px;
+$table-compact-icon-size: 16px;
 
 .table-sortable-header--compact {
-  min-height: 30px;
-  gap: 2px;
+  min-height: 36px;
   align-items: center;
 
-  .table-sortable-header__leading,
+  .table-sortable-header__leading {
+    display: none;
+  }
+
   .table-sortable-header__trailing {
-    position: static;
-    top: auto;
-    left: auto;
-    right: auto;
-    transform: none;
+    position: absolute;
+    top: 50%;
+    right: 0;
+    transform: translateY(-50%);
+    z-index: 2;
     flex: 0 0 auto;
     margin-top: 0;
   }
@@ -286,22 +322,37 @@ $table-compact-icon-size: 18px;
     right: auto;
     transform: none;
     flex: 1 1 auto;
-    width: auto;
+    width: 100%;
     min-width: 0;
     padding: 0 !important;
     pointer-events: auto;
     justify-content: flex-start;
+    align-items: center;
+  }
+
+  .table-sortable-header__title-btn {
+    display: flex;
+    align-items: center;
+    min-height: 100%;
+  }
+
+  &.table-sortable-header--has-filter .table-sortable-header__title {
+    padding-right: $table-compact-icon-size !important;
   }
 
   .table-sortable-header__title-text {
-    white-space: nowrap;
-    word-break: normal;
+    display: -webkit-box;
+    -webkit-box-orient: vertical;
+    -webkit-line-clamp: 2;
+    white-space: normal;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    word-break: break-word;
+    overflow-wrap: anywhere;
     line-height: 1.2;
     font-size: 11px;
     text-align: left;
-    display: block;
-    overflow: hidden;
-    text-overflow: ellipsis;
+    max-height: 2.4em;
   }
 
   &.table-sortable-header--align-center .table-sortable-header__title,
@@ -334,6 +385,20 @@ $table-compact-icon-size: 18px;
     .anticon {
       font-size: 11px;
     }
+  }
+}
+
+.table-sortable-header--sort-on-title {
+  .table-sortable-header__title-text {
+    cursor: pointer;
+  }
+
+  .table-sortable-header__title-btn:hover .table-sortable-header__title-text {
+    color: #1677ff;
+  }
+
+  &.table-sortable-header--is-sorted .table-sortable-header__title-text {
+    color: #1677ff;
   }
 }
 

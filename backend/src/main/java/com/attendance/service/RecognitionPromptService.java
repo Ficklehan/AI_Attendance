@@ -163,7 +163,7 @@ public class RecognitionPromptService {
         return !prompt.contains("PAGE_NUM");
     }
 
-    /** 任一国家正文缺少 DATE_RAW 时，配置页仍会显示 15 字段旧稿。 */
+    /** 任一国家正文缺少 DATE_RAW 或页头共用规则时，配置页仍会显示旧稿。 */
     public boolean isMissingDateRawPromptInDatabase() {
         List<RecognitionPrompt> rows = recognitionPromptMapper.selectAll();
         if (rows == null || rows.isEmpty()) {
@@ -191,7 +191,7 @@ public class RecognitionPromptService {
     }
 
     /**
-     * @param forceMissingDateRaw true 时，即使用户改过，缺少 DATE_RAW 的国家也强制套用最新模板
+     * @param forceMissingDateRaw true 时，即使用户改过，缺少 DATE_RAW 或页头共用规则的国家也强制套用最新模板
      */
     public int seedFromCanonical(boolean force, boolean forceMissingDateRaw) {
         String markdown = readCanonicalResource();
@@ -234,7 +234,7 @@ public class RecognitionPromptService {
     }
 
     /**
-     * 配置页/识别读取前：把仍缺 DATE_RAW 的国家（含用户改过的）写成最新模板。
+     * 配置页/识别读取前：把仍缺 DATE_RAW 或页头共用规则的国家（含用户改过的）写成最新模板。
      */
     public void ensureDateRawContract() {
         if (dateRawContractReady) {
@@ -289,7 +289,11 @@ public class RecognitionPromptService {
     }
 
     private static boolean isMissingDateRaw(RecognitionPrompt row) {
-        return row == null || row.getAiPrompt() == null || !row.getAiPrompt().contains("DATE_RAW");
+        if (row == null || row.getAiPrompt() == null) {
+            return true;
+        }
+        String ai = row.getAiPrompt();
+        return !ai.contains("DATE_RAW") || !ai.contains("页头共用");
     }
 
     public List<String> listCountryCodes() {

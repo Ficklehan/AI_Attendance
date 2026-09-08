@@ -35,6 +35,8 @@ class PromptCanonicalParserTest {
             assertTrue(ai.contains("2026-09-03"), code + " truncated before date examples");
             assertTrue(ai.contains("Robbel"), code + " truncated before output example");
             assertTrue(ai.contains("DATE_RAW"), code + " missing DATE_RAW field");
+            assertTrue(ai.contains("页头共用"), code + " missing page-header warehouse/date rule");
+            assertTrue(ai.contains("MARLY"), code + " missing MARLY example");
             assertFalse(ai.contains("17/05/2026→2026-05-17"), code + " still has DMY example");
             assertTrue(p.continuePrompt.contains("接续"), code);
         }

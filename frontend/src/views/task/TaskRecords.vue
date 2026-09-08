@@ -68,11 +68,11 @@
             :column="column"
             :title="column.title"
             compact
+            sort-on-title
             @sort="onSorterToggle"
           >
-            <template #extra>
+            <template v-if="column.searchField" #extra>
               <TableHeaderFilter
-                v-if="column.searchField"
                 :title="getFieldLabel(column.searchField)"
                 :open="activeHeaderFilterField === column.searchField"
                 :active="isHeaderFilterActive(column.searchField)"
@@ -95,10 +95,7 @@
           </TableSortableHeader>
         </template>
         <template #bodyCell="{ column, record, index, text }">
-          <template v-if="column.key === 'serialNo'">
-            <CopyableCell :text="String(index + 1)" />
-          </template>
-          <template v-else-if="column.key === 'taskStatus'">
+          <template v-if="column.key === 'taskStatus'">
             <CopyableCell :text="getStatusText(record.taskStatus)">
               <a-tag :color="getStatusColor(record.taskStatus)">{{ getStatusText(record.taskStatus) }}</a-tag>
             </CopyableCell>
@@ -122,7 +119,10 @@
             </CopyableCell>
           </template>
           <template v-else-if="column.key === 'pageNum'">
-            <CopyableCell :text="record.pageNum || '-'" />
+            <div class="page-num-with-line">
+              <span class="record-line-no-tag">{{ recordLineNo(index) }}</span>
+              <span>{{ record.pageNum || '-' }}</span>
+            </div>
           </template>
           <template v-else-if="column.key === 'no'">
             <CopyableCell :text="record.no || '-'" />
@@ -131,14 +131,27 @@
             <CopyableCell :text="record.workHours || calculateWorkHours(record)" />
           </template>
           <template v-else-if="column.key === 'anomalyDescription'">
-            <div class="anomaly-description-cell">
-              <CopyableCell :text="record.anomalyDescription || '-'" block />
+            <div
+              v-if="anomalyNoteItems(record).length"
+              class="recognition-note-list"
+              v-auto-shrink-font="{ max: 11, min: 8 }"
+            >
+              <div
+                v-for="(item, noteIdx) in anomalyNoteItems(record)"
+                :key="item.key"
+                class="recognition-note-list__item"
+                :class="`recognition-note-list__item--${item.tone || 'default'}`"
+              >
+                <span class="recognition-note-list__index" aria-hidden="true">{{ noteIdx + 1 }}</span>
+                <span class="recognition-note-list__text">{{ item.text }}</span>
+              </div>
             </div>
+            <span v-else class="cell-muted">-</span>
           </template>
           <template v-else-if="column.key === 'exceptionType'">
-            <CopyableCell v-if="formatExceptionTypeLabel(record.exceptionType)" :text="formatExceptionTypeLabel(record.exceptionType)">
-              <a-tag color="processing" class="mark-tag">{{ formatExceptionTypeLabel(record.exceptionType) }}</a-tag>
-            </CopyableCell>
+            <a-tag v-if="formatExceptionTypeLabel(record.exceptionType)" color="processing" class="mark-tag">
+              {{ formatExceptionTypeLabel(record.exceptionType) }}
+            </a-tag>
             <span v-else class="cell-muted">-</span>
           </template>
           <template v-else-if="column.key === 'country'">
@@ -234,6 +247,7 @@ import ImageCompareDockShell from '@/components/ImageCompareDockShell.vue'
 import TableSortableHeader from '@/components/TableSortableHeader.vue'
 import TableColumnSettings from '@/components/TableColumnSettings.vue'
 import CopyableCell from '@/components/CopyableCell.vue'
+import { vAutoShrinkFont } from '@/directives/autoShrinkFont'
 import { useTableColumnSort } from '@/composables/useTableColumnSort'
 import { useAutoSizedColumns } from '@/composables/useAutoSizedColumns'
 import { useTableBodyScrollY } from '@/composables/useTableBodyScrollY'
@@ -254,6 +268,7 @@ import {
   getDisplaySignature,
   translateSignatureMark,
   getSignatureMarkColor,
+  anomalyReasonKind,
 } from '@/utils/recognitionLabels'
 import { calculateWorkHours } from '@/utils/workHours'
 import { compareTableValues } from '@/utils/tableSort'
@@ -261,6 +276,7 @@ import { isCopyableTableColumn, resolveTableCellCopyText } from '@/utils/tableCo
 import { formatPaysFieldDisplay } from '@/utils/countryLabels'
 import { useCountryStore } from '@/stores/country'
 import { withColumnDensity } from '@/utils/tableColumnDensity'
+import { withTaskDetailCompactWidth } from '@/utils/recognitionTableColumns'
 import {
   EXCEPTION_TYPE_SHORT_I18N_KEYS,
   normalizeExceptionType,
@@ -304,48 +320,103 @@ const {
   previewTaskImages,
 } = useTaskImagePreview()
 
-const baseColumns = computed(() => [
-  {
-    title: t('common.serialNumber'),
-    key: 'serialNo',
-    width: 56,
-    autoWidth: false,
-    align: 'center',
-    sorter: false,
-  },
-  ...fieldDefs.value.map((def) => withColumnDensity({
-    title: def.label,
-    dataIndex: def.dataIndex,
-    key: def.key,
-    density: def.density,
-    ...(def.filterable === false
-      ? {}
-      : { searchField: def.field, filterType: def.filterType }),
-    ellipsis: def.ellipsis,
-    align: 'left',
-    ...(def.key === 'workHours'
-      ? {
-          sorter: (a, b) => compareTableValues(
-            a.workHours || calculateWorkHours(a),
-            b.workHours || calculateWorkHours(b),
-          ),
-        }
-      : {}),
-  })),
+const RIGHT_FIXED_RECORD_KEYS = ['anomalyDescription', 'exceptionType', 'imageUrls']
+
+function pinRecordsRightColumns(cols) {
+  const pinSet = new Set(RIGHT_FIXED_RECORD_KEYS)
+  const rest = cols.filter((col) => !pinSet.has(col.key))
+  const pinned = RIGHT_FIXED_RECORD_KEYS
+    .map((key) => cols.find((col) => col.key === key))
+    .filter(Boolean)
+    .map((col) => ({ ...col, fixed: 'right' }))
+  return [...rest, ...pinned]
+}
+
+const recordLineNo = (index) => (currentPage.value - 1) * pageSize.value + index + 1
+
+const ANOMALY_KIND_TONE = {
+  missing: 'danger',
+  deleted: 'danger',
+  absent: 'danger',
+  blurred: 'warning',
+  handwriting: 'primary',
+  duplicate: 'accent',
+  night: 'night',
+  info: 'default',
+}
+
+function anomalyDescriptionTone(text) {
+  if (/班次|偏差|shift/i.test(text)) return 'shift'
+  if (/格式/.test(text)) return 'warning'
+  if (/人工校准/.test(text)) return 'accent'
+  if (/手工补录/.test(text)) return 'primary'
+  return ANOMALY_KIND_TONE[anomalyReasonKind(text)] || 'default'
+}
+
+function anomalyNoteItems(record) {
+  const raw = String(record?.anomalyDescription || '').trim()
+  if (!raw) return []
+  return raw.split(/\n+/).map((line, idx) => {
+    const text = line.replace(/^\d+[.)、]\s*/, '').trim()
+    if (!text) return null
+    return { key: `anomaly-${idx}`, text, tone: anomalyDescriptionTone(text) }
+  }).filter(Boolean)
+}
+
+const baseColumns = computed(() => pinRecordsRightColumns([
+  ...fieldDefs.value.map((def) => {
+    const col = withColumnDensity(withTaskDetailCompactWidth({
+      title: def.label,
+      dataIndex: def.dataIndex,
+      key: def.key,
+      density: def.density || 'compact',
+      ...(def.filterable === false
+        ? {}
+        : { searchField: def.field, filterType: def.filterType }),
+      ellipsis: def.ellipsis,
+      align: 'left',
+      ...(def.key === 'workHours'
+        ? {
+            sorter: (a, b) => compareTableValues(
+              a.workHours || calculateWorkHours(a),
+              b.workHours || calculateWorkHours(b),
+            ),
+          }
+        : {}),
+    }))
+    if (def.key === 'pageNum') {
+      return { ...col, width: 64, minWidth: 64, maxWidth: 64 }
+    }
+    if (def.key === 'anomalyDescription') {
+      return {
+        ...col,
+        width: 148,
+        minWidth: 148,
+        maxWidth: 148,
+        customCell: () => ({ class: 'col-density-compact cell-wrap' }),
+      }
+    }
+    if (def.key === 'exceptionType') {
+      return { ...col, width: 76, minWidth: 76, maxWidth: 76 }
+    }
+    return col
+  }),
   {
     title: t('tasks.imagePreview'),
     dataIndex: 'fileKey',
     key: 'imageUrls',
     autoWidth: false,
-    width: 108,
+    width: 88,
+    minWidth: 88,
+    maxWidth: 88,
     align: 'center',
     fixed: 'right',
     sorter: (a, b) => String(a?.fileKey || '').localeCompare(String(b?.fileKey || ''), undefined, { numeric: true }),
   },
-])
+]))
 const { columns: sortedColumns, onSorterToggle, sortRows } = useTableColumnSort(baseColumns, { customHeader: true })
 const displayRecords = computed(() => sortRows(records.value))
-const { columns: sizedColumns, scrollX } = useAutoSizedColumns(sortedColumns, displayRecords, { defaultMax: 360 })
+const { columns: sizedColumns, scrollX } = useAutoSizedColumns(sortedColumns, displayRecords, { defaultMax: 160 })
 const { tableScroll, measure: measureRecordsTableScroll } = useTableBodyScrollY(
   recordsTableAnchor,
   scrollX,
@@ -367,7 +438,11 @@ const {
   setFrozenKeys,
   showAllColumns,
   clearFrozenKeys,
-} = useColumnFreeze('task-records', sizedColumns, { defaultFrozen: ['serialNo', 'taskId', 'pageNum', 'no'] })
+} = useColumnFreeze('task-records-v3', sizedColumns, {
+  defaultFrozen: ['pageNum', 'no'],
+  defaultHidden: ['taskId', 'userName', 'taskStatus', 'createdAt', 'fileKey'],
+  preserveRightFixed: true,
+})
 
 const searchableFieldDefs = computed(() => {
   const hidden = new Set(hiddenKeys.value)
@@ -613,13 +688,6 @@ onMounted(() => {
   max-width: 280px;
 }
 
-.anomaly-description-cell {
-  :deep(.copyable-cell__content) {
-    white-space: pre-line;
-    line-height: 1.45;
-  }
-}
-
 .cell-muted {
   color: $text-secondary;
 }
@@ -703,19 +771,35 @@ onMounted(() => {
   }
 
   :deep(th.col-density-compact) {
-    overflow: visible !important;
-    padding: 5px 6px !important;
+    overflow: hidden !important;
+    padding: 4px 4px !important;
     vertical-align: middle !important;
+    height: 40px;
 
     .ant-table-column-sorters,
     .ant-table-column-title {
-      min-height: 30px;
-      overflow: visible;
+      display: flex;
+      align-items: center;
+      min-height: 36px;
+      overflow: hidden;
+    }
+
+    .table-sortable-header {
+      min-height: 36px;
     }
   }
 
+  :deep(.signature-mark-tag.ant-tag),
+  :deep(.mark-tag.ant-tag) {
+    margin-inline-end: 0;
+    padding-inline: 4px;
+    font-size: 11px;
+    line-height: 18px;
+    white-space: nowrap;
+  }
+
   :deep(td.col-density-compact) {
-    overflow: visible;
+    overflow: hidden;
 
     .copyable-cell {
       width: 100%;
@@ -723,10 +807,10 @@ onMounted(() => {
     }
 
     .copyable-cell__content {
-      overflow: visible;
-      text-overflow: clip;
+      overflow: hidden;
+      text-overflow: ellipsis;
       white-space: nowrap;
-      max-width: none;
+      max-width: 100%;
     }
 
     .copyable-cell__btn {
@@ -734,6 +818,16 @@ onMounted(() => {
       height: 18px;
       font-size: 11px;
     }
+
+    .page-num-with-line {
+      width: 100%;
+    }
+  }
+
+  :deep(td.col-density-compact.cell-wrap) {
+    overflow: visible;
+    white-space: normal;
+    vertical-align: middle !important;
   }
 
   :deep(td.col-density-compact.ant-table-cell-align-center) {

@@ -2,8 +2,6 @@
 
 const HEADER_TOOLBAR_WITH_FILTER = 88
 const HEADER_TOOLBAR_SORT_ONLY = 44
-const COMPACT_HEADER_TOOLBAR_WITH_FILTER = 38
-const COMPACT_HEADER_TOOLBAR_SORT_ONLY = 22
 const CELL_H_PADDING = 28
 const COMPACT_CELL_H_PADDING = 16
 
@@ -35,25 +33,33 @@ const DEFAULT_MAX_BY_KEY = {
 }
 
 const COMPACT_MAX_BY_KEY = {
-  pageNum: 72,
-  no: 72,
+  pageNum: 32,
+  no: 32,
   country: 76,
-  date: 108,
-  shift: 96,
-  arrival: 100,
-  departure: 100,
-  pauseMinutes: 72,
+  date: 128,
+  shift: 92,
+  arrival: 96,
+  departure: 96,
+  pauseMinutes: 48,
+  warehouse: 72,
+  agency: 100,
+  name: 176,
+  signature: 88,
+  observations: 52,
+  workHours: 56,
+  exceptionType: 104,
+  anomalyDescription: 220,
 }
 
 const COMPACT_MIN_BY_KEY = {
-  pageNum: 56,
-  no: 56,
-  country: 60,
-  date: 88,
-  shift: 76,
-  arrival: 80,
-  departure: 80,
-  pauseMinutes: 56,
+  pageNum: 32,
+  no: 32,
+  country: 76,
+  date: 128,
+  shift: 92,
+  arrival: 96,
+  departure: 96,
+  pauseMinutes: 48,
 }
 
 let measureCanvas
@@ -107,8 +113,7 @@ function headerToolbarWidth(col) {
   const hasSort = !!(col._sortFn || col.sorter)
   if (compact) {
     let width = 8
-    if (hasSort) width += COMPACT_HEADER_TOOLBAR_SORT_ONLY
-    if (hasFilter) width += COMPACT_HEADER_TOOLBAR_WITH_FILTER
+    if (hasFilter) width += 16
     return width
   }
   let width = 16

@@ -12,6 +12,6 @@ export function getDataScopeDimensionOptions() {
   return request.get('/data-scope/dimension-options')
 }
 
-export function getMyDataScope() {
-  return request.get('/data-scope/me')
+export function getMyDataScope(config) {
+  return request.get('/data-scope/me', config)
 }

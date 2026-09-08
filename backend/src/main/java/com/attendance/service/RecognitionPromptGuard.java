@@ -24,7 +24,8 @@ public class RecognitionPromptGuard {
             + "· 每行独立JSON数组16字段，行末]后换行；禁多列拼一串、禁false[\"53\"类粘连\n"
             + "· 先NO姓名再到离；名/工号???或空→到离必空\n"
             + "· SIGNATURE只填员工签名列(Firma等关键词列)单元格，禁表头字面量\n"
-            + "· 第16位DATE_RAW=日期格从左到右三段数字，格式\"段A/段B/段C\"（如07/02/26），禁止按常识对调\n"
+            + "· Entrepot与Date读表格上方页头，本页每行相同；禁到人员明细列猜仓库/日期\n"
+            + "· 第16位DATE_RAW=页头日期从左到右三段数字，格式\"段A/段B/段C\"（如09/07/2026），禁止按常识对调\n"
             + "· Date仍输出YYYY-MM-DD；程序用DATE_RAW按段A=月、段B=日重装Date\n"
             + "· 16字段顺序与标记/PAGE_NUM/DATE_RAW规则以正文为准";
 

@@ -11,10 +11,12 @@ function touchLocale() {
   return i18n.global.locale.value
 }
 
-export function translateCountryName(code, fallbackName) {
+export function translateCountryName(code, fallbackName, locale) {
   touchLocale()
   const key = countryI18nKey(code)
-  const text = i18n.global.t(key)
+  const text = locale
+    ? i18n.global.t(key, {}, { locale })
+    : i18n.global.t(key)
   if (text && text !== key) return text
   return fallbackName || code || ''
 }

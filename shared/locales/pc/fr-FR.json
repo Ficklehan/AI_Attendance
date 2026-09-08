@@ -199,7 +199,8 @@
     "workingCountry": "Working country",
     "changeCountry": "Change working country",
     "pdfNoPreview": "PDF preview is not available",
-    "recognitionFailureHint": "You can retry recognition or re-upload a clearer attendance photo."
+    "recognitionFailureHint": "You can retry recognition or re-upload a clearer attendance photo.",
+    "printSheet": "Imprimer la feuille"
   },
   "tasks": {
     "title": "Liste des Tâches",
@@ -1140,7 +1141,8 @@
   "clockai": {
     "menu": {
       "records": "Attendance records",
-      "agencyBills": "Agency billing"
+      "agencyBills": "Agency billing",
+      "printSheet": "Feuille de présence"
     },
     "agencyBills": {
       "title": "Agency billing",
@@ -1178,5 +1180,26 @@
     "reason": "Delete reason",
     "reasonPlaceholder": "Explain why this task is being deleted (for audit)…",
     "reasonRequired": "Delete reason is required"
+  },
+  "printSheet": {
+    "title": "Imprimer la feuille de présence",
+    "subtitle": "Renseignez le pays, l'entrepôt et la date, puis imprimez une feuille vierge à remplir sur site avant photo et reconnaissance",
+    "print": "Imprimer / PDF",
+    "country": "Pays",
+    "countryPlaceholder": "Sélectionner le pays",
+    "countryRequired": "Veuillez sélectionner un pays",
+    "warehouse": "Entrepôt",
+    "warehousePlaceholder": "Saisir le nom de l'entrepôt",
+    "warehouseRequired": "Veuillez saisir un entrepôt",
+    "date": "Date",
+    "datePlaceholder": "Sélectionner la date",
+    "dateRequired": "Veuillez sélectionner une date",
+    "dateHint": "Si vous ne modifiez pas la date, Imprimer insère la date du jour. Format imprimé : MM/JJ/AAAA (ex. 09/07/2026).",
+    "langHint": "Par défaut, suit la langue de l'interface. Vous pouvez aussi la choisir uniquement pour cette feuille.",
+    "countryMismatchHint": "Le pays imprimé diffère de votre région de travail. La reconnaissance écrit encore Pays selon la région de travail — basculez avant l'envoi.",
+    "sheetLanguage": "Langue de la feuille",
+    "sheetLanguagePlaceholder": "Choisir la langue de la feuille",
+    "downloadExcel": "Télécharger Excel",
+    "downloadExcelDone": "Téléchargement Excel lancé. Ouvrez-le dans Excel ou WPS."
   }
 }

@@ -91,6 +91,12 @@ const routes = [
         meta: { titleKey: 'clockai.menu.agencyBills' },
       },
       {
+        path: 'print-sheet',
+        name: 'AttendanceSheetPrint',
+        component: () => import('@/views/print/AttendanceSheetPrint.vue'),
+        meta: { titleKey: 'printSheet.title' },
+      },
+      {
         path: 'employees',
         name: 'Employees',
         component: () => import('@/views/employee/EmployeeManagement.vue'),

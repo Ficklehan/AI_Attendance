@@ -359,7 +359,8 @@ export default {
     "imageQualityContinue": "Continue review",
     "uploadBlurryTitle": "Photo is not clear enough",
     "uploadBlurryHint": "Please retake the photo straight-on, in good light, and hold the camera steady.",
-    "recognitionFailureHint": "You can retry recognition or re-upload a clearer attendance photo."
+    "recognitionFailureHint": "You can retry recognition or re-upload a clearer attendance photo.",
+    "printSheet": "Presentielijst afdrukken"
   },
   "tasks": {
     "title": "Takenlijst",
@@ -1245,7 +1246,8 @@ export default {
   "clockai": {
     "menu": {
       "records": "Attendance records",
-      "agencyBills": "Agency billing"
+      "agencyBills": "Agency billing",
+      "printSheet": "Presentielijst"
     },
     "agencyBills": {
       "title": "Agency billing",
@@ -1283,5 +1285,26 @@ export default {
     "reason": "Delete reason",
     "reasonPlaceholder": "Explain why this task is being deleted (for audit)…",
     "reasonRequired": "Delete reason is required"
+  },
+  "printSheet": {
+    "title": "Print sign-in sheet",
+    "subtitle": "Fill in country, warehouse and date, then print a blank labor sign-in sheet for on-site handwriting and later photo upload",
+    "print": "Print / Save PDF",
+    "country": "Country",
+    "countryPlaceholder": "Select country",
+    "countryRequired": "Please select a country",
+    "warehouse": "Warehouse",
+    "warehousePlaceholder": "Enter warehouse name",
+    "warehouseRequired": "Please enter a warehouse",
+    "date": "Date",
+    "datePlaceholder": "Select date",
+    "dateRequired": "Please select a date",
+    "dateHint": "If you do not change the date, Print fills in today. The sheet prints as MM/DD/YYYY (e.g. 09/07/2026).",
+    "langHint": "Volgt standaard de systeemtaal. U kunt de taal alleen voor deze lijst wijzigen.",
+    "countryMismatchHint": "Print country differs from your working region. Recognition still writes Pays from the working region — switch to the same region before uploading.",
+    "sheetLanguage": "Taal van de lijst",
+    "sheetLanguagePlaceholder": "Kies de taal van de lijst",
+    "downloadExcel": "Excel downloaden",
+    "downloadExcelDone": "Excel-download gestart. Open het bestand in Excel of WPS."
   }
 }

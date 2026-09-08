@@ -32,9 +32,14 @@
               <a-tag v-else color="green" size="small">{{ $t('config.feishuCountrySpecific') }}</a-tag>
             </a-space>
           </div>
-          <a-button type="link" size="small" @click="openWorkingCountryPicker">
-            {{ $t('home.changeCountry') }}
-          </a-button>
+          <a-space size="small">
+            <a-button type="link" size="small" @click="$router.push('/print-sheet')">
+              {{ $t('home.printSheet') }}
+            </a-button>
+            <a-button type="link" size="small" @click="openWorkingCountryPicker">
+              {{ $t('home.changeCountry') }}
+            </a-button>
+          </a-space>
         </div>
       </section>
 

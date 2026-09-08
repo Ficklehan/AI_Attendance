@@ -4,6 +4,58 @@ import { appendRequiredMark, DEFAULT_CONFIRM_VALIDATION } from './requiredRecord
 import { withTableSorters } from './tableSort'
 import { getRecognitionFieldFilterMeta } from './fieldFilterValue'
 
+/**
+ * 任务详情 compactIdentityColumns（非一屏极限压缩）列宽。
+ * 考勤记录页同名字段必须共用，避免自动撑宽后左右滑动。
+ */
+export const TASK_DETAIL_COMPACT_WIDTHS = {
+  serialNo: 32,
+  PAGE_NUM: 32,
+  pageNum: 32,
+  NO: 32,
+  no: 32,
+  Pays: 76,
+  country: 76,
+  Entrepot: 72,
+  warehouse: 72,
+  Date: 128,
+  date: 128,
+  NOM_PRENOM: 176,
+  name: 176,
+  AGENCE_INTERIMAIRE: 100,
+  agency: 100,
+  HORAIRES_DU_TRAVAIL: 92,
+  shift: 92,
+  ARRIVEE: 96,
+  arrival: 96,
+  DEPAR: 96,
+  departure: 96,
+  PAUSE: 48,
+  pauseMinutes: 48,
+  workHours: 56,
+  SIGNATURE: 88,
+  signature: 88,
+  Observations: 52,
+  observations: 52,
+  ExceptionType: 104,
+  exceptionType: 104,
+  anomalyReasons: 220,
+  anomalyDescription: 220,
+}
+
+export function withTaskDetailCompactWidth(col) {
+  const width = TASK_DETAIL_COMPACT_WIDTHS[col?.key] ?? TASK_DETAIL_COMPACT_WIDTHS[col?.dataIndex]
+  if (!width) return col
+  return {
+    ...col,
+    width,
+    minWidth: width,
+    maxWidth: width,
+    autoWidth: false,
+    density: col.density || 'compact',
+  }
+}
+
 function requiredTitle(t, key) {
   return appendRequiredMark(t(key))
 }

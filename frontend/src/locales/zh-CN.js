@@ -703,6 +703,7 @@ export default {
     "recognitionError": "识别出错",
     "workingCountry": "当前工作国家",
     "changeCountry": "切换工作地区",
+    "printSheet": "打印签到表",
     "pdfNoPreview": "PDF 文件暂不支持预览",
     "recognitionFailureHint": "可尝试重试识别，或重新上传更清晰的考勤表照片。"
   },
@@ -1087,9 +1088,9 @@ export default {
       "templateLoad": "加载模板",
       "templateLoadSuccess": "模板加载成功",
       "legacyPromptTitle": "检测到旧版识别提示词",
-      "legacyPromptDesc": "当前提示词版本过旧（缺少页码 PAGE_NUM，或缺少 DATE_RAW 原始日期段）。请点击「应用最新模板」，将升级为含 Pays、Entrepot、SIGNATURE、Observations、PAGE_NUM、DATE_RAW 的 16 字段结构。",
+      "legacyPromptDesc": "当前提示词版本过旧（缺少页码 PAGE_NUM 字段或旧表头）。请点击「应用最新模板」，将升级为含 Pays、Entrepot、SIGNATURE、Observations、PAGE_NUM（页码识别）的 15 字段结构。",
       "applyLatestPrompts": "应用最新模板",
-      "applyLatestPromptsDone": "已同步最新提示词，可在上方编辑框查看",
+      "applyLatestPromptsDone": "已同步最新提示词，请确认后保存",
       "restoreDefault": "恢复默认",
       "restoreDefaultConfirm": "确定要恢复默认配置吗？",
       "preview": "预览效果",
@@ -1243,7 +1244,8 @@ export default {
   "clockai": {
     "menu": {
       "records": "考勤记录",
-      "agencyBills": "中介结算"
+      "agencyBills": "中介结算",
+      "printSheet": "打印签到表"
     },
     "agencyBills": {
       "title": "中介供应商结算",
@@ -1281,5 +1283,26 @@ export default {
     "reason": "删除原因",
     "reasonPlaceholder": "请说明删除原因，便于审计追溯…",
     "reasonRequired": "请填写删除原因"
+  },
+  "printSheet": {
+    "title": "打印签到表",
+    "subtitle": "填写国家、仓库和日期后打印空白劳务工签到表，供现场手填后拍照上传",
+    "print": "打印 / 导出 PDF",
+    "country": "国家",
+    "countryPlaceholder": "选择国家",
+    "countryRequired": "请选择国家",
+    "warehouse": "仓库",
+    "warehousePlaceholder": "输入仓库名称",
+    "warehouseRequired": "请填写仓库",
+    "date": "日期",
+    "datePlaceholder": "选择日期",
+    "dateRequired": "请选择日期",
+    "dateHint": "未手动修改时，点打印会自动填入当天日期，纸面格式为月/日/年（如 09/07/2026）。",
+    "langHint": "默认跟随系统语言；也可在此单独选择，仅影响这张签到表。",
+    "countryMismatchHint": "当前打印国家与工作地区不一致。上传识别时 Pays 仍按工作地区写入，请先切到同一工作地区再上传。",
+    "sheetLanguage": "纸面语言",
+    "sheetLanguagePlaceholder": "选择签到表语言",
+    "downloadExcel": "下载 Excel",
+    "downloadExcelDone": "Excel 已开始下载，可用 Excel / WPS 打开"
   }
 }
