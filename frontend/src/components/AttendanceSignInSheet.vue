@@ -1,5 +1,13 @@
 <template>
   <div class="sign-in-sheet" :class="{ 'sign-in-sheet--latin': !cjk }">
+    <div class="sign-in-sheet__punch-mark" aria-hidden="true">
+      <svg viewBox="0 0 80 80" focusable="false">
+        <polygon points="0,0 80,0 80,80" fill="#d9e4f5" />
+        <line x1="0" y1="0" x2="80" y2="80" stroke="#111" stroke-width="1.4" />
+        <circle cx="24" cy="24" r="3.4" fill="#111" />
+        <circle cx="52" cy="52" r="3.4" fill="#111" />
+      </svg>
+    </div>
     <div class="sign-in-sheet__punch">{{ copy.punchZone }}</div>
     <h1 class="sign-in-sheet__title">{{ copy.title }}</h1>
     <p class="sign-in-sheet__decl-title">{{ copy.declarationTitle }}</p>
@@ -33,11 +41,11 @@
         <col class="col-no" style="width: 3%">
         <col class="col-name" style="width: 15%">
         <col class="col-agency" style="width: 12%">
-        <col class="col-shift" style="width: 7%">
+        <col class="col-shift" style="width: 12%">
         <col class="col-time" style="width: 16%">
         <col class="col-time" style="width: 16%">
-        <col class="col-break" style="width: 8%">
-        <col class="col-sign" style="width: 13%">
+        <col class="col-break" style="width: 6%">
+        <col class="col-sign" style="width: 10%">
         <col class="col-note" style="width: 10%">
       </colgroup>
       <thead>
@@ -104,6 +112,7 @@ const cjk = computed(() => isCjkSheet(props.sheetLang))
 
 <style lang="scss" scoped>
 .sign-in-sheet {
+  position: relative;
   width: 100%;
   max-width: none;
   margin: 0;
@@ -117,12 +126,32 @@ const cjk = computed(() => isCjkSheet(props.sheetLang))
   min-height: 0;
 }
 
+.sign-in-sheet__punch-mark {
+  position: absolute;
+  top: 0;
+  right: 0;
+  width: 22mm;
+  height: 22mm;
+  pointer-events: none;
+  z-index: 2;
+  -webkit-print-color-adjust: exact;
+  print-color-adjust: exact;
+
+  svg {
+    display: block;
+    width: 100%;
+    height: 100%;
+  }
+}
+
 .sign-in-sheet__punch {
+  position: relative;
+  z-index: 1;
   font-size: 8pt;
   font-style: italic;
-  color: #999;
+  color: #888;
   text-align: right;
-  margin: 0 0 2mm;
+  margin: 0 24mm 2mm 0;
 }
 
 .sign-in-sheet__title {
@@ -290,7 +319,16 @@ const cjk = computed(() => isCjkSheet(props.sheetLang))
 .time-sep {
   box-sizing: border-box;
   border: 0;
-  border-right: 1px dotted #111;
+  background-image: repeating-linear-gradient(
+    to bottom,
+    #c8c8c8 0,
+    #c8c8c8 1.2px,
+    transparent 1.2px,
+    transparent 5.8px
+  );
+  background-repeat: no-repeat;
+  background-position: right center;
+  background-size: 1px 100%;
 }
 
 .time-digit {
@@ -299,7 +337,7 @@ const cjk = computed(() => isCjkSheet(props.sheetLang))
 }
 
 .time-digit:last-child {
-  border-right: 0;
+  background-image: none;
 }
 
 .time-sep {
@@ -308,7 +346,7 @@ const cjk = computed(() => isCjkSheet(props.sheetLang))
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 12pt;
+  font-size: 14pt;
   font-weight: 700;
   line-height: 1;
   color: #111;
@@ -317,10 +355,10 @@ const cjk = computed(() => isCjkSheet(props.sheetLang))
 .col-no { width: 3%; }
 .col-name { width: 15%; }
 .col-agency { width: 12%; }
-.col-shift { width: 7%; }
+.col-shift { width: 12%; }
 .col-time { width: 16%; }
-.col-break { width: 8%; }
-.col-sign { width: 13%; }
+.col-break { width: 6%; }
+.col-sign { width: 10%; }
 .col-note { width: 10%; }
 
 .sign-in-sheet__table th:nth-child(1),
@@ -330,15 +368,15 @@ const cjk = computed(() => isCjkSheet(props.sheetLang))
 .sign-in-sheet__table th:nth-child(3),
 .sign-in-sheet__table td:nth-child(3) { width: 12%; }
 .sign-in-sheet__table th:nth-child(4),
-.sign-in-sheet__table td:nth-child(4) { width: 7%; }
+.sign-in-sheet__table td:nth-child(4) { width: 12%; }
 .sign-in-sheet__table th:nth-child(5),
 .sign-in-sheet__table td:nth-child(5),
 .sign-in-sheet__table th:nth-child(6),
 .sign-in-sheet__table td:nth-child(6) { width: 16%; }
 .sign-in-sheet__table th:nth-child(7),
-.sign-in-sheet__table td:nth-child(7) { width: 8%; }
+.sign-in-sheet__table td:nth-child(7) { width: 6%; }
 .sign-in-sheet__table th:nth-child(8),
-.sign-in-sheet__table td:nth-child(8) { width: 13%; }
+.sign-in-sheet__table td:nth-child(8) { width: 10%; }
 .sign-in-sheet__table th:nth-child(9),
 .sign-in-sheet__table td:nth-child(9) { width: 10%; }
 
@@ -363,8 +401,15 @@ const cjk = computed(() => isCjkSheet(props.sheetLang))
     height: auto;
   }
 
+  .sign-in-sheet__punch-mark {
+    width: 20mm;
+    height: 20mm;
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+  }
+
   .sign-in-sheet__punch {
-    margin: 0 0 0.4mm;
+    margin: 0 22mm 0.4mm 0;
     font-size: 7.5pt;
     line-height: 1.2;
   }
@@ -430,10 +475,19 @@ const cjk = computed(() => isCjkSheet(props.sheetLang))
     min-height: 9.4mm;
   }
 
-  .sign-in-sheet__decl-title,
-  .th-time,
   .time-digit,
   .time-sep {
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+  }
+
+  .time-sep {
+    color: #111;
+    font-weight: 700;
+  }
+
+  .sign-in-sheet__decl-title,
+  .th-time {
     -webkit-print-color-adjust: exact;
     print-color-adjust: exact;
   }
