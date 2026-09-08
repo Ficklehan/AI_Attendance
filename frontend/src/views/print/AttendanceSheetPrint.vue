@@ -26,13 +26,27 @@
             />
           </a-form-item>
           <a-form-item :label="$t('printSheet.warehouse')" required>
-            <a-auto-complete
-              v-model:value="warehouse"
-              :options="warehouseOptions"
-              :placeholder="$t('printSheet.warehousePlaceholder')"
-              :filter-option="filterWarehouse"
-              allow-clear
-            />
+            <div class="print-sheet-form__warehouse">
+              <a-input
+                v-model:value="warehouse"
+                :placeholder="$t('printSheet.warehousePlaceholder')"
+                allow-clear
+                autocomplete="off"
+                @focus="openWarehouseSuggest"
+                @blur="closeWarehouseSuggest"
+              />
+              <ul
+                v-show="warehouseSuggestOpen && filteredWarehouseOptions.length"
+                class="print-sheet-form__warehouse-list"
+                role="listbox"
+              >
+                <li v-for="item in filteredWarehouseOptions" :key="item" role="option">
+                  <button type="button" @mousedown.prevent="pickWarehouse(item)">
+                    {{ item }}
+                  </button>
+                </li>
+              </ul>
+            </div>
           </a-form-item>
           <a-form-item :label="$t('printSheet.date')" required>
             <a-date-picker
@@ -103,6 +117,8 @@ const warehouse = ref('')
 const workDate = ref(todayIsoDate())
 const dateTouched = ref(false)
 const scopedWarehouses = ref([])
+const recentWarehouses = ref([])
+const warehouseSuggestOpen = ref(false)
 const sheetLocale = ref(resolveSheetLocale(locale.value))
 const sheetLanguageOptions = buildLanguageSelectOptions()
 
@@ -113,12 +129,16 @@ const countryOptions = computed(() => {
     .map((item) => buildCountrySelectOption(item))
 })
 
-const warehouseOptions = computed(() =>
-  mergeWarehouseSuggestions(loadRecentWarehouses(), scopedWarehouses.value).map((value) => ({
-    value,
-    label: value,
-  })),
+const warehouseSuggestions = computed(() =>
+  mergeWarehouseSuggestions(recentWarehouses.value, scopedWarehouses.value),
 )
+
+const filteredWarehouseOptions = computed(() => {
+  const q = warehouse.value.trim().toLowerCase()
+  const all = warehouseSuggestions.value
+  if (!q) return all.slice(0, 20)
+  return all.filter((item) => item.toLowerCase().includes(q)).slice(0, 20)
+})
 
 const printedCountryLabel = computed(() => {
   void locale.value
@@ -151,10 +171,18 @@ function onDateChange() {
   dateTouched.value = true
 }
 
-function filterWarehouse(input, option) {
-  const q = String(input || '').trim().toLowerCase()
-  if (!q) return true
-  return String(option?.value || '').toLowerCase().includes(q)
+function openWarehouseSuggest() {
+  recentWarehouses.value = loadRecentWarehouses()
+  warehouseSuggestOpen.value = true
+}
+
+function closeWarehouseSuggest() {
+  warehouseSuggestOpen.value = false
+}
+
+function pickWarehouse(item) {
+  warehouse.value = item
+  warehouseSuggestOpen.value = false
 }
 
 function prepareSheetPayload() {
@@ -206,6 +234,7 @@ onMounted(async () => {
   }
   applyDefaultCountry()
   warehouse.value = loadLastWarehouse()
+  recentWarehouses.value = loadRecentWarehouses()
   try {
     const res = await getMyDataScope({ silentError: true })
     scopedWarehouses.value = Array.isArray(res?.data?.warehouses) ? res.data.warehouses : []
@@ -324,6 +353,45 @@ watch(locale, (next) => {
 
 .print-sheet-form__date {
   width: 100%;
+}
+
+.print-sheet-form__warehouse {
+  position: relative;
+  width: 100%;
+}
+
+.print-sheet-form__warehouse-list {
+  position: absolute;
+  z-index: 20;
+  top: calc(100% + 4px);
+  right: 0;
+  left: 0;
+  margin: 0;
+  padding: 4px 0;
+  max-height: 220px;
+  overflow: auto;
+  list-style: none;
+  background: #fff;
+  border: 1px solid $border;
+  border-radius: $radius-sm;
+  box-shadow: 0 6px 16px rgba(0, 0, 0, 0.08);
+}
+
+.print-sheet-form__warehouse-list button {
+  display: block;
+  width: 100%;
+  padding: 5px 12px;
+  border: 0;
+  background: transparent;
+  color: inherit;
+  font-size: 13px;
+  line-height: 22px;
+  text-align: left;
+  cursor: pointer;
+
+  &:hover {
+    background: #f5f5f5;
+  }
 }
 
 .print-sheet-form__warn {
