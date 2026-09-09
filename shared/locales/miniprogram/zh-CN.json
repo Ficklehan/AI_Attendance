@@ -405,7 +405,9 @@
     "pendingExceptionBanner": "还有 {count} 条记录未确认异常类型",
     "combinedValidationBanner": "还有 {required} 条必填不完整、{exception} 条未确认异常类型",
     "fieldChangeInline": "{from}→{to}",
-    "fieldChangeEmpty": "（空）"
+    "fieldChangeEmpty": "（空）",
+    "exceptionTypeLabel": "异常类型",
+    "exceptionTypeColumnHint": "模糊行需点选异常类型；其余默认「识别正确」"
   },
   "recordEdit": {
     "hint": "修改后保存在本任务中，点击底部「确认提交」后写入飞书。",

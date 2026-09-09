@@ -168,9 +168,20 @@ function countPendingExceptionTypes(records) {
   return count
 }
 
+/** 兼容历史/接口 camelCase，统一写到 ExceptionType */
+function normalizeRecordExceptionTypeField(record) {
+  if (!record || typeof record !== 'object') return record
+  if (!normalizeExceptionType(record.ExceptionType) && record.exceptionType != null) {
+    const fromCamel = normalizeExceptionType(record.exceptionType)
+    if (fromCamel) record.ExceptionType = fromCamel
+  }
+  return record
+}
+
 function syncRecordsExceptionType(records) {
   const deps = buildExceptionTypeDeps()
   ;(records || []).forEach((record) => {
+    normalizeRecordExceptionTypeField(record)
     ensureExceptionType(record, deps)
   })
   return records
@@ -198,6 +209,7 @@ module.exports = {
   exceptionTypeDisplayLabel,
   isCalibFieldEditable,
   countPendingExceptionTypes,
+  normalizeRecordExceptionTypeField,
   syncRecordsExceptionType,
   computeShiftVarianceSentence,
   hasFormatInvalid,

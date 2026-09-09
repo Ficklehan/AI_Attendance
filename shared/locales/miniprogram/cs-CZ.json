@@ -365,7 +365,7 @@
     "confirmFormatValidationGroupHeader": "【Neplatný formát · {fields}】{count} řádků",
     "submitValidationBanner": "{count} řádků zatím nelze potvrdit",
     "confirmExceptionTypeValidationGroupHeader": "Chybí typ výjimky ({count})",
-    "confirmExceptionTypeValidationHint": "Vyberte ručně. Systém nezaškrtne automaticky.",
+    "confirmExceptionTypeValidationHint": "Rozmazané řádky: OK / OCR chyba / Papír chyba; ostatní výchozí OK",
     "confirmOcrCalibrationValidationGroupHeader": "Označeno jako chyba OCR, časy neopraveny ({count})",
     "confirmOcrCalibrationValidationHint": "Změňte alespoň: směnu, příchod, odchod nebo pauzu.",
     "fieldBreakMinutes": "Přestávka (min)",
@@ -408,7 +408,9 @@
     "pendingExceptionBanner": "{count} záznamů bez typu výjimky",
     "combinedValidationBanner": "{required} povinná neúplná · {exception} bez typu výjimky",
     "fieldChangeInline": "{from}→{to}",
-    "fieldChangeEmpty": "(prázdné)"
+    "fieldChangeEmpty": "(prázdné)",
+    "exceptionTypeLabel": "Typ výjimky",
+    "exceptionTypeColumnHint": "Ruční výběr jen u rozmazaných řádků; ostatní výchozí «OK»"
   },
   "recordEdit": {
     "hint": "Changes are kept on this task until you tap Submit at the bottom.",

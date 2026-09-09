@@ -537,7 +537,9 @@ const zhCN = {
     "pendingExceptionBanner": "还有 {count} 条记录未确认异常类型",
     "combinedValidationBanner": "还有 {required} 条必填不完整、{exception} 条未确认异常类型",
     "fieldChangeInline": "{from}→{to}",
-    "fieldChangeEmpty": "（空）"
+    "fieldChangeEmpty": "（空）",
+    "exceptionTypeLabel": "异常类型",
+    "exceptionTypeColumnHint": "模糊行需点选异常类型；其余默认「识别正确」"
   },
   "recordEdit": {
     "hint": "修改后保存在本任务中，点击底部「确认提交」后写入飞书。",
@@ -1187,7 +1189,9 @@ const enUS = {
     "pendingExceptionBanner": "{count} record(s) still need exception type confirmation",
     "combinedValidationBanner": "{required} incomplete required · {exception} exception type not confirmed",
     "fieldChangeInline": "{from}→{to}",
-    "fieldChangeEmpty": "(empty)"
+    "fieldChangeEmpty": "(empty)",
+    "exceptionTypeLabel": "Exception type",
+    "exceptionTypeColumnHint": "Only blurred rows need a type; others default to Recognition OK"
   },
   "recordEdit": {
     "hint": "Changes are kept on this task until you tap Submit at the bottom.",
@@ -1796,7 +1800,7 @@ const frFR = {
     "confirmFormatValidationGroupHeader": "【Format invalide · {fields}】{count} ligne(s)",
     "submitValidationBanner": "{count} ligne(s) ne peuvent pas encore être confirmées",
     "confirmExceptionTypeValidationGroupHeader": "Type d'exception manquant ({count})",
-    "confirmExceptionTypeValidationHint": "Veuillez choisir manuellement. Le système ne coche pas automatiquement.",
+    "confirmExceptionTypeValidationHint": "Lignes floues : choisissez Correct / OCR erroné / Papier erroné ; les autres sont Correct par défaut",
     "confirmOcrCalibrationValidationGroupHeader": "Marqué « OCR erroné » mais horaires non corrigés ({count})",
     "confirmOcrCalibrationValidationHint": "Modifiez au moins : poste, arrivée, départ ou pause.",
     "fieldBreakMinutes": "Pause (min)",
@@ -1839,7 +1843,9 @@ const frFR = {
     "pendingExceptionBanner": "{count} enregistrements sans type d’exception",
     "combinedValidationBanner": "{required} champs obligatoires · {exception} types d’exception",
     "fieldChangeInline": "{from}→{to}",
-    "fieldChangeEmpty": "(vide)"
+    "fieldChangeEmpty": "(vide)",
+    "exceptionTypeLabel": "Type d'exception",
+    "exceptionTypeColumnHint": "Seules les lignes floues nécessitent un choix ; les autres sont « Correct » par défaut"
   },
   "recordEdit": {
     "hint": "Changes are kept on this task until you tap Submit at the bottom.",
@@ -2448,7 +2454,7 @@ const nlNL = {
     "confirmFormatValidationGroupHeader": "【Ongeldig formaat · {fields}】{count} regel(s)",
     "submitValidationBanner": "{count} regel(s) kunnen nog niet worden bevestigd",
     "confirmExceptionTypeValidationGroupHeader": "Uitzonderingstype ontbreekt ({count})",
-    "confirmExceptionTypeValidationHint": "Kies zelf. Het systeem vinkt niets automatisch aan.",
+    "confirmExceptionTypeValidationHint": "Wazige rijen: Correct / OCR fout / Papier fout; overige standaard Correct",
     "confirmOcrCalibrationValidationGroupHeader": "Gemarkeerd als OCR fout, tijden nog niet aangepast ({count})",
     "confirmOcrCalibrationValidationHint": "Wijzig minstens: dienst, aankomst, vertrek of pauze.",
     "fieldBreakMinutes": "Pauze (min)",
@@ -2491,7 +2497,9 @@ const nlNL = {
     "pendingExceptionBanner": "{count} records zonder uitzonderingstype",
     "combinedValidationBanner": "{required} verplicht onvolledig · {exception} type ontbreekt",
     "fieldChangeInline": "{from}→{to}",
-    "fieldChangeEmpty": "(leeg)"
+    "fieldChangeEmpty": "(leeg)",
+    "exceptionTypeLabel": "Uitzonderingstype",
+    "exceptionTypeColumnHint": "Alleen wazige rijen handmatig kiezen; overige standaard «Correct»"
   },
   "recordEdit": {
     "hint": "Changes are kept on this task until you tap Submit at the bottom.",
@@ -3100,7 +3108,7 @@ const csCZ = {
     "confirmFormatValidationGroupHeader": "【Neplatný formát · {fields}】{count} řádků",
     "submitValidationBanner": "{count} řádků zatím nelze potvrdit",
     "confirmExceptionTypeValidationGroupHeader": "Chybí typ výjimky ({count})",
-    "confirmExceptionTypeValidationHint": "Vyberte ručně. Systém nezaškrtne automaticky.",
+    "confirmExceptionTypeValidationHint": "Rozmazané řádky: OK / OCR chyba / Papír chyba; ostatní výchozí OK",
     "confirmOcrCalibrationValidationGroupHeader": "Označeno jako chyba OCR, časy neopraveny ({count})",
     "confirmOcrCalibrationValidationHint": "Změňte alespoň: směnu, příchod, odchod nebo pauzu.",
     "fieldBreakMinutes": "Přestávka (min)",
@@ -3143,7 +3151,9 @@ const csCZ = {
     "pendingExceptionBanner": "{count} záznamů bez typu výjimky",
     "combinedValidationBanner": "{required} povinná neúplná · {exception} bez typu výjimky",
     "fieldChangeInline": "{from}→{to}",
-    "fieldChangeEmpty": "(prázdné)"
+    "fieldChangeEmpty": "(prázdné)",
+    "exceptionTypeLabel": "Typ výjimky",
+    "exceptionTypeColumnHint": "Ruční výběr jen u rozmazaných řádků; ostatní výchozí «OK»"
   },
   "recordEdit": {
     "hint": "Changes are kept on this task until you tap Submit at the bottom.",
@@ -3752,7 +3762,7 @@ const plPL = {
     "confirmFormatValidationGroupHeader": "【Nieprawidłowy format · {fields}】{count} wierszy",
     "submitValidationBanner": "{count} wierszy nie można jeszcze potwierdzić",
     "confirmExceptionTypeValidationGroupHeader": "Brak typu wyjątku ({count})",
-    "confirmExceptionTypeValidationHint": "Wybierz ręcznie. System nie zaznacza automatycznie.",
+    "confirmExceptionTypeValidationHint": "Nieostre wiersze: OK / OCR błąd / Papier błąd; pozostałe domyślnie OK",
     "confirmOcrCalibrationValidationGroupHeader": "Oznaczono błąd OCR, czasy niepoprawione ({count})",
     "confirmOcrCalibrationValidationHint": "Zmień co najmniej: zmianę, przyjście, wyjście lub przerwę.",
     "fieldBreakMinutes": "Przerwa (min)",
@@ -3795,7 +3805,9 @@ const plPL = {
     "pendingExceptionBanner": "{count} rekordów bez typu wyjątku",
     "combinedValidationBanner": "{required} wymagane niekompletne · {exception} bez typu wyjątku",
     "fieldChangeInline": "{from}→{to}",
-    "fieldChangeEmpty": "(puste)"
+    "fieldChangeEmpty": "(puste)",
+    "exceptionTypeLabel": "Typ wyjątku",
+    "exceptionTypeColumnHint": "Tylko nieostre wiersze wymagają wyboru; pozostałe domyślnie «OK»"
   },
   "recordEdit": {
     "hint": "Changes are kept on this task until you tap Submit at the bottom.",
@@ -4404,7 +4416,7 @@ const deDE = {
     "confirmFormatValidationGroupHeader": "【Ungültiges Format · {fields}】{count} Zeile(n)",
     "submitValidationBanner": "{count} Zeile(n) können noch nicht bestätigt werden",
     "confirmExceptionTypeValidationGroupHeader": "Ausnahmetyp fehlt ({count})",
-    "confirmExceptionTypeValidationHint": "Bitte manuell wählen. Das System wählt nicht automatisch.",
+    "confirmExceptionTypeValidationHint": "Unscharfe Zeilen: Korrekt / OCR falsch / Papier falsch wählen; übrige standardmäßig Korrekt",
     "confirmOcrCalibrationValidationGroupHeader": "Als OCR falsch markiert, Zeiten noch nicht korrigiert ({count})",
     "confirmOcrCalibrationValidationHint": "Ändern Sie mindestens: Schicht, Ankunft, Abgang oder Pause.",
     "fieldBreakMinutes": "Pause (Min.)",
@@ -4447,7 +4459,9 @@ const deDE = {
     "pendingExceptionBanner": "{count} Datensätze ohne Ausnahmetyp",
     "combinedValidationBanner": "{required} Pflicht unvollständig · {exception} ohne Ausnahmetyp",
     "fieldChangeInline": "{from}→{to}",
-    "fieldChangeEmpty": "(leer)"
+    "fieldChangeEmpty": "(leer)",
+    "exceptionTypeLabel": "Ausnahmetyp",
+    "exceptionTypeColumnHint": "Nur unscharfe Zeilen manuell wählen; übrige standardmäßig «Korrekt»"
   },
   "recordEdit": {
     "hint": "Changes are kept on this task until you tap Submit at the bottom.",
@@ -5056,7 +5070,7 @@ const esES = {
     "confirmFormatValidationGroupHeader": "【Formato no válido · {fields}】{count} fila(s)",
     "submitValidationBanner": "{count} fila(s) aún no se pueden confirmar",
     "confirmExceptionTypeValidationGroupHeader": "Falta tipo de excepción ({count})",
-    "confirmExceptionTypeValidationHint": "Elija manualmente. El sistema no lo selecciona solo.",
+    "confirmExceptionTypeValidationHint": "Filas borrosas: Correcto / OCR erróneo / Papel erróneo; el resto Correcto por defecto",
     "confirmOcrCalibrationValidationGroupHeader": "Marcado OCR erróneo pero horarios sin corregir ({count})",
     "confirmOcrCalibrationValidationHint": "Cambie al menos: turno, llegada, salida o descanso.",
     "fieldBreakMinutes": "Descanso (min)",
@@ -5099,7 +5113,9 @@ const esES = {
     "pendingExceptionBanner": "{count} registros sin tipo de excepción",
     "combinedValidationBanner": "{required} obligatorios incompletos · {exception} sin tipo de excepción",
     "fieldChangeInline": "{from}→{to}",
-    "fieldChangeEmpty": "(vacío)"
+    "fieldChangeEmpty": "(vacío)",
+    "exceptionTypeLabel": "Tipo de excepción",
+    "exceptionTypeColumnHint": "Solo filas borrosas requieren elección; el resto es «Correcto» por defecto"
   },
   "recordEdit": {
     "hint": "Changes are kept on this task until you tap Submit at the bottom.",

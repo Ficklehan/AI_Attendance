@@ -86,11 +86,20 @@ function isExceptionTypeManuallySet(record) {
 
 /**
  * 识别说明是否带「模糊」标识（仅此类需人工选择异常类型）。
+ * 与 getRawSmartMark 同源字段，避免仅写在 mark/smartMark 时漏检。
  */
 function recordHasBlurredMark(record) {
   if (!record) return false
-  const mark = String(record.SmartMark || record.Mark || '').trim()
-  if (!mark) return false
+  const parts = [
+    record.SmartMark,
+    record.Mark,
+    record.mark,
+    record.smartMark,
+  ]
+    .map((v) => String(v || '').trim())
+    .filter(Boolean)
+  if (!parts.length) return false
+  const mark = [...new Set(parts.join(';').split(/[;；,，]/).map((v) => v.trim()).filter(Boolean))].join(';')
   return markHasKind(mark, 'blurred')
 }
 

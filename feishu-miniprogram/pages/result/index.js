@@ -269,9 +269,11 @@ Page({
         calibrationDetailTitle: t('calibration.historyTitle'),
         addManualRow: t('result.addManualRow'),
         addManualRowHint: t('result.addManualRowHint'),
-        exceptionTypeLabel: t('result.exceptionTypeRequired'),
+        exceptionTypeLabel: t('result.exceptionTypeLabel'),
+        exceptionTypeRequired: t('result.exceptionTypeRequired'),
         exceptionTypePickHint: t('result.exceptionTypePickHint'),
         exceptionTypeClickToChange: t('result.exceptionTypeClickToChange'),
+        exceptionTypeColumnHint: t('result.exceptionTypeColumnHint'),
         pendingExceptionViewDetail: t('result.requiredValidationViewDetail'),
       },
       submitCtaLabel: t('result.confirmSubmit')
@@ -493,6 +495,11 @@ Page({
           const payload = resolveTaskRecordsJson(task)
           const isConfirmed = task.status === 'confirmed'
           const records = parseRecords(payload, { isConfirmed })
+          ;(records || []).forEach((record, index) => {
+            if (!record) return
+            if (!record._rowKey) record._rowKey = `${task.taskId || this.data.taskId}-r${index}`
+            refreshRecordNightShiftMark(record)
+          })
           syncRecordsExceptionType(records)
           const engine = task.aiRawOutput || ''
           const promptCountry = parsePromptCountryFromEngine(engine, task.promptCountry || '')
@@ -629,6 +636,8 @@ Page({
     const canSubmit = this.data.canSubmit
     const deps = buildExceptionTypeDeps()
     const allOptions = buildExceptionTypeOptions()
+    const labelDefault = t('result.exceptionTypeLabel')
+    const labelRequired = t('result.exceptionTypeRequired')
     return (rows || []).map((row) => {
       const type = row.ExceptionType || ''
       const disabled = isExceptionTypeSelectDisabled(row, deps)
@@ -638,6 +647,9 @@ Page({
       const options = collapsed
         ? allOptions.filter((opt) => opt.value === type)
         : allOptions
+      const exceptionTypeLabel = pending
+        ? (labelRequired !== 'result.exceptionTypeRequired' ? labelRequired : '请选择异常类型')
+        : (labelDefault !== 'result.exceptionTypeLabel' ? labelDefault : '异常类型')
       return {
         ...row,
         duplicateExpanded: dupExpanded.indexOf(row._rowKey) !== -1,
@@ -648,6 +660,7 @@ Page({
         exceptionTypeDisabled: disabled,
         exceptionTypePending: pending,
         exceptionTypeCollapsed: collapsed,
+        exceptionTypeLabel,
         exceptionTypeOptions: options.map((opt) => ({
           ...opt,
           active: opt.value === type,
@@ -752,6 +765,7 @@ Page({
 
   refreshDisplayRecords: function () {
     const { records, canSubmit } = this.data
+    syncRecordsExceptionType(records)
     const allBuilt = this.attachDuplicateUi(buildDisplayRecords(records, records.length))
     const allIssues = allBuilt.filter((row) => row.hasAnomaly && !row.isDeleted)
     const issueCount = allIssues.length

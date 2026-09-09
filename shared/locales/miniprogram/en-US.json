@@ -405,7 +405,9 @@
     "pendingExceptionBanner": "{count} record(s) still need exception type confirmation",
     "combinedValidationBanner": "{required} incomplete required · {exception} exception type not confirmed",
     "fieldChangeInline": "{from}→{to}",
-    "fieldChangeEmpty": "(empty)"
+    "fieldChangeEmpty": "(empty)",
+    "exceptionTypeLabel": "Exception type",
+    "exceptionTypeColumnHint": "Only blurred rows need a type; others default to Recognition OK"
   },
   "recordEdit": {
     "hint": "Changes are kept on this task until you tap Submit at the bottom.",

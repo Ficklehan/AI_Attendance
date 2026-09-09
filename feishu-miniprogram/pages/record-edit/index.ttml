@@ -4,11 +4,11 @@
 
   <scroll-view scroll-y class="form-scroll" enhanced show-scrollbar="{{false}}">
     <view class="form-body">
-      <view class="exception-type-block">
+      <view class="exception-type-block {{exceptionTypePending ? 'is-pending' : ''}} {{exceptionTypeCollapsed ? 'is-collapsed' : ''}}">
         <view class="exception-type-head-row">
-          <text class="field-label">{{texts.exceptionTypeLabel}}</text>
+          <text class="field-label">{{exceptionTypeLabel}}</text>
         </view>
-        <view class="exception-type-stack {{exceptionTypeDisabled ? 'is-disabled' : ''}}">
+        <view class="exception-type-stack {{exceptionTypeDisabled ? 'is-disabled' : ''}} {{exceptionTypeCollapsed ? 'is-collapsed' : ''}} {{exceptionTypePending ? 'is-pending' : ''}}">
           <view
             tt:for="{{exceptionTypeOptions}}"
             tt:key="value"
