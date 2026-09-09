@@ -365,7 +365,7 @@
     "confirmFormatValidationGroupHeader": "【Format invalide · {fields}】{count} ligne(s)",
     "submitValidationBanner": "{count} ligne(s) ne peuvent pas encore être confirmées",
     "confirmExceptionTypeValidationGroupHeader": "Type d'exception manquant ({count})",
-    "confirmExceptionTypeValidationHint": "Veuillez choisir manuellement. Le système ne coche pas automatiquement.",
+    "confirmExceptionTypeValidationHint": "Lignes floues : choisissez Correct / OCR erroné / Papier erroné ; les autres sont Correct par défaut",
     "confirmOcrCalibrationValidationGroupHeader": "Marqué « OCR erroné » mais horaires non corrigés ({count})",
     "confirmOcrCalibrationValidationHint": "Modifiez au moins : poste, arrivée, départ ou pause.",
     "fieldBreakMinutes": "Pause (min)",
@@ -408,7 +408,9 @@
     "pendingExceptionBanner": "{count} enregistrements sans type d’exception",
     "combinedValidationBanner": "{required} champs obligatoires · {exception} types d’exception",
     "fieldChangeInline": "{from}→{to}",
-    "fieldChangeEmpty": "(vide)"
+    "fieldChangeEmpty": "(vide)",
+    "exceptionTypeLabel": "Type d'exception",
+    "exceptionTypeColumnHint": "Seules les lignes floues nécessitent un choix ; les autres sont « Correct » par défaut"
   },
   "recordEdit": {
     "hint": "Changes are kept on this task until you tap Submit at the bottom.",

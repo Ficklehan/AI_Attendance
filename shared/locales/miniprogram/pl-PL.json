@@ -365,7 +365,7 @@
     "confirmFormatValidationGroupHeader": "【Nieprawidłowy format · {fields}】{count} wierszy",
     "submitValidationBanner": "{count} wierszy nie można jeszcze potwierdzić",
     "confirmExceptionTypeValidationGroupHeader": "Brak typu wyjątku ({count})",
-    "confirmExceptionTypeValidationHint": "Wybierz ręcznie. System nie zaznacza automatycznie.",
+    "confirmExceptionTypeValidationHint": "Nieostre wiersze: OK / OCR błąd / Papier błąd; pozostałe domyślnie OK",
     "confirmOcrCalibrationValidationGroupHeader": "Oznaczono błąd OCR, czasy niepoprawione ({count})",
     "confirmOcrCalibrationValidationHint": "Zmień co najmniej: zmianę, przyjście, wyjście lub przerwę.",
     "fieldBreakMinutes": "Przerwa (min)",
@@ -408,7 +408,9 @@
     "pendingExceptionBanner": "{count} rekordów bez typu wyjątku",
     "combinedValidationBanner": "{required} wymagane niekompletne · {exception} bez typu wyjątku",
     "fieldChangeInline": "{from}→{to}",
-    "fieldChangeEmpty": "(puste)"
+    "fieldChangeEmpty": "(puste)",
+    "exceptionTypeLabel": "Typ wyjątku",
+    "exceptionTypeColumnHint": "Tylko nieostre wiersze wymagają wyboru; pozostałe domyślnie «OK»"
   },
   "recordEdit": {
     "hint": "Changes are kept on this task until you tap Submit at the bottom.",

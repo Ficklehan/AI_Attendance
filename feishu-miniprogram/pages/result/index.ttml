@@ -31,7 +31,7 @@
   <template name="exceptionTypeBlock">
     <view tt:if="{{item.showExceptionTypePicker}}" class="exception-type-block {{item.exceptionTypePending ? 'is-pending' : ''}} {{item.exceptionTypeCollapsed ? 'is-collapsed' : ''}}">
       <view class="exception-type-head">
-        <text class="exception-type-label">{{texts.exceptionTypeLabel}}</text>
+        <text class="exception-type-label">{{item.exceptionTypeLabel}}</text>
       </view>
       <view class="exception-type-stack {{item.exceptionTypeDisabled ? 'is-disabled' : ''}} {{item.exceptionTypeCollapsed ? 'is-collapsed' : ''}} {{item.exceptionTypePending ? 'is-pending' : ''}}">
         <view

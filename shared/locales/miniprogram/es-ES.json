@@ -365,7 +365,7 @@
     "confirmFormatValidationGroupHeader": "【Formato no válido · {fields}】{count} fila(s)",
     "submitValidationBanner": "{count} fila(s) aún no se pueden confirmar",
     "confirmExceptionTypeValidationGroupHeader": "Falta tipo de excepción ({count})",
-    "confirmExceptionTypeValidationHint": "Elija manualmente. El sistema no lo selecciona solo.",
+    "confirmExceptionTypeValidationHint": "Filas borrosas: Correcto / OCR erróneo / Papel erróneo; el resto Correcto por defecto",
     "confirmOcrCalibrationValidationGroupHeader": "Marcado OCR erróneo pero horarios sin corregir ({count})",
     "confirmOcrCalibrationValidationHint": "Cambie al menos: turno, llegada, salida o descanso.",
     "fieldBreakMinutes": "Descanso (min)",
@@ -408,7 +408,9 @@
     "pendingExceptionBanner": "{count} registros sin tipo de excepción",
     "combinedValidationBanner": "{required} obligatorios incompletos · {exception} sin tipo de excepción",
     "fieldChangeInline": "{from}→{to}",
-    "fieldChangeEmpty": "(vacío)"
+    "fieldChangeEmpty": "(vacío)",
+    "exceptionTypeLabel": "Tipo de excepción",
+    "exceptionTypeColumnHint": "Solo filas borrosas requieren elección; el resto es «Correcto» por defecto"
   },
   "recordEdit": {
     "hint": "Changes are kept on this task until you tap Submit at the bottom.",

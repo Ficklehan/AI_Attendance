@@ -368,7 +368,7 @@
     "confirmFormatValidationGroupHeader": "【Ongeldig formaat · {fields}】{count} regel(s)",
     "submitValidationBanner": "{count} regel(s) kunnen nog niet worden bevestigd",
     "confirmExceptionTypeValidationGroupHeader": "Uitzonderingstype ontbreekt ({count})",
-    "confirmExceptionTypeValidationHint": "Kies zelf. Het systeem vinkt niets automatisch aan.",
+    "confirmExceptionTypeValidationHint": "Wazige rijen: Correct / OCR fout / Papier fout; overige standaard Correct",
     "confirmOcrCalibrationValidationGroupHeader": "Gemarkeerd als OCR fout, tijden nog niet aangepast ({count})",
     "confirmOcrCalibrationValidationHint": "Wijzig minstens: dienst, aankomst, vertrek of pauze.",
     "fieldBreakMinutes": "Pauze (min)",
@@ -411,7 +411,9 @@
     "pendingExceptionBanner": "{count} records zonder uitzonderingstype",
     "combinedValidationBanner": "{required} verplicht onvolledig · {exception} type ontbreekt",
     "fieldChangeInline": "{from}→{to}",
-    "fieldChangeEmpty": "(leeg)"
+    "fieldChangeEmpty": "(leeg)",
+    "exceptionTypeLabel": "Uitzonderingstype",
+    "exceptionTypeColumnHint": "Alleen wazige rijen handmatig kiezen; overige standaard «Correct»"
   },
   "recordEdit": {
     "hint": "Changes are kept on this task until you tap Submit at the bottom.",

@@ -368,7 +368,7 @@
     "confirmFormatValidationGroupHeader": "【Ungültiges Format · {fields}】{count} Zeile(n)",
     "submitValidationBanner": "{count} Zeile(n) können noch nicht bestätigt werden",
     "confirmExceptionTypeValidationGroupHeader": "Ausnahmetyp fehlt ({count})",
-    "confirmExceptionTypeValidationHint": "Bitte manuell wählen. Das System wählt nicht automatisch.",
+    "confirmExceptionTypeValidationHint": "Unscharfe Zeilen: Korrekt / OCR falsch / Papier falsch wählen; übrige standardmäßig Korrekt",
     "confirmOcrCalibrationValidationGroupHeader": "Als OCR falsch markiert, Zeiten noch nicht korrigiert ({count})",
     "confirmOcrCalibrationValidationHint": "Ändern Sie mindestens: Schicht, Ankunft, Abgang oder Pause.",
     "fieldBreakMinutes": "Pause (Min.)",
@@ -411,7 +411,9 @@
     "pendingExceptionBanner": "{count} Datensätze ohne Ausnahmetyp",
     "combinedValidationBanner": "{required} Pflicht unvollständig · {exception} ohne Ausnahmetyp",
     "fieldChangeInline": "{from}→{to}",
-    "fieldChangeEmpty": "(leer)"
+    "fieldChangeEmpty": "(leer)",
+    "exceptionTypeLabel": "Ausnahmetyp",
+    "exceptionTypeColumnHint": "Nur unscharfe Zeilen manuell wählen; übrige standardmäßig «Korrekt»"
   },
   "recordEdit": {
     "hint": "Changes are kept on this task until you tap Submit at the bottom.",

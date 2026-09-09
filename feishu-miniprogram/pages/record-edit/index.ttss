@@ -28,8 +28,23 @@
   gap: 12rpx;
 }
 
+.exception-type-stack.is-collapsed .exception-type-opt {
+  flex: 0 1 auto;
+  min-width: 40%;
+}
+
 .exception-type-stack.is-disabled {
   opacity: 0.45;
+}
+
+.exception-type-block.is-pending .field-label,
+.exception-type-stack.is-pending .exception-type-opt-label {
+  color: #c2410c;
+}
+
+.exception-type-stack.is-pending .exception-type-opt {
+  border-color: #fdba74;
+  background: #fff7ed;
 }
 
 .exception-type-opt {

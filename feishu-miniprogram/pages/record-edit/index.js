@@ -26,6 +26,7 @@ const {
   ensureExceptionType,
   onExceptionTypeChange,
   isExceptionTypeSelectDisabled,
+  isExceptionTypeMissingForSubmit,
   exceptionTypeDisabledHint,
   isCalibFieldEditable,
   onCalibratableFieldFocus,
@@ -53,6 +54,10 @@ Page({
     exceptionTypeOptions: [],
     exceptionTypeDisabled: false,
     exceptionTypeDisabledHint: '',
+    exceptionTypeLabel: '',
+    exceptionTypePending: false,
+    exceptionTypeCollapsed: false,
+    exceptionTypePickerOpen: false,
     showFocusHint: false,
     focusFieldBadgeText: '重点关注',
     focusFieldsHintText: '请对照纸质表重点核对并修正：日期、班次、到达、离开、休息。',
@@ -309,6 +314,13 @@ Page({
     const merged = { ...source, ...this.data.draft }
     const allOptions = buildExceptionTypeOptions()
     const type = source.ExceptionType || ''
+    const pending = isExceptionTypeMissingForSubmit(merged, deps)
+    const collapsed = Boolean(type) && !this.data.exceptionTypePickerOpen
+    const visibleOptions = collapsed
+      ? allOptions.filter((opt) => opt.value === type)
+      : allOptions
+    const labelRequired = tOr('result.exceptionTypeRequired', null, '请选择异常类型')
+    const labelDefault = tOr('result.exceptionTypeLabel', null, '异常类型')
     this.setData({
       fields,
       exceptionType: type,
@@ -316,7 +328,10 @@ Page({
         || type === EXCEPTION_TYPE.PAPER_WRONG_TIME,
       exceptionTypeDisabled: isExceptionTypeSelectDisabled(merged, deps),
       exceptionTypeDisabledHint: exceptionTypeDisabledHint(merged, deps),
-      exceptionTypeOptions: allOptions.map((opt) => ({
+      exceptionTypePending: pending,
+      exceptionTypeCollapsed: collapsed,
+      exceptionTypeLabel: pending ? labelRequired : labelDefault,
+      exceptionTypeOptions: visibleOptions.map((opt) => ({
         ...opt,
         active: opt.value === type,
       })),
@@ -348,8 +363,17 @@ Page({
       if (hint) tt.showToast({ title: hint, icon: 'none' })
       return
     }
+    const current = this._sourceRecord.ExceptionType || ''
+    if (current && !this.data.exceptionTypePickerOpen) {
+      this.setData({ exceptionTypePickerOpen: true }, () => this.rebuildForm())
+      return
+    }
+    if (value === current && this.data.exceptionTypePickerOpen) {
+      this.setData({ exceptionTypePickerOpen: false }, () => this.rebuildForm())
+      return
+    }
     onExceptionTypeChange(this._sourceRecord, value, SNAPSHOT_FIELD_KEYS)
-    this.rebuildForm()
+    this.setData({ exceptionTypePickerOpen: false }, () => this.rebuildForm())
   },
 
   onFieldInput: function (e) {
