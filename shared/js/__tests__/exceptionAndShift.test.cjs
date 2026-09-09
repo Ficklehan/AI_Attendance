@@ -78,7 +78,7 @@ describe('shiftVarianceCore', () => {
 })
 
 describe('exceptionTypeCore', () => {
-  it('clears type when required missing or format invalid; never auto attendance_ok', () => {
+  it('clears type when required missing or format invalid; auto attendance_ok when complete', () => {
     const missing = { ExceptionType: EXCEPTION_TYPE.ATTENDANCE_OK }
     ensureExceptionType(missing, { hasRequiredMissing: () => true })
     assert.equal(missing.ExceptionType, '')
@@ -92,7 +92,7 @@ describe('exceptionTypeCore', () => {
 
     const ok = {}
     ensureExceptionType(ok, { hasRequiredMissing: () => false, hasFormatInvalid: () => false })
-    assert.equal(ok.ExceptionType, '')
+    assert.equal(ok.ExceptionType, EXCEPTION_TYPE.ATTENDANCE_OK)
 
     const keep = { ExceptionType: EXCEPTION_TYPE.PAPER_OK_OCR_WRONG }
     ensureExceptionType(keep, { hasRequiredMissing: () => false, hasFormatInvalid: () => false })
@@ -161,12 +161,13 @@ describe('exceptionTypeCore', () => {
     assert.equal(isExceptionTypeMissingForSubmit({ isDeleted: true }, {}), false)
   })
 
-  it('clears historical auto attendance_ok when times do not match shift', () => {
+  it('clears historical auto attendance_ok only for blurred rows', () => {
     const autoOk = {
       ExceptionType: EXCEPTION_TYPE.ATTENDANCE_OK,
       HORAIRES_DU_TRAVAIL: '09:00-18:00',
       ARRIVEE: '08:30',
       DEPAR: '17:30',
+      SmartMark: '模糊',
     }
     ensureExceptionType(autoOk, { hasRequiredMissing: () => false, hasFormatInvalid: () => false })
     assert.equal(autoOk.ExceptionType, '')
@@ -177,6 +178,7 @@ describe('exceptionTypeCore', () => {
       HORAIRES_DU_TRAVAIL: '09:00-18:00',
       ARRIVEE: '08:30',
       DEPAR: '17:30',
+      SmartMark: '模糊',
     }
     ensureExceptionType(manualOk, { hasRequiredMissing: () => false, hasFormatInvalid: () => false })
     assert.equal(manualOk.ExceptionType, EXCEPTION_TYPE.ATTENDANCE_OK)
@@ -189,33 +191,19 @@ describe('exceptionTypeCore', () => {
     assert.equal(record._exceptionTypeManual, true)
   })
 
-  it('auto attendance_ok only when arrive/depart exactly match shift and no notes', () => {
-    const matched = {
-      ExceptionType: '',
-      HORAIRES_DU_TRAVAIL: '09:00-18:00',
-      ARRIVEE: '09:00',
-      DEPAR: '18:00',
-      SmartMark: '正常',
-    }
-    ensureExceptionType(matched, {
-      hasRequiredMissing: () => false,
-      hasFormatInvalid: () => false,
-      hasRecognitionNotes: () => false,
-    })
-    assert.equal(matched.ExceptionType, EXCEPTION_TYPE.ATTENDANCE_OK)
-
-    const early = {
+  it('auto attendance_ok for non-blurred rows; blurred rows stay empty', () => {
+    const mismatched = {
       ExceptionType: '',
       HORAIRES_DU_TRAVAIL: '09:00-18:00',
       ARRIVEE: '08:30',
       DEPAR: '17:30',
+      SmartMark: '正常',
     }
-    ensureExceptionType(early, {
+    ensureExceptionType(mismatched, {
       hasRequiredMissing: () => false,
       hasFormatInvalid: () => false,
-      hasRecognitionNotes: () => false,
     })
-    assert.equal(early.ExceptionType, '')
+    assert.equal(mismatched.ExceptionType, EXCEPTION_TYPE.ATTENDANCE_OK)
 
     const nightOnly = {
       ExceptionType: '',
@@ -227,9 +215,21 @@ describe('exceptionTypeCore', () => {
     ensureExceptionType(nightOnly, {
       hasRequiredMissing: () => false,
       hasFormatInvalid: () => false,
-      hasRecognitionNotes: () => false,
     })
-    assert.equal(nightOnly.ExceptionType, '')
+    assert.equal(nightOnly.ExceptionType, EXCEPTION_TYPE.ATTENDANCE_OK)
+
+    const blurred = {
+      ExceptionType: '',
+      HORAIRES_DU_TRAVAIL: '09:00-18:00',
+      ARRIVEE: '09:00',
+      DEPAR: '18:00',
+      SmartMark: '模糊',
+    }
+    ensureExceptionType(blurred, {
+      hasRequiredMissing: () => false,
+      hasFormatInvalid: () => false,
+    })
+    assert.equal(blurred.ExceptionType, '')
   })
 
   it('clears exception type for deleted/absent rows', () => {
@@ -260,15 +260,26 @@ describe('exceptionTypeCore', () => {
     assert.equal(isExceptionTypeExempt(absent, { isAbsentRow: () => true }), true)
   })
 
-  it('keeps empty when times do not match and no manual selection', () => {
+  it('keeps empty for blurred rows without manual selection', () => {
     const blank = {
       ExceptionType: '',
       HORAIRES_DU_TRAVAIL: '09:00-14:00',
       ARRIVEE: '09:10',
       DEPAR: '14:00',
+      SmartMark: '模糊',
     }
     ensureExceptionType(blank, { hasRequiredMissing: () => false, hasFormatInvalid: () => false })
     assert.equal(blank.ExceptionType, '')
+
+    const nonBlur = {
+      ExceptionType: '',
+      HORAIRES_DU_TRAVAIL: '09:00-14:00',
+      ARRIVEE: '09:10',
+      DEPAR: '14:00',
+      SmartMark: '正常',
+    }
+    ensureExceptionType(nonBlur, { hasRequiredMissing: () => false, hasFormatInvalid: () => false })
+    assert.equal(nonBlur.ExceptionType, EXCEPTION_TYPE.ATTENDANCE_OK)
   })
 
   it('blocks OCR-wrong submit until shift/arrival/departure/break adjusted', () => {

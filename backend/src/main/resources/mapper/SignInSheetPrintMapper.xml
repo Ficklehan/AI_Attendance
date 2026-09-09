@@ -1,0 +1,99 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+    "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.attendance.mapper.SignInSheetPrintMapper">
+
+    <sql id="CountryScopeWhere">
+        <if test="scope != null and !scope.allUsers">
+            <choose>
+                <when test="scope.countryMatchTokens != null and scope.countryMatchTokens.size() > 0">
+                    AND UPPER(TRIM(j.country_code)) IN
+                    <foreach collection="scope.countryMatchTokens" item="cv" open="(" separator="," close=")">#{cv}</foreach>
+                </when>
+                <when test="scope.workRegions != null and scope.workRegions.size() > 0">
+                    AND j.country_code IN
+                    <foreach collection="scope.workRegions" item="wr" open="(" separator="," close=")">#{wr}</foreach>
+                </when>
+                <otherwise>
+                    AND 1=0
+                </otherwise>
+            </choose>
+        </if>
+        <if test="countryCode != null and countryCode != ''">
+            AND j.country_code = #{countryCode}
+        </if>
+    </sql>
+
+    <insert id="insertJob" useGeneratedKeys="true" keyProperty="id">
+        INSERT INTO sign_in_sheet_print_job (
+            country_code, work_date, warehouse, sheet_locale, page_count,
+            printed_by, printed_at, created_at
+        ) VALUES (
+            #{countryCode}, #{workDate}, #{warehouse}, #{sheetLocale}, #{pageCount},
+            #{printedBy}, #{printedAt}, NOW()
+        )
+    </insert>
+
+    <insert id="insertRow" useGeneratedKeys="true" keyProperty="id">
+        INSERT INTO sign_in_sheet_print_row (
+            job_id, row_index, seq_no, person_name, agency_name, shift_name, created_at
+        ) VALUES (
+            #{jobId}, #{rowIndex}, #{seqNo}, #{personName}, #{agencyName}, #{shiftName}, NOW()
+        )
+    </insert>
+
+    <select id="selectDays" resultType="com.attendance.dto.response.SignInSheetPrintDayDTO">
+        SELECT
+            j.country_code AS countryCode,
+            j.work_date AS workDate,
+            COUNT(DISTINCT j.id) AS jobCount,
+            COUNT(r.id) AS personCount,
+            GROUP_CONCAT(DISTINCT j.warehouse ORDER BY j.warehouse SEPARATOR '||') AS warehousesCsv
+        FROM sign_in_sheet_print_job j
+        LEFT JOIN sign_in_sheet_print_row r ON r.job_id = j.id
+        WHERE 1=1
+        <include refid="CountryScopeWhere"/>
+        <if test="fromDate != null">
+            AND j.work_date &gt;= #{fromDate}
+        </if>
+        <if test="toDate != null">
+            AND j.work_date &lt;= #{toDate}
+        </if>
+        GROUP BY j.country_code, j.work_date
+        ORDER BY j.work_date DESC, j.country_code ASC
+    </select>
+
+    <select id="selectJobsForDay" resultType="com.attendance.dto.response.SignInSheetPrintJobDTO">
+        SELECT
+            j.id AS id,
+            j.country_code AS countryCode,
+            j.work_date AS workDate,
+            j.warehouse AS warehouse,
+            j.sheet_locale AS sheetLocale,
+            j.page_count AS pageCount,
+            j.printed_by AS printedBy,
+            j.printed_at AS printedAt,
+            (SELECT COUNT(*) FROM sign_in_sheet_print_row r WHERE r.job_id = j.id) AS personCount
+        FROM sign_in_sheet_print_job j
+        WHERE j.work_date = #{workDate}
+        <include refid="CountryScopeWhere"/>
+        ORDER BY j.printed_at DESC, j.id DESC
+    </select>
+
+    <select id="selectPersonsForDay" resultType="com.attendance.dto.response.SignInSheetPrintPersonDTO">
+        SELECT
+            r.id AS id,
+            r.job_id AS jobId,
+            j.warehouse AS warehouse,
+            j.printed_at AS printedAt,
+            r.seq_no AS seqNo,
+            r.person_name AS personName,
+            r.agency_name AS agencyName,
+            r.shift_name AS shiftName
+        FROM sign_in_sheet_print_row r
+        INNER JOIN sign_in_sheet_print_job j ON j.id = r.job_id
+        WHERE j.work_date = #{workDate}
+        <include refid="CountryScopeWhere"/>
+        ORDER BY j.printed_at DESC, j.id DESC, r.row_index ASC, r.id ASC
+    </select>
+</mapper>

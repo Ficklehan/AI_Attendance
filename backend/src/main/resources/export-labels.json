@@ -106,7 +106,7 @@
         "修改后"
       ],
       "taskChanges.empty": "（无字段变更）",
-      "exceptionType.attendance_ok": "考勤正确",
+      "exceptionType.attendance_ok": "识别正确",
       "exceptionType.paper_ok_ocr_wrong": "识别错误",
       "exceptionType.paper_wrong_time": "纸质错误",
       "taskField.Pays": "国家",
@@ -227,7 +227,7 @@
         "After"
       ],
       "taskChanges.empty": "(No field changes)",
-      "exceptionType.attendance_ok": "Attendance OK",
+      "exceptionType.attendance_ok": "Recognition OK",
       "exceptionType.paper_ok_ocr_wrong": "OCR wrong",
       "exceptionType.paper_wrong_time": "Paper wrong",
       "taskField.Pays": "Country",
@@ -348,7 +348,7 @@
         "After"
       ],
       "taskChanges.empty": "(No field changes)",
-      "exceptionType.attendance_ok": "Attendance OK",
+      "exceptionType.attendance_ok": "Recognition OK",
       "exceptionType.paper_ok_ocr_wrong": "OCR wrong",
       "exceptionType.paper_wrong_time": "Paper wrong",
       "taskField.Pays": "Country",
@@ -469,7 +469,7 @@
         "After"
       ],
       "taskChanges.empty": "(No field changes)",
-      "exceptionType.attendance_ok": "Attendance OK",
+      "exceptionType.attendance_ok": "Recognition OK",
       "exceptionType.paper_ok_ocr_wrong": "OCR wrong",
       "exceptionType.paper_wrong_time": "Paper wrong",
       "taskField.Pays": "Country",
@@ -590,7 +590,7 @@
         "After"
       ],
       "taskChanges.empty": "(No field changes)",
-      "exceptionType.attendance_ok": "Attendance OK",
+      "exceptionType.attendance_ok": "Recognition OK",
       "exceptionType.paper_ok_ocr_wrong": "OCR wrong",
       "exceptionType.paper_wrong_time": "Paper wrong",
       "taskField.Pays": "Country",
@@ -711,7 +711,7 @@
         "After"
       ],
       "taskChanges.empty": "(No field changes)",
-      "exceptionType.attendance_ok": "Attendance OK",
+      "exceptionType.attendance_ok": "Recognition OK",
       "exceptionType.paper_ok_ocr_wrong": "OCR wrong",
       "exceptionType.paper_wrong_time": "Paper wrong",
       "taskField.Pays": "Country",
@@ -832,7 +832,7 @@
         "After"
       ],
       "taskChanges.empty": "(No field changes)",
-      "exceptionType.attendance_ok": "Attendance OK",
+      "exceptionType.attendance_ok": "Recognition OK",
       "exceptionType.paper_ok_ocr_wrong": "OCR wrong",
       "exceptionType.paper_wrong_time": "Paper wrong",
       "taskField.Pays": "Country",
@@ -953,7 +953,7 @@
         "After"
       ],
       "taskChanges.empty": "(No field changes)",
-      "exceptionType.attendance_ok": "Attendance OK",
+      "exceptionType.attendance_ok": "Recognition OK",
       "exceptionType.paper_ok_ocr_wrong": "OCR wrong",
       "exceptionType.paper_wrong_time": "Paper wrong",
       "taskField.Pays": "Country",

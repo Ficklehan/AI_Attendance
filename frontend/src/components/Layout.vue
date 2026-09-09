@@ -30,7 +30,7 @@
                     :key="child.path"
                     :to="child.path"
                     class="nav-submenu__item"
-                    :class="{ 'nav-submenu__item--active': isChildActive(child.path) }"
+                    :class="{ 'nav-submenu__item--active': isChildActive(child.path, item.children) }"
                   >
                     <component :is="child.icon" class="nav-submenu__icon" />
                     <span>{{ $t(child.labelKey) }}</span>
@@ -331,6 +331,7 @@ const menuItems = computed(() => {
         { path: '/records', labelKey: 'clockai.menu.records', icon: CalendarOutlined },
         { path: '/agency-bills', labelKey: 'clockai.menu.agencyBills', icon: FileTextOutlined },
         { path: '/print-sheet', labelKey: 'clockai.menu.printSheet', icon: PrinterOutlined },
+        { path: '/print-sheet/history', labelKey: 'clockai.menu.printSheetHistory', icon: FileTextOutlined },
       ],
     },
     { path: '/employees', labelKey: 'nav.employees', icon: TeamOutlined, permission: 'employees' },
@@ -356,17 +357,25 @@ const activeMenu = computed(() => {
   return route.path
 })
 
-function isChildActive(path) {
-  return route.path === path || route.path.startsWith(`${path}/`)
+function isChildActive(path, siblings = []) {
+  if (route.path === path) return true
+  if (!route.path.startsWith(`${path}/`)) return false
+  const hasMoreSpecificSibling = siblings.some((sibling) => {
+    const siblingPath = sibling?.path
+    if (!siblingPath || siblingPath === path) return false
+    if (!siblingPath.startsWith(`${path}/`)) return false
+    return route.path === siblingPath || route.path.startsWith(`${siblingPath}/`)
+  })
+  return !hasMoreSpecificSibling
 }
 
 function isNavGroupActive(item) {
   if (!item.children) return false
-  return item.children.some((child) => isChildActive(child.path))
+  return item.children.some((child) => isChildActive(child.path, item.children))
 }
 
 function goNavGroup(item) {
-  const target = item.children?.find((child) => isChildActive(child.path))?.path || item.path
+  const target = item.children?.find((child) => isChildActive(child.path, item.children))?.path || item.path
   if (route.path !== target) {
     router.push(target)
   }

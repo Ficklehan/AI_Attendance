@@ -3,7 +3,55 @@
 export const SHEET_BLANK_ROWS = 15
 export const RECENT_WAREHOUSE_KEY = 'attendance.signInSheet.recentWarehouses'
 export const LAST_WAREHOUSE_KEY = 'attendance.signInSheet.lastWarehouse'
+/** Per-user last print prefs: country / warehouse / paper language */
+export const LAST_PRINT_PREFS_KEY = 'attendance.signInSheet.lastPrintPrefs.v1'
 const MAX_RECENT_WAREHOUSES = 12
+
+function printPrefsUserKey(userId) {
+  const uid = String(userId ?? '').trim()
+  return uid || 'anonymous'
+}
+
+export function loadLastPrintPrefs(userId) {
+  try {
+    const raw = localStorage.getItem(LAST_PRINT_PREFS_KEY)
+    const all = raw ? JSON.parse(raw) : {}
+    if (!all || typeof all !== 'object') return null
+    const prefs = all[printPrefsUserKey(userId)]
+    if (!prefs || typeof prefs !== 'object') return null
+    return {
+      countryCode: String(prefs.countryCode || '').trim(),
+      warehouse: String(prefs.warehouse || '').trim(),
+      sheetLocale: String(prefs.sheetLocale || '').trim(),
+    }
+  } catch {
+    return null
+  }
+}
+
+export function rememberLastPrintPrefs(userId, prefs = {}) {
+  const countryCode = String(prefs.countryCode || '').trim()
+  const warehouse = String(prefs.warehouse || '').trim()
+  const sheetLocale = String(prefs.sheetLocale || '').trim()
+  if (!countryCode && !warehouse && !sheetLocale) return
+  try {
+    const raw = localStorage.getItem(LAST_PRINT_PREFS_KEY)
+    const all = raw ? JSON.parse(raw) : {}
+    const map = all && typeof all === 'object' ? all : {}
+    const key = printPrefsUserKey(userId)
+    const prev = map[key] && typeof map[key] === 'object' ? map[key] : {}
+    map[key] = {
+      countryCode: countryCode || prev.countryCode || '',
+      warehouse: warehouse || prev.warehouse || '',
+      sheetLocale: sheetLocale || prev.sheetLocale || '',
+      updatedAt: Date.now(),
+    }
+    localStorage.setItem(LAST_PRINT_PREFS_KEY, JSON.stringify(map))
+  } catch {
+    /* ignore quota / private mode */
+  }
+  if (warehouse) rememberWarehouse(warehouse)
+}
 
 const SHEET_COPY = {
   'zh-CN': {
@@ -19,7 +67,7 @@ const SHEET_COPY = {
     warehouse: '仓库：',
     date: '日期：',
     supervisorSign: '仓库主管确认签字：_________________________________',
-    supervisorPage: '第 ___ 页',
+    supervisorPage: '第 {page} / {total} 页',
     supervisorDate: '签字日期：____年____月____日',
     columns: ['序号', '姓名', '供应商名称', '班次', '签到时间', '签退时间', '休息 时长 (min)', '员工签名', '备注'],
   },
@@ -36,7 +84,7 @@ const SHEET_COPY = {
     warehouse: 'Warehouse:',
     date: 'Date:',
     supervisorSign: 'Warehouse supervisor signature: _________________________________',
-    supervisorPage: 'Page ___',
+    supervisorPage: 'Page {page} / {total}',
     supervisorDate: 'Signature date: ____ / ____ / ________',
     columns: ['No.', 'Full name', 'Agency', 'Shift', 'Arrival', 'Departure', 'Break (min)', 'Signature', 'Remarks'],
   },
@@ -53,7 +101,7 @@ const SHEET_COPY = {
     warehouse: 'Entrepôt：',
     date: 'Date：',
     supervisorSign: "Signature du responsable d'entrepôt ：_________________________________",
-    supervisorPage: 'Page ___',
+    supervisorPage: 'Page {page} / {total}',
     supervisorDate: 'Date de signature : ____/____/________',
     columns: ['N°', 'Nom Prénom', 'Agence', 'Horaire', 'Arrivée', 'Départ', 'Pause (min)', 'Signature', 'Observations'],
   },
@@ -70,7 +118,7 @@ const SHEET_COPY = {
     warehouse: 'Lager:',
     date: 'Datum:',
     supervisorSign: 'Unterschrift Lagerleiter: _________________________________',
-    supervisorPage: 'Seite ___',
+    supervisorPage: 'Seite {page} / {total}',
     supervisorDate: 'Datum der Unterschrift: ____ / ____ / ________',
     columns: ['Nr.', 'Name', 'Agentur', 'Schicht', 'Ankunft', 'Abgang', 'Pause (Min.)', 'Unterschrift', 'Bemerkungen'],
   },
@@ -87,7 +135,7 @@ const SHEET_COPY = {
     warehouse: 'Magazijn:',
     date: 'Datum:',
     supervisorSign: 'Handtekening magazijnverantwoordelijke: _________________________________',
-    supervisorPage: 'Pagina ___',
+    supervisorPage: 'Pagina {page} / {total}',
     supervisorDate: 'Datum handtekening: ____ / ____ / ________',
     columns: ['Nr.', 'Naam', 'Uitzendbureau', 'Dienst', 'Aankomst', 'Vertrek', 'Pauze (min)', 'Handtekening', 'Opmerkingen'],
   },
@@ -104,7 +152,7 @@ const SHEET_COPY = {
     warehouse: 'Almacén:',
     date: 'Fecha:',
     supervisorSign: 'Firma del responsable de almacén: _________________________________',
-    supervisorPage: 'Página ___',
+    supervisorPage: 'Página {page} / {total}',
     supervisorDate: 'Fecha de firma: ____ / ____ / ________',
     columns: ['N.º', 'Nombre y apellidos', 'Agencia', 'Turno', 'Entrada', 'Salida', 'Pausa (min)', 'Firma', 'Observaciones'],
   },
@@ -121,7 +169,7 @@ const SHEET_COPY = {
     warehouse: 'Magazyn:',
     date: 'Data:',
     supervisorSign: 'Podpis kierownika magazynu: _________________________________',
-    supervisorPage: 'Strona ___',
+    supervisorPage: 'Strona {page} / {total}',
     supervisorDate: 'Data podpisu: ____ / ____ / ________',
     columns: ['Lp.', 'Imię i nazwisko', 'Agencja', 'Zmiana', 'Przybycie', 'Wyjście', 'Przerwa (min)', 'Podpis', 'Uwagi'],
   },
@@ -138,7 +186,7 @@ const SHEET_COPY = {
     warehouse: 'Sklad:',
     date: 'Datum:',
     supervisorSign: 'Podpis vedoucího skladu: _________________________________',
-    supervisorPage: 'Strana ___',
+    supervisorPage: 'Strana {page} / {total}',
     supervisorDate: 'Datum podpisu: ____ / ____ / ________',
     columns: ['Č.', 'Jméno a příjmení', 'Agentura', 'Směna', 'Příchod', 'Odchod', 'Přestávka (min)', 'Podpis', 'Poznámky'],
   },
@@ -247,4 +295,272 @@ export function downloadSheetExcel() {
   document.body.appendChild(link)
   link.click()
   link.remove()
+}
+
+export const DRAFT_STORAGE_KEY = 'attendance.signInSheet.draft.v1'
+export const REPRINT_STORAGE_KEY = 'attendance.signInSheet.reprint.v1'
+
+export function createEmptySheetRow() {
+  return { seq: '', name: '', agency: '', shift: '' }
+}
+
+export function isSheetRowBlank(row) {
+  if (!row) return true
+  const seq = String(row.seq ?? '').trim()
+  const name = String(row.name || '').trim()
+  const agency = String(row.agency || '').trim()
+  const shift = String(row.shift || '').trim()
+  return !seq && !name && !agency && !shift
+}
+
+export function normalizeSheetRows(rows) {
+  const list = Array.isArray(rows) ? rows : []
+  return list
+    .map((row) => ({
+      seq: row?.seq === 0 || row?.seq ? String(row.seq).trim() : '',
+      name: String(row?.name || '').trim(),
+      agency: String(row?.agency || '').trim(),
+      shift: String(row?.shift || '').trim(),
+    }))
+    .filter((row) => !isSheetRowBlank(row))
+}
+
+/** Keep blank rows in the middle; drop only trailing blanks. */
+export function trimTrailingSheetRows(rows, min = SHEET_BLANK_ROWS) {
+  const list = Array.isArray(rows)
+    ? rows.map((row) => ({
+        seq: row?.seq === 0 || row?.seq ? String(row.seq) : '',
+        name: String(row?.name || ''),
+        agency: String(row?.agency || ''),
+        shift: String(row?.shift || ''),
+      }))
+    : []
+  let last = -1
+  for (let i = 0; i < list.length; i += 1) {
+    if (!isSheetRowBlank(list[i])) last = i
+  }
+  const kept = last < 0 ? [] : list.slice(0, last + 1)
+  return ensureMinSheetRows(kept, min)
+}
+
+export function sheetRowSpan(rows) {
+  const list = Array.isArray(rows) ? rows : []
+  let last = -1
+  for (let i = 0; i < list.length; i += 1) {
+    if (!isSheetRowBlank(list[i])) last = i
+  }
+  return last + 1
+}
+
+/** Editable prefill columns in left-to-right order (Excel-like paste). */
+export const SHEET_EDIT_FIELDS = ['seq', 'name', 'agency', 'shift']
+
+export function sheetFieldIndex(field) {
+  const idx = SHEET_EDIT_FIELDS.indexOf(field)
+  return idx >= 0 ? idx : 0
+}
+
+/** Parse Excel/clipboard text into a raw cell grid (rows × cols). */
+export function parseClipboardGrid(text) {
+  const raw = String(text || '').replace(/^\uFEFF/, '')
+  if (!raw.trim()) return []
+  const lines = raw.split(/\r\n|\n|\r/)
+  const grid = []
+  for (const line of lines) {
+    if (line === '' && grid.length === 0) continue
+    // Keep trailing empty lines only if they are mid-block; skip pure trailing blanks later
+    const cols = line.includes('\t') ? line.split('\t') : line.split(',')
+    grid.push(cols.map((cell) => String(cell ?? '').trim()))
+  }
+  while (grid.length && grid[grid.length - 1].every((cell) => !cell)) {
+    grid.pop()
+  }
+  return grid.filter((row) => row.some((cell) => cell !== ''))
+}
+
+/**
+ * Paste a clipboard grid into sheet rows starting at (startRow, startCol),
+ * like Excel. Only writes into SHEET_EDIT_FIELDS; does not clear other cells.
+ */
+export function applyClipboardGridAt(rows, grid, startRow = 0, startCol = 0) {
+  const source = Array.isArray(grid) ? grid : []
+  if (!source.length) {
+    return { rows: Array.isArray(rows) ? rows.map((row) => ({ ...row })) : [], pastedCount: 0 }
+  }
+  const originRow = Math.max(0, Number(startRow) || 0)
+  const originCol = Math.max(0, Math.min(SHEET_EDIT_FIELDS.length - 1, Number(startCol) || 0))
+  const needed = originRow + source.length
+  const next = ensureMinSheetRows(rows, Math.max(Array.isArray(rows) ? rows.length : 0, needed))
+  let pastedCount = 0
+  for (let r = 0; r < source.length; r += 1) {
+    const targetIndex = originRow + r
+    const current = { ...(next[targetIndex] || createEmptySheetRow()) }
+    const cells = source[r] || []
+    let wrote = false
+    for (let c = 0; c < cells.length; c += 1) {
+      const fieldIndex = originCol + c
+      if (fieldIndex >= SHEET_EDIT_FIELDS.length) break
+      const field = SHEET_EDIT_FIELDS[fieldIndex]
+      current[field] = String(cells[c] ?? '')
+      wrote = true
+    }
+    if (wrote) {
+      next[targetIndex] = current
+      pastedCount += 1
+    }
+  }
+  return { rows: next, pastedCount }
+}
+
+/** Parse Excel/clipboard TSV into full sheet rows starting at 序号 (legacy helper). */
+export function parseClipboardTsv(text) {
+  const grid = parseClipboardGrid(text)
+  if (!grid.length) return []
+  const { rows } = applyClipboardGridAt([], grid, 0, 0)
+  return normalizeSheetRows(rows)
+}
+
+export function autoNumberRows(rows) {
+  const list = Array.isArray(rows) ? rows.map((row) => ({ ...row })) : []
+  let n = 1
+  for (const row of list) {
+    if (isSheetRowBlank(row)) {
+      row.seq = ''
+      continue
+    }
+    row.seq = String(n++)
+  }
+  return list
+}
+
+export function ensureMinSheetRows(rows, min = SHEET_BLANK_ROWS) {
+  const list = Array.isArray(rows) ? rows.map((row) => ({
+    seq: row?.seq === 0 || row?.seq ? String(row.seq) : '',
+    name: String(row?.name || ''),
+    agency: String(row?.agency || ''),
+    shift: String(row?.shift || ''),
+  })) : []
+  while (list.length < min) {
+    list.push(createEmptySheetRow())
+  }
+  return list
+}
+
+export function chunkRows(rows, size = SHEET_BLANK_ROWS) {
+  const pageSize = Math.max(1, Number(size) || SHEET_BLANK_ROWS)
+  const span = sheetRowSpan(rows)
+  const source = span <= 0
+    ? ensureMinSheetRows([], pageSize)
+    : ensureMinSheetRows(Array.isArray(rows) ? rows.slice(0, span) : [], span)
+  const pages = []
+  for (let i = 0; i < source.length; i += pageSize) {
+    pages.push(ensureMinSheetRows(source.slice(i, i + pageSize), pageSize))
+  }
+  return pages.length ? pages : [ensureMinSheetRows([], pageSize)]
+}
+
+export function resolveSheetPageCount(rows, size = SHEET_BLANK_ROWS) {
+  const span = sheetRowSpan(rows)
+  if (span <= 0) return 1
+  return Math.max(1, Math.ceil(span / Math.max(1, size)))
+}
+
+export function formatSheetPageLabel(template, page, total) {
+  return String(template || '')
+    .replace(/\{page\}/g, String(page))
+    .replace(/\{total\}/g, String(total))
+}
+
+export function loadSheetDraft() {
+  try {
+    const raw = localStorage.getItem(DRAFT_STORAGE_KEY)
+    if (!raw) return null
+    const data = JSON.parse(raw)
+    if (!data || typeof data !== 'object') return null
+    return {
+      version: 1,
+      countryCode: data.countryCode || undefined,
+      warehouse: String(data.warehouse || ''),
+      workDate: String(data.workDate || ''),
+      sheetLocale: String(data.sheetLocale || ''),
+      dateTouched: Boolean(data.dateTouched),
+      rows: Array.isArray(data.rows) ? data.rows : [],
+      updatedAt: data.updatedAt || null,
+    }
+  } catch {
+    return null
+  }
+}
+
+export function saveSheetDraft(draft) {
+  try {
+    const payload = {
+      version: 1,
+      countryCode: draft?.countryCode || undefined,
+      warehouse: String(draft?.warehouse || ''),
+      workDate: String(draft?.workDate || ''),
+      sheetLocale: String(draft?.sheetLocale || ''),
+      dateTouched: Boolean(draft?.dateTouched),
+      rows: Array.isArray(draft?.rows) ? draft.rows : [],
+      updatedAt: new Date().toISOString(),
+    }
+    localStorage.setItem(DRAFT_STORAGE_KEY, JSON.stringify(payload))
+    return payload
+  } catch {
+    return null
+  }
+}
+
+export function clearSheetDraft() {
+  try {
+    localStorage.removeItem(DRAFT_STORAGE_KEY)
+  } catch {
+    /* ignore */
+  }
+}
+
+export function saveReprintPayload(payload) {
+  try {
+    const data = {
+      version: 1,
+      countryCode: payload?.countryCode || undefined,
+      warehouse: String(payload?.warehouse || ''),
+      workDate: String(payload?.workDate || ''),
+      sheetLocale: String(payload?.sheetLocale || ''),
+      dateTouched: true,
+      rows: Array.isArray(payload?.rows) ? payload.rows : [],
+    }
+    sessionStorage.setItem(REPRINT_STORAGE_KEY, JSON.stringify(data))
+    return data
+  } catch {
+    return null
+  }
+}
+
+export function loadReprintPayload() {
+  try {
+    const raw = sessionStorage.getItem(REPRINT_STORAGE_KEY)
+    if (!raw) return null
+    const data = JSON.parse(raw)
+    if (!data || typeof data !== 'object') return null
+    return {
+      version: 1,
+      countryCode: data.countryCode || undefined,
+      warehouse: String(data.warehouse || ''),
+      workDate: String(data.workDate || ''),
+      sheetLocale: String(data.sheetLocale || ''),
+      dateTouched: true,
+      rows: Array.isArray(data.rows) ? data.rows : [],
+    }
+  } catch {
+    return null
+  }
+}
+
+export function clearReprintPayload() {
+  try {
+    sessionStorage.removeItem(REPRINT_STORAGE_KEY)
+  } catch {
+    /* ignore */
+  }
 }

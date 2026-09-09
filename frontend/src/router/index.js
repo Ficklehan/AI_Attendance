@@ -97,6 +97,12 @@ const routes = [
         meta: { titleKey: 'printSheet.title' },
       },
       {
+        path: 'print-sheet/history',
+        name: 'PrintSheetHistory',
+        component: () => import('@/views/print/PrintSheetHistory.vue'),
+        meta: { titleKey: 'printSheet.historyTitle' },
+      },
+      {
         path: 'employees',
         name: 'Employees',
         component: () => import('@/views/employee/EmployeeManagement.vue'),

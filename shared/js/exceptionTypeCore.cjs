@@ -85,8 +85,18 @@ function isExceptionTypeManuallySet(record) {
 }
 
 /**
+ * 识别说明是否带「模糊」标识（仅此类需人工选择异常类型）。
+ */
+function recordHasBlurredMark(record) {
+  if (!record) return false
+  const mark = String(record.SmartMark || record.Mark || '').trim()
+  if (!mark) return false
+  return markHasKind(mark, 'blurred')
+}
+
+/**
  * 识别说明里是否已有标签（夜班/手写/模糊/未出勤/已删除等，不含单纯「正常」）。
- * 有标签则不可自动「考勤正确」。
+ * @deprecated 自动勾选已改为仅排除模糊；保留供统计/兼容调用。
  */
 function recordHasRecognitionTags(record) {
   if (!record) return false
@@ -104,7 +114,8 @@ function recordHasRecognitionTags(record) {
 }
 
 /**
- * 到达=班次开始 且 离开=班次结束 → 可自动「考勤正确」。
+ * 到达=班次开始 且 离开=班次结束。
+ * @deprecated 自动「识别正确」不再依赖班次对齐；保留供兼容调用。
  */
 function matchesShiftExactTimes(record) {
   if (!record) return false
@@ -116,22 +127,21 @@ function matchesShiftExactTimes(record) {
   return arriveMin === shift.startMinutes && departMin === shift.endMinutes
 }
 
+/**
+ * 非模糊行可自动「识别正确」。
+ * 仅识别说明含模糊标识时返回 false，须用户手选异常类型。
+ */
 function canAutoSelectAttendanceOk(record, deps) {
-  if (!matchesShiftExactTimes(record)) return false
-  // 识别说明含标签（含夜班/未出勤/已删除等）→ 不自动勾选
-  if (recordHasRecognitionTags(record)) return false
-  if (deps && typeof deps.hasRecognitionNotes === 'function' && deps.hasRecognitionNotes(record)) {
-    return false
-  }
-  return true
+  void deps
+  return !recordHasBlurredMark(record)
 }
 
 /**
  * 已删除 / 未出勤：不标记异常类型。
  * 缺必填 / 格式不合法 → 清空类型。
  * 用户已手动点选 → 保留。
- * 仅当「到达=班次开始且离开=班次结束」且识别说明无标签时，自动「考勤正确」；
- * 其余情况不自动勾选，须用户确认。
+ * 识别说明无「模糊」→ 自动「识别正确」；
+ * 有「模糊」→ 不自动勾选，须用户确认。
  * @param {object} record
  * @param {{
  *   hasRequiredMissing: (r: object) => boolean,
@@ -160,10 +170,15 @@ function ensureExceptionType(record, deps) {
     return record
   }
   if (canAutoSelectAttendanceOk(record, deps)) {
-    record.ExceptionType = EXCEPTION_TYPE.ATTENDANCE_OK
+    // 非模糊：空或已是识别正确 → 默认识别正确；已选识别错误/纸质错误则保留
+    if (!type || type === EXCEPTION_TYPE.ATTENDANCE_OK) {
+      record.ExceptionType = EXCEPTION_TYPE.ATTENDANCE_OK
+    } else {
+      record.ExceptionType = type
+    }
     return record
   }
-  // 非精确对齐班次 / 有识别说明标签：清掉自动或陈旧的「考勤正确」
+  // 模糊行：清掉非手动的「识别正确」，待用户点选
   if (type === EXCEPTION_TYPE.ATTENDANCE_OK) {
     record.ExceptionType = ''
     return record
@@ -330,6 +345,7 @@ module.exports = {
   ensureExceptionType,
   matchesShiftExactTimes,
   canAutoSelectAttendanceOk,
+  recordHasBlurredMark,
   recordHasRecognitionTags,
   isExceptionTypeSelectDisabled,
   isExceptionTypeManuallySet,

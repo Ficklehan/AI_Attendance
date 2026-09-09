@@ -2,11 +2,26 @@
   <div class="print-sheet-page">
     <PageShell :title="$t('printSheet.title')" :subtitle="$t('printSheet.subtitle')" inline-subtitle>
       <template #extra>
-        <a-space>
+        <a-space wrap>
+          <a-button @click="$router.push('/print-sheet/history')">
+            {{ $t('printSheet.history') }}
+          </a-button>
+          <a-button @click="handlePasteClipboard">
+            {{ $t('printSheet.pasteClipboard') }}
+          </a-button>
+          <a-button @click="handleAutoNumber">
+            {{ $t('printSheet.autoNumber') }}
+          </a-button>
+          <a-button @click="handleSaveDraft">
+            {{ $t('printSheet.saveDraft') }}
+          </a-button>
+          <a-button @click="handleClearDraft">
+            {{ $t('printSheet.clearDraft') }}
+          </a-button>
           <a-button @click="handleDownloadExcel">
             {{ $t('printSheet.downloadExcel') }}
           </a-button>
-          <a-button type="primary" @click="handlePrint">
+          <a-button type="primary" :loading="printing" @click="handlePrint">
             {{ $t('printSheet.print') }}
           </a-button>
         </a-space>
@@ -64,8 +79,23 @@
               v-model:value="sheetLocale"
               :options="sheetLanguageOptions"
               :placeholder="$t('printSheet.sheetLanguagePlaceholder')"
+              @change="onSheetLocaleChange"
             />
           </a-form-item>
+        </div>
+        <div class="print-sheet-form__toolbar">
+          <span class="print-sheet-form__hint">{{ $t('printSheet.prefillHint') }}</span>
+          <a-space>
+            <a-button size="small" :disabled="currentPage <= 1" @click="currentPage -= 1">
+              {{ $t('printSheet.prevPage') }}
+            </a-button>
+            <span class="print-sheet-form__page">
+              {{ $t('printSheet.pageStatus', { page: currentPage, total: totalPages }) }}
+            </span>
+            <a-button size="small" :disabled="currentPage >= totalPages" @click="currentPage += 1">
+              {{ $t('printSheet.nextPage') }}
+            </a-button>
+          </a-space>
         </div>
         <p v-if="countryMismatch" class="print-sheet-form__warn">
           {{ $t('printSheet.countryMismatchHint') }}
@@ -73,12 +103,36 @@
       </a-form>
     </a-card>
 
-    <div class="print-sheet-page__preview-wrap">
+    <div class="print-sheet-page__preview-wrap print-sheet-page__preview-wrap--screen">
       <AttendanceSignInSheet
         :sheet-lang="sheetLocale"
         :country-label="printedCountryLabel"
         :warehouse="warehouse.trim()"
         :printed-date="previewPrintedDate"
+        :rows="currentPageRows"
+        :page="currentPage"
+        :total-pages="totalPages"
+        editable
+        :auto-number-title="$t('printSheet.autoNumberHint')"
+        :edit-guide="$t('printSheet.editZoneHint')"
+        @update:rows="onCurrentPageRowsUpdate"
+        @paste-tsv="applyPaste"
+        @auto-number="handleAutoNumber"
+      />
+    </div>
+
+    <div class="print-sheet-page__print-only" aria-hidden="true">
+      <AttendanceSignInSheet
+        v-for="(pageRows, index) in printPages"
+        :key="`print-${index}`"
+        :sheet-lang="sheetLocale"
+        :country-label="printedCountryLabel"
+        :warehouse="warehouse.trim()"
+        :printed-date="previewPrintedDate"
+        :rows="pageRows"
+        :page="index + 1"
+        :total-pages="totalPages"
+        :page-break-after="index < printPages.length - 1"
       />
     </div>
   </div>
@@ -91,26 +145,43 @@ import { message } from 'ant-design-vue'
 import PageShell from '@/components/PageShell.vue'
 import AttendanceSignInSheet from '@/components/AttendanceSignInSheet.vue'
 import { useCountryStore } from '@/stores/country'
+import { useAuthStore } from '@/stores/auth'
 import { buildCountrySelectOption, translateCountryName } from '@/utils/countryLabels'
 import { buildLanguageSelectOptions } from '@/constants/languageOptions'
 import { getMyDataScope } from '@/api/dataScope'
+import { createPrintSheetJob } from '@/api/printSheet'
 import {
+  autoNumberRows,
+  chunkRows,
+  clearSheetDraft,
+  clearReprintPayload,
   downloadSheetExcel,
+  ensureMinSheetRows,
   formatSheetDateMdY,
+  loadLastPrintPrefs,
   loadLastWarehouse,
   loadRecentWarehouses,
+  loadReprintPayload,
+  loadSheetDraft,
   mergeWarehouseSuggestions,
-  rememberWarehouse,
+  normalizeSheetRows,
+  parseClipboardGrid,
+  applyClipboardGridAt,
+  rememberLastPrintPrefs,
   resolvePrintIsoDate,
   resolveSheetLocale,
+  resolveSheetPageCount,
+  saveSheetDraft,
   SHEET_BLANK_ROWS,
   todayIsoDate,
+  trimTrailingSheetRows,
 } from '@/utils/attendanceSheetPrint'
 
 const PRINT_BODY_CLASS = 'printing-sign-in-sheet'
 
 const { t, locale } = useI18n()
 const countryStore = useCountryStore()
+const authStore = useAuthStore()
 
 const countryCode = ref(undefined)
 const warehouse = ref('')
@@ -120,7 +191,70 @@ const scopedWarehouses = ref([])
 const recentWarehouses = ref([])
 const warehouseSuggestOpen = ref(false)
 const sheetLocale = ref(resolveSheetLocale(locale.value))
+/** Once true, UI locale changes no longer overwrite paper language */
+const sheetLocalePinned = ref(false)
 const sheetLanguageOptions = buildLanguageSelectOptions()
+const sheetRows = ref(ensureMinSheetRows([], SHEET_BLANK_ROWS))
+const currentPage = ref(1)
+const printing = ref(false)
+const undoStack = ref([])
+const redoStack = ref([])
+const MAX_UNDO = 40
+
+function cloneSheetRows(rows) {
+  return (Array.isArray(rows) ? rows : []).map((row) => ({
+    seq: row?.seq === 0 || row?.seq ? String(row.seq) : '',
+    name: String(row?.name || ''),
+    agency: String(row?.agency || ''),
+    shift: String(row?.shift || ''),
+  }))
+}
+
+function pushUndoSnapshot() {
+  undoStack.value.push(cloneSheetRows(sheetRows.value))
+  if (undoStack.value.length > MAX_UNDO) {
+    undoStack.value.splice(0, undoStack.value.length - MAX_UNDO)
+  }
+  redoStack.value = []
+}
+
+function undoSheetRows() {
+  if (!undoStack.value.length) {
+    message.info(t('printSheet.undoEmpty'))
+    return false
+  }
+  redoStack.value.push(cloneSheetRows(sheetRows.value))
+  sheetRows.value = ensureMinSheetRows(undoStack.value.pop(), SHEET_BLANK_ROWS)
+  return true
+}
+
+function redoSheetRows() {
+  if (!redoStack.value.length) {
+    message.info(t('printSheet.redoEmpty'))
+    return false
+  }
+  undoStack.value.push(cloneSheetRows(sheetRows.value))
+  sheetRows.value = ensureMinSheetRows(redoStack.value.pop(), SHEET_BLANK_ROWS)
+  return true
+}
+
+function onSheetHistoryKeydown(event) {
+  const key = String(event.key || '').toLowerCase()
+  const mod = event.metaKey || event.ctrlKey
+  if (!mod) return
+
+  const isUndo = key === 'z' && !event.shiftKey
+  const isRedo = (key === 'z' && event.shiftKey) || key === 'y'
+  if (!isUndo && !isRedo) return
+
+  // Only intercept when we have history for sheet bulk edits (paste etc.)
+  if (isUndo && !undoStack.value.length) return
+  if (isRedo && !redoStack.value.length) return
+
+  event.preventDefault()
+  if (isUndo) undoSheetRows()
+  else redoSheetRows()
+}
 
 const countryOptions = computed(() => {
   void locale.value
@@ -157,6 +291,21 @@ const countryMismatch = computed(() => {
   return selected !== working
 })
 
+const filledRows = computed(() => normalizeSheetRows(sheetRows.value))
+
+const totalPages = computed(() => resolveSheetPageCount(sheetRows.value, SHEET_BLANK_ROWS))
+
+const printPages = computed(() => chunkRows(sheetRows.value, SHEET_BLANK_ROWS))
+
+const currentPageRows = computed(() => {
+  const pageIndex = Math.min(Math.max(currentPage.value, 1), totalPages.value) - 1
+  return printPages.value[pageIndex] || ensureMinSheetRows([], SHEET_BLANK_ROWS)
+})
+
+watch(totalPages, (total) => {
+  if (currentPage.value > total) currentPage.value = total
+})
+
 function applyDefaultCountry() {
   const working = countryStore.workingCountry
   if (working && working !== 'default') {
@@ -165,6 +314,36 @@ function applyDefaultCountry() {
   }
   const first = countryOptions.value[0]?.value
   countryCode.value = first || undefined
+}
+
+function isCountryOptionAvailable(code) {
+  const value = String(code || '').trim()
+  if (!value || value === 'default') return false
+  return countryOptions.value.some((item) => item.value === value)
+}
+
+/** Restore country / warehouse / paper language from last print for this user. */
+function applyLastPrintPrefs() {
+  const prefs = loadLastPrintPrefs(authStore.userInfo?.id)
+  const legacyWarehouse = loadLastWarehouse()
+
+  if (prefs?.countryCode && isCountryOptionAvailable(prefs.countryCode)) {
+    countryCode.value = prefs.countryCode
+  } else {
+    applyDefaultCountry()
+  }
+
+  const nextWarehouse = prefs?.warehouse || legacyWarehouse
+  if (nextWarehouse) warehouse.value = nextWarehouse
+
+  if (prefs?.sheetLocale) {
+    sheetLocale.value = resolveSheetLocale(prefs.sheetLocale)
+    sheetLocalePinned.value = true
+  }
+}
+
+function onSheetLocaleChange() {
+  sheetLocalePinned.value = true
 }
 
 function onDateChange() {
@@ -185,6 +364,99 @@ function pickWarehouse(item) {
   warehouseSuggestOpen.value = false
 }
 
+function rebuildRowsFromPages(pages) {
+  const flat = []
+  for (const page of pages) {
+    for (const row of page) flat.push({ ...row })
+  }
+  sheetRows.value = trimTrailingSheetRows(flat, SHEET_BLANK_ROWS)
+}
+
+function onCurrentPageRowsUpdate(pageRows) {
+  const pages = printPages.value.map((page) => page.map((row) => ({ ...row })))
+  const pageIndex = Math.min(Math.max(currentPage.value, 1), pages.length) - 1
+  pages[pageIndex] = ensureMinSheetRows(pageRows, SHEET_BLANK_ROWS)
+  rebuildRowsFromPages(pages)
+}
+
+function applyPaste(payload, fallbackStart = {}) {
+  const text = typeof payload === 'string' ? payload : payload?.text
+  const startRowInPage = typeof payload === 'object' && payload
+    ? Number(payload.startRow) || 0
+    : Number(fallbackStart.startRow) || 0
+  const startCol = typeof payload === 'object' && payload
+    ? Number(payload.startCol) || 0
+    : Number(fallbackStart.startCol) || 0
+
+  const grid = parseClipboardGrid(text)
+  if (!grid.length) {
+    message.warning(t('printSheet.pasteEmpty'))
+    return
+  }
+
+  const pageOffset = (Math.min(Math.max(currentPage.value, 1), totalPages.value) - 1) * SHEET_BLANK_ROWS
+  const absoluteRow = pageOffset + Math.max(0, startRowInPage)
+  const { rows: nextRows, pastedCount } = applyClipboardGridAt(
+    sheetRows.value,
+    grid,
+    absoluteRow,
+    startCol,
+  )
+  if (!pastedCount) {
+    message.warning(t('printSheet.pasteEmpty'))
+    return
+  }
+  pushUndoSnapshot()
+  sheetRows.value = trimTrailingSheetRows(nextRows, SHEET_BLANK_ROWS)
+  currentPage.value = Math.floor(absoluteRow / SHEET_BLANK_ROWS) + 1
+  message.success(t('printSheet.pasteDone', { count: pastedCount }))
+}
+
+async function handlePasteClipboard() {
+  try {
+    if (!navigator.clipboard?.readText) {
+      message.warning(t('printSheet.pasteUnsupported'))
+      return
+    }
+    const text = await navigator.clipboard.readText()
+    // Toolbar paste: start at current page first row / 序号 when no focused cell
+    applyPaste({ text, startRow: 0, startCol: 0 })
+  } catch {
+    message.warning(t('printSheet.pasteUnsupported'))
+  }
+}
+
+function handleAutoNumber() {
+  pushUndoSnapshot()
+  const numbered = autoNumberRows(ensureMinSheetRows(sheetRows.value, SHEET_BLANK_ROWS))
+  sheetRows.value = numbered
+  message.success(t('printSheet.autoNumberDone'))
+}
+
+function handleSaveDraft() {
+  const saved = saveSheetDraft({
+    countryCode: countryCode.value,
+    warehouse: warehouse.value,
+    workDate: workDate.value,
+    sheetLocale: sheetLocale.value,
+    dateTouched: dateTouched.value,
+    rows: sheetRows.value,
+  })
+  if (!saved) {
+    message.error(t('printSheet.draftSaveFailed'))
+    return
+  }
+  message.success(t('printSheet.draftSaved'))
+}
+
+function handleClearDraft() {
+  pushUndoSnapshot()
+  clearSheetDraft()
+  sheetRows.value = ensureMinSheetRows([], SHEET_BLANK_ROWS)
+  currentPage.value = 1
+  message.success(t('printSheet.draftCleared'))
+}
+
 function prepareSheetPayload() {
   const nextCountry = countryCode.value
   const nextWarehouse = warehouse.value.trim()
@@ -203,19 +475,51 @@ function prepareSheetPayload() {
     message.warning(t('printSheet.dateRequired'))
     return null
   }
-  rememberWarehouse(nextWarehouse)
+  rememberLastPrintPrefs(authStore.userInfo?.id, {
+    countryCode: nextCountry,
+    warehouse: nextWarehouse,
+    sheetLocale: sheetLocale.value,
+  })
   return {
+    countryCode: nextCountry,
     sheetLocale: sheetLocale.value,
     countryLabel: printedCountryLabel.value,
     warehouse: nextWarehouse,
+    workDate: workDate.value,
     printedDate: formatSheetDateMdY(workDate.value),
-    rowCount: SHEET_BLANK_ROWS,
+    pageCount: totalPages.value,
+    rows: filledRows.value,
   }
 }
 
-function handlePrint() {
-  if (!prepareSheetPayload()) return
-  window.print()
+async function handlePrint() {
+  const payload = prepareSheetPayload()
+  if (!payload) return
+
+  printing.value = true
+  try {
+    if (payload.rows.length) {
+      await createPrintSheetJob({
+        countryCode: payload.countryCode,
+        workDate: payload.workDate,
+        warehouse: payload.warehouse,
+        sheetLocale: payload.sheetLocale,
+        pageCount: payload.pageCount,
+        rows: payload.rows.map((row) => ({
+          seqNo: row.seq === '' || row.seq == null ? null : Number(row.seq) || null,
+          personName: row.name,
+          agencyName: row.agency,
+          shiftName: row.shift,
+        })),
+      })
+    }
+    window.print()
+  } catch (error) {
+    console.error('归档打印人员失败:', error)
+    message.error(t('printSheet.archiveFailed'))
+  } finally {
+    printing.value = false
+  }
 }
 
 function handleDownloadExcel() {
@@ -225,16 +529,59 @@ function handleDownloadExcel() {
   message.success(t('printSheet.downloadExcelDone'))
 }
 
+function restoreDraft() {
+  const draft = loadSheetDraft()
+  if (!draft) return
+  if (draft.countryCode) countryCode.value = draft.countryCode
+  if (draft.warehouse) warehouse.value = draft.warehouse
+  if (draft.workDate) {
+    workDate.value = draft.workDate
+    dateTouched.value = Boolean(draft.dateTouched)
+  }
+  if (draft.sheetLocale) {
+    sheetLocale.value = resolveSheetLocale(draft.sheetLocale)
+    sheetLocalePinned.value = true
+  }
+  if (Array.isArray(draft.rows) && draft.rows.length) {
+    sheetRows.value = ensureMinSheetRows(draft.rows, SHEET_BLANK_ROWS)
+  }
+}
+
+function restoreReprint() {
+  const payload = loadReprintPayload()
+  if (!payload) return false
+  clearReprintPayload()
+  if (payload.countryCode) countryCode.value = payload.countryCode
+  if (payload.warehouse) warehouse.value = payload.warehouse
+  if (payload.workDate) {
+    workDate.value = payload.workDate
+    dateTouched.value = true
+  }
+  if (payload.sheetLocale) {
+    sheetLocale.value = resolveSheetLocale(payload.sheetLocale)
+    sheetLocalePinned.value = true
+  }
+  if (Array.isArray(payload.rows) && payload.rows.length) {
+    sheetRows.value = ensureMinSheetRows(payload.rows, SHEET_BLANK_ROWS)
+  }
+  currentPage.value = 1
+  message.success(t('printSheet.reprintLoaded'))
+  return true
+}
+
 onMounted(async () => {
   document.body.classList.add(PRINT_BODY_CLASS)
+  window.addEventListener('keydown', onSheetHistoryKeydown)
   try {
     await countryStore.hydrate()
   } catch (error) {
     console.error('加载工作地区失败:', error)
   }
-  applyDefaultCountry()
-  warehouse.value = loadLastWarehouse()
+  applyLastPrintPrefs()
   recentWarehouses.value = loadRecentWarehouses()
+  if (!restoreReprint()) {
+    restoreDraft()
+  }
   try {
     const res = await getMyDataScope({ silentError: true })
     scopedWarehouses.value = Array.isArray(res?.data?.warehouses) ? res.data.warehouses : []
@@ -244,6 +591,7 @@ onMounted(async () => {
 })
 
 onUnmounted(() => {
+  window.removeEventListener('keydown', onSheetHistoryKeydown)
   document.body.classList.remove(PRINT_BODY_CLASS)
 })
 
@@ -254,8 +602,12 @@ watch(
   },
 )
 
-watch(locale, (next) => {
-  sheetLocale.value = resolveSheetLocale(next)
+watch(locale, (next, prev) => {
+  if (sheetLocalePinned.value) return
+  const prevResolved = resolveSheetLocale(prev)
+  if (sheetLocale.value === prevResolved || !prev) {
+    sheetLocale.value = resolveSheetLocale(next)
+  }
 })
 </script>
 
@@ -351,6 +703,25 @@ watch(locale, (next) => {
   gap: 0 16px;
 }
 
+.print-sheet-form__toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-top: 10px;
+  flex-wrap: wrap;
+}
+
+.print-sheet-form__hint {
+  font-size: 12px;
+  color: rgba(0, 0, 0, 0.45);
+}
+
+.print-sheet-form__page {
+  font-size: 13px;
+  font-variant-numeric: tabular-nums;
+}
+
 .print-sheet-form__date {
   width: 100%;
 }
@@ -419,6 +790,16 @@ watch(locale, (next) => {
   height: 100%;
 }
 
+.print-sheet-page__print-only {
+  display: none;
+}
+
+.print-sheet-page__print-only :deep(.sign-in-sheet) {
+  height: auto !important;
+  min-height: 0 !important;
+  flex: none !important;
+}
+
 @media (max-width: 1100px) {
   .print-sheet-form__grid {
     grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -472,10 +853,37 @@ watch(locale, (next) => {
   body.printing-sign-in-sheet .ant-layout-header,
   body.printing-sign-in-sheet .page-shell,
   body.printing-sign-in-sheet .print-sheet-page__form,
+  body.printing-sign-in-sheet .print-sheet-page__preview-wrap--screen,
   body.printing-sign-in-sheet .ant-popover,
   body.printing-sign-in-sheet .ant-message,
   body.printing-sign-in-sheet .ant-notification {
     display: none !important;
+  }
+
+  body.printing-sign-in-sheet .print-sheet-page__print-only {
+    display: block !important;
+  }
+
+  body.printing-sign-in-sheet .print-sheet-page__print-only .sign-in-sheet,
+  body.printing-sign-in-sheet .print-sheet-page__print-only .sign-in-sheet__table-wrap,
+  body.printing-sign-in-sheet .print-sheet-page__print-only .sign-in-sheet__table {
+    display: revert !important;
+    height: auto !important;
+    min-height: 0 !important;
+    max-height: none !important;
+    flex: none !important;
+  }
+
+  body.printing-sign-in-sheet .print-sheet-page__print-only .sign-in-sheet {
+    display: block !important;
+  }
+
+  body.printing-sign-in-sheet .print-sheet-page__print-only .sign-in-sheet__table-wrap {
+    display: block !important;
+  }
+
+  body.printing-sign-in-sheet .print-sheet-page__print-only .sign-in-sheet__table {
+    display: table !important;
   }
 
   body.printing-sign-in-sheet .layout-container,
@@ -483,7 +891,7 @@ watch(locale, (next) => {
   body.printing-sign-in-sheet .ant-layout,
   body.printing-sign-in-sheet .ant-layout-content,
   body.printing-sign-in-sheet .print-sheet-page,
-  body.printing-sign-in-sheet .print-sheet-page__preview-wrap {
+  body.printing-sign-in-sheet .print-sheet-page__print-only {
     display: block !important;
     padding: 0 !important;
     margin: 0 !important;
