@@ -1,0 +1,2278 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>加班管理 · AttendanceAgent 原型 v3</title>
+  <style>
+    :root {
+      --primary: #5B6CF7;
+      --primary-hover: #4A58D9;
+      --primary-dark: #3E4CC4;
+      --primary-light: #F0F1FF;
+      --primary-lighter: #F7F7FF;
+      --accent: #FF7E5D;
+      --accent-light: #FFE8DE;
+      --success: #34C77B;
+      --success-dark: #1A9E5C;
+      --success-light: #EDFCF2;
+      --warning: #F7B731;
+      --warning-dark: #C48A0A;
+      --warning-light: #FFF3DC;
+      --danger: #F06565;
+      --danger-dark: #D94040;
+      --danger-light: #FFF0F0;
+      --text-strong: #1C1A2E;
+      --text-primary: #3D3952;
+      --text-secondary: #73707F;
+      --text-tertiary: #A8A5B2;
+      --border: #EDEAEF;
+      --border-light: #F5F3F7;
+      --border-hover: #D4D0D8;
+      --bg-body: #FBF9F7;
+      --bg-surface: #FFFFFF;
+      --bg-muted: #F5F3F7;
+      --bg-hover: #F4F2F6;
+      --shadow-sm: 0 2px 8px rgba(28, 26, 46, 0.06), 0 1px 2px rgba(28, 26, 46, 0.03);
+      --shadow-md: 0 4px 16px rgba(28, 26, 46, 0.08), 0 2px 4px rgba(28, 26, 46, 0.03);
+      --shadow-lg: 0 16px 48px rgba(28, 26, 46, 0.14), 0 6px 12px rgba(28, 26, 46, 0.05);
+      --radius-sm: 6px;
+      --radius-md: 8px;
+      --radius-lg: 12px;
+      --radius-xl: 16px;
+      --font: -apple-system, BlinkMacSystemFont, "SF Pro Display", "SF Pro Text", "Segoe UI", Roboto, "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", Arial, sans-serif;
+      --mono: "SF Mono", SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+    }
+
+    * { box-sizing: border-box; }
+
+    html {
+      min-width: 320px;
+      background: var(--bg-body);
+      color: var(--text-primary);
+      font-family: var(--font);
+      font-size: 13px;
+      -webkit-font-smoothing: antialiased;
+      text-rendering: optimizeLegibility;
+    }
+
+    body {
+      min-width: 320px;
+      margin: 0;
+      background: var(--bg-body);
+    }
+
+    button, input, select {
+      font: inherit;
+    }
+
+    button {
+      cursor: pointer;
+    }
+
+    button:focus-visible,
+    input:focus-visible,
+    select:focus-visible {
+      outline: 3px solid rgba(91, 108, 247, 0.24);
+      outline-offset: 2px;
+    }
+
+    [hidden] { display: none !important; }
+
+    .app-shell {
+      width: min(100%, 1440px);
+      min-height: 100vh;
+      margin: 0 auto;
+      padding: 28px 32px 56px;
+    }
+
+    .page-shell {
+      display: flex;
+      align-items: flex-start;
+      justify-content: space-between;
+      gap: 24px;
+      margin-bottom: 24px;
+      flex-wrap: wrap;
+    }
+
+    .breadcrumb {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      margin-bottom: 8px;
+      color: var(--text-secondary);
+      font-size: 11px;
+    }
+
+    .breadcrumb span:not(:last-child)::after {
+      content: "/";
+      margin-left: 8px;
+      color: var(--border-hover);
+    }
+
+    .breadcrumb .active {
+      color: var(--primary);
+      font-weight: 600;
+    }
+
+    .title-row {
+      display: flex;
+      align-items: baseline;
+      gap: 12px;
+      flex-wrap: wrap;
+    }
+
+    h1, h2, h3, p { margin: 0; }
+
+    h1 {
+      color: var(--text-strong);
+      font-size: 24px;
+      line-height: 1.25;
+      font-weight: 800;
+    }
+
+    .page-subtitle {
+      max-width: 720px;
+      margin-top: 8px;
+      color: var(--text-secondary);
+      line-height: 1.55;
+    }
+
+    .page-extra {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      flex-wrap: wrap;
+    }
+
+    .context-badge,
+    .permission-badge,
+    .status-pill,
+    .scope-chip,
+    .tag {
+      display: inline-flex;
+      align-items: center;
+      min-height: 24px;
+      border-radius: 999px;
+      padding: 0 9px;
+      white-space: nowrap;
+      font-size: 11px;
+      font-weight: 600;
+    }
+
+    .context-badge {
+      color: var(--text-secondary);
+      background: var(--bg-muted);
+      border: 1px solid var(--border);
+    }
+
+    .permission-badge {
+      color: var(--primary-dark);
+      background: var(--primary-light);
+      border: 1px solid #D9DCFF;
+      font-family: var(--mono);
+      font-weight: 500;
+    }
+
+    .btn {
+      min-height: 34px;
+      border: 1px solid var(--border);
+      border-radius: var(--radius-md);
+      padding: 0 13px;
+      color: var(--text-primary);
+      background: var(--bg-surface);
+      font-weight: 600;
+      transition: background 160ms ease, border-color 160ms ease, color 160ms ease, box-shadow 160ms ease;
+    }
+
+    .btn:hover {
+      border-color: var(--border-hover);
+      background: var(--bg-hover);
+    }
+
+    .btn-primary {
+      color: #fff;
+      border-color: var(--primary);
+      background: var(--primary);
+      box-shadow: 0 4px 14px rgba(91, 108, 247, 0.2);
+    }
+
+    .btn-primary:hover {
+      color: #fff;
+      border-color: var(--primary-hover);
+      background: var(--primary-hover);
+    }
+
+    .btn-quiet {
+      color: var(--primary);
+      border-color: transparent;
+      background: transparent;
+    }
+
+    .btn-quiet:hover {
+      color: var(--primary-dark);
+      border-color: #D9DCFF;
+      background: var(--primary-lighter);
+    }
+
+    .btn-danger {
+      color: var(--danger);
+      border-color: #F5CCCC;
+      background: var(--danger-light);
+    }
+
+    .btn-icon {
+      width: 34px;
+      padding: 0;
+      font-size: 16px;
+      line-height: 1;
+    }
+
+    .tabs-shell,
+    .surface {
+      border: 1px solid rgba(237, 234, 239, 0.85);
+      border-radius: var(--radius-xl);
+      background: var(--bg-surface);
+      box-shadow: var(--shadow-sm);
+    }
+
+    .tabs-shell {
+      overflow: hidden;
+    }
+
+    .tabs {
+      display: flex;
+      gap: 28px;
+      min-height: 52px;
+      padding: 0 24px;
+      border-bottom: 1px solid var(--border-light);
+    }
+
+    .tab {
+      position: relative;
+      border: 0;
+      padding: 0;
+      color: var(--text-secondary);
+      background: transparent;
+      font-weight: 600;
+    }
+
+    .tab[aria-selected="true"] {
+      color: var(--primary);
+    }
+
+    .tab[aria-selected="true"]::after {
+      position: absolute;
+      right: 0;
+      bottom: -1px;
+      left: 0;
+      height: 2px;
+      content: "";
+      background: var(--primary);
+    }
+
+    .tab-panel {
+      padding: 24px;
+    }
+
+    .notice {
+      display: flex;
+      align-items: flex-start;
+      gap: 12px;
+      margin-bottom: 20px;
+      padding: 13px 15px;
+      border: 1px solid #F1DFB2;
+      border-radius: var(--radius-lg);
+      color: #795B13;
+      background: var(--warning-light);
+      line-height: 1.55;
+    }
+
+    .notice strong {
+      display: block;
+      color: #624A10;
+      margin-bottom: 2px;
+    }
+
+    .notice-icon {
+      display: grid;
+      flex: 0 0 22px;
+      width: 22px;
+      height: 22px;
+      place-items: center;
+      border-radius: 50%;
+      color: #fff;
+      background: var(--warning);
+      font-weight: 800;
+    }
+
+    .notice .btn-quiet {
+      flex: 0 0 auto;
+      margin-left: auto;
+      padding: 0 2px;
+      color: #8A6A18;
+      font-size: 12px;
+    }
+
+    .filter-bar {
+      display: flex;
+      align-items: end;
+      gap: 12px;
+      flex-wrap: wrap;
+      margin-bottom: 20px;
+    }
+
+    .field {
+      display: flex;
+      min-width: 132px;
+      flex-direction: column;
+      gap: 6px;
+    }
+
+    .field.wide { min-width: 230px; }
+    .field.medium { min-width: 176px; }
+
+    .field-label,
+    .eyebrow,
+    .table-label {
+      color: var(--text-tertiary);
+      font-size: 11px;
+      font-weight: 700;
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
+    }
+
+    .control {
+      width: 100%;
+      height: 34px;
+      border: 1px solid var(--border);
+      border-radius: var(--radius-md);
+      padding: 0 10px;
+      color: var(--text-primary);
+      background: var(--bg-surface);
+    }
+
+    .control:hover {
+      border-color: var(--border-hover);
+    }
+
+    .filter-actions {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      margin-left: auto;
+    }
+
+    .filter-status {
+      min-height: 20px;
+      margin: -8px 0 16px;
+      color: var(--text-secondary);
+      font-size: 12px;
+    }
+
+    .stats-grid {
+      display: grid;
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+      gap: 12px;
+      margin-bottom: 20px;
+    }
+
+    .stat {
+      min-height: 108px;
+      padding: 17px 18px;
+      border: 1px solid var(--border);
+      border-radius: var(--radius-lg);
+      background: var(--bg-surface);
+    }
+
+    .stat-label {
+      color: var(--text-secondary);
+      font-size: 12px;
+    }
+
+    .stat-value {
+      margin-top: 10px;
+      color: var(--text-strong);
+      font-size: 25px;
+      line-height: 1;
+      font-weight: 800;
+      font-variant-numeric: tabular-nums;
+    }
+
+    .stat-meta {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      margin-top: 9px;
+      color: var(--text-tertiary);
+      font-size: 11px;
+    }
+
+    .stat-meta .positive { color: var(--success-dark); }
+    .stat-meta .attention { color: var(--warning-dark); }
+
+    .overview-grid {
+      display: grid;
+      grid-template-columns: minmax(0, 1.25fr) minmax(320px, 0.75fr);
+      gap: 16px;
+      margin-bottom: 20px;
+    }
+
+    .panel {
+      min-width: 0;
+      border: 1px solid var(--border);
+      border-radius: var(--radius-lg);
+      background: var(--bg-surface);
+    }
+
+    .panel-header {
+      display: flex;
+      align-items: flex-start;
+      justify-content: space-between;
+      gap: 16px;
+      padding: 18px 20px 0;
+    }
+
+    .panel-title {
+      color: var(--text-strong);
+      font-size: 15px;
+      font-weight: 700;
+    }
+
+    .panel-subtitle {
+      margin-top: 4px;
+      color: var(--text-secondary);
+      font-size: 12px;
+      line-height: 1.45;
+    }
+
+    .chart-wrap {
+      padding: 18px 20px 20px;
+    }
+
+    .chart-legend {
+      display: flex;
+      gap: 16px;
+      color: var(--text-secondary);
+      font-size: 11px;
+    }
+
+    .legend-item {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .legend-dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background: var(--primary);
+    }
+
+    .legend-dot.warning { background: var(--accent); }
+
+    .chart {
+      display: grid;
+      grid-template-columns: 32px 1fr;
+      gap: 12px;
+      height: 222px;
+      margin-top: 14px;
+    }
+
+    .chart-axis {
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+      padding-bottom: 25px;
+      color: var(--text-tertiary);
+      font-size: 10px;
+      text-align: right;
+    }
+
+    .chart-area {
+      position: relative;
+      display: flex;
+      align-items: end;
+      justify-content: space-around;
+      gap: 12px;
+      padding: 0 12px 25px;
+      background: #FCFBFD;
+      border-bottom: 1px solid var(--border);
+    }
+
+    .bar-group {
+      display: flex;
+      width: 56px;
+      height: 100%;
+      align-items: end;
+      justify-content: center;
+      gap: 5px;
+    }
+
+    .bar {
+      width: 18px;
+      min-height: 4px;
+      border-radius: 4px 4px 0 0;
+      background: var(--primary);
+    }
+
+    .bar.warning { background: var(--accent); }
+
+    .bar-label {
+      position: absolute;
+      bottom: 4px;
+      color: var(--text-secondary);
+      font-size: 11px;
+    }
+
+    .chart-note {
+      margin-top: 13px;
+      color: var(--text-secondary);
+      font-size: 11px;
+    }
+
+    .run-summary {
+      padding: 18px 20px 20px;
+    }
+
+    .run-status {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      margin: 15px 0 18px;
+      padding-bottom: 16px;
+      border-bottom: 1px solid var(--border-light);
+    }
+
+    .status-dot {
+      width: 9px;
+      height: 9px;
+      border-radius: 50%;
+      background: var(--success);
+      box-shadow: 0 0 0 4px var(--success-light);
+    }
+
+    .status-dot.running {
+      background: var(--warning);
+      box-shadow: 0 0 0 4px var(--warning-light);
+    }
+
+    .run-status strong {
+      display: block;
+      color: var(--text-strong);
+      font-size: 13px;
+    }
+
+    .run-status span {
+      display: block;
+      margin-top: 3px;
+      color: var(--text-secondary);
+      font-size: 11px;
+    }
+
+    .run-progress {
+      height: 6px;
+      overflow: hidden;
+      border-radius: 999px;
+      background: var(--bg-muted);
+    }
+
+    .run-progress span {
+      display: block;
+      width: 100%;
+      height: 100%;
+      border-radius: inherit;
+      background: var(--success);
+    }
+
+    .summary-list {
+      display: grid;
+      gap: 13px;
+    }
+
+    .summary-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      color: var(--text-secondary);
+      font-size: 12px;
+    }
+
+    .summary-row strong {
+      color: var(--text-primary);
+      font-weight: 700;
+      font-variant-numeric: tabular-nums;
+    }
+
+    .summary-row strong.warning-text { color: var(--warning-dark); }
+    .summary-row strong.success-text { color: var(--success-dark); }
+
+    .table-section {
+      overflow: hidden;
+    }
+
+    .table-toolbar {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 16px;
+      padding: 18px 20px 14px;
+    }
+
+    .table-toolbar-actions {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .table-scroll {
+      overflow-x: auto;
+    }
+
+    table {
+      width: 100%;
+      min-width: 960px;
+      border-collapse: collapse;
+    }
+
+    th {
+      padding: 11px 20px;
+      border-top: 1px solid var(--border-light);
+      border-bottom: 1px solid var(--border-light);
+      color: var(--text-tertiary);
+      background: #FCFBFD;
+      font-size: 11px;
+      font-weight: 700;
+      letter-spacing: 0.04em;
+      text-align: left;
+      text-transform: uppercase;
+      white-space: nowrap;
+    }
+
+    td {
+      padding: 14px 20px;
+      border-bottom: 1px solid var(--border-light);
+      color: var(--text-primary);
+      vertical-align: middle;
+    }
+
+    tbody tr:last-child td { border-bottom: 0; }
+
+    tbody tr:hover { background: var(--primary-lighter); }
+
+    .employee-cell {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      min-width: 156px;
+    }
+
+    .avatar {
+      display: grid;
+      flex: 0 0 30px;
+      width: 30px;
+      height: 30px;
+      place-items: center;
+      border-radius: 50%;
+      color: var(--primary-dark);
+      background: var(--primary-light);
+      font-size: 11px;
+      font-weight: 800;
+    }
+
+    .employee-name {
+      color: var(--text-strong);
+      font-weight: 700;
+    }
+
+    .employee-id,
+    .muted {
+      margin-top: 3px;
+      color: var(--text-tertiary);
+      font-size: 11px;
+    }
+
+    .region {
+      color: var(--text-secondary);
+      font-size: 12px;
+    }
+
+    .policy-cell strong {
+      display: block;
+      color: var(--text-primary);
+      font-size: 12px;
+    }
+
+    .policy-cell span {
+      display: block;
+      margin-top: 3px;
+      color: var(--text-tertiary);
+      font-size: 11px;
+      font-family: var(--mono);
+    }
+
+    .number {
+      font-variant-numeric: tabular-nums;
+      white-space: nowrap;
+    }
+
+    .number strong {
+      color: var(--text-strong);
+      font-size: 14px;
+    }
+
+    .number.highlight strong { color: var(--primary); }
+
+    .status-pill {
+      border: 1px solid transparent;
+    }
+
+    .status-pill.success {
+      color: var(--success-dark);
+      border-color: #C7F0D7;
+      background: var(--success-light);
+    }
+
+    .status-pill.warning {
+      color: var(--warning-dark);
+      border-color: #F3DFAC;
+      background: var(--warning-light);
+    }
+
+    .status-pill.danger {
+      color: var(--danger);
+      border-color: #F4CDCD;
+      background: var(--danger-light);
+    }
+
+    .status-pill.neutral {
+      color: var(--text-secondary);
+      border-color: var(--border);
+      background: var(--bg-muted);
+    }
+
+    .link-btn {
+      border: 0;
+      padding: 0;
+      color: var(--primary);
+      background: transparent;
+      font-weight: 600;
+    }
+
+    .link-btn:hover { color: var(--primary-dark); }
+
+    .table-footer {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      padding: 14px 20px;
+      border-top: 1px solid var(--border-light);
+      color: var(--text-secondary);
+      font-size: 11px;
+    }
+
+    .pager {
+      display: flex;
+      align-items: center;
+      gap: 5px;
+    }
+
+    .pager button {
+      width: 28px;
+      height: 28px;
+      border: 1px solid var(--border);
+      border-radius: var(--radius-sm);
+      color: var(--text-secondary);
+      background: var(--bg-surface);
+    }
+
+    .pager button.current {
+      color: var(--primary);
+      border-color: #D9DCFF;
+      background: var(--primary-light);
+      font-weight: 700;
+    }
+
+    .split-layout {
+      display: grid;
+      grid-template-columns: 280px minmax(0, 1fr);
+      gap: 16px;
+    }
+
+    .policy-list {
+      overflow: hidden;
+      padding: 8px;
+    }
+
+    .policy-list-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 10px 10px 13px;
+    }
+
+    .policy-list-header strong {
+      color: var(--text-strong);
+      font-size: 14px;
+    }
+
+    .policy-item {
+      display: block;
+      width: 100%;
+      margin: 3px 0;
+      border: 1px solid transparent;
+      border-radius: var(--radius-md);
+      padding: 12px 11px;
+      color: var(--text-primary);
+      background: transparent;
+      text-align: left;
+    }
+
+    .policy-item:hover {
+      background: var(--bg-hover);
+    }
+
+    .policy-item.active {
+      border-color: #D9DCFF;
+      color: var(--primary-dark);
+      background: var(--primary-light);
+    }
+
+    .policy-item-main {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 8px;
+      font-weight: 700;
+    }
+
+    .policy-item small {
+      display: block;
+      margin-top: 5px;
+      color: var(--text-secondary);
+      font-size: 11px;
+    }
+
+    .policy-item.active small { color: var(--primary-dark); }
+
+    .policy-editor {
+      min-width: 0;
+      padding: 22px;
+    }
+
+    .editor-heading {
+      display: flex;
+      align-items: flex-start;
+      justify-content: space-between;
+      gap: 16px;
+      padding-bottom: 18px;
+      border-bottom: 1px solid var(--border-light);
+    }
+
+    .editor-heading h2 {
+      color: var(--text-strong);
+      font-size: 18px;
+    }
+
+    .editor-heading p {
+      margin-top: 5px;
+      color: var(--text-secondary);
+      line-height: 1.5;
+    }
+
+    .editor-heading-actions {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      flex-wrap: wrap;
+      justify-content: flex-end;
+    }
+
+    .editor-section {
+      padding: 20px 0;
+      border-bottom: 1px solid var(--border-light);
+    }
+
+    .editor-section:last-of-type { border-bottom: 0; }
+
+    .editor-section-heading {
+      display: flex;
+      align-items: baseline;
+      justify-content: space-between;
+      gap: 12px;
+      margin-bottom: 15px;
+    }
+
+    .editor-section-heading h3 {
+      color: var(--text-strong);
+      font-size: 14px;
+    }
+
+    .editor-section-heading span {
+      color: var(--text-tertiary);
+      font-size: 11px;
+    }
+
+    .form-grid {
+      display: grid;
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+      gap: 14px 16px;
+    }
+
+    .form-grid .span-2 { grid-column: span 2; }
+
+    .scope-row {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      flex-wrap: wrap;
+      min-height: 34px;
+      padding: 5px 0;
+    }
+
+    .scope-chip {
+      color: var(--primary-dark);
+      border: 1px solid #D9DCFF;
+      background: var(--primary-light);
+      font-family: var(--mono);
+      font-weight: 500;
+    }
+
+    .scope-chip.neutral {
+      color: var(--text-secondary);
+      border-color: var(--border);
+      background: var(--bg-muted);
+      font-family: var(--font);
+    }
+
+    .helper {
+      margin-top: 5px;
+      color: var(--text-tertiary);
+      font-size: 11px;
+      line-height: 1.45;
+    }
+
+    .check-list {
+      display: grid;
+      gap: 10px;
+    }
+
+    .check {
+      display: flex;
+      align-items: flex-start;
+      gap: 8px;
+      color: var(--text-primary);
+      line-height: 1.45;
+    }
+
+    .check input {
+      width: 15px;
+      height: 15px;
+      margin: 1px 0 0;
+      accent-color: var(--primary);
+    }
+
+    .rule-note {
+      margin-top: 14px;
+      padding: 11px 13px;
+      border-left: 3px solid var(--primary);
+      color: var(--text-secondary);
+      background: var(--primary-lighter);
+      line-height: 1.55;
+    }
+
+    .tier-table {
+      width: 100%;
+      min-width: 0;
+      border: 1px solid var(--border);
+      border-radius: var(--radius-md);
+      overflow: hidden;
+    }
+
+    .tier-table th,
+    .tier-table td {
+      padding: 10px 12px;
+    }
+
+    .tier-table th {
+      border-top: 0;
+    }
+
+    .editor-footer {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      padding-top: 20px;
+    }
+
+    .editor-footer-note {
+      color: var(--text-secondary);
+      font-size: 11px;
+    }
+
+    .editor-footer-actions {
+      display: flex;
+      gap: 8px;
+    }
+
+    .version-callout {
+      display: flex;
+      align-items: flex-start;
+      gap: 10px;
+      margin-bottom: 18px;
+      padding: 12px 14px;
+      border: 1px solid #D9DCFF;
+      border-radius: var(--radius-lg);
+      color: var(--primary-dark);
+      background: var(--primary-lighter);
+      line-height: 1.5;
+    }
+
+    .version-callout b { color: var(--text-strong); }
+
+    .runs-header {
+      display: flex;
+      align-items: flex-start;
+      justify-content: space-between;
+      gap: 16px;
+      margin-bottom: 20px;
+    }
+
+    .runs-header h2 {
+      color: var(--text-strong);
+      font-size: 18px;
+    }
+
+    .runs-header p {
+      margin-top: 5px;
+      color: var(--text-secondary);
+    }
+
+    .run-card {
+      display: grid;
+      grid-template-columns: minmax(220px, 0.9fr) minmax(260px, 1.4fr) minmax(170px, 0.7fr) auto;
+      gap: 20px;
+      align-items: center;
+      padding: 18px 20px;
+      border: 1px solid #D9DCFF;
+      border-radius: var(--radius-lg);
+      background: var(--primary-lighter);
+    }
+
+    .run-id {
+      color: var(--text-strong);
+      font-family: var(--mono);
+      font-size: 13px;
+      font-weight: 700;
+    }
+
+    .run-meta {
+      margin-top: 6px;
+      color: var(--text-secondary);
+      font-size: 11px;
+      line-height: 1.5;
+    }
+
+    .run-card .run-progress {
+      margin-top: 10px;
+      background: #E1E4FF;
+    }
+
+    .run-card .run-progress span {
+      width: 64%;
+      background: var(--primary);
+    }
+
+    .run-percent {
+      color: var(--primary-dark);
+      font-size: 20px;
+      font-weight: 800;
+      text-align: right;
+    }
+
+    .run-history {
+      margin-top: 20px;
+      overflow: hidden;
+    }
+
+    .run-history .table-toolbar { padding-bottom: 16px; }
+
+    .drawer-overlay,
+    .modal-overlay {
+      position: fixed;
+      z-index: 20;
+      inset: 0;
+      display: grid;
+      background: rgba(28, 26, 46, 0.26);
+    }
+
+    .drawer-overlay {
+      align-items: stretch;
+      justify-items: end;
+    }
+
+    .drawer {
+      width: min(560px, 100vw);
+      height: 100%;
+      overflow-y: auto;
+      padding: 24px;
+      background: var(--bg-surface);
+      box-shadow: var(--shadow-lg);
+      animation: slideIn 180ms ease-out;
+    }
+
+    .drawer-header,
+    .modal-header {
+      display: flex;
+      align-items: flex-start;
+      justify-content: space-between;
+      gap: 16px;
+      padding-bottom: 17px;
+      border-bottom: 1px solid var(--border-light);
+    }
+
+    .drawer-header h2,
+    .modal-header h2 {
+      color: var(--text-strong);
+      font-size: 18px;
+    }
+
+    .drawer-header p,
+    .modal-header p {
+      margin-top: 5px;
+      color: var(--text-secondary);
+      line-height: 1.45;
+    }
+
+    .drawer-section {
+      padding: 18px 0;
+      border-bottom: 1px solid var(--border-light);
+    }
+
+    .drawer-section:last-child { border-bottom: 0; }
+
+    .drawer-section h3 {
+      margin-bottom: 13px;
+      color: var(--text-strong);
+      font-size: 13px;
+    }
+
+    .detail-grid {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 12px;
+    }
+
+    .detail-item {
+      min-width: 0;
+      padding: 11px 12px;
+      border: 1px solid var(--border);
+      border-radius: var(--radius-md);
+      background: #FCFBFD;
+    }
+
+    .detail-item .label {
+      color: var(--text-tertiary);
+      font-size: 11px;
+    }
+
+    .detail-item .value {
+      margin-top: 6px;
+      color: var(--text-primary);
+      font-size: 13px;
+      font-weight: 700;
+      overflow-wrap: anywhere;
+    }
+
+    .timeline {
+      display: grid;
+      gap: 0;
+    }
+
+    .timeline-item {
+      position: relative;
+      display: grid;
+      grid-template-columns: 16px 1fr;
+      gap: 10px;
+      min-height: 52px;
+    }
+
+    .timeline-item:not(:last-child)::before {
+      position: absolute;
+      top: 15px;
+      bottom: -5px;
+      left: 7px;
+      width: 1px;
+      content: "";
+      background: var(--border);
+    }
+
+    .timeline-dot {
+      position: relative;
+      z-index: 1;
+      width: 15px;
+      height: 15px;
+      margin-top: 1px;
+      border: 3px solid var(--primary-light);
+      border-radius: 50%;
+      background: var(--primary);
+    }
+
+    .timeline-item strong {
+      display: block;
+      color: var(--text-primary);
+      font-size: 12px;
+    }
+
+    .timeline-item p {
+      margin-top: 4px;
+      color: var(--text-secondary);
+      font-size: 11px;
+      line-height: 1.45;
+    }
+
+    .drawer-footer {
+      display: flex;
+      justify-content: flex-end;
+      gap: 8px;
+      padding-top: 20px;
+    }
+
+    .modal-overlay {
+      place-items: center;
+      padding: 20px;
+    }
+
+    .modal {
+      width: min(560px, 100%);
+      border-radius: var(--radius-xl);
+      padding: 22px;
+      background: var(--bg-surface);
+      box-shadow: var(--shadow-lg);
+      animation: scaleIn 160ms ease-out;
+    }
+
+    .modal-body {
+      padding: 20px 0 2px;
+      color: var(--text-primary);
+      line-height: 1.6;
+    }
+
+    .modal-body .check {
+      margin-top: 14px;
+    }
+
+    .modal-footer {
+      display: flex;
+      justify-content: flex-end;
+      gap: 8px;
+      padding-top: 20px;
+    }
+
+    .toast {
+      position: fixed;
+      z-index: 30;
+      right: 24px;
+      bottom: 24px;
+      max-width: min(420px, calc(100vw - 48px));
+      padding: 12px 15px;
+      border: 1px solid #C7F0D7;
+      border-radius: var(--radius-md);
+      color: var(--success-dark);
+      background: var(--success-light);
+      box-shadow: var(--shadow-md);
+      font-weight: 600;
+      animation: toastIn 180ms ease-out;
+    }
+
+    .simulation {
+      margin-top: 20px;
+      padding: 18px 20px 20px;
+      border: 1px solid var(--border);
+      border-radius: var(--radius-lg);
+      background: #FCFBFD;
+    }
+
+    .simulation-header {
+      display: flex;
+      align-items: flex-start;
+      justify-content: space-between;
+      gap: 12px;
+      margin-bottom: 14px;
+    }
+
+    .simulation-header h3 {
+      color: var(--text-strong);
+      font-size: 14px;
+    }
+
+    .simulation-header p {
+      margin-top: 4px;
+      color: var(--text-secondary);
+      font-size: 11px;
+    }
+
+    .simulation-grid {
+      display: grid;
+      grid-template-columns: repeat(5, minmax(0, 1fr));
+      gap: 12px;
+      align-items: end;
+    }
+
+    .simulation-result {
+      display: grid;
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+      gap: 10px;
+      margin-top: 16px;
+      padding-top: 15px;
+      border-top: 1px solid var(--border);
+    }
+
+    .result-item {
+      min-width: 0;
+    }
+
+    .result-item span {
+      display: block;
+      color: var(--text-secondary);
+      font-size: 11px;
+    }
+
+    .result-item strong {
+      display: block;
+      margin-top: 5px;
+      color: var(--text-strong);
+      font-size: 16px;
+      font-variant-numeric: tabular-nums;
+    }
+
+    .result-item strong.primary { color: var(--primary); }
+    .result-item strong.success { color: var(--success-dark); }
+
+    @keyframes slideIn {
+      from { opacity: 0; transform: translateX(24px); }
+      to { opacity: 1; transform: translateX(0); }
+    }
+
+    @keyframes scaleIn {
+      from { opacity: 0; transform: scale(0.98); }
+      to { opacity: 1; transform: scale(1); }
+    }
+
+    @keyframes toastIn {
+      from { opacity: 0; transform: translateY(8px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+
+    @media (max-width: 1100px) {
+      .overview-grid { grid-template-columns: 1fr; }
+      .run-card { grid-template-columns: 1fr 1fr; }
+      .run-percent { text-align: left; }
+      .form-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+      .simulation-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+    }
+
+    @media (max-width: 760px) {
+      .app-shell { padding: 20px 16px 40px; }
+      h1 { font-size: 21px; }
+      .tab-panel { padding: 16px; }
+      .tabs { gap: 20px; padding: 0 16px; overflow-x: auto; }
+      .stats-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+      .split-layout { grid-template-columns: 1fr; }
+      .policy-list { display: flex; gap: 6px; overflow-x: auto; padding: 8px; }
+      .policy-list-header { display: none; }
+      .policy-item { min-width: 170px; }
+      .filter-actions { width: 100%; margin-left: 0; }
+      .filter-actions .btn { flex: 1; }
+      .simulation-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+      .simulation-grid .btn { width: 100%; }
+      .simulation-result { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    }
+
+    @media (max-width: 520px) {
+      .page-extra,
+      .page-extra .btn { width: 100%; }
+      .page-extra .context-badge,
+      .page-extra .permission-badge { width: fit-content; }
+      .form-grid { grid-template-columns: 1fr; }
+      .form-grid .span-2 { grid-column: auto; }
+      .detail-grid { grid-template-columns: 1fr; }
+      .run-card { grid-template-columns: 1fr; }
+      .editor-heading,
+      .runs-header,
+      .simulation-header { flex-direction: column; }
+      .editor-heading-actions { justify-content: flex-start; }
+      .editor-footer { align-items: flex-start; flex-direction: column; }
+      .editor-footer-actions { width: 100%; }
+      .editor-footer-actions .btn { flex: 1; }
+      .table-footer { align-items: flex-start; flex-direction: column; }
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+      *, *::before, *::after {
+        scroll-behavior: auto !important;
+        animation-duration: 0.01ms !important;
+        transition-duration: 0.01ms !important;
+      }
+    }
+  </style>
+</head>
+<body>
+  <main class="app-shell">
+    <header class="page-shell">
+      <div>
+        <nav class="breadcrumb" aria-label="面包屑">
+          <span>设置</span>
+          <span class="active">加班管理</span>
+        </nav>
+        <div class="title-row">
+          <h1>加班管理</h1>
+          <span class="context-badge">AttendanceAgent · PC 管理端</span>
+        </div>
+        <p class="page-subtitle">配置适用方案、核对计算口径，并追踪已确认考勤的加班结果。</p>
+      </div>
+      <div class="page-extra">
+        <span class="context-badge">当前范围：全部可见数据</span>
+        <span class="permission-badge">overtimeView · overtimeConfig</span>
+        <button class="btn btn-primary" id="newVersionBtn" type="button"><span aria-hidden="true">＋</span> 发布新版本</button>
+      </div>
+    </header>
+
+    <section class="tabs-shell" aria-label="加班管理工作区">
+      <div class="tabs" role="tablist" aria-label="加班管理标签">
+        <button class="tab" id="tab-overview" role="tab" aria-selected="true" aria-controls="panel-overview" tabindex="0" type="button">概览与明细</button>
+        <button class="tab" id="tab-policies" role="tab" aria-selected="false" aria-controls="panel-policies" tabindex="-1" type="button">方案与适用范围</button>
+        <button class="tab" id="tab-runs" role="tab" aria-selected="false" aria-controls="panel-runs" tabindex="-1" type="button">计算批次</button>
+      </div>
+
+      <section class="tab-panel" id="panel-overview" role="tabpanel" aria-labelledby="tab-overview">
+        <div class="notice" id="completenessNotice">
+          <div class="notice-icon" aria-hidden="true">!</div>
+          <div>
+            <strong>数据完整性提示</strong>
+            本周有 12 名员工只覆盖 4 天或更少的已确认考勤。缺失日期目前标记为“未知”，不会自动按 0 小时参与年度上限判断。
+          </div>
+          <button class="btn btn-quiet" id="viewIncompleteBtn" type="button">查看 12 条</button>
+        </div>
+
+        <div class="filter-bar" aria-label="概览筛选">
+          <label class="field wide">
+            <span class="field-label">已确认日期</span>
+            <input class="control" id="dateRange" type="text" value="2026-09-01 至 2026-09-07" aria-label="已确认日期范围">
+          </label>
+          <label class="field">
+            <span class="field-label">国家 / 地区</span>
+            <select class="control" id="countryFilter" aria-label="国家或地区">
+              <option value="all">全部国家</option>
+              <option value="FR">法国 FR</option>
+              <option value="DE">德国 DE</option>
+              <option value="GB">英国 GB</option>
+              <option value="ES">西班牙 ES</option>
+              <option value="NL">荷兰 NL</option>
+            </select>
+          </label>
+          <label class="field">
+            <span class="field-label">仓库</span>
+            <select class="control" id="warehouseFilter" aria-label="仓库">
+              <option>全部仓库</option>
+              <option>LIL-01</option>
+              <option>BER-02</option>
+              <option>MCR-01</option>
+              <option>MAD-03</option>
+            </select>
+          </label>
+          <label class="field">
+            <span class="field-label">中介</span>
+            <select class="control" id="agencyFilter" aria-label="中介">
+              <option>全部中介</option>
+              <option>MANPOWER</option>
+              <option>RANDSTAD</option>
+              <option>ADECCO</option>
+            </select>
+          </label>
+          <label class="field">
+            <span class="field-label">结果状态</span>
+            <select class="control" id="resultFilter" aria-label="结果状态">
+              <option value="all">全部结果</option>
+              <option value="attention">需处理</option>
+              <option value="ready">可确认</option>
+              <option value="unknown">数据不完整</option>
+            </select>
+          </label>
+          <div class="filter-actions">
+            <button class="btn btn-primary" id="queryBtn" type="button"><span aria-hidden="true">⌕</span> 查询</button>
+            <button class="btn" id="exportBtn" type="button"><span aria-hidden="true">⇩</span> 导出</button>
+            <button class="btn" id="recalculateBtn" type="button"><span aria-hidden="true">↻</span> 重新计算</button>
+          </div>
+        </div>
+        <div class="filter-status" id="filterStatus" aria-live="polite">已加载 5 条示例记录 · 数据来源：已确认任务 / 记录校准</div>
+
+        <div class="stats-grid">
+          <div class="stat">
+            <div class="stat-label">已确认工时</div>
+            <div class="stat-value">1,482.5 h</div>
+            <div class="stat-meta"><span class="positive">↑ 4.8%</span><span>较上一周期</span></div>
+          </div>
+          <div class="stat">
+            <div class="stat-label">认定加班时长</div>
+            <div class="stat-value">126.0 h</div>
+            <div class="stat-meta"><span>按适用方案去重归属</span></div>
+          </div>
+          <div class="stat">
+            <div class="stat-label">有加班员工</div>
+            <div class="stat-value">89 人</div>
+            <div class="stat-meta"><span>占已确认员工 38.2%</span></div>
+          </div>
+          <div class="stat">
+            <div class="stat-label">需要处理</div>
+            <div class="stat-value">12 条</div>
+            <div class="stat-meta"><span class="attention">数据不完整 / 方案缺失</span></div>
+          </div>
+        </div>
+
+        <div class="overview-grid">
+          <section class="panel" aria-labelledby="trendTitle">
+            <div class="panel-header">
+              <div>
+                <h2 class="panel-title" id="trendTitle">国家加班时长</h2>
+                <p class="panel-subtitle">当前周期认定加班，未含尚未配置时薪的金额估算。</p>
+              </div>
+              <div class="chart-legend" aria-label="图例">
+                <span class="legend-item"><span class="legend-dot"></span>认定加班</span>
+                <span class="legend-item"><span class="legend-dot warning"></span>需处理</span>
+              </div>
+            </div>
+            <div class="chart-wrap">
+              <div class="chart" aria-label="法国 44 小时，德国 31 小时，英国 25 小时，西班牙 18 小时，荷兰 8 小时">
+                <div class="chart-axis" aria-hidden="true"><span>50h</span><span>37.5h</span><span>25h</span><span>12.5h</span><span>0h</span></div>
+                <div class="chart-area">
+                  <div class="bar-group"><div class="bar" style="height: 88%"></div><div class="bar warning" style="height: 16%"></div><span class="bar-label">FR</span></div>
+                  <div class="bar-group"><div class="bar" style="height: 62%"></div><div class="bar warning" style="height: 21%"></div><span class="bar-label">DE</span></div>
+                  <div class="bar-group"><div class="bar" style="height: 50%"></div><div class="bar warning" style="height: 12%"></div><span class="bar-label">GB</span></div>
+                  <div class="bar-group"><div class="bar" style="height: 36%"></div><div class="bar warning" style="height: 19%"></div><span class="bar-label">ES</span></div>
+                  <div class="bar-group"><div class="bar" style="height: 16%"></div><div class="bar warning" style="height: 30%"></div><span class="bar-label">NL</span></div>
+                </div>
+              </div>
+              <p class="chart-note">“需处理”表示数据完整性、适用范围或规则版本仍需人工确认，不代表已经违反当地法律。</p>
+            </div>
+          </section>
+
+          <section class="panel" aria-labelledby="runSummaryTitle">
+            <div class="run-summary">
+              <h2 class="panel-title" id="runSummaryTitle">计算状态</h2>
+              <p class="panel-subtitle">按任务确认与记录校准事件增量计算。</p>
+              <div class="run-status" id="runStatus">
+                <span class="status-dot" aria-hidden="true"></span>
+                <div>
+                  <strong>计算结果已更新</strong>
+                  <span>批次 OT-20260910-003 · 2026-09-10 10:24</span>
+                </div>
+              </div>
+              <div class="summary-list">
+                <div class="summary-row"><span>适用方案</span><strong>4 个已生效</strong></div>
+                <div class="summary-row"><span>待绑定方案</span><strong class="warning-text">1 个国家</strong></div>
+                <div class="summary-row"><span>规则快照</span><strong>已保存</strong></div>
+                <div class="summary-row"><span>金额估算</span><strong class="warning-text">缺少时薪</strong></div>
+                <div class="summary-row"><span>结果可追溯</span><strong class="success-text">是</strong></div>
+              </div>
+            </div>
+          </section>
+        </div>
+
+        <section class="panel table-section" aria-labelledby="detailTitle">
+          <div class="table-toolbar">
+            <div>
+              <h2 class="panel-title" id="detailTitle">员工加班明细</h2>
+              <p class="panel-subtitle">合同正常工时、认定加班与合规告警分列展示，避免重复归属。</p>
+            </div>
+            <div class="table-toolbar-actions">
+              <button class="btn btn-quiet" id="columnHintBtn" type="button">字段说明</button>
+              <button class="btn" id="batchActionBtn" type="button">批量处理</button>
+            </div>
+          </div>
+          <div class="table-scroll">
+            <table>
+              <thead>
+                <tr>
+                  <th>员工</th>
+                  <th>国家 / 仓库</th>
+                  <th>合同 / 方案</th>
+                  <th>已确认工时</th>
+                  <th>认定加班</th>
+                  <th>数据完整性</th>
+                  <th>计算状态</th>
+                  <th>操作</th>
+                </tr>
+              </thead>
+              <tbody id="employeeRows">
+                <tr data-country="FR" data-status="unknown">
+                  <td>
+                    <div class="employee-cell">
+                      <span class="avatar">JD</span>
+                      <div><div class="employee-name">Jean Dupont</div><div class="employee-id">EMP-FR-1042</div></div>
+                    </div>
+                  </td>
+                  <td><div class="region">FR · LIL-01</div><div class="muted">MANPOWER</div></td>
+                  <td><div class="policy-cell"><strong>35h / 周</strong><span>FR-CBA-v2</span></div></td>
+                  <td class="number"><strong>42.5 h</strong><div class="muted">5 天已确认</div></td>
+                  <td class="number highlight"><strong>7.5 h</strong><div class="muted">25% 档位</div></td>
+                  <td><span class="status-pill warning">缺 1 天</span></td>
+                  <td><span class="status-pill warning">需补充确认</span></td>
+                  <td><button class="link-btn detail-btn" type="button" data-employee="Jean Dupont">查看计算过程</button></td>
+                </tr>
+                <tr data-country="DE" data-status="unknown">
+                  <td>
+                    <div class="employee-cell">
+                      <span class="avatar">LS</span>
+                      <div><div class="employee-name">Lukas Schmidt</div><div class="employee-id">EMP-DE-2088</div></div>
+                    </div>
+                  </td>
+                  <td><div class="region">DE · BER-02</div><div class="muted">RANDSTAD</div></td>
+                  <td><div class="policy-cell"><strong>40h / 周</strong><span>DE-CBA-v1</span></div></td>
+                  <td class="number"><strong>46.0 h</strong><div class="muted">5 天已确认</div></td>
+                  <td class="number highlight"><strong>6.0 h</strong><div class="muted">按企业协议</div></td>
+                  <td><span class="status-pill warning">窗口待补齐</span></td>
+                  <td><span class="status-pill warning">待复核</span></td>
+                  <td><button class="link-btn detail-btn" type="button" data-employee="Lukas Schmidt">查看计算过程</button></td>
+                </tr>
+                <tr data-country="GB" data-status="ready">
+                  <td>
+                    <div class="employee-cell">
+                      <span class="avatar">ES</span>
+                      <div><div class="employee-name">Emily Smith</div><div class="employee-id">EMP-GB-1184</div></div>
+                    </div>
+                  </td>
+                  <td><div class="region">GB · MCR-01</div><div class="muted">ADECCO</div></td>
+                  <td><div class="policy-cell"><strong>40h / 周</strong><span>GB-Contract-v4</span></div></td>
+                  <td class="number"><strong>50.0 h</strong><div class="muted">5 天已确认</div></td>
+                  <td class="number highlight"><strong>10.0 h</strong><div class="muted">合同口径</div></td>
+                  <td><span class="status-pill success">完整</span></td>
+                  <td><span class="status-pill success">可确认</span></td>
+                  <td><button class="link-btn detail-btn" type="button" data-employee="Emily Smith">查看计算过程</button></td>
+                </tr>
+                <tr data-country="ES" data-status="ready">
+                  <td>
+                    <div class="employee-cell">
+                      <span class="avatar">MG</span>
+                      <div><div class="employee-name">Maria Garcia</div><div class="employee-id">EMP-ES-3016</div></div>
+                    </div>
+                  </td>
+                  <td><div class="region">ES · MAD-03</div><div class="muted">MANPOWER</div></td>
+                  <td><div class="policy-cell"><strong>40h / 周</strong><span>ES-Base-v1</span></div></td>
+                  <td class="number"><strong>44.0 h</strong><div class="muted">5 天已确认</div></td>
+                  <td class="number highlight"><strong>4.0 h</strong><div class="muted">正常薪资基准</div></td>
+                  <td><span class="status-pill success">完整</span></td>
+                  <td><span class="status-pill success">可确认</span></td>
+                  <td><button class="link-btn detail-btn" type="button" data-employee="Maria Garcia">查看计算过程</button></td>
+                </tr>
+                <tr data-country="NL" data-status="attention">
+                  <td>
+                    <div class="employee-cell">
+                      <span class="avatar">PD</span>
+                      <div><div class="employee-name">Pieter de Vries</div><div class="employee-id">EMP-NL-4152</div></div>
+                    </div>
+                  </td>
+                  <td><div class="region">NL · AMS-01</div><div class="muted">RANDSTAD</div></td>
+                  <td><div class="policy-cell"><strong>40h / 周</strong><span>待绑定 CBA</span></div></td>
+                  <td class="number"><strong>43.0 h</strong><div class="muted">5 天已确认</div></td>
+                  <td class="number highlight"><strong>3.0 h</strong><div class="muted">暂按合同</div></td>
+                  <td><span class="status-pill success">完整</span></td>
+                  <td><span class="status-pill danger">方案缺失</span></td>
+                  <td><button class="link-btn detail-btn" type="button" data-employee="Pieter de Vries">查看计算过程</button></td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+          <div class="table-footer">
+            <span>显示 1-5 条，共 89 名员工</span>
+            <div class="pager" aria-label="分页">
+              <button type="button" aria-label="上一页">‹</button>
+              <button class="current" type="button" aria-current="page">1</button>
+              <button type="button">2</button>
+              <button type="button">3</button>
+              <button type="button" aria-label="下一页">›</button>
+            </div>
+          </div>
+        </section>
+      </section>
+
+      <section class="tab-panel" id="panel-policies" role="tabpanel" aria-labelledby="tab-policies" hidden>
+        <div class="version-callout">
+          <span aria-hidden="true">i</span>
+          <div><b>版本化规则：</b>发布新版本后，仅影响生效日之后的新计算。历史结果保留规则快照、数据来源和计算批次，可回溯但不被静默改写。</div>
+        </div>
+
+        <div class="split-layout">
+          <aside class="surface policy-list" aria-label="方案列表">
+            <div class="policy-list-header">
+              <strong>适用方案</strong>
+              <button class="btn btn-icon" id="addPolicyBtn" type="button" aria-label="新增方案" title="新增方案">＋</button>
+            </div>
+            <button class="policy-item active" type="button" data-policy="FR-CBA-v2">
+              <span class="policy-item-main"><span>法国 · CBA</span><span class="status-pill success">生效中</span></span>
+              <small>FR-CBA-v2 · 2026-01-01</small>
+            </button>
+            <button class="policy-item" type="button" data-policy="DE-CBA-v1">
+              <span class="policy-item-main"><span>德国 · CBA</span><span class="status-pill success">生效中</span></span>
+              <small>DE-CBA-v1 · 2026-01-01</small>
+            </button>
+            <button class="policy-item" type="button" data-policy="GB-Contract-v4">
+              <span class="policy-item-main"><span>英国 · 合同</span><span class="status-pill success">生效中</span></span>
+              <small>GB-Contract-v4 · 2026-04-01</small>
+            </button>
+            <button class="policy-item" type="button" data-policy="ES-Base-v1">
+              <span class="policy-item-main"><span>西班牙 · 基础方案</span><span class="status-pill success">生效中</span></span>
+              <small>ES-Base-v1 · 2026-01-01</small>
+            </button>
+            <button class="policy-item" type="button" data-policy="NL-Needs-Setup">
+              <span class="policy-item-main"><span>荷兰 · 待配置</span><span class="status-pill warning">需配置</span></span>
+              <small>尚未绑定集体协议 / 适用范围</small>
+            </button>
+          </aside>
+
+          <section class="surface policy-editor" aria-labelledby="editorTitle">
+            <div class="editor-heading">
+              <div>
+                <h2 id="editorTitle">法国 · CBA 加班方案</h2>
+                <p>FR-CBA-v2 · 当前编辑为草稿 · 上次发布 2026-01-01</p>
+              </div>
+              <div class="editor-heading-actions">
+                <span class="status-pill success">生效中</span>
+                <button class="btn" id="historyBtn" type="button">版本历史</button>
+              </div>
+            </div>
+
+            <div class="editor-section">
+              <div class="editor-section-heading">
+                <h3>适用范围与版本</h3>
+                <span>先定“谁适用”，再定“怎么算”</span>
+              </div>
+              <div class="form-grid">
+                <label class="field">
+                  <span class="field-label">方案编码</span>
+                  <input class="control" type="text" value="FR-CBA-v2">
+                </label>
+                <label class="field span-2">
+                  <span class="field-label">方案名称</span>
+                  <input class="control" type="text" value="法国仓库集体协议加班方案">
+                </label>
+                <label class="field">
+                  <span class="field-label">国家 / 地区</span>
+                  <select class="control"><option>法国 FR</option><option>德国 DE</option><option>英国 GB</option></select>
+                </label>
+                <label class="field">
+                  <span class="field-label">生效日期</span>
+                  <input class="control" type="text" value="2026-01-01">
+                </label>
+                <label class="field">
+                  <span class="field-label">失效日期</span>
+                  <input class="control" type="text" placeholder="留空表示当前版本">
+                </label>
+                <label class="field">
+                  <span class="field-label">数据时区</span>
+                  <select class="control"><option>Europe/Paris</option><option>Europe/Berlin</option><option>Europe/London</option></select>
+                </label>
+                <div class="field span-2">
+                  <span class="field-label">适用范围</span>
+                  <div class="scope-row">
+                    <span class="scope-chip">国家 FR</span>
+                    <span class="scope-chip">仓库 LIL-01</span>
+                    <span class="scope-chip">仓库 LIL-02</span>
+                    <span class="scope-chip">中介 MANPOWER</span>
+                  </div>
+                  <p class="helper">同一员工在不同合同、仓库或中介下可有不同适用方案，历史日期按当时版本解析。</p>
+                </div>
+              </div>
+            </div>
+
+            <div class="editor-section">
+              <div class="editor-section-heading">
+                <h3>正常工时与加班认定</h3>
+                <span>事实时长只记录，不截断</span>
+              </div>
+              <div class="form-grid">
+                <label class="field">
+                  <span class="field-label">合同正常工时 / 周</span>
+                  <input class="control" type="number" value="35" min="0" step="0.5">
+                </label>
+                <label class="field">
+                  <span class="field-label">班次参考时长 / 日</span>
+                  <input class="control" type="number" value="7" min="0" step="0.5">
+                </label>
+                <label class="field">
+                  <span class="field-label">加班主口径</span>
+                  <select class="control"><option>按周累计，日级归属</option><option>按日累计</option><option>按日 + 周补充</option></select>
+                </label>
+                <label class="field">
+                  <span class="field-label">未支付休息是否扣除</span>
+                  <select class="control"><option>是，扣除 pause_minutes</option><option>否</option></select>
+                </label>
+              </div>
+              <div class="rule-note">本方案按“每周正常工时”认定加班；每日结果只作为归属和审计明细。日/周重叠分钟采用唯一归属，不使用两者取最大值后再重复累加。</div>
+            </div>
+
+            <div class="editor-section">
+              <div class="editor-section-heading">
+                <h3>合规限制与告警</h3>
+                <span>阈值用于提醒，不改变已确认事实</span>
+              </div>
+              <div class="form-grid">
+                <label class="field">
+                  <span class="field-label">单日最长工作时长</span>
+                  <input class="control" type="text" value="10 h">
+                  <p class="helper">超出后生成告警，原始工时仍保留。</p>
+                </label>
+                <label class="field">
+                  <span class="field-label">年度加班 contingent</span>
+                  <input class="control" type="text" value="220 h">
+                  <p class="helper">不是普遍适用的绝对硬上限，需结合协议。</p>
+                </label>
+                <label class="field">
+                  <span class="field-label">连续休息最小值</span>
+                  <input class="control" type="text" value="11 h">
+                  <p class="helper">用于相邻班次间隔告警。</p>
+                </label>
+                <label class="field">
+                  <span class="field-label">缺失日期处理</span>
+                  <select class="control"><option>标记未知，不按 0h 计算</option><option>按 0h 计算</option></select>
+                </label>
+              </div>
+            </div>
+
+            <div class="editor-section">
+              <div class="editor-section-heading">
+                <h3>支付 / 补休口径</h3>
+                <span>与工资基础、币种独立配置</span>
+              </div>
+              <div class="form-grid">
+                <label class="field">
+                  <span class="field-label">补偿方式</span>
+                  <select class="control"><option>优先支付，可按协议转补休</option><option>等量补休</option><option>仅支付</option></select>
+                </label>
+                <label class="field">
+                  <span class="field-label">工资基准</span>
+                  <select class="control"><option>未配置，暂不计算金额</option><option>基础时薪</option><option>含固定津贴时薪</option></select>
+                </label>
+                <label class="field">
+                  <span class="field-label">币种</span>
+                  <select class="control"><option>EUR</option><option>GBP</option><option>USD</option></select>
+                </label>
+                <label class="field">
+                  <span class="field-label">授权 / 审批</span>
+                  <select class="control"><option>需要雇主授权记录</option><option>无需额外授权</option></select>
+                </label>
+              </div>
+              <table class="tier-table">
+                <thead><tr><th>加班区间</th><th>支付倍率</th><th>来源</th><th>备注</th></tr></thead>
+                <tbody>
+                  <tr><td>第 36-43 小时</td><td><strong>+25%</strong></td><td><span class="tag">FR-CBA-v2</span></td><td class="muted">当前示例档位</td></tr>
+                  <tr><td>第 44 小时起</td><td><strong>+50%</strong></td><td><span class="tag">FR-CBA-v2</span></td><td class="muted">当前示例档位</td></tr>
+                </tbody>
+              </table>
+              <p class="helper">未配置员工时薪或工资基础时，只输出加班时长与倍率，不展示金额，避免把 agency billing 与 payroll 金额混用。</p>
+            </div>
+
+            <div class="editor-section">
+              <div class="editor-section-heading">
+                <h3>节假日与夜间重叠</h3>
+                <span>与既有夜班标记能力衔接</span>
+              </div>
+              <div class="form-grid">
+                <label class="field span-2">
+                  <span class="field-label">节假日历</span>
+                  <select class="control"><option>FR-2026 · 官方日历快照</option><option>未配置</option></select>
+                  <p class="helper">节假日按国家、地区 / 站点和日历版本解析。</p>
+                </label>
+                <label class="field">
+                  <span class="field-label">夜间窗口</span>
+                  <input class="control" type="text" value="20:00 - 06:00">
+                </label>
+                <label class="field">
+                  <span class="field-label">夜间附加倍率</span>
+                  <select class="control"><option>仅标记，待协议确认</option><option>+25%</option><option>+50%</option></select>
+                </label>
+              </div>
+            </div>
+
+            <div class="simulation">
+              <div class="simulation-header">
+                <div><h3>单日计算模拟</h3><p>复用现有到离岗与 pause_minutes 事实，观察规则解释和告警输出。</p></div>
+                <span class="status-pill neutral">仅模拟，不写入结果</span>
+              </div>
+              <div class="simulation-grid">
+                <label class="field"><span class="field-label">到岗</span><input class="control sim-input" id="simArrival" type="time" value="08:00"></label>
+                <label class="field"><span class="field-label">离岗</span><input class="control sim-input" id="simDeparture" type="time" value="17:30"></label>
+                <label class="field"><span class="field-label">休息分钟</span><input class="control sim-input" id="simPause" type="number" value="60" min="0"></label>
+                <label class="field"><span class="field-label">工作日期</span><input class="control" id="simDate" type="date" value="2026-09-04"></label>
+                <button class="btn btn-primary" id="simulateBtn" type="button"><span aria-hidden="true">⌁</span> 计算</button>
+              </div>
+              <div class="simulation-result" aria-live="polite">
+                <div class="result-item"><span>事实总工时</span><strong id="simTotal">8.5 h</strong></div>
+                <div class="result-item"><span>认定加班</span><strong class="primary" id="simOvertime">1.5 h</strong></div>
+                <div class="result-item"><span>夜间重叠</span><strong id="simNight">0 h</strong></div>
+                <div class="result-item"><span>规则状态</span><strong class="success" id="simState">正常</strong></div>
+              </div>
+            </div>
+
+            <div class="editor-footer">
+              <span class="editor-footer-note" id="draftStatus">草稿未发布 · 修改只影响下一次计算</span>
+              <div class="editor-footer-actions">
+                <button class="btn" id="restoreBtn" type="button">恢复上一版本</button>
+                <button class="btn btn-primary" id="saveDraftBtn" type="button">保存草稿</button>
+              </div>
+            </div>
+          </section>
+        </div>
+      </section>
+
+      <section class="tab-panel" id="panel-runs" role="tabpanel" aria-labelledby="tab-runs" hidden>
+        <div class="runs-header">
+          <div>
+            <h2>计算批次</h2>
+            <p>每次计算保留输入事实、适用规则快照和处理结果，支持幂等重算与失败重试。</p>
+          </div>
+          <button class="btn btn-primary" id="runNowBtn" type="button"><span aria-hidden="true">↻</span> 发起重算</button>
+        </div>
+
+        <section class="run-card" aria-label="当前计算批次">
+          <div>
+            <div class="run-id">OT-20260910-004</div>
+            <div class="run-meta">手动重算 · 2026-09-01 至 2026-09-07<br>创建人：管理员 · 规则快照已锁定</div>
+          </div>
+          <div>
+            <div class="run-meta">事件来源：任务确认 42 · 记录校准 7 · 手动重算 1</div>
+            <div class="run-progress" aria-label="计算进度 64%"><span></span></div>
+          </div>
+          <div>
+            <div class="run-meta">处理范围</div>
+            <strong>5 个国家 · 233 人</strong>
+          </div>
+          <div class="run-percent">64%</div>
+        </section>
+
+        <section class="panel run-history" aria-labelledby="runHistoryTitle">
+          <div class="table-toolbar">
+            <div>
+              <h2 class="panel-title" id="runHistoryTitle">历史批次</h2>
+              <p class="panel-subtitle">失败记录不会覆盖上一次成功结果。</p>
+            </div>
+            <button class="btn btn-quiet" id="runFieldHintBtn" type="button">批次字段说明</button>
+          </div>
+          <div class="table-scroll">
+            <table>
+              <thead><tr><th>批次编号</th><th>触发方式</th><th>处理范围</th><th>成功 / 失败</th><th>规则版本</th><th>完成时间</th><th>操作</th></tr></thead>
+              <tbody>
+                <tr><td><span class="run-id">OT-20260910-003</span></td><td>任务确认 / 增量</td><td>FR, DE · 49 人</td><td><span class="status-pill success">49 / 0</span></td><td>4 个方案快照</td><td>2026-09-10 10:24</td><td><button class="link-btn" type="button" data-run-detail="OT-20260910-003">查看结果</button></td></tr>
+                <tr><td><span class="run-id">OT-20260909-002</span></td><td>记录校准 / 增量</td><td>GB · 12 人</td><td><span class="status-pill success">11 / 1</span></td><td>GB-Contract-v4</td><td>2026-09-09 18:42</td><td><button class="link-btn" type="button" data-run-detail="OT-20260909-002">查看失败项</button></td></tr>
+                <tr><td><span class="run-id">OT-20260908-001</span></td><td>方案发布 / 全量</td><td>5 个国家 · 233 人</td><td><span class="status-pill success">228 / 5</span></td><td>5 个方案快照</td><td>2026-09-08 09:18</td><td><button class="link-btn" type="button" data-run-detail="OT-20260908-001">查看结果</button></td></tr>
+              </tbody>
+            </table>
+          </div>
+        </section>
+      </section>
+    </section>
+  </main>
+
+  <div class="drawer-overlay" id="drawerOverlay" hidden>
+    <aside class="drawer" role="dialog" aria-modal="true" aria-labelledby="drawerTitle">
+      <div class="drawer-header">
+        <div><h2 id="drawerTitle">Jean Dupont · 计算过程</h2><p id="drawerSubtitle">EMP-FR-1042 · FR · LIL-01 · 2026-09-01 至 2026-09-07</p></div>
+        <button class="btn btn-icon" id="closeDrawerBtn" type="button" aria-label="关闭计算过程" title="关闭">×</button>
+      </div>
+      <div class="drawer-section">
+        <h3>输入事实</h3>
+        <div class="detail-grid">
+          <div class="detail-item"><div class="label">来源任务</div><div class="value" id="drawerSource">TASK-7842, TASK-7843, TASK-7848</div></div>
+          <div class="detail-item"><div class="label">已确认日期</div><div class="value" id="drawerPeriod">5 天 · 42.5 h</div></div>
+          <div class="detail-item"><div class="label">典型班次</div><div class="value" id="drawerShift">08:00 - 17:30</div></div>
+          <div class="detail-item"><div class="label">休息扣除</div><div class="value" id="drawerBreak">60 分钟 / 日</div></div>
+        </div>
+      </div>
+      <div class="drawer-section">
+        <h3>唯一归属结果</h3>
+        <div class="detail-grid">
+          <div class="detail-item"><div class="label">合同正常工时</div><div class="value" id="drawerNormal">35.0 h / 周</div></div>
+          <div class="detail-item"><div class="label">认定加班</div><div class="value" id="drawerOvertime" style="color: var(--primary)">7.5 h</div></div>
+          <div class="detail-item"><div class="label">支付 / 补休口径</div><div class="value" id="drawerTier">25% · 7.5 h</div></div>
+          <div class="detail-item"><div class="label">工资金额</div><div class="value" id="drawerWage">未计算 · 未配置时薪</div></div>
+        </div>
+        <div class="rule-note" id="drawerRule">每日记录用于解释和分摊，周累计用于认定。已认定的 7.5 小时不会再次作为“日加班”叠加。</div>
+      </div>
+      <div class="drawer-section">
+        <h3>规则与审计链</h3>
+        <div class="timeline">
+          <div class="timeline-item"><span class="timeline-dot"></span><div><strong>采用规则快照 FR-CBA-v2</strong><p>生效日 2026-01-01 · 法国 · 35h / 周 · 25% / 50% 档位。</p></div></div>
+          <div class="timeline-item"><span class="timeline-dot"></span><div><strong>读取已确认任务记录</strong><p>来自 TaskService.confirmTask 同步的 task_records，不含草稿和未确认记录。</p></div></div>
+          <div class="timeline-item"><span class="timeline-dot"></span><div><strong>发现数据完整性告警</strong><p>当前周期缺 1 天，年度累计和合规结论暂标记为未知。</p></div></div>
+        </div>
+      </div>
+      <div class="drawer-footer">
+        <button class="btn" id="drawerCalibrateBtn" type="button">去记录校准</button>
+        <button class="btn btn-primary" id="drawerCloseActionBtn" type="button">完成查看</button>
+      </div>
+    </aside>
+  </div>
+
+  <div class="modal-overlay" id="modalOverlay" hidden>
+    <section class="modal" role="dialog" aria-modal="true" aria-labelledby="modalTitle">
+      <div class="modal-header">
+        <div><h2 id="modalTitle">发布新版本</h2><p>将当前草稿发布为新的可追溯规则版本。</p></div>
+        <button class="btn btn-icon" id="closeModalBtn" type="button" aria-label="关闭发布窗口" title="关闭">×</button>
+      </div>
+      <div class="modal-body">
+        <p>发布后，旧版本继续用于历史结果，新版本只对生效日期之后的计算生效。尚未配置的工资基准不会被自动推断。</p>
+        <label class="check"><input id="publishConfirm" type="checkbox"> <span>我确认已核对适用范围、合同工时、支付 / 补休口径和节假日日历版本。</span></label>
+      </div>
+      <div class="modal-footer">
+        <button class="btn" id="cancelModalBtn" type="button">取消</button>
+        <button class="btn btn-primary" id="confirmPublishBtn" type="button" disabled>确认发布</button>
+      </div>
+    </section>
+  </div>
+
+  <div class="toast" id="toast" hidden role="status" aria-live="polite"></div>
+
+  <script>
+    (() => {
+      const tabs = [...document.querySelectorAll('[role="tab"]')];
+      const panels = [...document.querySelectorAll('[role="tabpanel"]')];
+      const toast = document.getElementById('toast');
+      let toastTimer;
+
+      function showToast(message) {
+        toast.textContent = message;
+        toast.hidden = false;
+        clearTimeout(toastTimer);
+        toastTimer = setTimeout(() => { toast.hidden = true; }, 3200);
+      }
+
+      function activateTab(tab) {
+        tabs.forEach((item) => {
+          const selected = item === tab;
+          item.setAttribute('aria-selected', String(selected));
+          item.tabIndex = selected ? 0 : -1;
+        });
+        panels.forEach((panel) => {
+          panel.hidden = panel.id !== tab.getAttribute('aria-controls');
+        });
+      }
+
+      tabs.forEach((tab, index) => {
+        tab.addEventListener('click', () => activateTab(tab));
+        tab.addEventListener('keydown', (event) => {
+          if (!['ArrowLeft', 'ArrowRight', 'Home', 'End'].includes(event.key)) return;
+          event.preventDefault();
+          const nextIndex = event.key === 'ArrowLeft'
+            ? (index - 1 + tabs.length) % tabs.length
+            : event.key === 'ArrowRight'
+              ? (index + 1) % tabs.length
+              : event.key === 'Home' ? 0 : tabs.length - 1;
+          tabs[nextIndex].focus();
+          activateTab(tabs[nextIndex]);
+        });
+      });
+
+      document.getElementById('queryBtn').addEventListener('click', () => {
+        const country = document.getElementById('countryFilter').selectedOptions[0].textContent;
+        const status = document.getElementById('resultFilter').selectedOptions[0].textContent;
+        document.getElementById('filterStatus').textContent = `已按 ${country} · ${status} 刷新示例结果 · 实际数据将由后端查询接口返回`;
+        showToast('筛选条件已应用');
+      });
+
+      document.getElementById('exportBtn').addEventListener('click', () => {
+        showToast('导出任务已创建：完成后可在“计算批次”查看文件');
+      });
+
+      function startRecalculate() {
+        const runStatus = document.getElementById('runStatus');
+        runStatus.innerHTML = '<span class="status-dot running" aria-hidden="true"></span><div><strong>正在加入计算队列</strong><span>批次 OT-20260910-004 · 保留上一成功结果</span></div>';
+        document.getElementById('recalculateBtn').disabled = true;
+        showToast('重算批次已创建，正在处理已确认任务和校准记录');
+        setTimeout(() => {
+          runStatus.innerHTML = '<span class="status-dot" aria-hidden="true"></span><div><strong>计算结果已更新</strong><span>批次 OT-20260910-004 · 2026-09-10 10:31</span></div>';
+          document.getElementById('recalculateBtn').disabled = false;
+        }, 1800);
+      }
+
+      document.getElementById('recalculateBtn').addEventListener('click', startRecalculate);
+      document.getElementById('runNowBtn').addEventListener('click', startRecalculate);
+      document.getElementById('viewIncompleteBtn').addEventListener('click', () => {
+        document.getElementById('resultFilter').value = 'unknown';
+        document.getElementById('queryBtn').click();
+        document.getElementById('detailTitle').scrollIntoView({ behavior: 'smooth', block: 'start' });
+      });
+      document.getElementById('columnHintBtn').addEventListener('click', () => {
+        showToast('已确认工时是事实输入；认定加班是去重后的结果；数据完整性决定是否可以形成合规结论');
+      });
+      document.getElementById('batchActionBtn').addEventListener('click', () => {
+        showToast('批量处理需要 overtimeApprove 权限，当前原型仅展示入口');
+      });
+      document.getElementById('runFieldHintBtn').addEventListener('click', () => {
+        showToast('批次记录来源事件、规则快照、成功失败数和幂等状态');
+      });
+
+      const drawer = document.getElementById('drawerOverlay');
+      const employeeDetails = {
+        'Jean Dupont': {
+          id: 'EMP-FR-1042', scope: 'FR · LIL-01', source: 'TASK-7842, TASK-7843, TASK-7848',
+          period: '5 天 · 42.5 h', shift: '08:00 - 17:30', pause: '60 分钟 / 日',
+          normal: '35.0 h / 周', overtime: '7.5 h', tier: '25% · 7.5 h',
+          wage: '未计算 · 未配置时薪', rule: '每日记录用于解释和分摊，周累计用于认定。已认定的 7.5 小时不会再次作为“日加班”叠加。'
+        },
+        'Lukas Schmidt': {
+          id: 'EMP-DE-2088', scope: 'DE · BER-02', source: 'TASK-7921, TASK-7924, TASK-7930',
+          period: '5 天 · 46.0 h', shift: '07:30 - 17:00', pause: '60 分钟 / 日',
+          normal: '40.0 h / 周', overtime: '6.0 h', tier: '按企业协议',
+          wage: '未计算 · 未配置时薪', rule: '德国法定时长限制作为合规告警；本条加班按已绑定的企业协议认定，滚动窗口仍需补齐数据。'
+        },
+        'Emily Smith': {
+          id: 'EMP-GB-1184', scope: 'GB · MCR-01', source: 'TASK-8010, TASK-8014, TASK-8018',
+          period: '5 天 · 50.0 h', shift: '08:00 - 18:00', pause: '60 分钟 / 日',
+          normal: '40.0 h / 周', overtime: '10.0 h', tier: '合同口径',
+          wage: '未计算 · 未配置时薪', rule: '合同正常工时与 17 周平均工作时长上限分开判断；本周期数据完整，当前结果可确认。'
+        },
+        'Maria Garcia': {
+          id: 'EMP-ES-3016', scope: 'ES · MAD-03', source: 'TASK-8112, TASK-8117, TASK-8121',
+          period: '5 天 · 44.0 h', shift: '08:00 - 17:30', pause: '60 分钟 / 日',
+          normal: '40.0 h / 周', overtime: '4.0 h', tier: '正常薪资基准',
+          wage: '未计算 · 未配置时薪', rule: '本周期认定 4 小时加班。年度累计、补休与自愿加班约定仍按员工合同和协议继续校验。'
+        },
+        'Pieter de Vries': {
+          id: 'EMP-NL-4152', scope: 'NL · AMS-01', source: 'TASK-8241, TASK-8247, TASK-8250',
+          period: '5 天 · 43.0 h', shift: '08:00 - 17:00', pause: '60 分钟 / 日',
+          normal: '40.0 h / 周', overtime: '3.0 h', tier: '暂按合同',
+          wage: '未计算 · 待绑定 CBA', rule: '荷兰当前未绑定集体协议或完整适用范围，暂不将通用示例口径当作正式合规结论。'
+        }
+      };
+      function openDrawer(employee) {
+        const detail = employeeDetails[employee] || employeeDetails['Jean Dupont'];
+        document.getElementById('drawerTitle').textContent = `${employee} · 计算过程`;
+        document.getElementById('drawerSubtitle').textContent = `${detail.id} · ${detail.scope} · 2026-09-01 至 2026-09-07`;
+        document.getElementById('drawerSource').textContent = detail.source;
+        document.getElementById('drawerPeriod').textContent = detail.period;
+        document.getElementById('drawerShift').textContent = detail.shift;
+        document.getElementById('drawerBreak').textContent = detail.pause;
+        document.getElementById('drawerNormal').textContent = detail.normal;
+        document.getElementById('drawerOvertime').textContent = detail.overtime;
+        document.getElementById('drawerTier').textContent = detail.tier;
+        document.getElementById('drawerWage').textContent = detail.wage;
+        document.getElementById('drawerRule').textContent = detail.rule;
+        drawer.hidden = false;
+        document.body.style.overflow = 'hidden';
+        document.getElementById('closeDrawerBtn').focus();
+      }
+      function closeDrawer() {
+        drawer.hidden = true;
+        document.body.style.overflow = '';
+      }
+      document.querySelectorAll('.detail-btn').forEach((button) => {
+        button.addEventListener('click', () => openDrawer(button.dataset.employee));
+      });
+      document.getElementById('closeDrawerBtn').addEventListener('click', closeDrawer);
+      document.getElementById('drawerCloseActionBtn').addEventListener('click', closeDrawer);
+      document.getElementById('drawerCalibrateBtn').addEventListener('click', () => {
+        closeDrawer();
+        showToast('已定位到记录校准入口（原型示意）');
+      });
+      drawer.addEventListener('click', (event) => {
+        if (event.target === drawer) closeDrawer();
+      });
+
+      const modal = document.getElementById('modalOverlay');
+      const publishConfirm = document.getElementById('publishConfirm');
+      function closeModal() {
+        modal.hidden = true;
+        publishConfirm.checked = false;
+        document.getElementById('confirmPublishBtn').disabled = true;
+        document.body.style.overflow = '';
+      }
+      document.getElementById('newVersionBtn').addEventListener('click', () => {
+        modal.hidden = false;
+        document.body.style.overflow = 'hidden';
+        document.getElementById('closeModalBtn').focus();
+      });
+      document.getElementById('closeModalBtn').addEventListener('click', closeModal);
+      document.getElementById('cancelModalBtn').addEventListener('click', closeModal);
+      publishConfirm.addEventListener('change', () => {
+        document.getElementById('confirmPublishBtn').disabled = !publishConfirm.checked;
+      });
+      document.getElementById('confirmPublishBtn').addEventListener('click', () => {
+        closeModal();
+        document.getElementById('draftStatus').textContent = '已发布 FR-CBA-v3 · 生效日 2026-09-11 · 历史结果保持不变';
+        showToast('新版本已发布，历史结果已保留规则快照');
+      });
+      modal.addEventListener('click', (event) => {
+        if (event.target === modal) closeModal();
+      });
+
+      document.querySelectorAll('.policy-item').forEach((item) => {
+        item.addEventListener('click', () => {
+          document.querySelectorAll('.policy-item').forEach((policy) => policy.classList.remove('active'));
+          item.classList.add('active');
+          const policy = item.dataset.policy;
+          if (policy === 'NL-Needs-Setup') {
+            document.getElementById('editorTitle').textContent = '荷兰 · 待配置方案';
+            document.getElementById('draftStatus').textContent = '需补齐集体协议 / 适用范围后才能发布';
+            showToast('荷兰当前只展示待配置状态，不自动套用其他国家口径');
+            return;
+          }
+          document.getElementById('editorTitle').textContent = item.querySelector('.policy-item-main span').textContent + ' 加班方案';
+          document.getElementById('draftStatus').textContent = `${policy} · 草稿未发布 · 修改只影响下一次计算`;
+        });
+      });
+
+      document.getElementById('addPolicyBtn').addEventListener('click', () => {
+        showToast('新增方案需要配置国家、合同工时、适用范围和生效日期');
+      });
+      document.getElementById('historyBtn').addEventListener('click', () => {
+        showToast('版本历史包含生效区间、发布人和规则快照');
+      });
+      document.getElementById('restoreBtn').addEventListener('click', () => {
+        showToast('已恢复到上一发布版本，当前草稿修改未发布');
+      });
+      document.getElementById('saveDraftBtn').addEventListener('click', () => {
+        document.getElementById('draftStatus').textContent = '草稿已保存 · 修改只影响下一次计算';
+        showToast('方案草稿已保存');
+      });
+
+      document.getElementById('simulateBtn').addEventListener('click', () => {
+        const arrival = document.getElementById('simArrival').value;
+        const departure = document.getElementById('simDeparture').value;
+        const pause = Number(document.getElementById('simPause').value) || 0;
+        if (!arrival || !departure) {
+          showToast('请先填写到岗和离岗时间');
+          return;
+        }
+        let startMinutes = Number(arrival.split(':')[0]) * 60 + Number(arrival.split(':')[1]);
+        let endMinutes = Number(departure.split(':')[0]) * 60 + Number(departure.split(':')[1]);
+        if (endMinutes < startMinutes) endMinutes += 24 * 60;
+        const total = Math.max(0, endMinutes - startMinutes - pause);
+        const overtime = Math.max(0, total - 7 * 60) / 60;
+        document.getElementById('simTotal').textContent = `${(total / 60).toFixed(1)} h`;
+        document.getElementById('simOvertime').textContent = `${overtime.toFixed(1)} h`;
+        document.getElementById('simNight').textContent = '0 h';
+        document.getElementById('simState').textContent = total > 10 * 60 ? '需告警' : '正常';
+        document.getElementById('simState').className = total > 10 * 60 ? '' : 'success';
+        showToast('单日模拟结果已更新');
+      });
+
+      document.querySelectorAll('[data-run-detail]').forEach((button) => {
+        button.addEventListener('click', () => {
+          showToast(`${button.dataset.runDetail}：结果明细与失败项将在批次详情中展开`);
+        });
+      });
+
+      document.addEventListener('keydown', (event) => {
+        if (event.key === 'Escape') {
+          if (!drawer.hidden) closeDrawer();
+          if (!modal.hidden) closeModal();
+        }
+      });
+    })();
+  </script>
+</body>
+</html>

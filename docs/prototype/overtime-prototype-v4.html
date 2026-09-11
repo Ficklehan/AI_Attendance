@@ -1,0 +1,2208 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>工时结算 · AttendanceAgent 原型 v4</title>
+  <style>
+    :root {
+      --primary: #5B6CF7;
+      --primary-hover: #4A58D9;
+      --primary-dark: #3E4CC4;
+      --primary-light: #F0F1FF;
+      --primary-lighter: #F7F7FF;
+      --accent: #FF7E5D;
+      --accent-dark: #E05A38;
+      --accent-light: #FFE8DE;
+      --success: #34C77B;
+      --success-dark: #1A9E5C;
+      --success-light: #EDFCF2;
+      --warning: #F7B731;
+      --warning-dark: #C48A0A;
+      --warning-light: #FFF3DC;
+      --danger: #F06565;
+      --danger-dark: #D94040;
+      --danger-light: #FFF0F0;
+      --text-strong: #1C1A2E;
+      --text-primary: #3D3952;
+      --text-secondary: #73707F;
+      --text-tertiary: #A8A5B2;
+      --border: #EDEAEF;
+      --border-light: #F5F3F7;
+      --border-hover: #D4D0D8;
+      --bg-body: #FBF9F7;
+      --bg-surface: #FFFFFF;
+      --bg-muted: #F5F3F7;
+      --bg-hover: #F4F2F6;
+      --shadow-sm: 0 2px 8px rgba(28, 26, 46, 0.06), 0 1px 2px rgba(28, 26, 46, 0.03);
+      --shadow-md: 0 4px 16px rgba(28, 26, 46, 0.08), 0 2px 4px rgba(28, 26, 46, 0.03);
+      --shadow-lg: 0 16px 48px rgba(28, 26, 46, 0.14), 0 6px 12px rgba(28, 26, 46, 0.05);
+      --radius-sm: 6px;
+      --radius-md: 8px;
+      --radius-lg: 12px;
+      --radius-xl: 16px;
+      --font: -apple-system, BlinkMacSystemFont, "SF Pro Display", "SF Pro Text", "Segoe UI", Roboto, "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", Arial, sans-serif;
+      --mono: "SF Mono", SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+    }
+
+    * { box-sizing: border-box; }
+
+    html {
+      min-width: 320px;
+      background: var(--bg-body);
+      color: var(--text-primary);
+      font-family: var(--font);
+      font-size: 13px;
+      -webkit-font-smoothing: antialiased;
+      text-rendering: optimizeLegibility;
+    }
+
+    body {
+      min-width: 320px;
+      margin: 0;
+      background: var(--bg-body);
+    }
+
+    button, input, select {
+      font: inherit;
+    }
+
+    button {
+      cursor: pointer;
+    }
+
+    button:focus-visible,
+    input:focus-visible,
+    select:focus-visible {
+      outline: 3px solid rgba(91, 108, 247, 0.24);
+      outline-offset: 2px;
+    }
+
+    [hidden] { display: none !important; }
+
+    .app-shell {
+      width: min(100%, 1440px);
+      min-height: 100vh;
+      margin: 0 auto;
+      padding: 28px 32px 56px;
+    }
+
+    .page-shell {
+      display: flex;
+      align-items: flex-start;
+      justify-content: space-between;
+      gap: 24px;
+      margin-bottom: 24px;
+      flex-wrap: wrap;
+    }
+
+    .breadcrumb {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      margin-bottom: 8px;
+      color: var(--text-secondary);
+      font-size: 11px;
+    }
+
+    .breadcrumb span:not(:last-child)::after {
+      content: "/";
+      margin-left: 8px;
+      color: var(--border-hover);
+    }
+
+    .breadcrumb .active {
+      color: var(--primary);
+      font-weight: 600;
+    }
+
+    .title-row {
+      display: flex;
+      align-items: baseline;
+      gap: 12px;
+      flex-wrap: wrap;
+    }
+
+    h1, h2, h3, p { margin: 0; }
+
+    h1 {
+      color: var(--text-strong);
+      font-size: 24px;
+      line-height: 1.25;
+      font-weight: 800;
+    }
+
+    .page-subtitle {
+      max-width: 720px;
+      margin-top: 8px;
+      color: var(--text-secondary);
+      line-height: 1.55;
+    }
+
+    .page-extra {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      flex-wrap: wrap;
+    }
+
+    .context-badge,
+    .permission-badge,
+    .status-pill,
+    .scope-chip,
+    .tag {
+      display: inline-flex;
+      align-items: center;
+      min-height: 24px;
+      border-radius: 999px;
+      padding: 0 9px;
+      white-space: nowrap;
+      font-size: 11px;
+      font-weight: 600;
+    }
+
+    .context-badge {
+      color: var(--text-secondary);
+      border: 1px solid var(--border);
+      background: var(--bg-muted);
+    }
+
+    .permission-badge {
+      color: var(--primary-dark);
+      border: 1px solid #D9DCFF;
+      background: var(--primary-light);
+      font-family: var(--mono);
+      font-weight: 500;
+    }
+
+    .btn {
+      min-height: 34px;
+      border: 1px solid var(--border);
+      border-radius: var(--radius-md);
+      padding: 0 13px;
+      color: var(--text-primary);
+      background: var(--bg-surface);
+      font-weight: 600;
+      transition: background 160ms ease, border-color 160ms ease, color 160ms ease, box-shadow 160ms ease;
+    }
+
+    .btn:hover {
+      border-color: var(--border-hover);
+      background: var(--bg-hover);
+    }
+
+    .btn:disabled {
+      cursor: not-allowed;
+      opacity: 0.55;
+    }
+
+    .btn-primary {
+      color: #fff;
+      border-color: var(--primary);
+      background: var(--primary);
+      box-shadow: 0 4px 14px rgba(91, 108, 247, 0.2);
+    }
+
+    .btn-primary:hover {
+      color: #fff;
+      border-color: var(--primary-hover);
+      background: var(--primary-hover);
+    }
+
+    .btn-quiet {
+      color: var(--primary);
+      border-color: transparent;
+      background: transparent;
+    }
+
+    .btn-quiet:hover {
+      color: var(--primary-dark);
+      border-color: #D9DCFF;
+      background: var(--primary-lighter);
+    }
+
+    .btn-icon {
+      width: 34px;
+      padding: 0;
+      font-size: 16px;
+      line-height: 1;
+    }
+
+    .surface {
+      border: 1px solid rgba(237, 234, 239, 0.85);
+      border-radius: var(--radius-xl);
+      background: var(--bg-surface);
+      box-shadow: var(--shadow-sm);
+    }
+
+    .workflow {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 0;
+      margin-bottom: 20px;
+      overflow: hidden;
+    }
+
+    .workflow-step {
+      position: relative;
+      display: flex;
+      align-items: center;
+      gap: 11px;
+      min-height: 68px;
+      padding: 14px 20px;
+      border-right: 1px solid var(--border-light);
+      background: var(--bg-surface);
+    }
+
+    .workflow-step:last-child { border-right: 0; }
+
+    .workflow-step.active { background: var(--primary-lighter); }
+
+    .workflow-number {
+      display: grid;
+      flex: 0 0 26px;
+      width: 26px;
+      height: 26px;
+      place-items: center;
+      border: 1px solid var(--border);
+      border-radius: 50%;
+      color: var(--text-secondary);
+      background: var(--bg-surface);
+      font-size: 12px;
+      font-weight: 800;
+    }
+
+    .workflow-step.active .workflow-number {
+      color: #fff;
+      border-color: var(--primary);
+      background: var(--primary);
+    }
+
+    .workflow-step.done .workflow-number {
+      color: var(--success-dark);
+      border-color: #BFEBCF;
+      background: var(--success-light);
+    }
+
+    .workflow-step strong {
+      display: block;
+      color: var(--text-strong);
+      font-size: 13px;
+    }
+
+    .workflow-step span {
+      display: block;
+      margin-top: 3px;
+      color: var(--text-secondary);
+      font-size: 11px;
+    }
+
+    .tabs {
+      display: flex;
+      gap: 28px;
+      min-height: 52px;
+      padding: 0 24px;
+      border-bottom: 1px solid var(--border-light);
+    }
+
+    .tab {
+      position: relative;
+      border: 0;
+      padding: 0;
+      color: var(--text-secondary);
+      background: transparent;
+      font-weight: 600;
+    }
+
+    .tab[aria-selected="true"] {
+      color: var(--primary);
+    }
+
+    .tab[aria-selected="true"]::after {
+      position: absolute;
+      right: 0;
+      bottom: -1px;
+      left: 0;
+      height: 2px;
+      content: "";
+      background: var(--primary);
+    }
+
+    .tab-panel {
+      padding: 24px;
+    }
+
+    .plain-help {
+      display: flex;
+      align-items: flex-start;
+      gap: 10px;
+      margin-bottom: 20px;
+      padding: 13px 15px;
+      border: 1px solid #D9DCFF;
+      border-radius: var(--radius-lg);
+      color: var(--primary-dark);
+      background: var(--primary-lighter);
+      line-height: 1.55;
+    }
+
+    .plain-help-icon {
+      display: grid;
+      flex: 0 0 22px;
+      width: 22px;
+      height: 22px;
+      place-items: center;
+      border-radius: 50%;
+      color: #fff;
+      background: var(--primary);
+      font-weight: 800;
+    }
+
+    .plain-help strong {
+      display: block;
+      margin-bottom: 2px;
+      color: var(--text-strong);
+    }
+
+    .section-heading {
+      display: flex;
+      align-items: flex-start;
+      justify-content: space-between;
+      gap: 16px;
+      margin-bottom: 14px;
+    }
+
+    .section-heading h2 {
+      color: var(--text-strong);
+      font-size: 16px;
+    }
+
+    .section-heading p {
+      margin-top: 4px;
+      color: var(--text-secondary);
+      font-size: 12px;
+      line-height: 1.45;
+    }
+
+    .eyebrow,
+    .field-label,
+    .table-label {
+      color: var(--text-tertiary);
+      font-size: 11px;
+      font-weight: 700;
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
+    }
+
+    .period-bar {
+      display: grid;
+      grid-template-columns: 178px minmax(260px, 1fr) auto;
+      gap: 14px;
+      align-items: end;
+      margin-bottom: 20px;
+      padding: 18px 20px;
+      border: 1px solid var(--border);
+      border-radius: var(--radius-lg);
+      background: var(--bg-surface);
+    }
+
+    .field {
+      display: flex;
+      min-width: 0;
+      flex-direction: column;
+      gap: 6px;
+    }
+
+    .control {
+      width: 100%;
+      height: 34px;
+      border: 1px solid var(--border);
+      border-radius: var(--radius-md);
+      padding: 0 10px;
+      color: var(--text-primary);
+      background: var(--bg-surface);
+    }
+
+    .control:hover { border-color: var(--border-hover); }
+
+    .period-picker {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .period-picker .control {
+      flex: 1;
+      min-width: 0;
+      color: var(--text-strong);
+      font-weight: 700;
+      text-align: center;
+    }
+
+    .period-picker button {
+      width: 34px;
+      height: 34px;
+      border: 1px solid var(--border);
+      border-radius: var(--radius-md);
+      color: var(--text-secondary);
+      background: var(--bg-surface);
+      font-size: 16px;
+    }
+
+    .period-picker button:hover {
+      border-color: var(--border-hover);
+      background: var(--bg-hover);
+    }
+
+    .period-action {
+      display: flex;
+      align-items: center;
+      gap: 9px;
+      justify-content: flex-end;
+    }
+
+    .period-status {
+      color: var(--text-secondary);
+      font-size: 11px;
+      white-space: nowrap;
+    }
+
+    .scope-filter {
+      display: grid;
+      grid-template-columns: repeat(4, minmax(0, 1fr)) auto;
+      gap: 12px;
+      align-items: end;
+      margin-bottom: 20px;
+    }
+
+    .scope-filter .btn {
+      width: 100%;
+    }
+
+    .stats-grid {
+      display: grid;
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+      gap: 12px;
+      margin-bottom: 20px;
+    }
+
+    .stat {
+      min-height: 104px;
+      padding: 17px 18px;
+      border: 1px solid var(--border);
+      border-radius: var(--radius-lg);
+      background: var(--bg-surface);
+    }
+
+    .stat-label {
+      color: var(--text-secondary);
+      font-size: 12px;
+    }
+
+    .stat-value {
+      margin-top: 10px;
+      color: var(--text-strong);
+      font-size: 25px;
+      line-height: 1;
+      font-weight: 800;
+      font-variant-numeric: tabular-nums;
+    }
+
+    .stat-meta {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      margin-top: 9px;
+      color: var(--text-tertiary);
+      font-size: 11px;
+    }
+
+    .stat-meta .positive { color: var(--success-dark); }
+    .stat-meta .attention { color: var(--warning-dark); }
+
+    .two-column {
+      display: grid;
+      grid-template-columns: minmax(0, 1.25fr) minmax(320px, 0.75fr);
+      gap: 16px;
+      margin-bottom: 20px;
+    }
+
+    .panel {
+      min-width: 0;
+      border: 1px solid var(--border);
+      border-radius: var(--radius-lg);
+      background: var(--bg-surface);
+    }
+
+    .panel-header {
+      display: flex;
+      align-items: flex-start;
+      justify-content: space-between;
+      gap: 16px;
+      padding: 18px 20px 0;
+    }
+
+    .panel-title {
+      color: var(--text-strong);
+      font-size: 15px;
+      font-weight: 700;
+    }
+
+    .panel-subtitle {
+      margin-top: 4px;
+      color: var(--text-secondary);
+      font-size: 12px;
+      line-height: 1.45;
+    }
+
+    .period-summary {
+      padding: 18px 20px 20px;
+    }
+
+    .summary-highlight {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 16px;
+      margin: 15px 0 17px;
+      padding: 14px;
+      border-radius: var(--radius-lg);
+      background: var(--primary-lighter);
+    }
+
+    .summary-highlight strong {
+      display: block;
+      color: var(--text-strong);
+      font-size: 18px;
+    }
+
+    .summary-highlight span {
+      display: block;
+      margin-top: 4px;
+      color: var(--text-secondary);
+      font-size: 11px;
+    }
+
+    .summary-highlight-value {
+      color: var(--primary);
+      font-size: 24px;
+      font-weight: 800;
+      font-variant-numeric: tabular-nums;
+      white-space: nowrap;
+    }
+
+    .summary-list {
+      display: grid;
+      gap: 12px;
+    }
+
+    .summary-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      color: var(--text-secondary);
+      font-size: 12px;
+    }
+
+    .summary-row strong {
+      color: var(--text-primary);
+      font-weight: 700;
+      font-variant-numeric: tabular-nums;
+    }
+
+    .summary-row strong.warning-text { color: var(--warning-dark); }
+    .summary-row strong.success-text { color: var(--success-dark); }
+
+    .checklist {
+      padding: 18px 20px 20px;
+    }
+
+    .checklist-items {
+      display: grid;
+      gap: 11px;
+      margin-top: 15px;
+    }
+
+    .checklist-item {
+      display: grid;
+      grid-template-columns: 22px 1fr auto;
+      gap: 10px;
+      align-items: start;
+    }
+
+    .check-icon {
+      display: grid;
+      width: 20px;
+      height: 20px;
+      place-items: center;
+      border-radius: 50%;
+      color: var(--success-dark);
+      background: var(--success-light);
+      font-size: 11px;
+      font-weight: 800;
+    }
+
+    .check-icon.warning {
+      color: var(--warning-dark);
+      background: var(--warning-light);
+    }
+
+    .checklist-item strong {
+      display: block;
+      color: var(--text-primary);
+      font-size: 12px;
+    }
+
+    .checklist-item p {
+      margin-top: 3px;
+      color: var(--text-secondary);
+      font-size: 11px;
+      line-height: 1.45;
+    }
+
+    .status-pill {
+      border: 1px solid transparent;
+    }
+
+    .status-pill.success {
+      color: var(--success-dark);
+      border-color: #C7F0D7;
+      background: var(--success-light);
+    }
+
+    .status-pill.warning {
+      color: var(--warning-dark);
+      border-color: #F3DFAC;
+      background: var(--warning-light);
+    }
+
+    .status-pill.danger {
+      color: var(--danger-dark);
+      border-color: #F4CDCD;
+      background: var(--danger-light);
+    }
+
+    .status-pill.neutral {
+      color: var(--text-secondary);
+      border-color: var(--border);
+      background: var(--bg-muted);
+    }
+
+    .table-section {
+      overflow: hidden;
+    }
+
+    .table-toolbar {
+      display: flex;
+      align-items: flex-start;
+      justify-content: space-between;
+      gap: 16px;
+      padding: 18px 20px 14px;
+    }
+
+    .table-toolbar-actions {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      flex-wrap: wrap;
+      justify-content: flex-end;
+    }
+
+    .table-scroll {
+      overflow-x: auto;
+    }
+
+    table {
+      width: 100%;
+      min-width: 940px;
+      border-collapse: collapse;
+    }
+
+    th {
+      padding: 11px 20px;
+      border-top: 1px solid var(--border-light);
+      border-bottom: 1px solid var(--border-light);
+      color: var(--text-tertiary);
+      background: #FCFBFD;
+      font-size: 11px;
+      font-weight: 700;
+      letter-spacing: 0.04em;
+      text-align: left;
+      text-transform: uppercase;
+      white-space: nowrap;
+    }
+
+    td {
+      padding: 14px 20px;
+      border-bottom: 1px solid var(--border-light);
+      color: var(--text-primary);
+      vertical-align: middle;
+    }
+
+    tbody tr:last-child td { border-bottom: 0; }
+    tbody tr:hover { background: var(--primary-lighter); }
+
+    .employee-cell {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      min-width: 162px;
+    }
+
+    .avatar {
+      display: grid;
+      flex: 0 0 30px;
+      width: 30px;
+      height: 30px;
+      place-items: center;
+      border-radius: 50%;
+      color: var(--primary-dark);
+      background: var(--primary-light);
+      font-size: 11px;
+      font-weight: 800;
+    }
+
+    .employee-name {
+      color: var(--text-strong);
+      font-weight: 700;
+    }
+
+    .employee-id,
+    .muted {
+      margin-top: 3px;
+      color: var(--text-tertiary);
+      font-size: 11px;
+    }
+
+    .region {
+      color: var(--text-secondary);
+      font-size: 12px;
+    }
+
+    .number {
+      font-variant-numeric: tabular-nums;
+      white-space: nowrap;
+    }
+
+    .number strong {
+      color: var(--text-strong);
+      font-size: 14px;
+    }
+
+    .number.highlight strong { color: var(--primary); }
+    .number.exceed strong { color: var(--accent-dark); }
+
+    .link-btn {
+      border: 0;
+      padding: 0;
+      color: var(--primary);
+      background: transparent;
+      font-weight: 600;
+    }
+
+    .link-btn:hover { color: var(--primary-dark); }
+
+    .table-footer {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      padding: 14px 20px;
+      border-top: 1px solid var(--border-light);
+      color: var(--text-secondary);
+      font-size: 11px;
+    }
+
+    .pager {
+      display: flex;
+      align-items: center;
+      gap: 5px;
+    }
+
+    .pager button {
+      width: 28px;
+      height: 28px;
+      border: 1px solid var(--border);
+      border-radius: var(--radius-sm);
+      color: var(--text-secondary);
+      background: var(--bg-surface);
+    }
+
+    .pager button.current {
+      color: var(--primary);
+      border-color: #D9DCFF;
+      background: var(--primary-light);
+      font-weight: 700;
+    }
+
+    .confirm-layout {
+      display: grid;
+      grid-template-columns: 280px minmax(0, 1fr);
+      gap: 16px;
+    }
+
+    .confirm-nav {
+      overflow: hidden;
+      padding: 8px;
+    }
+
+    .confirm-nav-header {
+      padding: 10px 10px 13px;
+    }
+
+    .confirm-nav-header strong {
+      color: var(--text-strong);
+      font-size: 14px;
+    }
+
+    .confirm-nav-header p {
+      margin-top: 5px;
+      color: var(--text-secondary);
+      font-size: 11px;
+      line-height: 1.45;
+    }
+
+    .scope-item {
+      display: block;
+      width: 100%;
+      margin: 3px 0;
+      border: 1px solid transparent;
+      border-radius: var(--radius-md);
+      padding: 12px 11px;
+      color: var(--text-primary);
+      background: transparent;
+      text-align: left;
+    }
+
+    .scope-item:hover { background: var(--bg-hover); }
+
+    .scope-item.active {
+      border-color: #D9DCFF;
+      color: var(--primary-dark);
+      background: var(--primary-light);
+    }
+
+    .scope-item-main {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 8px;
+      font-weight: 700;
+    }
+
+    .scope-item small {
+      display: block;
+      margin-top: 5px;
+      color: var(--text-secondary);
+      font-size: 11px;
+    }
+
+    .scope-item.active small { color: var(--primary-dark); }
+
+    .confirm-main {
+      min-width: 0;
+      padding: 22px;
+    }
+
+    .confirm-header {
+      display: flex;
+      align-items: flex-start;
+      justify-content: space-between;
+      gap: 16px;
+      padding-bottom: 18px;
+      border-bottom: 1px solid var(--border-light);
+    }
+
+    .confirm-header h2 {
+      color: var(--text-strong);
+      font-size: 18px;
+    }
+
+    .confirm-header p {
+      margin-top: 5px;
+      color: var(--text-secondary);
+      line-height: 1.5;
+    }
+
+    .confirm-header-actions {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      flex-wrap: wrap;
+      justify-content: flex-end;
+    }
+
+    .confirm-section {
+      padding: 20px 0;
+      border-bottom: 1px solid var(--border-light);
+    }
+
+    .confirm-section:last-child { border-bottom: 0; }
+
+    .confirm-section-heading {
+      display: flex;
+      align-items: baseline;
+      justify-content: space-between;
+      gap: 12px;
+      margin-bottom: 14px;
+    }
+
+    .confirm-section-heading h3 {
+      color: var(--text-strong);
+      font-size: 14px;
+    }
+
+    .confirm-section-heading span {
+      color: var(--text-tertiary);
+      font-size: 11px;
+    }
+
+    .form-grid {
+      display: grid;
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+      gap: 14px 16px;
+    }
+
+    .form-grid .span-2 { grid-column: span 2; }
+
+    .helper {
+      margin-top: 5px;
+      color: var(--text-tertiary);
+      font-size: 11px;
+      line-height: 1.45;
+    }
+
+    .scope-row {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      flex-wrap: wrap;
+      min-height: 34px;
+      padding: 5px 0;
+    }
+
+    .scope-chip {
+      color: var(--primary-dark);
+      border: 1px solid #D9DCFF;
+      background: var(--primary-light);
+      font-family: var(--mono);
+      font-weight: 500;
+    }
+
+    .scope-chip.neutral {
+      color: var(--text-secondary);
+      border-color: var(--border);
+      background: var(--bg-muted);
+      font-family: var(--font);
+    }
+
+    .calculation-rule {
+      display: grid;
+      grid-template-columns: 1fr auto 1fr auto 1fr;
+      gap: 10px;
+      align-items: center;
+      margin-top: 14px;
+      padding: 14px;
+      border: 1px solid var(--border);
+      border-radius: var(--radius-lg);
+      background: #FCFBFD;
+    }
+
+    .rule-box {
+      min-width: 0;
+      padding: 10px 11px;
+      border: 1px solid var(--border);
+      border-radius: var(--radius-md);
+      background: var(--bg-surface);
+    }
+
+    .rule-box span {
+      display: block;
+      color: var(--text-secondary);
+      font-size: 11px;
+    }
+
+    .rule-box strong {
+      display: block;
+      margin-top: 6px;
+      color: var(--text-strong);
+      font-size: 15px;
+      font-variant-numeric: tabular-nums;
+    }
+
+    .rule-operator {
+      color: var(--text-tertiary);
+      font-size: 18px;
+      text-align: center;
+    }
+
+    .confirm-table {
+      width: 100%;
+      min-width: 680px;
+      border: 1px solid var(--border);
+      border-radius: var(--radius-md);
+      overflow: hidden;
+    }
+
+    .confirm-table th,
+    .confirm-table td {
+      padding: 11px 12px;
+    }
+
+    .confirm-table th {
+      border-top: 0;
+    }
+
+    .confirm-table input,
+    .confirm-table select {
+      width: 100%;
+      min-width: 86px;
+      height: 32px;
+      border: 1px solid var(--border);
+      border-radius: var(--radius-sm);
+      padding: 0 8px;
+      color: var(--text-primary);
+      background: var(--bg-surface);
+    }
+
+    .confirm-table .employee-label strong {
+      display: block;
+      color: var(--text-primary);
+    }
+
+    .confirm-table .employee-label span {
+      display: block;
+      margin-top: 3px;
+      color: var(--text-tertiary);
+      font-size: 11px;
+    }
+
+    .confirm-footer {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      padding-top: 20px;
+    }
+
+    .confirm-footer-note {
+      color: var(--text-secondary);
+      font-size: 11px;
+    }
+
+    .confirm-footer-actions {
+      display: flex;
+      gap: 8px;
+    }
+
+    .runs-header {
+      display: flex;
+      align-items: flex-start;
+      justify-content: space-between;
+      gap: 16px;
+      margin-bottom: 20px;
+    }
+
+    .runs-header h2 {
+      color: var(--text-strong);
+      font-size: 18px;
+    }
+
+    .runs-header p {
+      margin-top: 5px;
+      color: var(--text-secondary);
+    }
+
+    .run-card {
+      display: grid;
+      grid-template-columns: minmax(220px, 0.9fr) minmax(260px, 1.4fr) minmax(170px, 0.7fr) auto;
+      gap: 20px;
+      align-items: center;
+      margin-bottom: 20px;
+      padding: 18px 20px;
+      border: 1px solid #D9DCFF;
+      border-radius: var(--radius-lg);
+      background: var(--primary-lighter);
+    }
+
+    .run-id {
+      color: var(--text-strong);
+      font-family: var(--mono);
+      font-size: 13px;
+      font-weight: 700;
+    }
+
+    .run-meta {
+      margin-top: 6px;
+      color: var(--text-secondary);
+      font-size: 11px;
+      line-height: 1.5;
+    }
+
+    .run-progress {
+      height: 6px;
+      overflow: hidden;
+      margin-top: 10px;
+      border-radius: 999px;
+      background: #E1E4FF;
+    }
+
+    .run-progress span {
+      display: block;
+      width: 100%;
+      height: 100%;
+      border-radius: inherit;
+      background: var(--success);
+    }
+
+    .run-percent {
+      color: var(--primary-dark);
+      font-size: 20px;
+      font-weight: 800;
+      text-align: right;
+    }
+
+    .drawer-overlay,
+    .modal-overlay {
+      position: fixed;
+      z-index: 20;
+      inset: 0;
+      display: grid;
+      background: rgba(28, 26, 46, 0.26);
+    }
+
+    .drawer-overlay {
+      align-items: stretch;
+      justify-items: end;
+    }
+
+    .drawer {
+      width: min(620px, 100vw);
+      height: 100%;
+      overflow-y: auto;
+      padding: 24px;
+      background: var(--bg-surface);
+      box-shadow: var(--shadow-lg);
+      animation: slideIn 180ms ease-out;
+    }
+
+    .drawer-header,
+    .modal-header {
+      display: flex;
+      align-items: flex-start;
+      justify-content: space-between;
+      gap: 16px;
+      padding-bottom: 17px;
+      border-bottom: 1px solid var(--border-light);
+    }
+
+    .drawer-header h2,
+    .modal-header h2 {
+      color: var(--text-strong);
+      font-size: 18px;
+    }
+
+    .drawer-header p,
+    .modal-header p {
+      margin-top: 5px;
+      color: var(--text-secondary);
+      line-height: 1.45;
+    }
+
+    .drawer-section {
+      padding: 18px 0;
+      border-bottom: 1px solid var(--border-light);
+    }
+
+    .drawer-section:last-child { border-bottom: 0; }
+
+    .drawer-section h3 {
+      margin-bottom: 13px;
+      color: var(--text-strong);
+      font-size: 13px;
+    }
+
+    .detail-grid {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 12px;
+    }
+
+    .detail-item {
+      min-width: 0;
+      padding: 11px 12px;
+      border: 1px solid var(--border);
+      border-radius: var(--radius-md);
+      background: #FCFBFD;
+    }
+
+    .detail-item .label {
+      color: var(--text-tertiary);
+      font-size: 11px;
+    }
+
+    .detail-item .value {
+      margin-top: 6px;
+      color: var(--text-primary);
+      font-size: 13px;
+      font-weight: 700;
+      overflow-wrap: anywhere;
+    }
+
+    .day-lines {
+      width: 100%;
+      min-width: 0;
+      border: 1px solid var(--border);
+      border-radius: var(--radius-md);
+      overflow: hidden;
+      border-collapse: collapse;
+    }
+
+    .day-lines th,
+    .day-lines td {
+      min-width: 0;
+      padding: 10px 11px;
+    }
+
+    .day-lines th {
+      border-top: 0;
+    }
+
+    .drawer-footer {
+      display: flex;
+      justify-content: flex-end;
+      gap: 8px;
+      padding-top: 20px;
+    }
+
+    .modal-overlay {
+      place-items: center;
+      padding: 20px;
+    }
+
+    .modal {
+      width: min(560px, 100%);
+      border-radius: var(--radius-xl);
+      padding: 22px;
+      background: var(--bg-surface);
+      box-shadow: var(--shadow-lg);
+      animation: scaleIn 160ms ease-out;
+    }
+
+    .modal-body {
+      padding: 20px 0 2px;
+      color: var(--text-primary);
+      line-height: 1.6;
+    }
+
+    .modal-body .check {
+      display: flex;
+      align-items: flex-start;
+      gap: 8px;
+      margin-top: 14px;
+    }
+
+    .modal-body input[type="checkbox"] {
+      width: 15px;
+      height: 15px;
+      margin: 2px 0 0;
+      accent-color: var(--primary);
+    }
+
+    .modal-footer {
+      display: flex;
+      justify-content: flex-end;
+      gap: 8px;
+      padding-top: 20px;
+    }
+
+    .toast {
+      position: fixed;
+      z-index: 30;
+      right: 24px;
+      bottom: 24px;
+      max-width: min(440px, calc(100vw - 48px));
+      padding: 12px 15px;
+      border: 1px solid #C7F0D7;
+      border-radius: var(--radius-md);
+      color: var(--success-dark);
+      background: var(--success-light);
+      box-shadow: var(--shadow-md);
+      font-weight: 600;
+      animation: toastIn 180ms ease-out;
+    }
+
+    @keyframes slideIn {
+      from { opacity: 0; transform: translateX(24px); }
+      to { opacity: 1; transform: translateX(0); }
+    }
+
+    @keyframes scaleIn {
+      from { opacity: 0; transform: scale(0.98); }
+      to { opacity: 1; transform: scale(1); }
+    }
+
+    @keyframes toastIn {
+      from { opacity: 0; transform: translateY(8px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+
+    @media (max-width: 1100px) {
+      .two-column { grid-template-columns: 1fr; }
+      .scope-filter { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+      .scope-filter .btn { grid-column: span 2; }
+      .form-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+      .run-card { grid-template-columns: 1fr 1fr; }
+      .run-percent { text-align: left; }
+    }
+
+    @media (max-width: 760px) {
+      .app-shell { padding: 20px 16px 40px; }
+      h1 { font-size: 21px; }
+      .workflow { grid-template-columns: 1fr; }
+      .workflow-step {
+        border-right: 0;
+        border-bottom: 1px solid var(--border-light);
+      }
+      .workflow-step:last-child { border-bottom: 0; }
+      .tabs { gap: 20px; padding: 0 16px; overflow-x: auto; }
+      .tab-panel { padding: 16px; }
+      .period-bar { grid-template-columns: 1fr; }
+      .period-action { align-items: flex-start; justify-content: space-between; }
+      .scope-filter { grid-template-columns: 1fr; }
+      .scope-filter .btn { grid-column: auto; }
+      .stats-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+      .confirm-layout { grid-template-columns: 1fr; }
+      .confirm-nav {
+        display: flex;
+        gap: 6px;
+        overflow-x: auto;
+        padding: 8px;
+      }
+      .confirm-nav-header { display: none; }
+      .scope-item { min-width: 190px; }
+      .calculation-rule { grid-template-columns: 1fr; }
+      .rule-operator { transform: rotate(90deg); }
+      .run-card { grid-template-columns: 1fr; }
+      .run-percent { text-align: left; }
+      .table-toolbar,
+      .section-heading,
+      .confirm-header,
+      .runs-header { flex-direction: column; }
+      .table-toolbar-actions,
+      .confirm-header-actions { justify-content: flex-start; }
+    }
+
+    @media (max-width: 520px) {
+      .page-extra,
+      .page-extra .btn { width: 100%; }
+      .page-extra .context-badge,
+      .page-extra .permission-badge { width: fit-content; }
+      .stats-grid { grid-template-columns: 1fr; }
+      .form-grid { grid-template-columns: 1fr; }
+      .form-grid .span-2 { grid-column: auto; }
+      .summary-highlight { align-items: flex-start; flex-direction: column; }
+      .detail-grid { grid-template-columns: 1fr; }
+      .confirm-footer { align-items: flex-start; flex-direction: column; }
+      .confirm-footer-actions { width: 100%; }
+      .confirm-footer-actions .btn { flex: 1; }
+      .table-footer { align-items: flex-start; flex-direction: column; }
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+      *, *::before, *::after {
+        scroll-behavior: auto !important;
+        animation-duration: 0.01ms !important;
+        transition-duration: 0.01ms !important;
+      }
+    }
+  </style>
+</head>
+<body>
+  <main class="app-shell">
+    <header class="page-shell">
+      <div>
+        <nav class="breadcrumb" aria-label="面包屑">
+          <span>考勤管理</span>
+          <span class="active">工时结算</span>
+        </nav>
+        <div class="title-row">
+          <h1>工时结算</h1>
+          <span class="context-badge">AttendanceAgent · PC 管理端</span>
+        </div>
+        <p class="page-subtitle">按周或月选择结算周期，确认本期标准工时，再生成员工工时结果。</p>
+      </div>
+      <div class="page-extra">
+        <span class="context-badge">数据来源：已确认任务</span>
+        <span class="permission-badge">settlementView · standardHoursConfirm</span>
+        <button class="btn" id="openHelpBtn" type="button"><span aria-hidden="true">?</span> 使用说明</button>
+      </div>
+    </header>
+
+    <section class="workflow surface" aria-label="工时结算流程">
+      <div class="workflow-step done">
+        <span class="workflow-number" aria-hidden="true">1</span>
+        <div><strong>选择结算周期</strong><span>周结算或月结算</span></div>
+      </div>
+      <div class="workflow-step active">
+        <span class="workflow-number" aria-hidden="true">2</span>
+        <div><strong>确认标准工时</strong><span>确认本期应核算的标准时长</span></div>
+      </div>
+      <div class="workflow-step">
+        <span class="workflow-number" aria-hidden="true">3</span>
+        <div><strong>查看结算结果</strong><span>汇总员工已确认工时</span></div>
+      </div>
+    </section>
+
+    <section class="surface" aria-label="工时结算工作区">
+      <div class="tabs" role="tablist" aria-label="工时结算标签">
+        <button class="tab" id="tab-settlement" role="tab" aria-selected="true" aria-controls="panel-settlement" tabindex="0" type="button">结算概览</button>
+        <button class="tab" id="tab-confirm" role="tab" aria-selected="false" aria-controls="panel-confirm" tabindex="-1" type="button">确认标准工时</button>
+        <button class="tab" id="tab-history" role="tab" aria-selected="false" aria-controls="panel-history" tabindex="-1" type="button">结算记录</button>
+      </div>
+
+      <section class="tab-panel" id="panel-settlement" role="tabpanel" aria-labelledby="tab-settlement">
+        <div class="plain-help">
+          <span class="plain-help-icon" aria-hidden="true">i</span>
+          <div>
+            <strong>这页只核算工时，不涉及金额。</strong>
+            先选择本次是按周还是按月结算，再确认员工本期标准工时。系统会从已确认的考勤记录汇总实际工时，并显示超出标准的时长。
+          </div>
+        </div>
+
+        <div class="period-bar">
+          <label class="field">
+            <span class="field-label">结算周期</span>
+            <select class="control" id="periodType" aria-label="结算周期">
+              <option value="week">周结算</option>
+              <option value="month">月结算</option>
+            </select>
+          </label>
+          <div class="field">
+            <span class="field-label">当前结算期间</span>
+            <div class="period-picker">
+              <button id="prevPeriodBtn" type="button" aria-label="上一个结算周期">‹</button>
+              <input class="control" id="periodDisplay" type="text" value="2026-09-01 至 2026-09-07" readonly aria-label="当前结算期间">
+              <button id="nextPeriodBtn" type="button" aria-label="下一个结算周期">›</button>
+            </div>
+          </div>
+          <div class="period-action">
+            <span class="period-status" id="periodStatus">本期状态：待确认标准工时</span>
+            <button class="btn btn-primary" id="loadPeriodBtn" type="button"><span aria-hidden="true">⌕</span> 加载本期</button>
+          </div>
+        </div>
+
+        <div class="scope-filter" aria-label="结算范围筛选">
+          <label class="field">
+            <span class="field-label">国家 / 地区</span>
+            <select class="control" id="countryFilter" aria-label="国家或地区">
+              <option value="all">全部国家</option>
+              <option value="FR">法国 FR</option>
+              <option value="DE">德国 DE</option>
+              <option value="GB">英国 GB</option>
+              <option value="ES">西班牙 ES</option>
+              <option value="NL">荷兰 NL</option>
+            </select>
+          </label>
+          <label class="field">
+            <span class="field-label">仓库</span>
+            <select class="control" aria-label="仓库">
+              <option>全部仓库</option>
+              <option>LIL-01</option>
+              <option>BER-02</option>
+              <option>MCR-01</option>
+              <option>MAD-03</option>
+            </select>
+          </label>
+          <label class="field">
+            <span class="field-label">中介</span>
+            <select class="control" aria-label="中介">
+              <option>全部中介</option>
+              <option>MANPOWER</option>
+              <option>RANDSTAD</option>
+              <option>ADECCO</option>
+            </select>
+          </label>
+          <label class="field">
+            <span class="field-label">结果状态</span>
+            <select class="control" id="resultFilter" aria-label="结果状态">
+              <option value="all">全部结果</option>
+              <option value="ready">可生成结果</option>
+              <option value="confirm">待确认标准工时</option>
+              <option value="unknown">数据不完整</option>
+            </select>
+          </label>
+          <button class="btn" id="filterBtn" type="button"><span aria-hidden="true">⌕</span> 查询</button>
+        </div>
+
+        <div class="stats-grid">
+          <div class="stat">
+            <div class="stat-label">本期员工</div>
+            <div class="stat-value">233 人</div>
+            <div class="stat-meta"><span>5 个国家 / 地区</span></div>
+          </div>
+          <div class="stat">
+            <div class="stat-label">已确认标准工时</div>
+            <div class="stat-value" id="confirmedStandardStat">221 人</div>
+            <div class="stat-meta"><span class="positive">94.8%</span><span>已完成确认</span></div>
+          </div>
+          <div class="stat">
+            <div class="stat-label">已确认实际工时</div>
+            <div class="stat-value" id="actualHoursStat">1,482.5 h</div>
+            <div class="stat-meta"><span>来源：task_records</span></div>
+          </div>
+          <div class="stat">
+            <div class="stat-label">待处理</div>
+            <div class="stat-value" id="pendingStat">12 人</div>
+            <div class="stat-meta"><span class="attention">缺标准工时或缺考勤</span></div>
+          </div>
+        </div>
+
+        <div class="two-column">
+          <section class="panel" aria-labelledby="periodSummaryTitle">
+            <div class="period-summary">
+              <h2 class="panel-title" id="periodSummaryTitle">本期核算概览</h2>
+              <p class="panel-subtitle">当前按周结算示例，切换为月结算后会按整月重新汇总。</p>
+              <div class="summary-highlight">
+                <div><strong id="summaryPeriodLabel">2026-09-01 至 2026-09-07</strong><span>已确认考勤覆盖 5 个国家 / 地区</span></div>
+                <div class="summary-highlight-value" id="summaryActual">1,482.5 h</div>
+              </div>
+              <div class="summary-list">
+                <div class="summary-row"><span>本期标准工时</span><strong id="summaryStandard">1,428.0 h</strong></div>
+                <div class="summary-row"><span>超出标准工时</span><strong class="warning-text" id="summaryExceed">54.5 h</strong></div>
+                <div class="summary-row"><span>数据完整员工</span><strong class="success-text">221 人</strong></div>
+                <div class="summary-row"><span>等待确认员工</span><strong class="warning-text">12 人</strong></div>
+              </div>
+            </div>
+          </section>
+
+          <section class="panel" aria-labelledby="checklistTitle">
+            <div class="checklist">
+              <h2 class="panel-title" id="checklistTitle">生成前检查</h2>
+              <p class="panel-subtitle">只有标准工时确认完成后，结果才可以进入结算记录。</p>
+              <div class="checklist-items">
+                <div class="checklist-item">
+                  <span class="check-icon">✓</span>
+                  <div><strong>结算周期已选择</strong><p>当前为 2026-09-01 至 2026-09-07</p></div>
+                  <span class="status-pill success">完成</span>
+                </div>
+                <div class="checklist-item">
+                  <span class="check-icon warning">!</span>
+                  <div><strong>标准工时待确认</strong><p>12 名员工没有可直接使用的标准工时</p></div>
+                  <span class="status-pill warning">待处理</span>
+                </div>
+                <div class="checklist-item">
+                  <span class="check-icon">✓</span>
+                  <div><strong>考勤数据已同步</strong><p>仅纳入已确认任务和记录校准结果</p></div>
+                  <span class="status-pill success">完成</span>
+                </div>
+              </div>
+              <button class="btn btn-primary" id="goConfirmBtn" type="button" style="width: 100%; margin-top: 17px;">去确认标准工时</button>
+            </div>
+          </section>
+        </div>
+
+        <section class="panel table-section" aria-labelledby="resultTableTitle">
+          <div class="table-toolbar">
+            <div>
+              <h2 class="panel-title" id="resultTableTitle">员工工时结果</h2>
+              <p class="panel-subtitle">标准工时是本期核算基准，实际工时来自已确认考勤，超出时长仅做结果展示。</p>
+            </div>
+            <div class="table-toolbar-actions">
+              <button class="btn btn-quiet" id="fieldHelpBtn" type="button">字段说明</button>
+              <button class="btn" id="exportHoursBtn" type="button"><span aria-hidden="true">⇩</span> 导出工时</button>
+              <button class="btn btn-primary" id="createResultBtn" type="button" disabled><span aria-hidden="true">＋</span> 生成结算结果</button>
+            </div>
+          </div>
+          <div class="table-scroll">
+            <table>
+              <thead>
+                <tr>
+                  <th>员工</th>
+                  <th>国家 / 仓库 / 中介</th>
+                  <th>标准工时</th>
+                  <th>已确认实际工时</th>
+                  <th>超出标准</th>
+                  <th>考勤覆盖</th>
+                  <th>状态</th>
+                  <th>操作</th>
+                </tr>
+              </thead>
+              <tbody id="resultRows">
+                <tr data-status="confirm" data-week-standard="35.0 h" data-week-actual="42.5 h" data-week-exceed="7.5 h" data-week-days="5 天" data-month-standard="154.0 h" data-month-actual="180.0 h" data-month-exceed="26.0 h" data-month-days="22 天">
+                  <td><div class="employee-cell"><span class="avatar">JD</span><div><div class="employee-name">Jean Dupont</div><div class="employee-id">EMP-FR-1042</div></div></div></td>
+                  <td><div class="region">FR · LIL-01</div><div class="muted">MANPOWER</div></td>
+                  <td class="number"><strong class="result-standard">35.0 h</strong><div class="muted">员工合同</div></td>
+                  <td class="number"><strong class="result-actual">42.5 h</strong><div class="muted"><span class="result-days">5 天</span> 已确认</div></td>
+                  <td class="number exceed"><strong class="result-exceed">7.5 h</strong><div class="muted">超出标准</div></td>
+                  <td><span class="status-pill warning">缺 1 天</span></td>
+                  <td><span class="status-pill warning">待确认</span></td>
+                  <td><button class="link-btn detail-btn" type="button" data-employee="Jean Dupont">查看明细</button></td>
+                </tr>
+                <tr data-status="confirm" data-week-standard="40.0 h" data-week-actual="46.0 h" data-week-exceed="6.0 h" data-week-days="5 天" data-month-standard="176.0 h" data-month-actual="184.0 h" data-month-exceed="8.0 h" data-month-days="22 天">
+                  <td><div class="employee-cell"><span class="avatar">LS</span><div><div class="employee-name">Lukas Schmidt</div><div class="employee-id">EMP-DE-2088</div></div></div></td>
+                  <td><div class="region">DE · BER-02</div><div class="muted">RANDSTAD</div></td>
+                  <td class="number"><strong class="result-standard">40.0 h</strong><div class="muted">员工合同</div></td>
+                  <td class="number"><strong class="result-actual">46.0 h</strong><div class="muted"><span class="result-days">5 天</span> 已确认</div></td>
+                  <td class="number exceed"><strong class="result-exceed">6.0 h</strong><div class="muted">超出标准</div></td>
+                  <td><span class="status-pill warning">窗口待补齐</span></td>
+                  <td><span class="status-pill warning">待确认</span></td>
+                  <td><button class="link-btn detail-btn" type="button" data-employee="Lukas Schmidt">查看明细</button></td>
+                </tr>
+                <tr data-status="ready" data-week-standard="40.0 h" data-week-actual="50.0 h" data-week-exceed="10.0 h" data-week-days="5 天" data-month-standard="176.0 h" data-month-actual="208.0 h" data-month-exceed="32.0 h" data-month-days="22 天">
+                  <td><div class="employee-cell"><span class="avatar">ES</span><div><div class="employee-name">Emily Smith</div><div class="employee-id">EMP-GB-1184</div></div></div></td>
+                  <td><div class="region">GB · MCR-01</div><div class="muted">ADECCO</div></td>
+                  <td class="number"><strong class="result-standard">40.0 h</strong><div class="muted">员工合同</div></td>
+                  <td class="number"><strong class="result-actual">50.0 h</strong><div class="muted"><span class="result-days">5 天</span> 已确认</div></td>
+                  <td class="number exceed"><strong class="result-exceed">10.0 h</strong><div class="muted">超出标准</div></td>
+                  <td><span class="status-pill success">完整</span></td>
+                  <td><span class="status-pill success">可生成</span></td>
+                  <td><button class="link-btn detail-btn" type="button" data-employee="Emily Smith">查看明细</button></td>
+                </tr>
+                <tr data-status="ready" data-week-standard="40.0 h" data-week-actual="44.0 h" data-week-exceed="4.0 h" data-week-days="5 天" data-month-standard="176.0 h" data-month-actual="184.0 h" data-month-exceed="8.0 h" data-month-days="22 天">
+                  <td><div class="employee-cell"><span class="avatar">MG</span><div><div class="employee-name">Maria Garcia</div><div class="employee-id">EMP-ES-3016</div></div></div></td>
+                  <td><div class="region">ES · MAD-03</div><div class="muted">MANPOWER</div></td>
+                  <td class="number"><strong class="result-standard">40.0 h</strong><div class="muted">员工合同</div></td>
+                  <td class="number"><strong class="result-actual">44.0 h</strong><div class="muted"><span class="result-days">5 天</span> 已确认</div></td>
+                  <td class="number exceed"><strong class="result-exceed">4.0 h</strong><div class="muted">超出标准</div></td>
+                  <td><span class="status-pill success">完整</span></td>
+                  <td><span class="status-pill success">可生成</span></td>
+                  <td><button class="link-btn detail-btn" type="button" data-employee="Maria Garcia">查看明细</button></td>
+                </tr>
+                <tr data-status="confirm" data-week-standard="待确认" data-week-actual="43.0 h" data-week-exceed="—" data-week-days="5 天" data-month-standard="待确认" data-month-actual="172.0 h" data-month-exceed="—" data-month-days="22 天">
+                  <td><div class="employee-cell"><span class="avatar">PD</span><div><div class="employee-name">Pieter de Vries</div><div class="employee-id">EMP-NL-4152</div></div></div></td>
+                  <td><div class="region">NL · AMS-01</div><div class="muted">RANDSTAD</div></td>
+                  <td class="number"><strong class="result-standard">待确认</strong><div class="muted">无员工标准工时</div></td>
+                  <td class="number"><strong class="result-actual">43.0 h</strong><div class="muted"><span class="result-days">5 天</span> 已确认</div></td>
+                  <td class="number"><strong class="result-exceed">—</strong><div class="muted">待确认基准后计算</div></td>
+                  <td><span class="status-pill success">完整</span></td>
+                  <td><span class="status-pill danger">缺标准工时</span></td>
+                  <td><button class="link-btn detail-btn" type="button" data-employee="Pieter de Vries">查看明细</button></td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+          <div class="table-footer">
+            <span id="resultCount">显示 1-5 条，共 233 名员工</span>
+            <div class="pager" aria-label="分页">
+              <button type="button" aria-label="上一页">‹</button>
+              <button class="current" type="button" aria-current="page">1</button>
+              <button type="button">2</button>
+              <button type="button">3</button>
+              <button type="button" aria-label="下一页">›</button>
+            </div>
+          </div>
+        </section>
+      </section>
+
+      <section class="tab-panel" id="panel-confirm" role="tabpanel" aria-labelledby="tab-confirm" hidden>
+        <div class="plain-help">
+          <span class="plain-help-icon" aria-hidden="true">2</span>
+          <div>
+            <strong>只确认本期标准工时，不配置费率和金额。</strong>
+            默认优先使用员工档案或合同中的标准工时；遇到兼职、入离职、调岗或临时约定时，可以在本期单独确认。
+          </div>
+        </div>
+
+        <div class="confirm-layout">
+          <aside class="surface confirm-nav" aria-label="标准工时确认范围">
+            <div class="confirm-nav-header">
+              <strong>待确认范围</strong>
+              <p>按国家、仓库和中介分组，确认后覆盖本组员工。</p>
+            </div>
+            <button class="scope-item active" type="button" data-scope="FR-LIL-01">
+              <span class="scope-item-main"><span>FR · LIL-01</span><span class="status-pill warning">3 人</span></span>
+              <small>MANPOWER · 标准工时待确认</small>
+            </button>
+            <button class="scope-item" type="button" data-scope="DE-BER-02">
+              <span class="scope-item-main"><span>DE · BER-02</span><span class="status-pill warning">4 人</span></span>
+              <small>RANDSTAD · 标准工时待确认</small>
+            </button>
+            <button class="scope-item" type="button" data-scope="GB-MCR-01">
+              <span class="scope-item-main"><span>GB · MCR-01</span><span class="status-pill success">已确认</span></span>
+              <small>ADECCO · 221 人已使用档案值</small>
+            </button>
+            <button class="scope-item" type="button" data-scope="ES-MAD-03">
+              <span class="scope-item-main"><span>ES · MAD-03</span><span class="status-pill success">已确认</span></span>
+              <small>MANPOWER · 40h / 周</small>
+            </button>
+            <button class="scope-item" type="button" data-scope="NL-AMS-01">
+              <span class="scope-item-main"><span>NL · AMS-01</span><span class="status-pill warning">1 人</span></span>
+              <small>RANDSTAD · 缺少标准工时</small>
+            </button>
+          </aside>
+
+          <section class="surface confirm-main" aria-labelledby="confirmTitle">
+            <div class="confirm-header">
+              <div>
+                <h2 id="confirmTitle">FR · LIL-01 · 标准工时确认</h2>
+                <p id="confirmSubtitle">MANPOWER · 2026-09-01 至 2026-09-07 · 3 名员工待确认</p>
+              </div>
+              <div class="confirm-header-actions">
+                <span class="status-pill warning" id="scopeConfirmStatus">待确认</span>
+                <button class="btn" id="copyPreviousBtn" type="button">沿用上期</button>
+              </div>
+            </div>
+
+            <div class="confirm-section">
+              <div class="confirm-section-heading">
+                <h3>本组确认方式</h3>
+                <span>确认后用于本期结果</span>
+              </div>
+              <div class="form-grid">
+                <label class="field span-2">
+                  <span class="field-label">标准工时来源</span>
+                  <select class="control" id="standardSource">
+                    <option value="contract">员工档案 / 合同标准工时</option>
+                    <option value="group">本组统一确认</option>
+                    <option value="manual">逐人确认</option>
+                  </select>
+                  <p class="helper">当前系统先读取员工档案值，没有档案值时才进入人工确认。</p>
+                </label>
+                <label class="field">
+                  <span class="field-label" id="weeklyStandardLabel">每周标准工时</span>
+                  <input class="control" id="weeklyStandard" type="number" value="35" min="0" step="0.5">
+                </label>
+                <label class="field">
+                  <span class="field-label" id="periodStandardLabel">本期标准工时</span>
+                  <input class="control" id="periodStandard" type="number" value="35" min="0" step="0.5">
+                </label>
+              </div>
+              <div class="calculation-rule" aria-label="本期标准工时计算关系">
+                <div class="rule-box"><span>本期应出勤日</span><strong id="workingDays">5 天</strong></div>
+                <div class="rule-operator" aria-hidden="true">×</div>
+                <div class="rule-box"><span>每日标准工时</span><strong id="dailyStandard">7.0 h</strong></div>
+                <div class="rule-operator" aria-hidden="true">=</div>
+                <div class="rule-box"><span>本期标准工时</span><strong id="ruleTotal">35.0 h</strong></div>
+              </div>
+            </div>
+
+            <div class="confirm-section">
+              <div class="confirm-section-heading">
+                <h3>员工确认明细</h3>
+                <span>有特殊情况时只改本期，不改员工档案</span>
+              </div>
+              <div class="table-scroll">
+                <table class="confirm-table">
+                  <thead>
+                    <tr><th>员工</th><th>档案标准工时</th><th>本期标准工时</th><th>确认来源</th><th>本期实际工时</th><th>确认状态</th></tr>
+                  </thead>
+                  <tbody>
+                    <tr>
+                      <td><div class="employee-label"><strong>Jean Dupont</strong><span>EMP-FR-1042</span></div></td>
+                      <td>35.0 h / 周</td>
+                      <td><input class="employee-standard" type="number" value="35" min="0" step="0.5" aria-label="Jean Dupont 本期标准工时"></td>
+                      <td><select aria-label="Jean Dupont 确认来源"><option>本期确认</option><option>员工档案</option></select></td>
+                      <td class="number">42.5 h</td>
+                      <td><span class="status-pill success">待保存</span></td>
+                    </tr>
+                    <tr>
+                      <td><div class="employee-label"><strong>Amelie Martin</strong><span>EMP-FR-1069</span></div></td>
+                      <td>35.0 h / 周</td>
+                      <td><input class="employee-standard" type="number" value="35" min="0" step="0.5" aria-label="Amelie Martin 本期标准工时"></td>
+                      <td><select aria-label="Amelie Martin 确认来源"><option>本期确认</option><option>员工档案</option></select></td>
+                      <td class="number">37.5 h</td>
+                      <td><span class="status-pill success">待保存</span></td>
+                    </tr>
+                    <tr>
+                      <td><div class="employee-label"><strong>Lucas Bernard</strong><span>EMP-FR-1091</span></div></td>
+                      <td>待补齐</td>
+                      <td><input class="employee-standard" type="number" value="35" min="0" step="0.5" aria-label="Lucas Bernard 本期标准工时"></td>
+                      <td><select aria-label="Lucas Bernard 确认来源"><option>本期确认</option><option>员工档案</option></select></td>
+                      <td class="number">35.0 h</td>
+                      <td><span class="status-pill warning">需确认来源</span></td>
+                    </tr>
+                  </tbody>
+                </table>
+              </div>
+              <p class="helper">保存后会产生“标准工时确认记录”，并作为本期员工结果的输入。不会修改原始考勤记录。</p>
+            </div>
+
+            <div class="confirm-footer">
+              <span class="confirm-footer-note" id="confirmFooterNote">还有 3 名员工待确认，本期结果暂不能全部生成。</span>
+              <div class="confirm-footer-actions">
+                <button class="btn" id="saveConfirmBtn" type="button">保存本期确认</button>
+                <button class="btn btn-primary" id="generateFromConfirmBtn" type="button"><span aria-hidden="true">↻</span> 保存并生成结果</button>
+              </div>
+            </div>
+          </section>
+        </div>
+      </section>
+
+      <section class="tab-panel" id="panel-history" role="tabpanel" aria-labelledby="tab-history" hidden>
+        <div class="runs-header">
+          <div>
+            <h2>结算记录</h2>
+            <p>记录每个周 / 月周期的标准工时确认和员工工时结果。</p>
+          </div>
+          <button class="btn" id="historyExportBtn" type="button"><span aria-hidden="true">⇩</span> 导出记录</button>
+        </div>
+
+        <section class="run-card" aria-label="当前结算记录状态">
+          <div>
+            <div class="run-id">SETTLE-202609-W36</div>
+            <div class="run-meta">周结算 · 2026-09-01 至 2026-09-07<br>来源：已确认任务 · 标准工时已保存</div>
+          </div>
+          <div>
+            <div class="run-meta">员工工时结果生成进度</div>
+            <div class="run-progress" aria-label="结算结果生成进度 100%"><span></span></div>
+          </div>
+          <div>
+            <div class="run-meta">处理范围</div>
+            <strong>5 个国家 · 233 人</strong>
+          </div>
+          <div class="run-percent">100%</div>
+        </section>
+
+        <section class="panel table-section" aria-labelledby="historyTableTitle">
+          <div class="table-toolbar">
+            <div>
+              <h2 class="panel-title" id="historyTableTitle">历史周期</h2>
+              <p class="panel-subtitle">周结算和月结算分别记录，周期关闭后不覆盖历史结果。</p>
+            </div>
+            <div class="table-toolbar-actions">
+              <button class="btn btn-quiet" id="historyFieldHelpBtn" type="button">字段说明</button>
+            </div>
+          </div>
+          <div class="table-scroll">
+            <table>
+              <thead><tr><th>记录编号</th><th>结算类型</th><th>周期</th><th>员工数</th><th>标准工时确认</th><th>实际工时</th><th>状态</th><th>操作</th></tr></thead>
+              <tbody>
+                <tr><td><span class="run-id">SETTLE-202609-W36</span></td><td>周结算</td><td>2026-09-01 至 2026-09-07</td><td>233 人</td><td>221 / 233</td><td class="number">1,482.5 h</td><td><span class="status-pill warning">12 人待处理</span></td><td><button class="link-btn" type="button" data-history-detail="SETTLE-202609-W36">查看结果</button></td></tr>
+                <tr><td><span class="run-id">SETTLE-202609-M08</span></td><td>月结算</td><td>2026-08-01 至 2026-08-31</td><td>228 人</td><td>228 / 228</td><td class="number">6,214.0 h</td><td><span class="status-pill success">已完成</span></td><td><button class="link-btn" type="button" data-history-detail="SETTLE-202609-M08">查看结果</button></td></tr>
+                <tr><td><span class="run-id">SETTLE-202608-W35</span></td><td>周结算</td><td>2026-08-25 至 2026-08-31</td><td>231 人</td><td>231 / 231</td><td class="number">1,536.0 h</td><td><span class="status-pill success">已完成</span></td><td><button class="link-btn" type="button" data-history-detail="SETTLE-202608-W35">查看结果</button></td></tr>
+              </tbody>
+            </table>
+          </div>
+        </section>
+      </section>
+    </section>
+  </main>
+
+  <div class="drawer-overlay" id="drawerOverlay" hidden>
+    <aside class="drawer" role="dialog" aria-modal="true" aria-labelledby="drawerTitle">
+      <div class="drawer-header">
+        <div><h2 id="drawerTitle">Jean Dupont · 工时明细</h2><p id="drawerSubtitle">EMP-FR-1042 · FR · LIL-01 · 2026-09-01 至 2026-09-07</p></div>
+        <button class="btn btn-icon" id="closeDrawerBtn" type="button" aria-label="关闭工时明细" title="关闭">×</button>
+      </div>
+      <div class="drawer-section">
+        <h3>本期结果</h3>
+        <div class="detail-grid">
+          <div class="detail-item"><div class="label">本期标准工时</div><div class="value" id="drawerStandard">35.0 h</div></div>
+          <div class="detail-item"><div class="label">已确认实际工时</div><div class="value" id="drawerActual">42.5 h</div></div>
+          <div class="detail-item"><div class="label">超出标准</div><div class="value" id="drawerExceed" style="color: var(--accent-dark)">7.5 h</div></div>
+          <div class="detail-item"><div class="label">结果状态</div><div class="value" id="drawerResultStatus">待确认标准工时</div></div>
+        </div>
+      </div>
+      <div class="drawer-section">
+        <h3 id="drawerDayTitle">每日已确认工时（当前周期示例）</h3>
+        <table class="day-lines">
+          <thead><tr><th>日期</th><th>到岗</th><th>离岗</th><th>休息</th><th>工时</th><th>来源</th></tr></thead>
+          <tbody id="drawerDayLines">
+            <tr><td>09-01</td><td>08:00</td><td>17:30</td><td>60m</td><td>8.5 h</td><td>已确认</td></tr>
+            <tr><td>09-02</td><td>08:00</td><td>17:30</td><td>60m</td><td>8.5 h</td><td>已确认</td></tr>
+            <tr><td>09-03</td><td>08:00</td><td>17:30</td><td>60m</td><td>8.5 h</td><td>已校准</td></tr>
+            <tr><td>09-04</td><td>08:00</td><td>17:30</td><td>60m</td><td>8.5 h</td><td>已确认</td></tr>
+            <tr><td>09-05</td><td>—</td><td>—</td><td>—</td><td>—</td><td>缺失</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <div class="drawer-section">
+        <h3>结果说明</h3>
+        <div class="plain-help" style="margin-bottom: 0;">
+          <span class="plain-help-icon" aria-hidden="true">i</span>
+          <div id="drawerExplanation">本期标准工时确认后，系统用 42.5 h - 35.0 h 得出 7.5 h 超出标准。缺失日期不会自动按 0 小时填入。</div>
+        </div>
+      </div>
+      <div class="drawer-footer">
+        <button class="btn" id="drawerCalibrateBtn" type="button">去记录校准</button>
+        <button class="btn btn-primary" id="drawerDoneBtn" type="button">完成查看</button>
+      </div>
+    </aside>
+  </div>
+
+  <div class="modal-overlay" id="modalOverlay" hidden>
+    <section class="modal" role="dialog" aria-modal="true" aria-labelledby="modalTitle">
+      <div class="modal-header">
+        <div><h2 id="modalTitle">工时结算使用说明</h2><p>先确认标准工时，再生成本期工时结果。</p></div>
+        <button class="btn btn-icon" id="closeModalBtn" type="button" aria-label="关闭使用说明" title="关闭">×</button>
+      </div>
+      <div class="modal-body">
+        <p>1. 选择周结算或月结算，并加载对应周期。<br>2. 在“确认标准工时”中确认员工本期应核算的标准时长。<br>3. 回到“结算概览”查看实际工时和超出标准的时长。<br>4. 只有已确认的数据会进入结算记录；缺失考勤会保留为未知。</p>
+        <label class="check"><input type="checkbox" id="helpUnderstood"> <span>我已了解本原型当前只处理工时，不处理金额、费率和费用。</span></label>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-primary" id="closeHelpActionBtn" type="button">知道了</button>
+      </div>
+    </section>
+  </div>
+
+  <div class="toast" id="toast" hidden role="status" aria-live="polite"></div>
+
+  <script>
+    (() => {
+      const tabs = [...document.querySelectorAll('[role="tab"]')];
+      const panels = [...document.querySelectorAll('[role="tabpanel"]')];
+      const toast = document.getElementById('toast');
+      let toastTimer;
+      let periodOffset = 0;
+
+      const employeeDetails = {
+        'Jean Dupont': { id: 'EMP-FR-1042', scope: 'FR · LIL-01', weekStandard: '35.0 h', weekActual: '42.5 h', weekExceed: '7.5 h', monthStandard: '154.0 h', monthActual: '180.0 h', monthExceed: '26.0 h', status: '待确认标准工时' },
+        'Lukas Schmidt': { id: 'EMP-DE-2088', scope: 'DE · BER-02', weekStandard: '40.0 h', weekActual: '46.0 h', weekExceed: '6.0 h', monthStandard: '176.0 h', monthActual: '184.0 h', monthExceed: '8.0 h', status: '待确认标准工时' },
+        'Emily Smith': { id: 'EMP-GB-1184', scope: 'GB · MCR-01', weekStandard: '40.0 h', weekActual: '50.0 h', weekExceed: '10.0 h', monthStandard: '176.0 h', monthActual: '208.0 h', monthExceed: '32.0 h', status: '可生成结算结果' },
+        'Maria Garcia': { id: 'EMP-ES-3016', scope: 'ES · MAD-03', weekStandard: '40.0 h', weekActual: '44.0 h', weekExceed: '4.0 h', monthStandard: '176.0 h', monthActual: '184.0 h', monthExceed: '8.0 h', status: '可生成结算结果' },
+        'Pieter de Vries': { id: 'EMP-NL-4152', scope: 'NL · AMS-01', weekStandard: '待确认', weekActual: '43.0 h', weekExceed: '—', monthStandard: '待确认', monthActual: '172.0 h', monthExceed: '—', status: '缺标准工时' }
+      };
+
+      function showToast(message) {
+        toast.textContent = message;
+        toast.hidden = false;
+        clearTimeout(toastTimer);
+        toastTimer = setTimeout(() => { toast.hidden = true; }, 3200);
+      }
+
+      function activateTab(tab) {
+        tabs.forEach((item) => {
+          const selected = item === tab;
+          item.setAttribute('aria-selected', String(selected));
+          item.tabIndex = selected ? 0 : -1;
+        });
+        panels.forEach((panel) => {
+          panel.hidden = panel.id !== tab.getAttribute('aria-controls');
+        });
+      }
+
+      tabs.forEach((tab, index) => {
+        tab.addEventListener('click', () => activateTab(tab));
+        tab.addEventListener('keydown', (event) => {
+          if (!['ArrowLeft', 'ArrowRight', 'Home', 'End'].includes(event.key)) return;
+          event.preventDefault();
+          const nextIndex = event.key === 'ArrowLeft'
+            ? (index - 1 + tabs.length) % tabs.length
+            : event.key === 'ArrowRight'
+              ? (index + 1) % tabs.length
+              : event.key === 'Home' ? 0 : tabs.length - 1;
+          tabs[nextIndex].focus();
+          activateTab(tabs[nextIndex]);
+        });
+      });
+
+      function updatePeriodLabel() {
+        const type = document.getElementById('periodType').value;
+        const display = document.getElementById('periodDisplay');
+        const summary = document.getElementById('summaryPeriodLabel');
+        const actual = document.getElementById('actualHoursStat');
+        const summaryActual = document.getElementById('summaryActual');
+        const summaryStandard = document.getElementById('summaryStandard');
+        const summaryExceed = document.getElementById('summaryExceed');
+        const periodStatus = document.getElementById('periodStatus');
+        if (type === 'month') {
+          const labels = ['2026-08-01 至 2026-08-31', '2026-09-01 至 2026-09-30', '2026-10-01 至 2026-10-31'];
+          const label = labels[periodOffset + 1] || labels[1];
+          display.value = label;
+          summary.textContent = label;
+          actual.textContent = '6,214.0 h';
+          summaryActual.textContent = '6,214.0 h';
+          summaryStandard.textContent = '5,984.0 h';
+          summaryExceed.textContent = '230.0 h';
+          periodStatus.textContent = '本期状态：待确认标准工时';
+        } else {
+          const labels = ['2026-08-25 至 2026-08-31', '2026-09-01 至 2026-09-07', '2026-09-08 至 2026-09-14'];
+          const label = labels[periodOffset + 1] || labels[1];
+          display.value = label;
+          summary.textContent = label;
+          actual.textContent = '1,482.5 h';
+          summaryActual.textContent = '1,482.5 h';
+          summaryStandard.textContent = '1,428.0 h';
+          summaryExceed.textContent = '54.5 h';
+          periodStatus.textContent = '本期状态：待确认标准工时';
+        }
+        updateResultRows(type);
+        updateConfirmPeriodFields(type);
+      }
+
+      function updateResultRows(type) {
+        document.querySelectorAll('#resultRows tr').forEach((row) => {
+          row.querySelector('.result-standard').textContent = row.dataset[`${type}Standard`];
+          row.querySelector('.result-actual').textContent = row.dataset[`${type}Actual`];
+          row.querySelector('.result-exceed').textContent = row.dataset[`${type}Exceed`];
+          row.querySelector('.result-days').textContent = row.dataset[`${type}Days`];
+        });
+      }
+
+      function updateConfirmPeriodFields(type) {
+        const isMonth = type === 'month';
+        document.getElementById('weeklyStandardLabel').textContent = isMonth ? '每日参考工时' : '每周标准工时';
+        document.getElementById('periodStandardLabel').textContent = '本期标准工时';
+        document.getElementById('weeklyStandard').value = isMonth ? '7' : '35';
+        document.getElementById('periodStandard').value = isMonth ? '154' : '35';
+        document.getElementById('workingDays').textContent = isMonth ? '22 天' : '5 天';
+        document.getElementById('dailyStandard').textContent = isMonth ? '7.0 h' : '7.0 h';
+        document.getElementById('ruleTotal').textContent = isMonth ? '154.0 h' : '35.0 h';
+        const subtitle = document.getElementById('confirmSubtitle');
+        subtitle.textContent = subtitle.textContent.replace(/\d{4}-\d{2}-\d{2} 至 \d{4}-\d{2}-\d{2}/, document.getElementById('periodDisplay').value);
+      }
+
+      document.getElementById('periodType').addEventListener('change', () => {
+        periodOffset = 0;
+        updatePeriodLabel();
+        showToast('已切换结算周期类型，请重新加载本期');
+      });
+      document.getElementById('prevPeriodBtn').addEventListener('click', () => {
+        periodOffset = Math.max(-1, periodOffset - 1);
+        updatePeriodLabel();
+      });
+      document.getElementById('nextPeriodBtn').addEventListener('click', () => {
+        periodOffset = Math.min(1, periodOffset + 1);
+        updatePeriodLabel();
+      });
+      document.getElementById('loadPeriodBtn').addEventListener('click', () => {
+        document.getElementById('periodStatus').textContent = '本期状态：数据已加载，等待标准工时确认';
+        showToast('本期已确认考勤加载完成');
+      });
+
+      document.getElementById('filterBtn').addEventListener('click', () => {
+        const country = document.getElementById('countryFilter').selectedOptions[0].textContent;
+        const status = document.getElementById('resultFilter').selectedOptions[0].textContent;
+        document.getElementById('resultCount').textContent = `已按 ${country} · ${status} 刷新示例结果`;
+        showToast('结算范围已更新');
+      });
+
+      document.getElementById('goConfirmBtn').addEventListener('click', () => {
+        activateTab(document.getElementById('tab-confirm'));
+        document.getElementById('tab-confirm').focus();
+      });
+
+      document.getElementById('fieldHelpBtn').addEventListener('click', () => {
+        showToast('标准工时是本期核算基准；实际工时来自已确认考勤；超出标准仅展示时长差值');
+      });
+      document.getElementById('exportHoursBtn').addEventListener('click', () => {
+        showToast('工时导出任务已创建，不包含金额和费率字段');
+      });
+      document.getElementById('createResultBtn').addEventListener('click', () => {
+        showToast('结算结果已生成，可在“结算记录”查看');
+      });
+
+      const drawer = document.getElementById('drawerOverlay');
+      function openDrawer(employee) {
+        const detail = employeeDetails[employee] || employeeDetails['Jean Dupont'];
+        const periodType = document.getElementById('periodType').value;
+        const standard = detail[`${periodType}Standard`];
+        const actual = detail[`${periodType}Actual`];
+        const exceed = detail[`${periodType}Exceed`];
+        document.getElementById('drawerTitle').textContent = `${employee} · 工时明细`;
+        document.getElementById('drawerSubtitle').textContent = `${detail.id} · ${detail.scope} · ${document.getElementById('periodDisplay').value}`;
+        document.getElementById('drawerStandard').textContent = standard;
+        document.getElementById('drawerActual').textContent = actual;
+        document.getElementById('drawerExceed').textContent = exceed;
+        document.getElementById('drawerResultStatus').textContent = detail.status;
+        document.getElementById('drawerDayTitle').textContent = periodType === 'month'
+          ? '每日已确认工时（当前周期示例）'
+          : '每日已确认工时';
+        document.getElementById('drawerExplanation').textContent = standard === '待确认'
+          ? `当前只有 ${actual} 已确认实际工时，标准工时尚未确认，因此暂不计算超出标准时长。`
+          : `本期标准工时确认后，系统用 ${actual} - ${standard} 得出 ${exceed} 超出标准。缺失日期不会自动按 0 小时填入。`;
+        drawer.hidden = false;
+        document.body.style.overflow = 'hidden';
+        document.getElementById('closeDrawerBtn').focus();
+      }
+      function closeDrawer() {
+        drawer.hidden = true;
+        document.body.style.overflow = '';
+      }
+      document.querySelectorAll('.detail-btn').forEach((button) => {
+        button.addEventListener('click', () => openDrawer(button.dataset.employee));
+      });
+      document.getElementById('closeDrawerBtn').addEventListener('click', closeDrawer);
+      document.getElementById('drawerDoneBtn').addEventListener('click', closeDrawer);
+      document.getElementById('drawerCalibrateBtn').addEventListener('click', () => {
+        closeDrawer();
+        showToast('已定位到记录校准入口（原型示意）');
+      });
+      drawer.addEventListener('click', (event) => {
+        if (event.target === drawer) closeDrawer();
+      });
+
+      document.querySelectorAll('.scope-item').forEach((item) => {
+        item.addEventListener('click', () => {
+          document.querySelectorAll('.scope-item').forEach((scope) => scope.classList.remove('active'));
+          item.classList.add('active');
+          const scope = item.dataset.scope;
+          const content = {
+            'FR-LIL-01': ['FR · LIL-01 · 标准工时确认', 'MANPOWER · 2026-09-01 至 2026-09-07 · 3 名员工待确认', '待确认'],
+            'DE-BER-02': ['DE · BER-02 · 标准工时确认', 'RANDSTAD · 2026-09-01 至 2026-09-07 · 4 名员工待确认', '待确认'],
+            'GB-MCR-01': ['GB · MCR-01 · 标准工时确认', 'ADECCO · 2026-09-01 至 2026-09-07 · 已沿用员工档案值', '已确认'],
+            'ES-MAD-03': ['ES · MAD-03 · 标准工时确认', 'MANPOWER · 2026-09-01 至 2026-09-07 · 已确认 40h / 周', '已确认'],
+            'NL-AMS-01': ['NL · AMS-01 · 标准工时确认', 'RANDSTAD · 2026-09-01 至 2026-09-07 · 1 名员工待确认', '待确认']
+          }[scope];
+          document.getElementById('confirmTitle').textContent = content[0];
+          document.getElementById('confirmSubtitle').textContent = content[1];
+          document.getElementById('scopeConfirmStatus').textContent = content[2];
+          document.getElementById('scopeConfirmStatus').className = `status-pill ${content[2] === '已确认' ? 'success' : 'warning'}`;
+          showToast(`已切换到 ${scope} 的标准工时确认`);
+        });
+      });
+
+      document.getElementById('copyPreviousBtn').addEventListener('click', () => {
+        document.getElementById('scopeConfirmStatus').textContent = '已沿用上期';
+        document.getElementById('scopeConfirmStatus').className = 'status-pill success';
+        document.getElementById('confirmFooterNote').textContent = '已带入上期确认值，请保存本期确认后生成结果。';
+        showToast('已带入上一个结算周期的标准工时');
+      });
+      document.getElementById('saveConfirmBtn').addEventListener('click', () => {
+        document.getElementById('scopeConfirmStatus').textContent = '已保存';
+        document.getElementById('scopeConfirmStatus').className = 'status-pill success';
+        document.getElementById('confirmFooterNote').textContent = '本期标准工时已保存，原始考勤记录未被修改。';
+        document.getElementById('periodStatus').textContent = '本期状态：标准工时已保存';
+        showToast('本期标准工时确认已保存');
+      });
+      document.getElementById('generateFromConfirmBtn').addEventListener('click', () => {
+        document.getElementById('createResultBtn').disabled = false;
+        document.getElementById('pendingStat').textContent = '0 人';
+        document.getElementById('confirmedStandardStat').textContent = '233 人';
+        document.getElementById('periodStatus').textContent = '本期状态：可生成结算结果';
+        document.getElementById('confirmFooterNote').textContent = '本期标准工时已确认，可以回到概览生成结算结果。';
+        activateTab(document.getElementById('tab-settlement'));
+        showToast('标准工时已保存，结算结果可以生成');
+      });
+
+      function openHelp() {
+        document.getElementById('modalOverlay').hidden = false;
+        document.body.style.overflow = 'hidden';
+        document.getElementById('closeModalBtn').focus();
+      }
+      function closeHelp() {
+        document.getElementById('modalOverlay').hidden = true;
+        document.body.style.overflow = '';
+      }
+      document.getElementById('openHelpBtn').addEventListener('click', openHelp);
+      document.getElementById('closeModalBtn').addEventListener('click', closeHelp);
+      document.getElementById('closeHelpActionBtn').addEventListener('click', closeHelp);
+      document.getElementById('modalOverlay').addEventListener('click', (event) => {
+        if (event.target.id === 'modalOverlay') closeHelp();
+      });
+
+      document.getElementById('historyExportBtn').addEventListener('click', () => {
+        showToast('结算记录导出任务已创建，只包含周期和工时字段');
+      });
+      document.getElementById('historyFieldHelpBtn').addEventListener('click', () => {
+        showToast('结算记录保存周期类型、标准工时确认状态和实际工时结果');
+      });
+      document.querySelectorAll('[data-history-detail]').forEach((button) => {
+        button.addEventListener('click', () => {
+          activateTab(document.getElementById('tab-settlement'));
+          showToast(`${button.dataset.historyDetail} 的工时结果已定位到结算概览`);
+        });
+      });
+
+      document.addEventListener('keydown', (event) => {
+        if (event.key === 'Escape') {
+          if (!drawer.hidden) closeDrawer();
+          if (!document.getElementById('modalOverlay').hidden) closeHelp();
+        }
+      });
+    })();
+  </script>
+</body>
+</html>

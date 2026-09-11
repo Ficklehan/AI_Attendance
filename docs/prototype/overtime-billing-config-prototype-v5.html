@@ -1,0 +1,532 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>加班与账单配置中心 · AttendanceAgent 原型 v5</title>
+  <style>
+    :root {
+      --primary: #5B6CF7;
+      --primary-hover: #4A58D9;
+      --primary-dark: #3E4CC4;
+      --primary-light: #F0F1FF;
+      --primary-lighter: #F7F7FF;
+      --accent: #FF7E5D;
+      --accent-dark: #E05A38;
+      --accent-light: #FFE8DE;
+      --success: #34C77B;
+      --success-dark: #1A9E5C;
+      --success-light: #EDFCF2;
+      --warning: #F7B731;
+      --warning-dark: #C48A0A;
+      --warning-light: #FFF3DC;
+      --danger: #F06565;
+      --danger-dark: #D94040;
+      --danger-light: #FFF0F0;
+      --text-strong: #1C1A2E;
+      --text-primary: #3D3952;
+      --text-secondary: #73707F;
+      --text-tertiary: #A8A5B2;
+      --border: #EDEAEF;
+      --border-light: #F5F3F7;
+      --border-hover: #D4D0D8;
+      --bg-body: #FBF9F7;
+      --bg-surface: #FFFFFF;
+      --bg-muted: #F5F3F7;
+      --bg-hover: #F4F2F6;
+      --shadow-sm: 0 2px 8px rgba(28, 26, 46, 0.06), 0 1px 2px rgba(28, 26, 46, 0.03);
+      --shadow-md: 0 4px 16px rgba(28, 26, 46, 0.08), 0 2px 4px rgba(28, 26, 46, 0.03);
+      --shadow-lg: 0 16px 48px rgba(28, 26, 46, 0.14), 0 6px 12px rgba(28, 26, 46, 0.05);
+      --radius-sm: 6px;
+      --radius-md: 8px;
+      --radius-lg: 12px;
+      --radius-xl: 16px;
+      --font: -apple-system, BlinkMacSystemFont, "SF Pro Display", "SF Pro Text", "Segoe UI", Roboto, "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", Arial, sans-serif;
+      --mono: "SF Mono", SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+    }
+
+    * { box-sizing: border-box; }
+    html { min-width: 320px; background: var(--bg-body); color: var(--text-primary); font-family: var(--font); font-size: 13px; -webkit-font-smoothing: antialiased; text-rendering: optimizeLegibility; }
+    body { min-width: 320px; margin: 0; background: var(--bg-body); }
+    button, input, select { font: inherit; }
+    button { cursor: pointer; }
+    button:focus-visible, input:focus-visible, select:focus-visible { outline: 3px solid rgba(91, 108, 247, 0.24); outline-offset: 2px; }
+    [hidden] { display: none !important; }
+
+    .app-shell { width: min(100%, 1440px); min-height: 100vh; margin: 0 auto; padding: 28px 32px 56px; }
+    .page-shell { display: flex; align-items: flex-start; justify-content: space-between; gap: 24px; margin-bottom: 24px; flex-wrap: wrap; }
+    .breadcrumb { display: flex; align-items: center; gap: 8px; margin-bottom: 8px; color: var(--text-secondary); font-size: 11px; }
+    .breadcrumb span:not(:last-child)::after { content: "/"; margin-left: 8px; color: var(--border-hover); }
+    .breadcrumb .active { color: var(--primary); font-weight: 600; }
+    h1, h2, h3, p { margin: 0; }
+    h1 { color: var(--text-strong); font-size: 24px; line-height: 1.25; font-weight: 800; }
+    .title-row { display: flex; align-items: baseline; gap: 12px; flex-wrap: wrap; }
+    .page-subtitle { max-width: 760px; margin-top: 8px; color: var(--text-secondary); line-height: 1.55; }
+    .page-extra { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+
+    .surface { border: 1px solid rgba(237, 234, 239, 0.85); border-radius: var(--radius-xl); background: var(--bg-surface); box-shadow: var(--shadow-sm); }
+    .panel { min-width: 0; border: 1px solid var(--border); border-radius: var(--radius-lg); background: var(--bg-surface); }
+    .context-badge, .permission-badge, .status-pill, .chip, .code-pill { display: inline-flex; align-items: center; min-height: 24px; border-radius: 999px; padding: 0 9px; white-space: nowrap; font-size: 11px; font-weight: 600; }
+    .context-badge { color: var(--text-secondary); border: 1px solid var(--border); background: var(--bg-muted); }
+    .permission-badge, .code-pill { color: var(--primary-dark); border: 1px solid #D9DCFF; background: var(--primary-light); font-family: var(--mono); font-weight: 500; }
+    .chip { color: var(--text-secondary); border: 1px solid var(--border); background: var(--bg-muted); }
+    .chip.primary { color: var(--primary-dark); border-color: #D9DCFF; background: var(--primary-light); }
+    .status-pill { border: 1px solid transparent; }
+    .status-pill.success { color: var(--success-dark); border-color: #C7F0D7; background: var(--success-light); }
+    .status-pill.warning { color: var(--warning-dark); border-color: #F3DFAC; background: var(--warning-light); }
+    .status-pill.danger { color: var(--danger-dark); border-color: #F4CDCD; background: var(--danger-light); }
+    .status-pill.neutral { color: var(--text-secondary); border-color: var(--border); background: var(--bg-muted); }
+
+    .btn { min-height: 34px; border: 1px solid var(--border); border-radius: var(--radius-md); padding: 0 13px; color: var(--text-primary); background: var(--bg-surface); font-weight: 600; transition: background 160ms ease, border-color 160ms ease, color 160ms ease, box-shadow 160ms ease; }
+    .btn:hover { border-color: var(--border-hover); background: var(--bg-hover); }
+    .btn-primary { color: #fff; border-color: var(--primary); background: var(--primary); box-shadow: 0 4px 14px rgba(91, 108, 247, 0.2); }
+    .btn-primary:hover { color: #fff; border-color: var(--primary-hover); background: var(--primary-hover); }
+    .btn-quiet { color: var(--primary); border-color: transparent; background: transparent; }
+    .btn-quiet:hover { color: var(--primary-dark); border-color: #D9DCFF; background: var(--primary-lighter); }
+    .btn-icon { width: 34px; padding: 0; font-size: 16px; line-height: 1; }
+
+    .module-map { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 0; margin-bottom: 20px; overflow: hidden; }
+    .module-node { min-height: 116px; padding: 18px 20px; border-right: 1px solid var(--border-light); background: var(--bg-surface); }
+    .module-node:last-child { border-right: 0; }
+    .module-node.active { background: var(--primary-lighter); }
+    .module-node .step { display: grid; width: 28px; height: 28px; margin-bottom: 12px; place-items: center; border-radius: 50%; color: #fff; background: var(--primary); font-weight: 800; }
+    .module-node h2 { color: var(--text-strong); font-size: 15px; }
+    .module-node p { margin-top: 6px; color: var(--text-secondary); font-size: 12px; line-height: 1.45; }
+
+    .tabs { display: flex; gap: 26px; min-height: 52px; padding: 0 24px; border-bottom: 1px solid var(--border-light); overflow-x: auto; }
+    .tab { position: relative; border: 0; padding: 0; color: var(--text-secondary); background: transparent; font-weight: 600; white-space: nowrap; }
+    .tab[aria-selected="true"] { color: var(--primary); }
+    .tab[aria-selected="true"]::after { position: absolute; right: 0; bottom: -1px; left: 0; height: 2px; content: ""; background: var(--primary); }
+    .tab-panel { padding: 24px; }
+
+    .notice { display: flex; align-items: flex-start; gap: 12px; margin-bottom: 20px; padding: 13px 15px; border: 1px solid #D9DCFF; border-radius: var(--radius-lg); color: var(--primary-dark); background: var(--primary-lighter); line-height: 1.55; }
+    .notice-icon { display: grid; flex: 0 0 22px; width: 22px; height: 22px; place-items: center; border-radius: 50%; color: #fff; background: var(--primary); font-weight: 800; }
+    .notice strong { display: block; margin-bottom: 2px; color: var(--text-strong); }
+
+    .grid-2 { display: grid; grid-template-columns: minmax(0, 1fr) minmax(360px, 0.72fr); gap: 16px; margin-bottom: 20px; }
+    .grid-3 { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; margin-bottom: 20px; }
+    .grid-4 { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 12px; margin-bottom: 20px; }
+    .card { min-width: 0; padding: 18px 20px; border: 1px solid var(--border); border-radius: var(--radius-lg); background: var(--bg-surface); }
+    .card-title { color: var(--text-strong); font-size: 15px; font-weight: 700; }
+    .card-subtitle { margin-top: 5px; color: var(--text-secondary); font-size: 12px; line-height: 1.45; }
+    .metric { margin-top: 12px; color: var(--text-strong); font-size: 25px; line-height: 1; font-weight: 800; font-variant-numeric: tabular-nums; }
+    .metric-note { margin-top: 8px; color: var(--text-tertiary); font-size: 11px; }
+
+    .section-header { display: flex; align-items: flex-start; justify-content: space-between; gap: 16px; margin-bottom: 15px; }
+    .section-header h2 { color: var(--text-strong); font-size: 16px; }
+    .section-header p { margin-top: 5px; color: var(--text-secondary); font-size: 12px; line-height: 1.45; }
+    .section-actions { display: flex; align-items: center; justify-content: flex-end; gap: 8px; flex-wrap: wrap; }
+
+    .form-grid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 14px 16px; }
+    .field { display: flex; min-width: 0; flex-direction: column; gap: 6px; }
+    .field.span-2 { grid-column: span 2; }
+    .field.span-4 { grid-column: span 4; }
+    .field-label, th { color: var(--text-tertiary); font-size: 11px; font-weight: 700; letter-spacing: 0.04em; text-transform: uppercase; }
+    .control { width: 100%; height: 34px; border: 1px solid var(--border); border-radius: var(--radius-md); padding: 0 10px; color: var(--text-primary); background: var(--bg-surface); }
+    .control:hover { border-color: var(--border-hover); }
+    .helper { margin-top: 5px; color: var(--text-tertiary); font-size: 11px; line-height: 1.45; }
+    .chip-row { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; min-height: 34px; }
+
+    .flow { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 10px; align-items: stretch; }
+    .flow-box { padding: 12px; border: 1px solid var(--border); border-radius: var(--radius-md); background: #FCFBFD; }
+    .flow-box span { display: block; color: var(--text-tertiary); font-size: 11px; }
+    .flow-box strong { display: block; margin-top: 6px; color: var(--text-strong); font-size: 13px; }
+    .flow-arrow { display: none; }
+
+    .config-layout { display: grid; grid-template-columns: 270px minmax(0, 1fr); gap: 16px; }
+    .side-list { overflow: hidden; padding: 8px; }
+    .side-header { padding: 10px 10px 12px; }
+    .side-header strong { color: var(--text-strong); font-size: 14px; }
+    .side-header p { margin-top: 5px; color: var(--text-secondary); font-size: 11px; line-height: 1.45; }
+    .side-item { display: block; width: 100%; margin: 3px 0; border: 1px solid transparent; border-radius: var(--radius-md); padding: 12px 11px; color: var(--text-primary); background: transparent; text-align: left; }
+    .side-item:hover { background: var(--bg-hover); }
+    .side-item.active { border-color: #D9DCFF; color: var(--primary-dark); background: var(--primary-light); }
+    .side-item-main { display: flex; align-items: center; justify-content: space-between; gap: 8px; font-weight: 700; }
+    .side-item small { display: block; margin-top: 5px; color: var(--text-secondary); font-size: 11px; }
+    .side-item.active small { color: var(--primary-dark); }
+    .editor { min-width: 0; padding: 22px; }
+    .editor-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 16px; padding-bottom: 18px; border-bottom: 1px solid var(--border-light); }
+    .editor-head h2 { color: var(--text-strong); font-size: 18px; }
+    .editor-head p { margin-top: 5px; color: var(--text-secondary); line-height: 1.5; }
+    .editor-section { padding: 20px 0; border-bottom: 1px solid var(--border-light); }
+    .editor-section:last-child { border-bottom: 0; }
+
+    table { width: 100%; min-width: 900px; border-collapse: collapse; }
+    .compact-table { min-width: 680px; }
+    th { padding: 11px 14px; border-top: 1px solid var(--border-light); border-bottom: 1px solid var(--border-light); background: #FCFBFD; text-align: left; white-space: nowrap; }
+    td { padding: 13px 14px; border-bottom: 1px solid var(--border-light); vertical-align: middle; }
+    tbody tr:last-child td { border-bottom: 0; }
+    tbody tr:hover { background: var(--primary-lighter); }
+    .table-scroll { overflow-x: auto; }
+    .table-panel { overflow: hidden; }
+    .table-toolbar { display: flex; align-items: flex-start; justify-content: space-between; gap: 16px; padding: 18px 20px 14px; }
+    .number { font-variant-numeric: tabular-nums; white-space: nowrap; }
+    .number strong { color: var(--text-strong); font-size: 14px; }
+    .number.primary strong { color: var(--primary); }
+    .number.accent strong { color: var(--accent-dark); }
+    .muted { margin-top: 3px; color: var(--text-tertiary); font-size: 11px; }
+    .link-btn { border: 0; padding: 0; color: var(--primary); background: transparent; font-weight: 600; }
+    .link-btn:hover { color: var(--primary-dark); }
+
+    .formula { display: grid; grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr) auto minmax(0, 1fr); gap: 10px; align-items: center; margin-top: 15px; padding: 14px; border: 1px solid var(--border); border-radius: var(--radius-lg); background: #FCFBFD; }
+    .formula-box { min-width: 0; padding: 12px; border: 1px solid var(--border); border-radius: var(--radius-md); background: var(--bg-surface); }
+    .formula-box span { display: block; color: var(--text-secondary); font-size: 11px; }
+    .formula-box strong { display: block; margin-top: 6px; color: var(--text-strong); font-size: 15px; font-variant-numeric: tabular-nums; }
+    .formula-op { color: var(--text-tertiary); font-size: 18px; text-align: center; }
+
+    .drawer-overlay, .modal-overlay { position: fixed; z-index: 20; inset: 0; display: grid; background: rgba(28, 26, 46, 0.26); }
+    .drawer-overlay { align-items: stretch; justify-items: end; }
+    .drawer { width: min(680px, 100vw); height: 100%; overflow-y: auto; padding: 24px; background: var(--bg-surface); box-shadow: var(--shadow-lg); animation: slideIn 180ms ease-out; }
+    .drawer-header, .modal-header { display: flex; align-items: flex-start; justify-content: space-between; gap: 16px; padding-bottom: 17px; border-bottom: 1px solid var(--border-light); }
+    .drawer-header h2, .modal-header h2 { color: var(--text-strong); font-size: 18px; }
+    .drawer-header p, .modal-header p { margin-top: 5px; color: var(--text-secondary); line-height: 1.45; }
+    .drawer-section { padding: 18px 0; border-bottom: 1px solid var(--border-light); }
+    .drawer-section:last-child { border-bottom: 0; }
+    .drawer-section h3 { margin-bottom: 13px; color: var(--text-strong); font-size: 13px; }
+    .detail-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; }
+    .detail-item { min-width: 0; padding: 11px 12px; border: 1px solid var(--border); border-radius: var(--radius-md); background: #FCFBFD; }
+    .detail-item .label { color: var(--text-tertiary); font-size: 11px; }
+    .detail-item .value { margin-top: 6px; color: var(--text-primary); font-size: 13px; font-weight: 700; overflow-wrap: anywhere; }
+    .drawer-footer, .modal-footer { display: flex; justify-content: flex-end; gap: 8px; padding-top: 20px; }
+    .modal-overlay { place-items: center; padding: 20px; }
+    .modal { width: min(620px, 100%); border-radius: var(--radius-xl); padding: 22px; background: var(--bg-surface); box-shadow: var(--shadow-lg); animation: scaleIn 160ms ease-out; }
+    .modal-body { padding: 20px 0 2px; color: var(--text-primary); line-height: 1.6; }
+    .toast { position: fixed; z-index: 30; right: 24px; bottom: 24px; max-width: min(460px, calc(100vw - 48px)); padding: 12px 15px; border: 1px solid #C7F0D7; border-radius: var(--radius-md); color: var(--success-dark); background: var(--success-light); box-shadow: var(--shadow-md); font-weight: 600; animation: toastIn 180ms ease-out; }
+
+    @keyframes slideIn { from { opacity: 0; transform: translateX(24px); } to { opacity: 1; transform: translateX(0); } }
+    @keyframes scaleIn { from { opacity: 0; transform: scale(0.98); } to { opacity: 1; transform: scale(1); } }
+    @keyframes toastIn { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }
+
+    @media (max-width: 1120px) {
+      .module-map, .grid-4 { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+      .module-node:nth-child(2) { border-right: 0; }
+      .module-node:nth-child(-n+2) { border-bottom: 1px solid var(--border-light); }
+      .grid-2, .config-layout { grid-template-columns: 1fr; }
+      .form-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+      .flow { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    }
+    @media (max-width: 760px) {
+      .app-shell { padding: 20px 16px 40px; }
+      h1 { font-size: 21px; }
+      .tab-panel { padding: 16px; }
+      .tabs { gap: 20px; padding: 0 16px; }
+      .grid-3, .grid-4 { grid-template-columns: 1fr; }
+      .form-grid { grid-template-columns: 1fr; }
+      .field.span-2, .field.span-4 { grid-column: auto; }
+      .side-list { display: flex; gap: 6px; overflow-x: auto; }
+      .side-header { display: none; }
+      .side-item { min-width: 190px; }
+      .formula { grid-template-columns: 1fr; }
+      .formula-op { transform: rotate(90deg); }
+      .section-header, .editor-head, .table-toolbar { flex-direction: column; }
+      .section-actions { justify-content: flex-start; }
+    }
+    @media (max-width: 520px) {
+      .page-extra, .page-extra .btn { width: 100%; }
+      .page-extra .context-badge, .page-extra .permission-badge { width: fit-content; }
+      .module-map { grid-template-columns: 1fr; }
+      .module-node { border-right: 0; border-bottom: 1px solid var(--border-light); }
+      .detail-grid { grid-template-columns: 1fr; }
+    }
+    @media (prefers-reduced-motion: reduce) {
+      *, *::before, *::after { scroll-behavior: auto !important; animation-duration: 0.01ms !important; transition-duration: 0.01ms !important; }
+    }
+  </style>
+</head>
+<body>
+  <main class="app-shell">
+    <header class="page-shell">
+      <div>
+        <nav class="breadcrumb" aria-label="面包屑"><span>设置</span><span class="active">加班与账单配置中心</span></nav>
+        <div class="title-row"><h1>加班与账单配置中心</h1><span class="context-badge">AttendanceAgent · PC 管理端</span></div>
+        <p class="page-subtitle">配置加班分类、标准工时报价、工时核算口径和账单对账规则，为后续账单管理提供可计算、可追溯的基础数据。</p>
+      </div>
+      <div class="page-extra">
+        <span class="context-badge">配置生效：按国家 / 仓库 / 中介 / 周期</span>
+        <span class="permission-badge">billingConfig · overtimeConfig</span>
+        <button class="btn btn-primary" id="publishBtn" type="button"><span aria-hidden="true">＋</span> 发布配置版本</button>
+      </div>
+    </header>
+
+    <section class="module-map surface" aria-label="模块关系">
+      <div class="module-node active"><span class="step">1</span><h2>加班管理</h2><p>定义标准工时、超出标准、周末、节假日、夜间等工时分类。</p></div>
+      <div class="module-node"><span class="step">2</span><h2>报价管理</h2><p>维护标准工时报价，必要时配置加班类目系数或分项报价。</p></div>
+      <div class="module-node"><span class="step">3</span><h2>工时核算与确认</h2><p>把已确认考勤转换成可出账工时，支持周结和月结。</p></div>
+      <div class="module-node"><span class="step">4</span><h2>账单核算与对账</h2><p>按报价和工时生成账单明细，与中介账单做差异核对。</p></div>
+    </section>
+
+    <section class="surface" aria-label="配置工作区">
+      <div class="tabs" role="tablist" aria-label="配置标签">
+        <button class="tab" id="tab-overview" role="tab" aria-selected="true" aria-controls="panel-overview" tabindex="0" type="button">配置总览</button>
+        <button class="tab" id="tab-overtime" role="tab" aria-selected="false" aria-controls="panel-overtime" tabindex="-1" type="button">加班管理</button>
+        <button class="tab" id="tab-rate" role="tab" aria-selected="false" aria-controls="panel-rate" tabindex="-1" type="button">报价管理</button>
+        <button class="tab" id="tab-hours" role="tab" aria-selected="false" aria-controls="panel-hours" tabindex="-1" type="button">工时核算与确认</button>
+        <button class="tab" id="tab-bill" role="tab" aria-selected="false" aria-controls="panel-bill" tabindex="-1" type="button">账单核算与对账</button>
+      </div>
+
+      <section class="tab-panel" id="panel-overview" role="tabpanel" aria-labelledby="tab-overview">
+        <div class="notice"><span class="notice-icon">i</span><div><strong>原型定位</strong>这里是系统配置功能，不是一次性结算流程。配置完成后，后续账单管理可以复用这些规则自动计算费用、生成账单、对账和追溯差异。</div></div>
+
+        <div class="grid-4">
+          <div class="card"><div class="card-title">已配置加班规则</div><div class="metric">4 套</div><div class="metric-note">FR / DE / GB / ES 已启用，NL 待补齐</div></div>
+          <div class="card"><div class="card-title">有效报价单</div><div class="metric">12 份</div><div class="metric-note">支持标准工时报价和分项报价</div></div>
+          <div class="card"><div class="card-title">结算周期</div><div class="metric">周 / 月</div><div class="metric-note">按中介和仓库独立配置</div></div>
+          <div class="card"><div class="card-title">账单字段映射</div><div class="metric">8 项</div><div class="metric-note">工时类目、单价、金额、差异原因</div></div>
+        </div>
+
+        <section class="panel" style="padding: 18px 20px; margin-bottom: 20px;">
+          <div class="section-header">
+            <div><h2>后续账单计算链路</h2><p>系统先核算工时，再匹配报价，最后生成账单明细。每一步都保留配置版本和来源。</p></div>
+            <button class="btn btn-quiet" id="flowHelpBtn" type="button">字段关系</button>
+          </div>
+          <div class="flow">
+            <div class="flow-box"><span>输入</span><strong>已确认考勤</strong><p class="helper">task_records / 记录校准</p></div>
+            <div class="flow-box"><span>工时分类</span><strong>标准 / 超出 / 夜间 / 假日</strong><p class="helper">来自加班管理</p></div>
+            <div class="flow-box"><span>报价匹配</span><strong>标准工时报价 / 分项报价</strong><p class="helper">来自报价管理</p></div>
+            <div class="flow-box"><span>账单核算</span><strong>工时 × 单价 / 系数</strong><p class="helper">保留公式快照</p></div>
+            <div class="flow-box"><span>对账</span><strong>系统账单 vs 中介账单</strong><p class="helper">输出差异原因</p></div>
+          </div>
+        </section>
+
+        <div class="grid-2">
+          <section class="panel table-panel">
+            <div class="table-toolbar"><div><h2 class="card-title">配置缺口</h2><p class="card-subtitle">这些配置会影响后续费用和账单准确性。</p></div></div>
+            <div class="table-scroll"><table class="compact-table"><thead><tr><th>模块</th><th>范围</th><th>问题</th><th>状态</th></tr></thead><tbody>
+              <tr><td>加班管理</td><td>NL · AMS-01</td><td>缺少工时分类规则</td><td><span class="status-pill warning">待配置</span></td></tr>
+              <tr><td>报价管理</td><td>FR · LIL-01 · MANPOWER</td><td>标准工时报价已确认，加班类目使用系数</td><td><span class="status-pill success">可计算</span></td></tr>
+              <tr><td>账单对账</td><td>DE · BER-02</td><td>中介账单字段名称未映射</td><td><span class="status-pill warning">待映射</span></td></tr>
+            </tbody></table></div>
+          </section>
+          <section class="panel" style="padding: 18px 20px;">
+            <h2 class="card-title">推荐菜单结构</h2>
+            <p class="card-subtitle">保持当前系统风格，可以把功能拆在一个“结算配置”入口下。</p>
+            <div class="chip-row" style="margin-top: 15px;"><span class="chip primary">设置 / 加班管理</span><span class="chip primary">设置 / 报价管理</span><span class="chip primary">结算 / 工时核算</span><span class="chip primary">结算 / 账单对账</span></div>
+            <div class="formula">
+              <div class="formula-box"><span>配置版本</span><strong>生效日期</strong></div><div class="formula-op">+</div>
+              <div class="formula-box"><span>适用范围</span><strong>国家 / 仓库 / 中介</strong></div><div class="formula-op">=</div>
+              <div class="formula-box"><span>后续账单</span><strong>可追溯</strong></div>
+            </div>
+          </section>
+        </div>
+      </section>
+
+      <section class="tab-panel" id="panel-overtime" role="tabpanel" aria-labelledby="tab-overtime" hidden>
+        <div class="config-layout">
+          <aside class="surface side-list" aria-label="加班规则列表">
+            <div class="side-header"><strong>规则版本</strong><p>按国家、仓库、中介和员工类型设置。</p></div>
+            <button class="side-item active" data-title="FR · MANPOWER 加班规则" type="button"><span class="side-item-main"><span>FR · MANPOWER</span><span class="status-pill success">生效</span></span><small>OT-FR-MP-v3 · 周结</small></button>
+            <button class="side-item" data-title="DE · RANDSTAD 加班规则" type="button"><span class="side-item-main"><span>DE · RANDSTAD</span><span class="status-pill success">生效</span></span><small>OT-DE-RS-v1 · 周结</small></button>
+            <button class="side-item" data-title="GB · ADECCO 加班规则" type="button"><span class="side-item-main"><span>GB · ADECCO</span><span class="status-pill success">生效</span></span><small>OT-GB-AD-v4 · 月结</small></button>
+            <button class="side-item" data-title="NL · 待配置加班规则" type="button"><span class="side-item-main"><span>NL · 待配置</span><span class="status-pill warning">待配置</span></span><small>缺少工时分类</small></button>
+          </aside>
+          <section class="surface editor" aria-labelledby="overtimeTitle">
+            <div class="editor-head"><div><h2 id="overtimeTitle">FR · MANPOWER 加班规则</h2><p>定义“工时怎么分类”，不在这里配置单价。</p></div><div class="section-actions"><span class="status-pill success">生效中</span><button class="btn" type="button" data-toast="已打开加班规则版本历史">版本历史</button></div></div>
+            <div class="editor-section">
+              <div class="section-header"><div><h2>适用范围</h2><p>同一国家下，不同仓库、中介和员工类型可以有不同规则。</p></div></div>
+              <div class="form-grid">
+                <label class="field"><span class="field-label">国家 / 地区</span><select class="control"><option>法国 FR</option><option>德国 DE</option><option>英国 GB</option></select></label>
+                <label class="field"><span class="field-label">仓库</span><select class="control"><option>LIL-01</option><option>LIL-02</option><option>全部仓库</option></select></label>
+                <label class="field"><span class="field-label">中介</span><select class="control"><option>MANPOWER</option><option>RANDSTAD</option><option>ADECCO</option></select></label>
+                <label class="field"><span class="field-label">结算周期</span><select class="control"><option>周结</option><option>月结</option></select></label>
+                <label class="field"><span class="field-label">生效日期</span><input class="control" value="2026-09-01"></label>
+                <label class="field"><span class="field-label">标准工时 / 周</span><input class="control" type="number" value="35" step="0.5"></label>
+                <label class="field"><span class="field-label">休息扣除</span><select class="control"><option>扣除 pause_minutes</option><option>不扣除</option></select></label>
+                <label class="field"><span class="field-label">取整规则</span><select class="control"><option>按 0.25h 向下取整</option><option>按 0.5h 四舍五入</option><option>不取整</option></select></label>
+              </div>
+            </div>
+            <div class="editor-section">
+              <div class="section-header"><div><h2>工时分类</h2><p>分类结果会传给报价和账单，字段要稳定。</p></div><button class="btn" type="button" data-toast="已新增一条工时分类">新增分类</button></div>
+              <div class="table-scroll"><table class="compact-table"><thead><tr><th>分类编码</th><th>业务名称</th><th>计算条件</th><th>是否进入账单</th><th>报价映射</th></tr></thead><tbody>
+                <tr><td><span class="code-pill">STD</span></td><td>标准工时</td><td>不超过本周期标准工时</td><td><span class="status-pill success">是</span></td><td>标准工时报价</td></tr>
+                <tr><td><span class="code-pill">OT_WEEKDAY</span></td><td>工作日超出标准</td><td>实际工时 - 标准工时</td><td><span class="status-pill success">是</span></td><td>标准价 × 1.25</td></tr>
+                <tr><td><span class="code-pill">OT_WEEKEND</span></td><td>周末工时</td><td>工作日历标记为周末</td><td><span class="status-pill success">是</span></td><td>分项报价或系数</td></tr>
+                <tr><td><span class="code-pill">OT_NIGHT</span></td><td>夜间重叠</td><td>落入夜间窗口</td><td><span class="status-pill warning">可选</span></td><td>待确认</td></tr>
+              </tbody></table></div>
+            </div>
+          </section>
+        </div>
+      </section>
+
+      <section class="tab-panel" id="panel-rate" role="tabpanel" aria-labelledby="tab-rate" hidden>
+        <div class="notice"><span class="notice-icon">i</span><div><strong>报价管理支撑你说的线下核算场景。</strong>如果线下只确认“标准工时报价”，系统可通过工时分类和系数计算各员工结算周期费用；如果中介给了分项报价，也可以逐类目维护。</div></div>
+        <div class="grid-2">
+          <section class="panel" style="padding: 22px;">
+            <div class="section-header"><div><h2>报价单配置</h2><p>报价单按版本生效，账单计算时锁定快照。</p></div><div class="section-actions"><span class="status-pill success">草稿已保存</span><button class="btn btn-primary" type="button" data-toast="报价单版本已发布">发布报价</button></div></div>
+            <div class="form-grid">
+              <label class="field"><span class="field-label">报价单编号</span><input class="control" value="RATE-FR-MP-2026Q3"></label>
+              <label class="field"><span class="field-label">中介</span><select class="control"><option>MANPOWER</option><option>RANDSTAD</option><option>ADECCO</option></select></label>
+              <label class="field"><span class="field-label">国家 / 仓库</span><select class="control"><option>FR · LIL-01</option><option>DE · BER-02</option><option>GB · MCR-01</option></select></label>
+              <label class="field"><span class="field-label">币种</span><select class="control"><option>EUR</option><option>GBP</option><option>USD</option></select></label>
+              <label class="field"><span class="field-label">报价模式</span><select class="control" id="rateMode"><option value="standard">只维护标准工时报价</option><option value="itemized">维护分项报价</option></select></label>
+              <label class="field"><span class="field-label">标准工时单价</span><input class="control" id="standardPrice" type="number" value="18.50" step="0.01"></label>
+              <label class="field"><span class="field-label">结算周期</span><select class="control"><option>周结</option><option>月结</option></select></label>
+              <label class="field"><span class="field-label">生效日期</span><input class="control" value="2026-09-01"></label>
+            </div>
+            <div class="formula">
+              <div class="formula-box"><span>工时分类</span><strong id="rateFormulaCategory">STD / OT</strong></div><div class="formula-op">×</div>
+              <div class="formula-box"><span>报价</span><strong id="rateFormulaPrice">标准价 €18.50</strong></div><div class="formula-op">=</div>
+              <div class="formula-box"><span>账单行金额</span><strong id="rateFormulaResult">可计算</strong></div>
+            </div>
+          </section>
+          <section class="panel table-panel">
+            <div class="table-toolbar"><div><h2 class="card-title">报价明细</h2><p class="card-subtitle" id="rateModeHint">只维护标准价时，加班类目按系数派生。</p></div><button class="btn" type="button" data-toast="已新增报价明细">新增明细</button></div>
+            <div class="table-scroll"><table class="compact-table"><thead><tr><th>工时类目</th><th>计价方式</th><th>单价 / 系数</th><th>出账字段</th></tr></thead><tbody id="rateRows">
+              <tr><td>标准工时 STD</td><td>固定单价</td><td class="number"><strong>€18.50 / h</strong></td><td>standard_amount</td></tr>
+              <tr><td>工作日超出 OT_WEEKDAY</td><td>标准价系数</td><td class="number"><strong>1.25 × 标准价</strong></td><td>weekday_ot_amount</td></tr>
+              <tr><td>周末 OT_WEEKEND</td><td>标准价系数</td><td class="number"><strong>1.50 × 标准价</strong></td><td>weekend_amount</td></tr>
+              <tr><td>夜间 OT_NIGHT</td><td>不计费</td><td class="number"><strong>—</strong></td><td>仅备注</td></tr>
+            </tbody></table></div>
+          </section>
+        </div>
+      </section>
+
+      <section class="tab-panel" id="panel-hours" role="tabpanel" aria-labelledby="tab-hours" hidden>
+        <div class="grid-3">
+          <div class="card"><div class="card-title">核算批次</div><div class="metric">HOUR-202609-W36</div><div class="metric-note">周结 · FR / DE / GB</div></div>
+          <div class="card"><div class="card-title">已确认实际工时</div><div class="metric">1,482.5 h</div><div class="metric-note">来自已确认任务和校准记录</div></div>
+          <div class="card"><div class="card-title">可出账工时</div><div class="metric">1,536.0 h</div><div class="metric-note">分类后传给账单核算</div></div>
+        </div>
+        <section class="panel table-panel">
+          <div class="table-toolbar"><div><h2 class="card-title">员工工时核算与确认</h2><p class="card-subtitle">这里确认的是“账单可用工时”，不是报价，也不是最终账单。</p></div><div class="section-actions"><button class="btn" type="button" data-toast="已刷新已确认考勤">同步考勤</button><button class="btn btn-primary" type="button" data-toast="本批次工时已确认，可进入账单核算">确认工时批次</button></div></div>
+          <div class="table-scroll"><table><thead><tr><th>员工</th><th>周期</th><th>实际工时</th><th>标准工时</th><th>超出标准</th><th>周末 / 夜间</th><th>账单分类状态</th><th>操作</th></tr></thead><tbody>
+            <tr><td>Jean Dupont<div class="muted">EMP-FR-1042 · MANPOWER</div></td><td>周结 W36</td><td class="number"><strong>42.5 h</strong></td><td class="number"><strong>35.0 h</strong></td><td class="number accent"><strong>7.5 h</strong></td><td>0 h / 0 h</td><td><span class="status-pill success">已分类</span></td><td><button class="link-btn detail-btn" data-kind="hours" type="button">查看明细</button></td></tr>
+            <tr><td>Emily Smith<div class="muted">EMP-GB-1184 · ADECCO</div></td><td>月结 2026-09</td><td class="number"><strong>208.0 h</strong></td><td class="number"><strong>176.0 h</strong></td><td class="number accent"><strong>32.0 h</strong></td><td>8 h / 6 h</td><td><span class="status-pill warning">待复核</span></td><td><button class="link-btn detail-btn" data-kind="hours" type="button">查看明细</button></td></tr>
+            <tr><td>Pieter de Vries<div class="muted">EMP-NL-4152 · RANDSTAD</div></td><td>周结 W36</td><td class="number"><strong>43.0 h</strong></td><td class="number"><strong>待确认</strong></td><td>—</td><td>0 h / 4 h</td><td><span class="status-pill danger">缺规则</span></td><td><button class="link-btn detail-btn" data-kind="hours" type="button">查看明细</button></td></tr>
+          </tbody></table></div>
+        </section>
+      </section>
+
+      <section class="tab-panel" id="panel-bill" role="tabpanel" aria-labelledby="tab-bill" hidden>
+        <div class="grid-4">
+          <div class="card"><div class="card-title">系统计算金额</div><div class="metric">€28,416.25</div><div class="metric-note">按已确认工时 × 报价快照</div></div>
+          <div class="card"><div class="card-title">中介账单金额</div><div class="metric">€28,690.75</div><div class="metric-note">导入账单后解析</div></div>
+          <div class="card"><div class="card-title">差异金额</div><div class="metric">€274.50</div><div class="metric-note">待确认 6 条</div></div>
+          <div class="card"><div class="card-title">可出账状态</div><div class="metric">92%</div><div class="metric-note">报价和工时已覆盖范围</div></div>
+        </div>
+        <section class="panel" style="padding: 22px; margin-bottom: 20px;">
+          <div class="section-header"><div><h2>账单生成配置</h2><p>定义账单如何按工时类目汇总、分组、取整和输出。</p></div><div class="section-actions"><button class="btn" type="button" data-toast="已保存账单生成配置">保存配置</button><button class="btn btn-primary" type="button" data-toast="已生成试算账单 BILL-DRAFT-202609-W36">试算账单</button></div></div>
+          <div class="form-grid">
+            <label class="field"><span class="field-label">账单分组</span><select class="control"><option>国家 + 仓库 + 中介</option><option>中介 + 员工</option><option>国家 + 中介</option></select></label>
+            <label class="field"><span class="field-label">结算周期来源</span><select class="control"><option>报价单配置</option><option>账单生成时选择</option></select></label>
+            <label class="field"><span class="field-label">金额小数</span><select class="control"><option>保留 2 位</option><option>保留 4 位</option></select></label>
+            <label class="field"><span class="field-label">差异阈值</span><input class="control" value="€5.00"></label>
+            <label class="field span-2"><span class="field-label">账单行字段</span><input class="control" value="employee_no, work_hours, category, unit_price, amount, source_batch"></label>
+            <label class="field span-2"><span class="field-label">对账键</span><input class="control" value="employee_no + period + category + agency"></label>
+          </div>
+        </section>
+        <section class="panel table-panel">
+          <div class="table-toolbar"><div><h2 class="card-title">账单试算与对账</h2><p class="card-subtitle">系统账单和中介账单按对账键匹配，输出差异原因。</p></div><button class="btn" type="button" data-toast="已导入中介账单示例文件">导入中介账单</button></div>
+          <div class="table-scroll"><table><thead><tr><th>员工</th><th>类目</th><th>系统工时</th><th>单价 / 系数</th><th>系统金额</th><th>中介金额</th><th>差异</th><th>原因</th></tr></thead><tbody>
+            <tr><td>Jean Dupont</td><td>STD</td><td class="number">35.0 h</td><td>€18.50</td><td class="number">€647.50</td><td class="number">€647.50</td><td class="number">€0.00</td><td><span class="status-pill success">一致</span></td></tr>
+            <tr><td>Jean Dupont</td><td>OT_WEEKDAY</td><td class="number">7.5 h</td><td>1.25 × 标准价</td><td class="number">€173.44</td><td class="number">€185.00</td><td class="number accent">€11.56</td><td><span class="status-pill warning">系数不一致</span></td></tr>
+            <tr><td>Emily Smith</td><td>OT_WEEKEND</td><td class="number">8.0 h</td><td>分项价 £24.00</td><td class="number">£192.00</td><td class="number">£192.00</td><td class="number">£0.00</td><td><span class="status-pill success">一致</span></td></tr>
+          </tbody></table></div>
+        </section>
+      </section>
+    </section>
+  </main>
+
+  <div class="drawer-overlay" id="drawerOverlay" hidden>
+    <aside class="drawer" role="dialog" aria-modal="true" aria-labelledby="drawerTitle">
+      <div class="drawer-header"><div><h2 id="drawerTitle">配置明细</h2><p id="drawerSubtitle">规则、报价、工时和账单都保留版本快照。</p></div><button class="btn btn-icon" id="closeDrawerBtn" type="button" aria-label="关闭明细" title="关闭">×</button></div>
+      <div class="drawer-section"><h3>核算链路</h3><div class="detail-grid"><div class="detail-item"><div class="label">工时来源</div><div class="value">已确认任务 + 记录校准</div></div><div class="detail-item"><div class="label">分类规则</div><div class="value">OT-FR-MP-v3</div></div><div class="detail-item"><div class="label">报价快照</div><div class="value">RATE-FR-MP-2026Q3</div></div><div class="detail-item"><div class="label">账单行</div><div class="value">STD / OT_WEEKDAY</div></div></div></div>
+      <div class="drawer-section"><h3>说明</h3><div class="notice" style="margin-bottom: 0;"><span class="notice-icon">i</span><div id="drawerText">配置中心只定义可复用规则；具体账单由后续账单管理按周期生成。</div></div></div>
+      <div class="drawer-footer"><button class="btn btn-primary" id="drawerDoneBtn" type="button">完成查看</button></div>
+    </aside>
+  </div>
+
+  <div class="modal-overlay" id="modalOverlay" hidden>
+    <section class="modal" role="dialog" aria-modal="true" aria-labelledby="modalTitle">
+      <div class="modal-header"><div><h2 id="modalTitle">发布配置版本</h2><p>发布后，后续工时核算和账单核算会使用新版本。</p></div><button class="btn btn-icon" id="closeModalBtn" type="button" aria-label="关闭发布窗口" title="关闭">×</button></div>
+      <div class="modal-body"><p>建议发布前确认：适用范围、结算周期、加班分类、报价模式、账单字段映射和对账键。历史账单保留原配置快照，不被静默改写。</p></div>
+      <div class="modal-footer"><button class="btn" id="cancelPublishBtn" type="button">取消</button><button class="btn btn-primary" id="confirmPublishBtn" type="button">确认发布</button></div>
+    </section>
+  </div>
+
+  <div class="toast" id="toast" hidden role="status" aria-live="polite"></div>
+
+  <script>
+    (() => {
+      const tabs = [...document.querySelectorAll('[role="tab"]')];
+      const panels = [...document.querySelectorAll('[role="tabpanel"]')];
+      const toast = document.getElementById('toast');
+      let toastTimer;
+      function showToast(message) {
+        toast.textContent = message;
+        toast.hidden = false;
+        clearTimeout(toastTimer);
+        toastTimer = setTimeout(() => { toast.hidden = true; }, 3200);
+      }
+      function activateTab(tab) {
+        tabs.forEach((item) => {
+          const selected = item === tab;
+          item.setAttribute('aria-selected', String(selected));
+          item.tabIndex = selected ? 0 : -1;
+        });
+        panels.forEach((panel) => { panel.hidden = panel.id !== tab.getAttribute('aria-controls'); });
+      }
+      tabs.forEach((tab, index) => {
+        tab.addEventListener('click', () => activateTab(tab));
+        tab.addEventListener('keydown', (event) => {
+          if (!['ArrowLeft', 'ArrowRight', 'Home', 'End'].includes(event.key)) return;
+          event.preventDefault();
+          const nextIndex = event.key === 'ArrowLeft' ? (index - 1 + tabs.length) % tabs.length : event.key === 'ArrowRight' ? (index + 1) % tabs.length : event.key === 'Home' ? 0 : tabs.length - 1;
+          tabs[nextIndex].focus();
+          activateTab(tabs[nextIndex]);
+        });
+      });
+
+      document.querySelectorAll('[data-toast]').forEach((button) => {
+        button.addEventListener('click', () => showToast(button.dataset.toast));
+      });
+      document.querySelectorAll('.side-item').forEach((button) => {
+        button.addEventListener('click', () => {
+          button.parentElement.querySelectorAll('.side-item').forEach((item) => item.classList.remove('active'));
+          button.classList.add('active');
+          const heading = button.closest('.config-layout').querySelector('.editor-head h2');
+          if (heading && button.dataset.title) heading.textContent = button.dataset.title;
+          showToast(`已切换到 ${button.querySelector('.side-item-main span').textContent}`);
+        });
+      });
+
+      const rateMode = document.getElementById('rateMode');
+      rateMode.addEventListener('change', () => {
+        const standardOnly = rateMode.value === 'standard';
+        document.getElementById('rateModeHint').textContent = standardOnly ? '只维护标准价时，加班类目按系数派生。' : '分项报价模式下，每个工时类目都可以维护独立单价。';
+        document.getElementById('rateFormulaCategory').textContent = standardOnly ? 'STD / OT' : '各工时类目';
+        document.getElementById('rateFormulaPrice').textContent = standardOnly ? '标准价 €18.50' : '类目单价';
+        document.getElementById('rateFormulaResult').textContent = standardOnly ? '按系数可计算' : '按分项价计算';
+        showToast(standardOnly ? '已切换为只维护标准工时报价' : '已切换为分项报价模式');
+      });
+      document.getElementById('standardPrice').addEventListener('input', (event) => {
+        document.getElementById('rateFormulaPrice').textContent = `标准价 €${Number(event.target.value || 0).toFixed(2)}`;
+      });
+
+      const drawer = document.getElementById('drawerOverlay');
+      document.querySelectorAll('.detail-btn').forEach((button) => {
+        button.addEventListener('click', () => {
+          drawer.hidden = false;
+          document.body.style.overflow = 'hidden';
+          document.getElementById('drawerText').textContent = button.dataset.kind === 'hours' ? '本条工时已完成分类，可继续匹配报价生成账单行。' : '配置中心只定义可复用规则；具体账单由后续账单管理按周期生成。';
+          document.getElementById('closeDrawerBtn').focus();
+        });
+      });
+      function closeDrawer() { drawer.hidden = true; document.body.style.overflow = ''; }
+      document.getElementById('closeDrawerBtn').addEventListener('click', closeDrawer);
+      document.getElementById('drawerDoneBtn').addEventListener('click', closeDrawer);
+      drawer.addEventListener('click', (event) => { if (event.target === drawer) closeDrawer(); });
+
+      const modal = document.getElementById('modalOverlay');
+      function openModal() { modal.hidden = false; document.body.style.overflow = 'hidden'; document.getElementById('closeModalBtn').focus(); }
+      function closeModal() { modal.hidden = true; document.body.style.overflow = ''; }
+      document.getElementById('publishBtn').addEventListener('click', openModal);
+      document.getElementById('closeModalBtn').addEventListener('click', closeModal);
+      document.getElementById('cancelPublishBtn').addEventListener('click', closeModal);
+      document.getElementById('confirmPublishBtn').addEventListener('click', () => { closeModal(); showToast('配置版本已发布，后续核算将使用新快照'); });
+      modal.addEventListener('click', (event) => { if (event.target === modal) closeModal(); });
+      document.getElementById('flowHelpBtn').addEventListener('click', () => { showToast('账单行需要保存工时批次、规则版本、报价版本和对账键'); });
+      document.addEventListener('keydown', (event) => { if (event.key === 'Escape') { if (!drawer.hidden) closeDrawer(); if (!modal.hidden) closeModal(); } });
+    })();
+  </script>
+</body>
+</html>
