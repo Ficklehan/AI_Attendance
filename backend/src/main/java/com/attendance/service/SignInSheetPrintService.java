@@ -55,7 +55,8 @@ public class SignInSheetPrintService {
         }
 
         LocalDate workDate = parseDate(request.getWorkDate());
-        assertCountryAllowed(countryCode);
+        // 归档是打印审计（printed_by），不是国家数据权限门禁；登录用户即可创建。
+        // 历史查询仍按国家/工作地区或「本人 printed_by」过滤。
 
         List<SignInSheetPrintRowRequest> sourceRows = request.getRows() != null
                 ? request.getRows() : new ArrayList<SignInSheetPrintRowRequest>();
@@ -139,9 +140,15 @@ public class SignInSheetPrintService {
         return detail;
     }
 
+    /**
+     * 历史读权限：有国家/工作地区范围时必须命中；仅本人范围不卡国家（SQL 按 printed_by 收口）。
+     */
     private void assertCountryAllowed(String countryCode) {
         DataScopeContext scope = dataScopeService.resolveForCurrentUser();
         if (scope.isAllUsers()) {
+            return;
+        }
+        if (!hasCountryOrRegionScope(scope)) {
             return;
         }
         List<String> tokens = scope.getCountryMatchTokens();
@@ -162,6 +169,18 @@ public class SignInSheetPrintService {
             }
         }
         throw new BusinessException(ErrorCode.PERMISSION_DENIED, ErrorKeys.ACCESS_DENIED);
+    }
+
+    private static boolean hasCountryOrRegionScope(DataScopeContext scope) {
+        if (scope == null) {
+            return false;
+        }
+        List<String> tokens = scope.getCountryMatchTokens();
+        if (tokens != null && !tokens.isEmpty()) {
+            return true;
+        }
+        List<String> regions = scope.getWorkRegions();
+        return regions != null && !regions.isEmpty();
     }
 
     private static boolean isBlankRow(SignInSheetPrintRowRequest row) {

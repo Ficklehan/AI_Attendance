@@ -3,6 +3,7 @@
     "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
 <mapper namespace="com.attendance.mapper.SignInSheetPrintMapper">
 
+    <!-- 管理员全量；有国家/工作地区看范围内全部归档；仅本人看自己 printed_by 的归档 -->
     <sql id="CountryScopeWhere">
         <if test="scope != null and !scope.allUsers">
             <choose>
@@ -13,6 +14,13 @@
                 <when test="scope.workRegions != null and scope.workRegions.size() > 0">
                     AND j.country_code IN
                     <foreach collection="scope.workRegions" item="wr" open="(" separator="," close=")">#{wr}</foreach>
+                </when>
+                <when test="scope.ownerUserIds != null and scope.ownerUserIds.size() > 0">
+                    AND j.printed_by IN
+                    <foreach collection="scope.ownerUserIds" item="uid" open="(" separator="," close=")">#{uid}</foreach>
+                </when>
+                <when test="scope.viewerUserId != null and scope.viewerUserId != ''">
+                    AND j.printed_by = #{scope.viewerUserId}
                 </when>
                 <otherwise>
                     AND 1=0

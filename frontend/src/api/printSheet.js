@@ -1,7 +1,7 @@
 import request from './index'
 
-export function createPrintSheetJob(data) {
-  return request.post('/print-sheets/jobs', data)
+export function createPrintSheetJob(data, config = {}) {
+  return request.post('/print-sheets/jobs', data, config)
 }
 
 export function listPrintSheetDays(params) {

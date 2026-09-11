@@ -511,12 +511,19 @@ async function handlePrint() {
           agencyName: row.agency,
           shiftName: row.shift,
         })),
-      })
+      }, { silentError: true })
     }
     window.print()
   } catch (error) {
     console.error('归档打印人员失败:', error)
-    message.error(t('printSheet.archiveFailed'))
+    const reason = String(error?.message || '').trim()
+    if (error?.apiCode === 1006 || /无权限|permission|access denied/i.test(reason)) {
+      message.error(t('printSheet.archiveDenied'))
+    } else if (reason) {
+      message.error(t('printSheet.archiveFailedWithReason', { reason }))
+    } else {
+      message.error(t('printSheet.archiveFailed'))
+    }
   } finally {
     printing.value = false
   }
