@@ -516,7 +516,7 @@ async function handlePrint() {
     window.print()
   } catch (error) {
     console.error('归档打印人员失败:', error)
-    message.error(t('printSheet.archiveFailed'))
+    message.error(error?.message || t('printSheet.archiveFailed'))
   } finally {
     printing.value = false
   }

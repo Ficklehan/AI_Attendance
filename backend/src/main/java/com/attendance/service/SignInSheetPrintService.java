@@ -55,7 +55,7 @@ public class SignInSheetPrintService {
         }
 
         LocalDate workDate = parseDate(request.getWorkDate());
-        assertCountryAllowed(countryCode);
+        // 打印归档不做数据范围权限控制，仅要求已登录
 
         List<SignInSheetPrintRowRequest> sourceRows = request.getRows() != null
                 ? request.getRows() : new ArrayList<SignInSheetPrintRowRequest>();
@@ -113,9 +113,6 @@ public class SignInSheetPrintService {
         LocalDate fromDate = parseOptionalDate(from);
         LocalDate toDate = parseOptionalDate(to);
         String country = StringUtils.hasText(countryCode) ? countryCode.trim() : null;
-        if (country != null) {
-            assertCountryAllowed(country);
-        }
         return signInSheetPrintMapper.selectDays(scope, country, fromDate, toDate);
     }
 
@@ -125,7 +122,6 @@ public class SignInSheetPrintService {
         }
         String country = countryCode.trim();
         LocalDate date = parseDate(workDate);
-        assertCountryAllowed(country);
 
         DataScopeContext scope = dataScopeService.resolveForCurrentUser();
         List<SignInSheetPrintJobDTO> jobs = signInSheetPrintMapper.selectJobsForDay(scope, country, date);
@@ -137,31 +133,6 @@ public class SignInSheetPrintService {
         detail.setJobs(jobs);
         detail.setPersons(persons);
         return detail;
-    }
-
-    private void assertCountryAllowed(String countryCode) {
-        DataScopeContext scope = dataScopeService.resolveForCurrentUser();
-        if (scope.isAllUsers()) {
-            return;
-        }
-        List<String> tokens = scope.getCountryMatchTokens();
-        if (tokens != null && !tokens.isEmpty()) {
-            String upper = countryCode.trim().toUpperCase();
-            for (String token : tokens) {
-                if (token != null && upper.equals(token.trim().toUpperCase())) {
-                    return;
-                }
-            }
-        }
-        List<String> regions = scope.getWorkRegions();
-        if (regions != null) {
-            for (String region : regions) {
-                if (region != null && countryCode.trim().equalsIgnoreCase(region.trim())) {
-                    return;
-                }
-            }
-        }
-        throw new BusinessException(ErrorCode.PERMISSION_DENIED, ErrorKeys.ACCESS_DENIED);
     }
 
     private static boolean isBlankRow(SignInSheetPrintRowRequest row) {
