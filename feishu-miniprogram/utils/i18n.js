@@ -1,7 +1,7 @@
 const messages = require('./localeMessages')
 const { COUNTRIES } = require('./countries')
 
-const SUPPORTED_LOCALES = ['zh-CN', 'en-US', 'fr-FR', 'nl-NL', 'cs-CZ', 'pl-PL', 'de-DE', 'es-ES']
+const SUPPORTED_LOCALES = ['zh-CN', 'en-US', 'fr-FR', 'nl-NL', 'es-ES', 'it-IT', 'de-DE', 'cs-CZ', 'pl-PL']
 const DEFAULT_LOCALE = 'zh-CN'
 
 let currentLocale = DEFAULT_LOCALE
@@ -103,10 +103,11 @@ function localeToLanguageKey(locale) {
     'en-US': 'enUS',
     'fr-FR': 'frFR',
     'nl-NL': 'nlNL',
-    'cs-CZ': 'csCZ',
-    'pl-PL': 'plPL',
+    'es-ES': 'esES',
+    'it-IT': 'itIT',
     'de-DE': 'deDE',
-    'es-ES': 'esES'
+    'cs-CZ': 'csCZ',
+    'pl-PL': 'plPL'
   }
   return map[locale] || 'zhCN'
 }

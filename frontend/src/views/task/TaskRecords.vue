@@ -96,20 +96,30 @@
         </template>
         <template #bodyCell="{ column, record, index, text }">
           <template v-if="column.key === 'taskStatus'">
-            <CopyableCell :text="getStatusText(record.taskStatus)">
+            <CopyableCell :text="getStatusText(record.taskStatus)" auto-shrink :shrink-max="12" :shrink-min="8" block>
               <a-tag :color="getStatusColor(record.taskStatus)">{{ getStatusText(record.taskStatus) }}</a-tag>
             </CopyableCell>
           </template>
           <template v-else-if="column.key === 'taskId'">
-            <CopyableCell :text="record.taskId">
-              <a-button type="link" size="small" @click="openTask(record.taskId)">{{ record.taskId }}</a-button>
+            <CopyableCell :text="record.taskId" auto-shrink :shrink-max="12" :shrink-min="8" block>
+              <a
+                class="task-id-link"
+                href="#"
+                @click.prevent="openTask(record.taskId)"
+              >{{ record.taskId }}</a>
             </CopyableCell>
           </template>
           <template v-else-if="column.key === 'imageUrls'">
             <a-button type="link" size="small" @click="previewTaskImages(record)">{{ $t('tasks.imagePreview') }}</a-button>
           </template>
           <template v-else-if="column.key === 'signature'">
-            <CopyableCell :text="translateSignatureMark(getDisplaySignature(record.signature, record), t)">
+            <CopyableCell
+              :text="translateSignatureMark(getDisplaySignature(record.signature, record), t)"
+              auto-shrink
+              :shrink-max="11"
+              :shrink-min="8"
+              block
+            >
               <a-tag
                 :color="getSignatureMarkColor(getDisplaySignature(record.signature, record))"
                 class="signature-mark-tag"
@@ -125,10 +135,16 @@
             </div>
           </template>
           <template v-else-if="column.key === 'no'">
-            <CopyableCell :text="record.no || '-'" />
+            <CopyableCell :text="record.no || '-'" auto-shrink :shrink-max="12" :shrink-min="8" block />
           </template>
           <template v-else-if="column.key === 'workHours'">
-            <CopyableCell :text="record.workHours || calculateWorkHours(record)" />
+            <CopyableCell
+              :text="record.workHours || calculateWorkHours(record)"
+              auto-shrink
+              :shrink-max="12"
+              :shrink-min="8"
+              block
+            />
           </template>
           <template v-else-if="column.key === 'anomalyDescription'">
             <div
@@ -155,12 +171,18 @@
             <span v-else class="cell-muted">-</span>
           </template>
           <template v-else-if="column.key === 'country'">
-            <CopyableCell :text="displayCountryField(record)">
+            <CopyableCell :text="displayCountryField(record)" auto-shrink :shrink-max="12" :shrink-min="8" block>
               {{ displayCountryField(record) || '-' }}
             </CopyableCell>
           </template>
           <template v-else-if="isCopyableTableColumn(column)">
-            <CopyableCell :text="resolveTableCellCopyText(column, record, text)" />
+            <CopyableCell
+              :text="resolveTableCellCopyText(column, record, text)"
+              auto-shrink
+              :shrink-max="12"
+              :shrink-min="8"
+              block
+            />
           </template>
         </template>
       </a-table>
@@ -373,7 +395,7 @@ const baseColumns = computed(() => pinRecordsRightColumns([
       ...(def.filterable === false
         ? {}
         : { searchField: def.field, filterType: def.filterType }),
-      ellipsis: def.ellipsis,
+      ellipsis: false,
       align: 'left',
       ...(def.key === 'workHours'
         ? {
@@ -438,16 +460,16 @@ const {
   setFrozenKeys,
   showAllColumns,
   clearFrozenKeys,
-} = useColumnFreeze('task-records-v3', sizedColumns, {
+} = useColumnFreeze('task-records-v4', sizedColumns, {
   defaultFrozen: ['pageNum', 'no'],
-  defaultHidden: ['taskId', 'userName', 'taskStatus', 'createdAt', 'fileKey'],
+  defaultHidden: ['userName', 'taskStatus'],
   preserveRightFixed: true,
 })
 
-const searchableFieldDefs = computed(() => {
-  const hidden = new Set(hiddenKeys.value)
-  return fieldDefs.value.filter((def) => def.filterable !== false && !hidden.has(def.key))
-})
+// 高级搜索与列显隐解耦：创建时间 / 文件名等默认隐藏列仍可筛选
+const searchableFieldDefs = computed(() => (
+  fieldDefs.value.filter((def) => def.filterable !== false)
+))
 
 const buildQueryFilters = () => {
   const filters = buildFilterConditions(searchableFieldDefs.value, advancedFilters.value)
@@ -808,9 +830,13 @@ onMounted(() => {
 
     .copyable-cell__content {
       overflow: hidden;
-      text-overflow: ellipsis;
+      text-overflow: clip;
       white-space: nowrap;
       max-width: 100%;
+    }
+
+    .copyable-cell--shrink .copyable-cell__content.cell-auto-shrink {
+      text-overflow: clip;
     }
 
     .copyable-cell__btn {
@@ -833,6 +859,22 @@ onMounted(() => {
   :deep(td.col-density-compact.ant-table-cell-align-center) {
     .copyable-cell {
       justify-content: center;
+    }
+  }
+
+  :deep(.task-id-link) {
+    display: inline;
+    max-width: 100%;
+    color: $primary;
+    font-size: inherit;
+    line-height: inherit;
+    text-decoration: none;
+    cursor: pointer;
+    word-break: break-all;
+
+    &:hover {
+      color: $primary;
+      text-decoration: underline;
     }
   }
 }

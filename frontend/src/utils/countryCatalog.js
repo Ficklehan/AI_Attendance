@@ -4,24 +4,24 @@ export const DEFAULT_COUNTRY_FLAG = '🇺🇳'
 export const PAYS_COUNTRY_LABELS = {
   CN: 'China',
   FR: 'France',
-  DE: 'Germany',
-  US: 'United States',
-  PL: 'Poland',
   NL: 'Netherlands',
   IT: 'Italy',
   ES: 'Spain',
+  DE: 'Germany',
+  US: 'United States',
+  PL: 'Poland',
   CZ: 'Czech Republic',
 }
 
 const LOCAL_COUNTRY_NAMES = {
   CN: '中国',
   FR: '法国',
-  DE: '德国',
-  US: '美国',
-  PL: '波兰',
   NL: '荷兰',
   IT: '意大利',
   ES: '西班牙',
+  DE: '德国',
+  US: '美国',
+  PL: '波兰',
   CZ: '捷克',
 }
 
@@ -29,12 +29,12 @@ export const COUNTRY_FLAG_FALLBACK = {
   default: DEFAULT_COUNTRY_FLAG,
   CN: '🇨🇳',
   FR: '🇫🇷',
-  DE: '🇩🇪',
-  US: '🇺🇸',
-  PL: '🇵🇱',
   NL: '🇳🇱',
   IT: '🇮🇹',
   ES: '🇪🇸',
+  DE: '🇩🇪',
+  US: '🇺🇸',
+  PL: '🇵🇱',
   CZ: '🇨🇿',
 }
 

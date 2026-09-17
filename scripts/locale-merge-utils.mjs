@@ -4,7 +4,7 @@
 import fs from 'fs'
 import path from 'path'
 
-export const PC_LOCALES = ['zh-CN', 'en-US', 'fr-FR', 'nl-NL', 'cs-CZ', 'pl-PL', 'de-DE', 'es-ES']
+export const PC_LOCALES = ['zh-CN', 'en-US', 'fr-FR', 'nl-NL', 'es-ES', 'it-IT', 'de-DE', 'cs-CZ', 'pl-PL']
 
 const manifest = JSON.parse(
   fs.readFileSync(new URL('../shared/locales/shared-manifest.json', import.meta.url), 'utf8'),

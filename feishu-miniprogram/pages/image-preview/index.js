@@ -43,6 +43,18 @@ const TEXT_FALLBACK = {
     zoomOut: 'Alejar',
     zoomReset: 'Restablecer',
     gestureHint: 'Deslizar para cambiar · Pellizcar para zoom · Doble toque'
+  },
+  'it-IT': {
+    title: 'Anteprima immagine',
+    rotate: 'Ruota',
+    close: 'Chiudi',
+    loadError: 'Caricamento immagine non riuscito',
+    prev: 'Precedente',
+    next: 'Successiva',
+    zoomIn: 'Ingrandisci',
+    zoomOut: 'Riduci',
+    zoomReset: 'Reimposta',
+    gestureHint: 'Scorri per cambiare · Pizzica per zoom · Doppio tocco'
   }
 }
 

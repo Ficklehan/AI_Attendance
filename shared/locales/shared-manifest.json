@@ -1,6 +1,6 @@
 {
   "fullNamespaces": ["language", "recognition", "validation"],
-  "countryCodeKeys": ["default", "CN", "FR", "DE", "US", "PL", "NL", "IT", "ES", "CZ"],
+  "countryCodeKeys": ["default", "CN", "FR", "NL", "IT", "ES", "DE", "US", "PL", "CZ"],
   "commonKeys": ["cancel", "save", "loading", "search"],
   "errorsCanonical": "pc",
   "description": "common/{locale}.json 为 PC/小程序共用；pc/ 与 miniprogram/ 为各端覆盖与专属文案"

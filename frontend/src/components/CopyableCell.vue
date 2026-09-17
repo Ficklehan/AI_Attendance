@@ -71,7 +71,7 @@ const canCopy = computed(() => displayText.value !== '')
 const shrinkOptions = computed(() => ({
   max: props.shrinkMax,
   min: props.shrinkMin,
-  wrap: false,
+  wrap: true,
 }))
 
 let copiedTimer = null
@@ -113,7 +113,7 @@ const handleCopy = async () => {
   &__content {
     min-width: 0;
     overflow: hidden;
-    text-overflow: ellipsis;
+    text-overflow: clip;
     white-space: nowrap;
     user-select: text;
   }

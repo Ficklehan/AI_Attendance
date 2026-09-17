@@ -6,7 +6,6 @@ import { FILTER_TYPES } from '@/utils/fieldFilterValue'
  */
 export function buildEmployeeRecordFieldDefs(t) {
   return [
-    { field: 'taskId', label: t('tasks.taskId'), dataIndex: 'taskId', key: 'taskId', filterType: FILTER_TYPES.TEXT },
     { field: 'PAGE_NUM', label: t('taskEdit.pageNumber'), dataIndex: 'pageNum', key: 'pageNum', filterType: FILTER_TYPES.TEXT, density: 'compact' },
     { field: 'NO', label: t('taskEdit.workerNumber'), dataIndex: 'no', key: 'no', filterType: FILTER_TYPES.TEXT, density: 'compact' },
     { field: 'NOM_PRENOM', label: t('taskEdit.name'), dataIndex: 'name', key: 'name', filterType: FILTER_TYPES.TEXT, ellipsis: false },
@@ -25,6 +24,7 @@ export function buildEmployeeRecordFieldDefs(t) {
     { field: 'anomalyDescription', label: t('taskEdit.anomalyReasons'), dataIndex: 'anomalyDescription', key: 'anomalyDescription', filterable: false, ellipsis: false },
     { field: 'userName', label: t('tasks.operator'), dataIndex: 'userName', key: 'userName', filterType: FILTER_TYPES.TEXT },
     { field: 'status', label: t('tasks.status'), dataIndex: 'taskStatus', key: 'taskStatus', filterType: FILTER_TYPES.STATUS, filterOptionsKey: 'taskStatus' },
+    { field: 'taskId', label: t('tasks.taskId'), dataIndex: 'taskId', key: 'taskId', filterType: FILTER_TYPES.TEXT },
     { field: 'createdAt', label: t('tasks.createTime'), dataIndex: 'createdAt', key: 'createdAt', filterType: FILTER_TYPES.DATETIME },
     { field: 'fileKey', label: t('tasks.fileName'), dataIndex: 'fileKey', key: 'fileKey', filterType: FILTER_TYPES.TEXT },
   ]

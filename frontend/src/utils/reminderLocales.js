@@ -4,23 +4,24 @@ export const SUPPORTED_REMINDER_LOCALES = [
   'zh-CN',
   'en-US',
   'fr-FR',
-  'de-DE',
-  'es-ES',
   'nl-NL',
-  'pl-PL',
+  'es-ES',
+  'it-IT',
+  'de-DE',
   'cs-CZ',
+  'pl-PL',
 ]
 
 export const COUNTRY_LOCALE_MAP = {
   default: 'zh-CN',
   CN: 'zh-CN',
   FR: 'fr-FR',
+  NL: 'nl-NL',
+  IT: 'it-IT',
+  ES: 'es-ES',
   DE: 'de-DE',
   US: 'en-US',
   PL: 'pl-PL',
-  NL: 'nl-NL',
-  IT: 'en-US',
-  ES: 'es-ES',
   CZ: 'cs-CZ',
 }
 
@@ -60,11 +61,12 @@ export function localeI18nKey(locale) {
     'zh-CN': 'language.zhCN',
     'en-US': 'language.enUS',
     'fr-FR': 'language.frFR',
-    'de-DE': 'language.deDE',
-    'es-ES': 'language.esES',
     'nl-NL': 'language.nlNL',
-    'pl-PL': 'language.plPL',
+    'es-ES': 'language.esES',
+    'it-IT': 'language.itIT',
+    'de-DE': 'language.deDE',
     'cs-CZ': 'language.csCZ',
+    'pl-PL': 'language.plPL',
   }
   return map[locale] || locale
 }

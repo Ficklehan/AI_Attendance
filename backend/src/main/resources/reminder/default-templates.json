@@ -3,12 +3,12 @@
     "default": "zh-CN",
     "CN": "zh-CN",
     "FR": "fr-FR",
+    "NL": "nl-NL",
+    "IT": "it-IT",
+    "ES": "es-ES",
     "DE": "de-DE",
     "US": "en-US",
     "PL": "pl-PL",
-    "NL": "nl-NL",
-    "IT": "en-US",
-    "ES": "es-ES",
     "CZ": "cs-CZ"
   },
   "operator": {
@@ -19,7 +19,8 @@
     "es-ES": "【Recordatorio de revisión】\n\nTiene {pendingCount} tarea(s) en estado «{taskStatus}» pendientes durante más de {threshold}.\n\nÚltima tarea: {latestTaskId}\nActualizado: {latestTaskTime}\n\nInicie sesión y complete la revisión.",
     "nl-NL": "【Herinnering controle】\n\nU heeft {pendingCount} ta(a)k(en) met status «{taskStatus}» die langer dan {threshold} openstaan.\n\nLaatste taak: {latestTaskId}\nBijgewerkt: {latestTaskTime}\n\nLog in om de controle af te ronden.",
     "pl-PL": "【Przypomnienie o weryfikacji】\n\nMasz {pendingCount} zadanie/zadań w statusie «{taskStatus}», oczekujących dłużej niż {threshold}.\n\nOstatnie zadanie: {latestTaskId}\nAktualizacja: {latestTaskTime}\n\nZaloguj się i dokończ weryfikację.",
-    "cs-CZ": "【Připomenutí ke kontrole】\n\nMáte {pendingCount} úkol(ů) ve stavu «{taskStatus}», nevyřízených déle než {threshold}.\n\nPoslední úkol: {latestTaskId}\nAktualizováno: {latestTaskTime}\n\nPřihlaste se a dokončete kontrolu."
+    "cs-CZ": "【Připomenutí ke kontrole】\n\nMáte {pendingCount} úkol(ů) ve stavu «{taskStatus}», nevyřízených déle než {threshold}.\n\nPoslední úkol: {latestTaskId}\nAktualizováno: {latestTaskTime}\n\nPřihlaste se a dokončete kontrolu.",
+    "it-IT": "【Promemoria revisione presenza】\n\nHai {pendingCount} attività in stato «{taskStatus}», in sospeso da oltre {threshold}.\n\nUltima attività: {latestTaskId}\nAggiornato: {latestTaskTime}\n\nAccedi al sistema e completa la revisione."
   },
   "supervisor": {
     "zh-CN": "【考勤待核对督办】\n\n{recipientName}，您好\n\n共有 {pendingCount} 个任务处于「{taskStatus}」状态，已超过 {threshold} 未处理。\n涉及操作者：{taskCreatorNames}\n\n最近任务：{latestTaskId}\n更新时间：{latestTaskTime}\n\n请关注并督促相关人员登录系统完成核对。",
@@ -29,7 +30,8 @@
     "es-ES": "【Seguimiento de revisión】\n\nHola {recipientName},\n\nHay {pendingCount} tarea(s) en estado «{taskStatus}» pendientes durante más de {threshold}.\nOperadores: {taskCreatorNames}\n\nÚltima tarea: {latestTaskId}\nActualizado: {latestTaskTime}\n\nPor favor, haga seguimiento para completar la revisión.",
     "nl-NL": "【Opvolging controle】\n\nHallo {recipientName},\n\nEr zijn {pendingCount} ta(a)k(en) met status «{taskStatus}» langer dan {threshold} open.\nOperators: {taskCreatorNames}\n\nLaatste taak: {latestTaskId}\nBijgewerkt: {latestTaskTime}\n\nGraag opvolgen tot de controle is afgerond.",
     "pl-PL": "【Nadzór weryfikacji】\n\nWitaj {recipientName},\n\n{pendingCount} zadanie/zadań w statusie «{taskStatus}» oczekuje dłużej niż {threshold}.\nOperatorzy: {taskCreatorNames}\n\nOstatnie zadanie: {latestTaskId}\nAktualizacja: {latestTaskTime}\n\nProsimy o nadzór i dokończenie weryfikacji.",
-    "cs-CZ": "【Dohled kontroly】\n\nDobrý den {recipientName},\n\n{pendingCount} úkol(ů) ve stavu «{taskStatus}» čeká déle než {threshold}.\nOperátoři: {taskCreatorNames}\n\nPoslední úkol: {latestTaskId}\nAktualizováno: {latestTaskTime}\n\nProsíme o dohled a dokončení kontroly."
+    "cs-CZ": "【Dohled kontroly】\n\nDobrý den {recipientName},\n\n{pendingCount} úkol(ů) ve stavu «{taskStatus}» čeká déle než {threshold}.\nOperátoři: {taskCreatorNames}\n\nPoslední úkol: {latestTaskId}\nAktualizováno: {latestTaskTime}\n\nProsíme o dohled a dokončení kontroly.",
+    "it-IT": "【Follow-up revisione presenza】\n\nCiao {recipientName},\n\nCi sono {pendingCount} attività in stato «{taskStatus}» in sospeso da oltre {threshold}.\nOperatori: {taskCreatorNames}\n\nUltima attività: {latestTaskId}\nAggiornato: {latestTaskTime}\n\nTi preghiamo di fare follow-up affinché la revisione sia completata."
   },
   "status": {
     "zh-CN": { "processed": "待核对", "processing": "识别中", "confirmed": "已确认", "failed": "失败", "cancelled": "已取消" },
@@ -39,7 +41,8 @@
     "es-ES": { "processed": "Pendiente de revisión", "processing": "Procesando", "confirmed": "Confirmado", "failed": "Fallido", "cancelled": "Cancelado" },
     "nl-NL": { "processed": "Te controleren", "processing": "Bezig", "confirmed": "Bevestigd", "failed": "Mislukt", "cancelled": "Geannuleerd" },
     "pl-PL": { "processed": "Do weryfikacji", "processing": "Przetwarzanie", "confirmed": "Potwierdzone", "failed": "Niepowodzenie", "cancelled": "Anulowane" },
-    "cs-CZ": { "processed": "Ke kontrole", "processing": "Zpracování", "confirmed": "Potvrzeno", "failed": "Selhalo", "cancelled": "Zrušeno" }
+    "cs-CZ": { "processed": "Ke kontrole", "processing": "Zpracování", "confirmed": "Potvrzeno", "failed": "Selhalo", "cancelled": "Zrušeno" },
+    "it-IT": { "processed": "Da verificare", "processing": "In elaborazione", "confirmed": "Confermato", "failed": "Non riuscito", "cancelled": "Annullato" }
   },
   "unit": {
     "zh-CN": { "minute": "分钟", "hour": "小时", "day": "天", "week": "周" },
@@ -49,7 +52,8 @@
     "es-ES": { "minute": "minuto(s)", "hour": "hora(s)", "day": "día(s)", "week": "semana(s)" },
     "nl-NL": { "minute": "minuut/minuten", "hour": "uur", "day": "dag(en)", "week": "week/weken" },
     "pl-PL": { "minute": "min", "hour": "godz.", "day": "dzień/dni", "week": "tydz./tyg." },
-    "cs-CZ": { "minute": "min", "hour": "hod", "day": "den/dní", "week": "týd." }
+    "cs-CZ": { "minute": "min", "hour": "hod", "day": "den/dní", "week": "týd." },
+    "it-IT": { "minute": "minuto/i", "hour": "ora/e", "day": "giorno/i", "week": "settimana/e" }
   },
   "notificationTitlePrefix": {
     "zh-CN": "【考勤提醒】",
@@ -59,7 +63,8 @@
     "es-ES": "【Recordatorio asistencia】",
     "nl-NL": "【Aanwezigheidsherinnering】",
     "pl-PL": "【Przypomnienie obecności】",
-    "cs-CZ": "【Připomenutí docházky】"
+    "cs-CZ": "【Připomenutí docházky】",
+    "it-IT": "【Promemoria presenza】"
   },
   "viewTask": {
     "zh-CN": "查看任务",
@@ -69,7 +74,8 @@
     "es-ES": "Ver tarea",
     "nl-NL": "Taak bekijken",
     "pl-PL": "Zobacz zadanie",
-    "cs-CZ": "Zobrazit úkol"
+    "cs-CZ": "Zobrazit úkol",
+    "it-IT": "Vedi attività"
   },
   "nameSeparator": {
     "zh-CN": "、",
@@ -79,6 +85,7 @@
     "es-ES": ", ",
     "nl-NL": ", ",
     "pl-PL": ", ",
-    "cs-CZ": ", "
+    "cs-CZ": ", ",
+    "it-IT": ", "
   }
 }

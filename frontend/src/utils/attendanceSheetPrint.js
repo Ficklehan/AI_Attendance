@@ -156,6 +156,23 @@ const SHEET_COPY = {
     supervisorDate: 'Fecha de firma: ____ / ____ / ________',
     columns: ['N.º', 'Nombre y apellidos', 'Agencia', 'Turno', 'Entrada', 'Salida', 'Pausa (min)', 'Firma', 'Observaciones'],
   },
+  'it-IT': {
+    punchZone: '(Zona di perforazione — non scrivere)',
+    title: 'FOGLIO DI PRESENZA',
+    declarationTitle: 'Dichiarazione di integrità e conformità dei documenti',
+    declaration: [
+      '1. Confermo che gli orari di lavoro indicati sono veri, accurati e validi.',
+      '2. Confermo che l’azienda ha verificato i miei documenti di soggiorno validi (permesso di soggiorno / passaporto / permesso di lavoro).',
+      '3. Confermo di avere il diritto legale di lavorare e che le informazioni fornite sono veritiere. Mi assumo la responsabilità in caso di dati falsi.',
+    ],
+    country: 'Paese:',
+    warehouse: 'Magazzino:',
+    date: 'Data:',
+    supervisorSign: 'Firma del responsabile di magazzino: _________________________________',
+    supervisorPage: 'Pagina {page} / {total}',
+    supervisorDate: 'Data firma: ____ / ____ / ________',
+    columns: ['N.', 'Nome e cognome', 'Agenzia', 'Turno', 'Arrivo', 'Uscita', 'Pausa (min)', 'Firma', 'Note'],
+  },
   'pl-PL': {
     punchZone: '(Strefa perforacji — nie pisać)',
     title: 'LISTA OBECNOŚCI',
@@ -199,6 +216,7 @@ const LOCALE_PREFIX = {
   de: 'de-DE',
   nl: 'nl-NL',
   es: 'es-ES',
+  it: 'it-IT',
   pl: 'pl-PL',
   cs: 'cs-CZ',
 }

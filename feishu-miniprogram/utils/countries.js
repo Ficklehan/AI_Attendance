@@ -3,12 +3,12 @@ const COUNTRIES = [
   { code: 'default', flag: '🇺🇳', name: '全局默认' },
   { code: 'CN', flag: '🇨🇳', name: '中国' },
   { code: 'FR', flag: '🇫🇷', name: '法国' },
-  { code: 'DE', flag: '🇩🇪', name: '德国' },
-  { code: 'US', flag: '🇺🇸', name: '美国' },
-  { code: 'PL', flag: '🇵🇱', name: '波兰' },
   { code: 'NL', flag: '🇳🇱', name: '荷兰' },
   { code: 'IT', flag: '🇮🇹', name: '意大利' },
   { code: 'ES', flag: '🇪🇸', name: '西班牙' },
+  { code: 'DE', flag: '🇩🇪', name: '德国' },
+  { code: 'US', flag: '🇺🇸', name: '美国' },
+  { code: 'PL', flag: '🇵🇱', name: '波兰' },
   { code: 'CZ', flag: '🇨🇿', name: '捷克' }
 ]
 

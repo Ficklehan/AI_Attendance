@@ -250,7 +250,7 @@ import { useExportCenter, startSummaryPolling, stopSummaryPolling } from '@/comp
 import { useWorkingCountryPicker } from '@/composables/useWorkingCountryPicker'
 import { hasAnySettingsAccess, firstAccessibleSettingsPath } from '@/utils/settingsAccess'
 import { getUnreadCount } from '@/api/notification'
-import { LANGUAGE_OPTIONS } from '@/constants/languageOptions'
+import { LANGUAGE_OPTIONS, SUPPORTED_LOCALES } from '@/constants/languageOptions'
 
 const route = useRoute()
 const router = useRouter()
@@ -456,7 +456,7 @@ const ensureWorkingCountrySetup = async () => {
 
 onMounted(async () => {
   const savedLocale = localStorage.getItem('locale')
-  if (savedLocale && ['zh-CN', 'en-US', 'fr-FR', 'nl-NL', 'cs-CZ', 'pl-PL', 'de-DE', 'es-ES'].includes(savedLocale)) {
+  if (savedLocale && SUPPORTED_LOCALES.includes(savedLocale)) {
     currentLocale.value = savedLocale
     locale.value = savedLocale
   }

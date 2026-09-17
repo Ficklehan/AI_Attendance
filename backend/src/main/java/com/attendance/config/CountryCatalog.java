@@ -32,12 +32,12 @@ public final class CountryCatalog {
         Map<String, String> map = new LinkedHashMap<>();
         map.put("CN", "China");
         map.put("FR", "France");
-        map.put("DE", "Germany");
-        map.put("US", "United States");
-        map.put("PL", "Poland");
         map.put("NL", "Netherlands");
         map.put("IT", "Italy");
         map.put("ES", "Spain");
+        map.put("DE", "Germany");
+        map.put("US", "United States");
+        map.put("PL", "Poland");
         map.put("CZ", "Czech Republic");
         return map;
     }
@@ -70,12 +70,12 @@ public final class CountryCatalog {
         add(list, "default", "🇺🇳", "全局默认");
         add(list, "CN", "🇨🇳", "中国");
         add(list, "FR", "🇫🇷", "法国");
-        add(list, "DE", "🇩🇪", "德国");
-        add(list, "US", "🇺🇸", "美国");
-        add(list, "PL", "🇵🇱", "波兰");
         add(list, "NL", "🇳🇱", "荷兰");
         add(list, "IT", "🇮🇹", "意大利");
         add(list, "ES", "🇪🇸", "西班牙");
+        add(list, "DE", "🇩🇪", "德国");
+        add(list, "US", "🇺🇸", "美国");
+        add(list, "PL", "🇵🇱", "波兰");
         add(list, "CZ", "🇨🇿", "捷克");
         return list;
     }

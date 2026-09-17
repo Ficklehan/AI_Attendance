@@ -12,7 +12,13 @@ const TARGET_SELECTOR = [
   '.cell-text',
   '.work-hours',
   '.recognition-note-list__text',
+  'a.task-id-link',
+  'button.ant-btn',
+  'a.ant-btn',
+  '.ant-tag',
 ].join(', ')
+const INTRINSIC_SIZE_SELECTOR = 'button, .ant-btn, .ant-tag, a.task-id-link, a.ant-btn'
+const FONT_SYNC_SELECTOR = 'button.ant-btn, a.ant-btn, .ant-tag, a.task-id-link'
 
 let measureCanvas
 
@@ -54,12 +60,19 @@ function readOptions(binding) {
 function availableWidth(el) {
   if (!el) return 0
   const td = el.closest('td, th')
+  let width = 0
   if (td && td.clientWidth > 0) {
     const cs = window.getComputedStyle(td)
     const pad = (parseFloat(cs.paddingLeft) || 0) + (parseFloat(cs.paddingRight) || 0)
-    return Math.max(0, td.clientWidth - pad)
+    width = Math.max(0, td.clientWidth - pad)
+  } else {
+    width = el.clientWidth
   }
-  return el.clientWidth
+  const copyBtn = el.closest('.copyable-cell')?.querySelector('.copyable-cell__btn')
+  if (copyBtn) {
+    width = Math.max(0, width - (copyBtn.offsetWidth || 18) - 4)
+  }
+  return width
 }
 
 function nodeText(node) {
@@ -78,11 +91,18 @@ function nodeFont(node, sizePx) {
   return `${style} ${weight} ${sizePx}px ${family}`
 }
 
+function isIntrinsicSized(node) {
+  return Boolean(node?.matches?.(INTRINSIC_SIZE_SELECTOR))
+}
+
 function textFitWidth(node, cellWidth) {
   const cs = window.getComputedStyle(node)
   const pad = (parseFloat(cs.paddingLeft) || 0) + (parseFloat(cs.paddingRight) || 0)
   const border = (parseFloat(cs.borderLeftWidth) || 0) + (parseFloat(cs.borderRightWidth) || 0)
-  const raw = node.clientWidth > 8 ? Math.min(cellWidth || node.clientWidth, node.clientWidth) : cellWidth
+  // 按钮/链接等按内容撑开时，必须用单元格可用宽度，否则永远判定为“刚好放下”
+  const raw = (cellWidth > 0 && (isIntrinsicSized(node) || node.clientWidth <= 8))
+    ? cellWidth
+    : (node.clientWidth > 8 ? Math.min(cellWidth || node.clientWidth, node.clientWidth) : cellWidth)
   return Math.max(0, raw - pad - border)
 }
 
@@ -92,8 +112,10 @@ function reserveWidth(node, sizePx, reserveChars) {
 }
 
 function targetNodes(el) {
-  const nodes = el.querySelectorAll(TARGET_SELECTOR)
-  return nodes.length ? [...nodes] : [el]
+  const nodes = [...el.querySelectorAll(TARGET_SELECTOR)].filter((node) => node !== el)
+  if (nodes.length) return nodes
+  if (el.matches?.(TARGET_SELECTOR) || el.classList.contains('cell-text')) return [el]
+  return [el]
 }
 
 function requiredFontSize(el, max, min, cellWidth, reserveChars) {
@@ -114,6 +136,17 @@ function requiredFontSize(el, max, min, cellWidth, reserveChars) {
 function applyFontSize(el, sizePx) {
   el.style.fontSize = `${sizePx}px`
   el.style.setProperty('--cell-auto-fs', `${sizePx}px`)
+  el.querySelectorAll(FONT_SYNC_SELECTOR).forEach((node) => {
+    node.style.fontSize = `${sizePx}px`
+    node.style.lineHeight = '1.25'
+  })
+}
+
+function clearSyncedFontSize(el) {
+  el.querySelectorAll(FONT_SYNC_SELECTOR).forEach((node) => {
+    node.style.fontSize = ''
+    node.style.lineHeight = ''
+  })
 }
 
 function contentSignature(el) {
@@ -235,6 +268,7 @@ function unbind(el) {
   el.style.fontSize = ''
   el.style.whiteSpace = ''
   el.style.removeProperty('--cell-auto-fs')
+  clearSyncedFontSize(el)
   delete el.__autoShrinkFont
 }
 

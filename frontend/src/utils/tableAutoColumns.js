@@ -34,14 +34,14 @@ const DEFAULT_MAX_BY_KEY = {
 
 const COMPACT_MAX_BY_KEY = {
   pageNum: 32,
-  no: 32,
+  no: 40,
   country: 76,
-  date: 128,
-  shift: 92,
-  arrival: 96,
-  departure: 96,
+  date: 96,
+  shift: 100,
+  arrival: 67,
+  departure: 67,
   pauseMinutes: 48,
-  warehouse: 72,
+  warehouse: 100,
   agency: 100,
   name: 176,
   signature: 88,
@@ -53,12 +53,12 @@ const COMPACT_MAX_BY_KEY = {
 
 const COMPACT_MIN_BY_KEY = {
   pageNum: 32,
-  no: 32,
+  no: 40,
   country: 76,
-  date: 128,
-  shift: 92,
-  arrival: 96,
-  departure: 96,
+  date: 96,
+  shift: 100,
+  arrival: 67,
+  departure: 67,
   pauseMinutes: 48,
 }
 

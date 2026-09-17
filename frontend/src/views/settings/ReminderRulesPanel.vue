@@ -389,6 +389,7 @@ const statusPreviewLabel = (locale) => {
     'nl-NL': 'Te controleren',
     'pl-PL': 'Do weryfikacji',
     'cs-CZ': 'Ke kontrole',
+    'it-IT': 'Da verificare',
   }
   return map[locale] || map['en-US']
 }
