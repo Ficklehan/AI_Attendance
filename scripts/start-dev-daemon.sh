@@ -11,6 +11,20 @@ FRONTEND_PID_FILE="$LOG_DIR/frontend-dev.pid"
 
 mkdir -p "$LOG_DIR"
 
+# 切分支后 target 会留下旧分支的 Mapper XML，MyBatis 会按文件名解析并因缺实体类启动失败。
+SRC_MAPPER="$PROJECT_DIR/backend/src/main/resources/mapper"
+OUT_MAPPER="$PROJECT_DIR/backend/target/classes/mapper"
+if [ -d "$OUT_MAPPER" ]; then
+  for f in "$OUT_MAPPER"/*.xml; do
+    [ -f "$f" ] || continue
+    base="$(basename "$f")"
+    if [ ! -f "$SRC_MAPPER/$base" ]; then
+      echo ">>> 清理过期 Mapper: $base"
+      rm -f "$f"
+    fi
+  done
+fi
+
 start_detached() {
   local pid_file="$1"
   local log_file="$2"
