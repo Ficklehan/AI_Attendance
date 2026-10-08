@@ -282,14 +282,16 @@ describe('exceptionTypeCore', () => {
     assert.equal(nonBlur.ExceptionType, EXCEPTION_TYPE.ATTENDANCE_OK)
   })
 
-  it('blocks OCR-wrong submit until shift/arrival/departure/break adjusted', () => {
+  it('blocks OCR-wrong submit until date/shift/arrival/departure/break adjusted', () => {
     const untouched = {
       ExceptionType: EXCEPTION_TYPE.PAPER_OK_OCR_WRONG,
+      Date: '2026-02-18',
       HORAIRES_DU_TRAVAIL: '09:00-14:00',
       ARRIVEE: '09:00',
       DEPAR: '14:00',
       PAUSE: '0',
       _aiBaseline: {
+        Date: '2026-02-18',
         HORAIRES_DU_TRAVAIL: '09:00-14:00',
         ARRIVEE: '09:00',
         DEPAR: '14:00',
@@ -303,7 +305,13 @@ describe('exceptionTypeCore', () => {
     assert.equal(hasOcrWrongTimeFieldAdjusted(untouched), true)
     assert.equal(isOcrWrongMissingFieldAdjustment(untouched, {}), false)
 
+    untouched.ARRIVEE = '09:00'
+    untouched.Date = '2026-10-02'
+    assert.equal(hasOcrWrongTimeFieldAdjusted(untouched), true)
+    assert.equal(isOcrWrongMissingFieldAdjustment(untouched, {}), false)
+
     assert.deepEqual(OCR_WRONG_ADJUST_FIELDS, [
+      'Date',
       'HORAIRES_DU_TRAVAIL',
       'ARRIVEE',
       'DEPAR',
@@ -376,6 +384,7 @@ describe('collectConfirmValidationIssues includes ExceptionType', () => {
       PAUSE: 0,
       ExceptionType: EXCEPTION_TYPE.PAPER_OK_OCR_WRONG,
       _aiBaseline: {
+        Date: '2024-01-01',
         HORAIRES_DU_TRAVAIL: '09:00-14:00',
         ARRIVEE: '09:00',
         DEPAR: '14:00',
@@ -388,5 +397,33 @@ describe('collectConfirmValidationIssues includes ExceptionType', () => {
     records[0].DEPAR = '14:15'
     const okIssues = api.collectConfirmValidationIssues(records)
     assert.equal(okIssues.some((i) => i.issueType === 'ocrCalibration'), false)
+  })
+
+  it('clears ocrCalibration when only Date is corrected vs AI baseline', () => {
+    const { createRequiredRecordFields } = require('../requiredRecordFields.cjs')
+    const { isPlaceholderValue } = require('../fieldPlaceholder.cjs')
+    const { markContains } = require('../recognitionMarkCore.cjs')
+    const api = createRequiredRecordFields({ isPlaceholderValue, markContains })
+    api.setConfirmValidationConfig({
+      requiredFields: ['NOM_PRENOM', 'Date', 'ARRIVEE', 'DEPAR', 'PAUSE'],
+    })
+    const records = [{
+      NOM_PRENOM: 'Alice',
+      Date: '2026-10-02',
+      HORAIRES_DU_TRAVAIL: '22:00-06:00',
+      ARRIVEE: '22:00',
+      DEPAR: '05:30',
+      PAUSE: 30,
+      ExceptionType: EXCEPTION_TYPE.PAPER_OK_OCR_WRONG,
+      _aiBaseline: {
+        Date: '2026-02-18',
+        HORAIRES_DU_TRAVAIL: '22:00-06:00',
+        ARRIVEE: '22:00',
+        DEPAR: '05:30',
+        PAUSE: '30',
+      },
+    }]
+    const issues = api.collectConfirmValidationIssues(records)
+    assert.equal(issues.some((i) => i.issueType === 'ocrCalibration'), false)
   })
 })

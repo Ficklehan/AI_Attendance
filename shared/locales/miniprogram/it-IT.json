@@ -517,5 +517,9 @@
     "statusFailed": "Non riuscita",
     "statusCancelled": "Annullata",
     "statusUnknown": "Sconosciuto"
+  },
+  "taskEdit": {
+    "confirmOcrCalibrationValidationGroupHeader": "OCR errato, campi chiave non aggiornati · {count}",
+    "confirmOcrCalibrationValidationHint": "Aggiorna data, turno, arrivo, uscita o pausa in base al foglio cartaceo"
   }
 }

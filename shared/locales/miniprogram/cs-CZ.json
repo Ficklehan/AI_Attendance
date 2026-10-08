@@ -520,5 +520,9 @@
     "statusFailed": "Failed",
     "statusCancelled": "Cancelled",
     "statusUnknown": "Unknown"
+  },
+  "taskEdit": {
+    "confirmOcrCalibrationValidationGroupHeader": "Označeno jako chyba OCR, ale klíčová pole ještě nejsou opravena ({count})",
+    "confirmOcrCalibrationValidationHint": "Změňte alespoň: datum, směnu, příchod, odchod nebo pauzu."
   }
 }

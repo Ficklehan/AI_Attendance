@@ -517,5 +517,9 @@
     "statusFailed": "Failed",
     "statusCancelled": "Cancelled",
     "statusUnknown": "Unknown"
+  },
+  "taskEdit": {
+    "confirmOcrCalibrationValidationGroupHeader": "OCR wrong, key fields not updated · {count}",
+    "confirmOcrCalibrationValidationHint": "Update date, shift, arrival, departure, or break per paper sheet"
   }
 }

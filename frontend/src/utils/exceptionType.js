@@ -224,7 +224,7 @@ export const isExceptionTypeMissingForSubmit = typeof api.isExceptionTypeMissing
 export const OCR_WRONG_ADJUST_FIELDS = Array.isArray(api.OCR_WRONG_ADJUST_FIELDS)
   && api.OCR_WRONG_ADJUST_FIELDS.length
   ? api.OCR_WRONG_ADJUST_FIELDS
-  : ['HORAIRES_DU_TRAVAIL', 'ARRIVEE', 'DEPAR', 'PAUSE']
+  : ['Date', 'HORAIRES_DU_TRAVAIL', 'ARRIVEE', 'DEPAR', 'PAUSE']
 
 export const hasOcrWrongTimeFieldAdjusted = typeof api.hasOcrWrongTimeFieldAdjusted === 'function'
   ? api.hasOcrWrongTimeFieldAdjusted

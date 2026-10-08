@@ -649,6 +649,10 @@ const zhCN = {
     "statusFailed": "失败",
     "statusCancelled": "已取消",
     "statusUnknown": "未知"
+  },
+  "taskEdit": {
+    "confirmOcrCalibrationValidationGroupHeader": "识别错误未改关键字段 · {count} 条",
+    "confirmOcrCalibrationValidationHint": "对照纸质表修改日期、班次、到达、离开或休息"
   }
 }
 
@@ -1301,6 +1305,10 @@ const enUS = {
     "statusFailed": "Failed",
     "statusCancelled": "Cancelled",
     "statusUnknown": "Unknown"
+  },
+  "taskEdit": {
+    "confirmOcrCalibrationValidationGroupHeader": "OCR wrong, key fields not updated · {count}",
+    "confirmOcrCalibrationValidationHint": "Update date, shift, arrival, departure, or break per paper sheet"
   }
 }
 
@@ -1955,6 +1963,10 @@ const frFR = {
     "statusFailed": "Failed",
     "statusCancelled": "Cancelled",
     "statusUnknown": "Unknown"
+  },
+  "taskEdit": {
+    "confirmOcrCalibrationValidationGroupHeader": "Marqué « OCR erroné » mais champs clés non corrigés ({count})",
+    "confirmOcrCalibrationValidationHint": "Modifiez au moins : date, poste, arrivée, départ ou pause."
   }
 }
 
@@ -2609,6 +2621,10 @@ const nlNL = {
     "statusFailed": "Failed",
     "statusCancelled": "Cancelled",
     "statusUnknown": "Unknown"
+  },
+  "taskEdit": {
+    "confirmOcrCalibrationValidationGroupHeader": "Gemarkeerd als OCR fout, maar kernvelden nog niet aangepast ({count})",
+    "confirmOcrCalibrationValidationHint": "Wijzig minstens: datum, dienst, aankomst, vertrek of pauze."
   }
 }
 
@@ -3263,6 +3279,10 @@ const esES = {
     "statusFailed": "Failed",
     "statusCancelled": "Cancelled",
     "statusUnknown": "Unknown"
+  },
+  "taskEdit": {
+    "confirmOcrCalibrationValidationGroupHeader": "Marcado como OCR erróneo pero campos clave aún sin corregir ({count})",
+    "confirmOcrCalibrationValidationHint": "Cambie al menos: fecha, turno, llegada, salida o descanso."
   }
 }
 
@@ -3915,6 +3935,10 @@ const itIT = {
     "statusFailed": "Non riuscita",
     "statusCancelled": "Annullata",
     "statusUnknown": "Sconosciuto"
+  },
+  "taskEdit": {
+    "confirmOcrCalibrationValidationGroupHeader": "OCR errato, campi chiave non aggiornati · {count}",
+    "confirmOcrCalibrationValidationHint": "Aggiorna data, turno, arrivo, uscita o pausa in base al foglio cartaceo"
   }
 }
 
@@ -4569,6 +4593,10 @@ const deDE = {
     "statusFailed": "Failed",
     "statusCancelled": "Cancelled",
     "statusUnknown": "Unknown"
+  },
+  "taskEdit": {
+    "confirmOcrCalibrationValidationGroupHeader": "Als OCR falsch markiert, Schlüsselfelder aber noch nicht korrigiert ({count})",
+    "confirmOcrCalibrationValidationHint": "Ändern Sie mindestens: Datum, Schicht, Ankunft, Abgang oder Pause."
   }
 }
 
@@ -5223,6 +5251,10 @@ const csCZ = {
     "statusFailed": "Failed",
     "statusCancelled": "Cancelled",
     "statusUnknown": "Unknown"
+  },
+  "taskEdit": {
+    "confirmOcrCalibrationValidationGroupHeader": "Označeno jako chyba OCR, ale klíčová pole ještě nejsou opravena ({count})",
+    "confirmOcrCalibrationValidationHint": "Změňte alespoň: datum, směnu, příchod, odchod nebo pauzu."
   }
 }
 
@@ -5877,6 +5909,10 @@ const plPL = {
     "statusFailed": "Failed",
     "statusCancelled": "Cancelled",
     "statusUnknown": "Unknown"
+  },
+  "taskEdit": {
+    "confirmOcrCalibrationValidationGroupHeader": "Oznaczono błąd OCR, ale kluczowe pola jeszcze nie poprawione ({count})",
+    "confirmOcrCalibrationValidationHint": "Zmień co najmniej: datę, zmianę, przyjście, wyjście lub przerwę."
   }
 }
 

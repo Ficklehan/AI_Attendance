@@ -517,5 +517,9 @@
     "statusFailed": "失败",
     "statusCancelled": "已取消",
     "statusUnknown": "未知"
+  },
+  "taskEdit": {
+    "confirmOcrCalibrationValidationGroupHeader": "识别错误未改关键字段 · {count} 条",
+    "confirmOcrCalibrationValidationHint": "对照纸质表修改日期、班次、到达、离开或休息"
   }
 }

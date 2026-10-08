@@ -523,5 +523,9 @@
     "statusFailed": "Failed",
     "statusCancelled": "Cancelled",
     "statusUnknown": "Unknown"
+  },
+  "taskEdit": {
+    "confirmOcrCalibrationValidationGroupHeader": "Gemarkeerd als OCR fout, maar kernvelden nog niet aangepast ({count})",
+    "confirmOcrCalibrationValidationHint": "Wijzig minstens: datum, dienst, aankomst, vertrek of pauze."
   }
 }

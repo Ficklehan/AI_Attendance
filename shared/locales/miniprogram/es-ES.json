@@ -520,5 +520,9 @@
     "statusFailed": "Failed",
     "statusCancelled": "Cancelled",
     "statusUnknown": "Unknown"
+  },
+  "taskEdit": {
+    "confirmOcrCalibrationValidationGroupHeader": "Marcado como OCR erróneo pero campos clave aún sin corregir ({count})",
+    "confirmOcrCalibrationValidationHint": "Cambie al menos: fecha, turno, llegada, salida o descanso."
   }
 }

@@ -523,5 +523,9 @@
     "statusFailed": "Failed",
     "statusCancelled": "Cancelled",
     "statusUnknown": "Unknown"
+  },
+  "taskEdit": {
+    "confirmOcrCalibrationValidationGroupHeader": "Als OCR falsch markiert, Schlüsselfelder aber noch nicht korrigiert ({count})",
+    "confirmOcrCalibrationValidationHint": "Ändern Sie mindestens: Datum, Schicht, Ankunft, Abgang oder Pause."
   }
 }

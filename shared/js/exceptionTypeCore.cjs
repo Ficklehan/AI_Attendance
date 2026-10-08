@@ -70,8 +70,9 @@ function isExceptionTypeExempt(record, isAbsentRowOrDeps) {
   return false
 }
 
-/** 识别错误提交时：须至少改过其中一项（相对 AI 基线） */
+/** 识别错误提交时：须至少改过其中一项（相对 AI 基线；含日期，与红框校准字段对齐） */
 const OCR_WRONG_ADJUST_FIELDS = [
+  'Date',
   'HORAIRES_DU_TRAVAIL',
   'ARRIVEE',
   'DEPAR',
@@ -323,13 +324,13 @@ function isExceptionTypeMissingForSubmit(record, deps) {
   return !normalizeExceptionType(record && record.ExceptionType)
 }
 
-/** 相对 AI 基线，班次/到达/离开/休息是否至少改过一项 */
+/** 相对 AI 基线，日期/班次/到达/离开/休息是否至少改过一项 */
 function hasOcrWrongTimeFieldAdjusted(record) {
   return getBaselineFieldDiffs(record, OCR_WRONG_ADJUST_FIELDS).length > 0
 }
 
 /**
- * 选了「识别错误」但班次/到达/离开/休息均未相对 AI 基线改动 → 提交拦截。
+ * 选了「识别错误」但日期/班次/到达/离开/休息均未相对 AI 基线改动 → 提交拦截。
  * 未出勤/删除行豁免。
  */
 function isOcrWrongMissingFieldAdjustment(record, deps) {
