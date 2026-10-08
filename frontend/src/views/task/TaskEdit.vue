@@ -1305,6 +1305,9 @@ const onCalibratableFieldFocusHandler = (record) => {
 const onFormatFieldBlur = (record, field) => {
   applyFieldNormalization(record, field, { coerceTime: true })
   clearFieldUnreadable(record, field)
+  if (field === 'ARRIVEE' || field === 'DEPAR' || field === 'HORAIRES_DU_TRAVAIL' || field === 'Date') {
+    refreshRecordNightShiftMark(record)
+  }
   onCalibratableFieldChange(record, SNAPSHOT_FIELD_KEYS)
   syncRecordExceptionType(record)
   invalidateRowCache(record)
@@ -1312,6 +1315,8 @@ const onFormatFieldBlur = (record, field) => {
   if (field === 'ARRIVEE' || field === 'DEPAR' || field === 'HORAIRES_DU_TRAVAIL' || field === 'Date') {
     scheduleAnomalyCountUpdate(true)
   }
+  // 班次/到离等字段失焦时落草稿（此前仅 Date 的 change 路径会 scheduleDraftSave）
+  scheduleDraftSave()
 }
 
 const onFormatFieldPressEnter = (record, field, event) => {
@@ -1356,6 +1361,10 @@ const dateFieldPlaceholder = (record) => {
 const onDatePickerUpdate = (record, value) => {
   if (!record) return
   record.Date = value || ''
+  // 人工改期后清空 DATE_RAW，避免草稿/确认时被 OCR 原始段覆盖回旧日期
+  if (Object.prototype.hasOwnProperty.call(record, 'DATE_RAW')) {
+    record.DATE_RAW = ''
+  }
   onReadableFieldChange(record, 'Date')
 }
 
@@ -1373,6 +1382,9 @@ const swapRecordDateMonthDay = (record) => {
   if (!next) return
   onCalibratableFieldFocusHandler(record)
   record.Date = next
+  if (Object.prototype.hasOwnProperty.call(record, 'DATE_RAW')) {
+    record.DATE_RAW = ''
+  }
   onReadableFieldChange(record, 'Date')
 }
 
@@ -1407,6 +1419,9 @@ const applyFieldNormalization = (record, field, options = {}) => {
 const onReadableFieldChange = (record, field) => {
   applyFieldNormalization(record, field)
   clearFieldUnreadable(record, field)
+  if (field === 'Date') {
+    record.DATE_RAW = ''
+  }
   if (field === 'NOM_PRENOM') markNameManuallyEdited(record)
   if (field === 'ARRIVEE' || field === 'DEPAR' || field === 'HORAIRES_DU_TRAVAIL' || field === 'Date') {
     refreshRecordNightShiftMark(record)
@@ -2595,11 +2610,19 @@ const handleSubmit = async () => {
   })
   
   submitting.value = true
-  draftSaveBlocked = true
   if (draftSaveTimer) {
     window.clearTimeout(draftSaveTimer)
     draftSaveTimer = null
   }
+  // 先等 in-flight 草稿落库，再封锁后续草稿，避免确认后被旧草稿覆盖
+  if (draftSavePromise) {
+    try {
+      await draftSavePromise
+    } catch {
+      /* ignore */
+    }
+  }
+  draftSaveBlocked = true
   try {
     await confirmTask(taskId.value, { 
       data: preparedRecords,

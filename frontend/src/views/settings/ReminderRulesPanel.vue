@@ -294,7 +294,6 @@ const statusOptions = [
 ]
 
 const unitOptions = computed(() => [
-  { value: 'minute', label: t('settings.reminders.unitMinute') },
   { value: 'hour', label: t('settings.reminders.unitHour') },
   { value: 'day', label: t('settings.reminders.unitDay') },
   { value: 'week', label: t('settings.reminders.unitWeek') },
@@ -558,7 +557,7 @@ const openEdit = (record) => {
   form.scopeCountries = [...(record.scopeCountries || [])]
   form.scopeRoles = [...(record.scopeRoles || [])]
   form.intervalValue = record.intervalValue
-  form.intervalUnit = record.intervalUnit
+  form.intervalUnit = record.intervalUnit === 'minute' ? 'hour' : record.intervalUnit
   form.scheduleHourOfDay = record.scheduleHourOfDay ?? 9
   form.recipientUserIds = [...(record.recipientUserIds || [])]
   form.includeTaskCreator = record.includeTaskCreator !== false

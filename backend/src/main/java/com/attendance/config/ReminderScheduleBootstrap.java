@@ -9,10 +9,10 @@ import org.springframework.core.annotation.Order;
 import org.springframework.stereotype.Component;
 
 /**
- * 启动时为已启用规则与在途任务回填提醒计划。
+ * 启动时排队提醒欠账补发（异步单飞，不阻塞就绪）。
  */
 @Component
-@Order(17)
+@Order(100)
 public class ReminderScheduleBootstrap implements ApplicationRunner {
 
     private static final Logger log = LoggerFactory.getLogger(ReminderScheduleBootstrap.class);
@@ -27,9 +27,9 @@ public class ReminderScheduleBootstrap implements ApplicationRunner {
     public void run(ApplicationArguments args) {
         try {
             reminderScheduleService.reconcileAllEnabledRules();
-            log.info("提醒计划启动回填完成");
+            log.info("提醒计划启动补发已排队（异步单飞）");
         } catch (Exception e) {
-            log.warn("提醒计划启动回填失败: {}", e.getMessage());
+            log.warn("提醒计划启动补发排队失败: {}", e.getMessage());
         }
     }
 }

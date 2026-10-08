@@ -96,9 +96,23 @@ public final class RecognizedTextNormalizer {
             record.put("AGENCE_INTERIMAIRE", normalizeLabelText(String.valueOf(record.get("AGENCE_INTERIMAIRE"))));
         }
         if (record.containsKey("Date")) {
-            String dateRaw = record.get("DATE_RAW") == null ? "" : String.valueOf(record.get("DATE_RAW"));
-            record.put("Date", RecognizedDateNormalizer.applyDateWithRaw(
-                    String.valueOf(record.get("Date")), dateRaw));
+            // 草稿/确认路径：用户编辑后的 Date 为准。识别阶段已用 DATE_RAW 重装过一次；
+            // 此处若再 applyDateWithRaw，会把人工改期（含 DatePicker）覆盖回 OCR 原始段。
+            String dateValue = String.valueOf(record.get("Date"));
+            String normalized = RecognizedDateNormalizer.normalizeDate(dateValue);
+            if (RecognizedDateNormalizer.isValidCanonicalDate(normalized)) {
+                record.put("Date", normalized);
+                Object dateRawObj = record.get("DATE_RAW");
+                if (dateRawObj != null && !String.valueOf(dateRawObj).trim().isEmpty()) {
+                    String fromRaw = RecognizedDateNormalizer.applyDateWithRaw(dateValue, String.valueOf(dateRawObj));
+                    if (!normalized.equals(fromRaw)) {
+                        record.put("DATE_RAW", "");
+                    }
+                }
+            } else {
+                String dateRaw = record.get("DATE_RAW") == null ? "" : String.valueOf(record.get("DATE_RAW"));
+                record.put("Date", RecognizedDateNormalizer.applyDateWithRaw(dateValue, dateRaw));
+            }
         }
         if (record.containsKey("WorkDate")) {
             record.put("WorkDate", RecognizedDateNormalizer.normalizeDate(String.valueOf(record.get("WorkDate"))));

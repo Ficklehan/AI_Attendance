@@ -28,6 +28,7 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Comparator;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
@@ -48,6 +49,12 @@ public class ReminderSchedulerService {
     /** 与设置页文案一致：每 15 分钟扫描 */
     private static final long SCAN_INTERVAL_MS = 900_000L;
     private static final long SCAN_INITIAL_DELAY_MS = 120_000L;
+    /**
+     * 逐周期回补窗口上限。窗口外欠账用 legacy_before_{scanFrom} 桶一次性结算，
+     * 仍触发提醒，避免静默丢欠账或数万次逐 period 写入。
+     */
+    private static final long MAX_CATCHUP_PERIODS = 500L;
+    private static final String LEGACY_BUCKET_PREFIX = "legacy_before_";
 
     @Autowired
     private PluginConfigService pluginConfigService;
@@ -103,13 +110,52 @@ public class ReminderSchedulerService {
             return;
         }
 
+        LinkedHashSet<String> allStatuses = new LinkedHashSet<>();
+        Map<String, List<String>> recipientsByRule = new HashMap<>();
+        for (ReminderRule rule : rules) {
+            List<String> statuses = JSON.parseArray(rule.getTaskStatusesJson(), String.class);
+            if (statuses != null) {
+                for (String status : statuses) {
+                    if (status != null && !status.trim().isEmpty()) {
+                        allStatuses.add(status.trim());
+                    }
+                }
+            }
+            List<String> configured = reminderRuleMapper.selectRecipientUserIds(rule.getId());
+            recipientsByRule.put(rule.getId(),
+                    configured != null ? configured : Collections.emptyList());
+        }
+
+        List<Task> allTasks = allStatuses.isEmpty()
+                ? Collections.emptyList()
+                : taskMapper.selectTasksByStatuses(new ArrayList<>(allStatuses));
+        List<String> taskIds = new ArrayList<>(allTasks.size());
+        for (Task task : allTasks) {
+            if (task != null && task.getTaskId() != null && !task.getTaskId().isEmpty()) {
+                taskIds.add(task.getTaskId());
+            }
+        }
+
+        Map<String, Map<String, Set<String>>> deliveredByRule = new HashMap<>();
+        for (ReminderRule rule : rules) {
+            deliveredByRule.put(rule.getId(), loadDeliveredIndex(rule.getId(), taskIds));
+        }
+
         Map<String, User> userCache = new HashMap<>();
         Map<String, Map<String, List<ReminderHit>>> userLocaleBuckets = new LinkedHashMap<>();
         Map<String, RuleRunStats> ruleStats = new LinkedHashMap<>();
 
         for (ReminderRule rule : rules) {
             ruleStats.put(rule.getId(), new RuleRunStats(rule));
-            collectHitsForRule(rule, now, userCache, userLocaleBuckets, ruleStats.get(rule.getId()));
+            collectHitsForRule(
+                    rule,
+                    now,
+                    allTasks,
+                    recipientsByRule.get(rule.getId()),
+                    deliveredByRule.get(rule.getId()),
+                    userCache,
+                    userLocaleBuckets,
+                    ruleStats.get(rule.getId()));
         }
 
         int totalDeliveries = 0;
@@ -138,27 +184,58 @@ public class ReminderSchedulerService {
             }
         }
 
-        if (totalDeliveries > 0) {
-            log.info("提醒扫描完成 catchUp={} userMessages={} ruleCount={}",
-                    catchUpContext, totalDeliveries, rules.size());
+        if (totalDeliveries > 0 || catchUpContext) {
+            log.info("提醒扫描完成 catchUp={} userMessages={} ruleCount={} taskPool={}",
+                    catchUpContext, totalDeliveries, rules.size(), allTasks.size());
         }
+    }
+
+    private Map<String, Set<String>> loadDeliveredIndex(String ruleId, List<String> taskIds) {
+        Map<String, Set<String>> index = new HashMap<>();
+        if (taskIds == null || taskIds.isEmpty()) {
+            return index;
+        }
+        List<Map<String, Object>> rows =
+                reminderDeliveryMapper.selectDeliveredBucketsByRuleAndTasks(ruleId, taskIds);
+        if (rows == null || rows.isEmpty()) {
+            return index;
+        }
+        for (Map<String, Object> row : rows) {
+            if (row == null) {
+                continue;
+            }
+            String taskId = stringVal(mapGet(row, "taskId"));
+            String userId = stringVal(mapGet(row, "userId"));
+            String bucket = stringVal(mapGet(row, "periodBucket"));
+            if (taskId.isEmpty() || userId.isEmpty() || bucket.isEmpty()) {
+                continue;
+            }
+            index.computeIfAbsent(deliveryKey(taskId, userId), k -> new HashSet<>()).add(bucket);
+        }
+        return index;
     }
 
     private void collectHitsForRule(ReminderRule rule,
                                     LocalDateTime now,
+                                    List<Task> tasks,
+                                    List<String> configuredRecipients,
+                                    Map<String, Set<String>> deliveredIndex,
                                     Map<String, User> userCache,
                                     Map<String, Map<String, List<ReminderHit>>> userLocaleBuckets,
                                     RuleRunStats stats) {
         List<String> statuses = JSON.parseArray(rule.getTaskStatusesJson(), String.class);
-        if (statuses == null || statuses.isEmpty()) {
+        if (statuses == null || statuses.isEmpty() || tasks == null || tasks.isEmpty()) {
             return;
         }
-        List<Task> tasks = taskMapper.selectTasksByStatuses(statuses);
+        Set<String> statusSet = new HashSet<>(statuses);
         BigDecimal intervalValue = rule.getIntervalValue();
         String intervalUnit = rule.getIntervalUnit();
         long intervalMs = ReminderSupport.intervalToMillis(intervalValue, intervalUnit);
 
         for (Task task : tasks) {
+            if (task == null || task.getStatus() == null || !statusSet.contains(task.getStatus())) {
+                continue;
+            }
             if (!taskMatchesRule(task, rule, userCache)) {
                 continue;
             }
@@ -179,7 +256,7 @@ public class ReminderSchedulerService {
                 continue;
             }
 
-            Set<String> recipients = resolveRecipients(rule, task);
+            Set<String> recipients = resolveRecipients(configuredRecipients, rule, task);
             String locale = ReminderLocaleSupport.resolveLocale(
                     ReminderSupport.normalizeTaskCountry(task.getPromptCountry()));
 
@@ -188,24 +265,95 @@ public class ReminderSchedulerService {
                 if (recipient == null || !"active".equals(recipient.getStatus())) {
                     continue;
                 }
-                List<Long> undeliveredPeriods = new ArrayList<>();
-                for (long period = 1; period <= currentPeriod; period++) {
-                    String bucket = String.valueOf(period);
-                    if (reminderDeliveryMapper.existsDelivery(
-                            rule.getId(), task.getTaskId(), recipientId, bucket) <= 0) {
-                        undeliveredPeriods.add(period);
-                    }
-                }
-                if (undeliveredPeriods.isEmpty()) {
+                Set<String> deliveredSet = deliveredIndex != null
+                        ? deliveredIndex.getOrDefault(deliveryKey(task.getTaskId(), recipientId), Collections.emptySet())
+                        : Collections.emptySet();
+                List<String> undeliveredBuckets = resolveUndeliveredBuckets(currentPeriod, deliveredSet);
+                if (undeliveredBuckets.isEmpty()) {
                     continue;
                 }
-                stats.hitTasks += undeliveredPeriods.size();
+                stats.hitTasks += undeliveredBuckets.size();
                 userLocaleBuckets
                         .computeIfAbsent(recipientId, k -> new LinkedHashMap<>())
                         .computeIfAbsent(locale, k -> new ArrayList<>())
-                        .add(new ReminderHit(rule, task, recipient, undeliveredPeriods));
+                        .add(new ReminderHit(rule, task, recipient, undeliveredBuckets));
             }
         }
+    }
+
+    /**
+     * 最近 {@link #MAX_CATCHUP_PERIODS} 个周期逐桶检查；更早欠账用 legacy 桶一次性结算。
+     */
+    static List<String> resolveUndeliveredBuckets(long currentPeriod, Set<String> deliveredSet) {
+        Set<String> delivered = deliveredSet != null ? deliveredSet : Collections.emptySet();
+        List<String> undelivered = new ArrayList<>();
+        long scanFrom = Math.max(1L, currentPeriod - MAX_CATCHUP_PERIODS + 1);
+        if (scanFrom > 1L) {
+            String legacyBucket = LEGACY_BUCKET_PREFIX + scanFrom;
+            if (!delivered.contains(legacyBucket) && hasLegacyDebt(scanFrom, delivered)) {
+                undelivered.add(legacyBucket);
+            }
+        }
+        for (long period = scanFrom; period <= currentPeriod; period++) {
+            String bucket = String.valueOf(period);
+            if (!delivered.contains(bucket)) {
+                undelivered.add(bucket);
+            }
+        }
+        return undelivered;
+    }
+
+    private static boolean hasLegacyDebt(long scanFrom, Set<String> delivered) {
+        long coveredBefore = 0L;
+        for (String bucket : delivered) {
+            if (bucket == null || bucket.isEmpty()) {
+                continue;
+            }
+            if (bucket.startsWith(LEGACY_BUCKET_PREFIX)) {
+                return false;
+            }
+            if (!isNumericBucket(bucket)) {
+                continue;
+            }
+            try {
+                long period = Long.parseLong(bucket);
+                if (period >= 1L && period < scanFrom) {
+                    coveredBefore++;
+                }
+            } catch (NumberFormatException ignored) {
+                // ignore
+            }
+        }
+        return coveredBefore < (scanFrom - 1L);
+    }
+
+    private static boolean isNumericBucket(String bucket) {
+        for (int i = 0; i < bucket.length(); i++) {
+            if (!Character.isDigit(bucket.charAt(i))) {
+                return false;
+            }
+        }
+        return !bucket.isEmpty();
+    }
+
+    private static String deliveryKey(String taskId, String userId) {
+        return taskId + '\0' + userId;
+    }
+
+    private static String stringVal(Object value) {
+        return value == null ? "" : String.valueOf(value).trim();
+    }
+
+    private static Object mapGet(Map<String, Object> row, String key) {
+        if (row.containsKey(key)) {
+            return row.get(key);
+        }
+        for (Map.Entry<String, Object> entry : row.entrySet()) {
+            if (entry.getKey() != null && entry.getKey().equalsIgnoreCase(key)) {
+                return entry.getValue();
+            }
+        }
+        return null;
     }
 
     private int dispatchUnified(User recipient,
@@ -218,8 +366,8 @@ public class ReminderSchedulerService {
         }
 
         for (ReminderHit hit : hits) {
-            for (Long period : hit.periods) {
-                recordDelivery(hit.rule, hit.task, recipient.getId(), String.valueOf(period), recipient);
+            for (String periodBucket : hit.periodBuckets) {
+                recordDelivery(hit.rule, hit.task, recipient.getId(), periodBucket, recipient);
                 RuleRunStats stats = ruleStats.get(hit.rule.getId());
                 if (stats != null) {
                     stats.sentDeliveries++;
@@ -422,10 +570,9 @@ public class ReminderSchedulerService {
                 ReminderSupport.parseScopeList(rule.getScopeRolesJson()));
     }
 
-    private Set<String> resolveRecipients(ReminderRule rule, Task task) {
-        List<String> configured = reminderRuleMapper.selectRecipientUserIds(rule.getId());
+    private Set<String> resolveRecipients(List<String> configuredRecipients, ReminderRule rule, Task task) {
         Set<String> recipients = new LinkedHashSet<>(
-                configured != null ? configured : Collections.emptyList());
+                configuredRecipients != null ? configuredRecipients : Collections.emptyList());
         if (rule.isIncludeTaskCreator() && task.getUserId() != null) {
             recipients.add(task.getUserId());
         }
@@ -433,10 +580,6 @@ public class ReminderSchedulerService {
     }
 
     private void recordDelivery(ReminderRule rule, Task task, String recipientId, String periodBucket, User recipient) {
-        if (reminderDeliveryMapper.existsDelivery(
-                rule.getId(), task.getTaskId(), recipientId, periodBucket) > 0) {
-            return;
-        }
         ReminderDelivery delivery = new ReminderDelivery();
         delivery.setId(IdGenerator.generateId());
         delivery.setRuleId(rule.getId());
@@ -448,9 +591,9 @@ public class ReminderSchedulerService {
         delivery.setChannelFeishu(feishuOk);
         delivery.setFeishuStatus(feishuOk ? "sent" : "skipped");
         try {
-            reminderDeliveryMapper.insertDelivery(delivery);
+            reminderDeliveryMapper.insertDeliveryIgnore(delivery);
         } catch (Exception e) {
-            log.debug("提醒投递记录已存在或写入失败 ruleId={} taskId={} userId={} period={}: {}",
+            log.debug("提醒投递记录写入失败 ruleId={} taskId={} userId={} period={}: {}",
                     rule.getId(), task.getTaskId(), recipientId, periodBucket, e.getMessage());
         }
     }
@@ -497,13 +640,13 @@ public class ReminderSchedulerService {
         private final ReminderRule rule;
         private final Task task;
         private final User recipient;
-        private final List<Long> periods;
+        private final List<String> periodBuckets;
 
-        private ReminderHit(ReminderRule rule, Task task, User recipient, List<Long> periods) {
+        private ReminderHit(ReminderRule rule, Task task, User recipient, List<String> periodBuckets) {
             this.rule = rule;
             this.task = task;
             this.recipient = recipient;
-            this.periods = periods;
+            this.periodBuckets = periodBuckets;
         }
     }
 

@@ -48,6 +48,7 @@ CREATE TABLE IF NOT EXISTS tasks (
     updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
     INDEX idx_user_id (user_id),
     INDEX idx_status (status),
+    INDEX idx_tasks_status_entered (status, status_entered_at),
     INDEX idx_sync_status (sync_status),
     INDEX idx_created_at (created_at),
     INDEX idx_user_status_created (user_id, status, created_at)
@@ -295,7 +296,7 @@ CREATE TABLE IF NOT EXISTS reminder_rules (
     scope_countries JSON NULL COMMENT '适用工作国家，空=全部',
     scope_roles JSON NULL COMMENT '适用任务创建者角色，空=全部',
     interval_value DECIMAL(10, 1) NOT NULL DEFAULT 1.0 COMMENT '间隔数值，最多一位小数',
-    interval_unit VARCHAR(16) NOT NULL DEFAULT 'day' COMMENT 'minute|hour|day|week',
+    interval_unit VARCHAR(16) NOT NULL DEFAULT 'day' COMMENT 'hour|day|week',
     schedule_hour_of_day TINYINT NULL COMMENT '0-23，仅 day/week 生效；NULL=不限制时刻',
     message_template TEXT NOT NULL,
     message_template_supervisor TEXT NULL COMMENT '非任务创建者提醒文案',

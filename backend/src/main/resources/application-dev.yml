@@ -26,11 +26,13 @@ feishu:
 logging:
   level:
     com.attendance: DEBUG
-    org.springframework.web: DEBUG
+    com.attendance.mapper: INFO
+    org.springframework.web: INFO
 
 mybatis:
   configuration:
-    log-impl: org.apache.ibatis.logging.stdout.StdOutImpl
+    # 使用 SLF4J，避免 StdOutImpl 在扫描/补发时刷爆本地日志
+    log-impl: org.apache.ibatis.logging.slf4j.Slf4jImpl
 
 attendance:
   bootstrap-default-admin: true

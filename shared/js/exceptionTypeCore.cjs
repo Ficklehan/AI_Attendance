@@ -160,6 +160,10 @@ function canAutoSelectAttendanceOk(record, deps) {
  *   hasRecognitionNotes?: (r: object) => boolean,
  * }} deps
  */
+function hasOcrAdjustFieldDiffs(record) {
+  return getBaselineFieldDiffs(record, OCR_WRONG_ADJUST_FIELDS).length > 0
+}
+
 function ensureExceptionType(record, deps) {
   if (!record || !deps || typeof deps.hasRequiredMissing !== 'function') return record
   if (isExceptionTypeExempt(record, deps.isAbsentRow)) {
@@ -170,13 +174,26 @@ function ensureExceptionType(record, deps) {
   const incomplete = deps.hasRequiredMissing(record)
     || (typeof deps.hasFormatInvalid === 'function' && deps.hasFormatInvalid(record))
   if (incomplete) {
+    // 格式/必填未就绪时清空类型，同时丢掉手动标记，避免修好后卡在「空类型 + manual」
     record.ExceptionType = ''
+    delete record._exceptionTypeManual
     return record
   }
-  const type = normalizeExceptionType(record.ExceptionType)
-  const manual = isExceptionTypeManuallySet(record)
+  let type = normalizeExceptionType(record.ExceptionType)
+  let manual = isExceptionTypeManuallySet(record)
+  // 类型已被清空但手动标记残留 → 视为未确认，允许后续自动推断
+  if (manual && !type) {
+    delete record._exceptionTypeManual
+    manual = false
+  }
   if (manual) {
     record.ExceptionType = type
+    return record
+  }
+  // 相对 AI 基线改过日期/班次/到离/休息 → 视为已确认「识别错误」（改班次后可提交）
+  if (!type && hasOcrAdjustFieldDiffs(record)) {
+    record.ExceptionType = EXCEPTION_TYPE.PAPER_OK_OCR_WRONG
+    record._exceptionTypeManual = true
     return record
   }
   if (canAutoSelectAttendanceOk(record, deps)) {

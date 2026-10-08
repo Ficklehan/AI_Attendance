@@ -88,15 +88,26 @@ export const ensureExceptionType = typeof api.ensureExceptionType === 'function'
       || (typeof deps.hasFormatInvalid === 'function' && deps.hasFormatInvalid(record))
     if (incomplete) {
       record.ExceptionType = ''
+      delete record._exceptionTypeManual
       return record
     }
-    const type = normalizeExceptionType(record.ExceptionType)
-    const manual = record._exceptionTypeManual === true
+    let type = normalizeExceptionType(record.ExceptionType)
+    let manual = record._exceptionTypeManual === true
       || record._exceptionTypeManual === 1
       || record._exceptionTypeManual === '1'
       || record._exceptionTypeManual === 'true'
+    if (manual && !type) {
+      delete record._exceptionTypeManual
+      manual = false
+    }
     if (manual) {
       record.ExceptionType = type
+      return record
+    }
+    const diffs = getBaselineFieldDiffs(record, OCR_WRONG_ADJUST_FIELDS)
+    if (!type && Array.isArray(diffs) && diffs.length > 0) {
+      record.ExceptionType = EXCEPTION_TYPE.PAPER_OK_OCR_WRONG
+      record._exceptionTypeManual = true
       return record
     }
     if (typeof api.canAutoSelectAttendanceOk === 'function'

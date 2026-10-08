@@ -100,8 +100,82 @@ public class ReminderDatabaseBootstrap implements ApplicationRunner {
             ensureTemplateLocaleColumns();
             ensureScheduleHourColumn();
             ensureReminderSchedulesTable();
+            migrateMinuteIntervalUnits();
+            ensureTasksStatusEnteredIndex();
+            pruneExplodedNumericDeliveries();
         } catch (Exception e) {
             log.error("创建 reminder 表失败，提醒功能不可用", e);
+        }
+    }
+
+    /**
+     * minute 规则历史曾写入数十万逐周期投递行；折叠为 legacy 标记并删除窗口外数字桶。
+     */
+    private void pruneExplodedNumericDeliveries() {
+        try {
+            Long total = jdbcTemplate.queryForObject(
+                    "SELECT COUNT(1) FROM reminder_deliveries", Long.class);
+            if (total == null || total < 50_000L) {
+                return;
+            }
+            jdbcTemplate.execute(
+                    "CREATE TEMPORARY TABLE IF NOT EXISTS tmp_rd_max AS "
+                            + "SELECT rule_id, task_id, user_id, "
+                            + "MAX(CAST(period_bucket AS UNSIGNED)) AS max_p "
+                            + "FROM reminder_deliveries "
+                            + "WHERE period_bucket REGEXP '^[0-9]+$' "
+                            + "GROUP BY rule_id, task_id, user_id "
+                            + "HAVING max_p > 600");
+            int markers = jdbcTemplate.update(
+                    "INSERT IGNORE INTO reminder_deliveries ("
+                            + "id, rule_id, task_id, user_id, period_bucket, "
+                            + "channel_site, channel_feishu, feishu_status) "
+                            + "SELECT REPLACE(UUID(),'-',''), rule_id, task_id, user_id, "
+                            + "CONCAT('legacy_before_', GREATEST(1, max_p - 499)), "
+                            + "1, 0, 'skipped' FROM tmp_rd_max");
+            int deleted = jdbcTemplate.update(
+                    "DELETE d FROM reminder_deliveries d "
+                            + "INNER JOIN tmp_rd_max t "
+                            + "ON d.rule_id = t.rule_id AND d.task_id = t.task_id AND d.user_id = t.user_id "
+                            + "WHERE d.period_bucket REGEXP '^[0-9]+$' "
+                            + "AND CAST(d.period_bucket AS UNSIGNED) < GREATEST(1, t.max_p - 499)");
+            jdbcTemplate.execute("DROP TEMPORARY TABLE IF EXISTS tmp_rd_max");
+            if (markers > 0 || deleted > 0) {
+                log.info("已折叠膨胀投递记录: markers={}, deleted={}, beforeCount={}",
+                        markers, deleted, total);
+            }
+        } catch (Exception e) {
+            log.warn("折叠膨胀投递记录失败: {}", e.getMessage());
+        }
+    }
+
+    /** 产品单位仅 hour/day/week；存量 minute 规则升为 hour，避免 period 爆炸。 */
+    private void migrateMinuteIntervalUnits() {
+        try {
+            int updated = jdbcTemplate.update(
+                    "UPDATE reminder_rules SET interval_unit = 'hour' WHERE LOWER(interval_unit) = 'minute'");
+            if (updated > 0) {
+                log.info("已将 {} 条 minute 提醒规则迁移为 hour", updated);
+            }
+        } catch (Exception e) {
+            log.warn("迁移 minute 提醒单位失败: {}", e.getMessage());
+        }
+    }
+
+    private void ensureTasksStatusEnteredIndex() {
+        try {
+            Integer cnt = jdbcTemplate.queryForObject(
+                    "SELECT COUNT(1) FROM information_schema.statistics "
+                            + "WHERE table_schema = DATABASE() AND table_name = 'tasks' "
+                            + "AND index_name = 'idx_tasks_status_entered'",
+                    Integer.class);
+            if (cnt == null || cnt == 0) {
+                jdbcTemplate.execute(
+                        "ALTER TABLE tasks ADD INDEX idx_tasks_status_entered (status, status_entered_at)");
+                log.info("tasks.idx_tasks_status_entered 已创建");
+            }
+        } catch (Exception e) {
+            log.debug("idx_tasks_status_entered 可能已存在: {}", e.getMessage());
         }
     }
 

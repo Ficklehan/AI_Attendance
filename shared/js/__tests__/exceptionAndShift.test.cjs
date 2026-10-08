@@ -232,6 +232,52 @@ describe('exceptionTypeCore', () => {
     assert.equal(blurred.ExceptionType, '')
   })
 
+  it('clears stale manual flag when format/required clears type', () => {
+    const record = {
+      ExceptionType: EXCEPTION_TYPE.ATTENDANCE_OK,
+      _exceptionTypeManual: true,
+      HORAIRES_DU_TRAVAIL: '09:00-12:00/13:00-18:00',
+    }
+    ensureExceptionType(record, {
+      hasRequiredMissing: () => false,
+      hasFormatInvalid: () => true,
+    })
+    assert.equal(record.ExceptionType, '')
+    assert.equal(record._exceptionTypeManual, undefined)
+
+    // 修好格式后非模糊行应能重新自动「识别正确」
+    record.HORAIRES_DU_TRAVAIL = '09:00-18:00'
+    ensureExceptionType(record, {
+      hasRequiredMissing: () => false,
+      hasFormatInvalid: () => false,
+    })
+    assert.equal(record.ExceptionType, EXCEPTION_TYPE.ATTENDANCE_OK)
+  })
+
+  it('infers paper_ok_ocr_wrong after calibratable field edit vs AI baseline', () => {
+    const record = {
+      ExceptionType: '',
+      SmartMark: '模糊',
+      HORAIRES_DU_TRAVAIL: '09:00-18:00',
+      ARRIVEE: '20:00',
+      DEPAR: '08:00',
+      _aiBaseline: {
+        HORAIRES_DU_TRAVAIL: '09:00-12:00/13:00-18:00',
+        ARRIVEE: '20:00',
+        DEPAR: '08:00',
+        Date: '',
+        PAUSE: '',
+      },
+    }
+    ensureExceptionType(record, {
+      hasRequiredMissing: () => false,
+      hasFormatInvalid: () => false,
+    })
+    assert.equal(record.ExceptionType, EXCEPTION_TYPE.PAPER_OK_OCR_WRONG)
+    assert.equal(record._exceptionTypeManual, true)
+    assert.equal(isExceptionTypeMissingForSubmit(record, {}), false)
+  })
+
   it('clears exception type for deleted/absent rows', () => {
     const deleted = {
       ExceptionType: EXCEPTION_TYPE.ATTENDANCE_OK,

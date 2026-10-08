@@ -11,7 +11,6 @@ import com.attendance.mapper.UserMapper;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.context.annotation.Lazy;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.transaction.support.TransactionSynchronization;
@@ -47,8 +46,7 @@ public class ReminderScheduleService {
     private PluginConfigService pluginConfigService;
 
     @Autowired
-    @Lazy
-    private ReminderSchedulerService reminderSchedulerService;
+    private ReminderCatchUpCoordinator reminderCatchUpCoordinator;
 
     @Transactional
     public void reconcileAllEnabledRules() {
@@ -106,26 +104,18 @@ public class ReminderScheduleService {
         scheduleCatchUpAfterCommit("notification-enabled");
     }
 
-    /** 补发扫描在事务提交后异步执行，避免启用/保存规则 API 被扫描失败拖垮。 */
+    /** 补发扫描在事务提交后排队到单飞线程池，不阻塞 HTTP / ApplicationRunner。 */
     private void scheduleCatchUpAfterCommit(String reason) {
         if (TransactionSynchronizationManager.isSynchronizationActive()) {
             TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
                 @Override
                 public void afterCommit() {
-                    runCatchUpSafely(reason);
+                    reminderCatchUpCoordinator.requestCatchUp(reason);
                 }
             });
             return;
         }
-        runCatchUpSafely(reason);
-    }
-
-    private void runCatchUpSafely(String reason) {
-        try {
-            reminderSchedulerService.runCatchUpScan();
-        } catch (Exception e) {
-            log.warn("提醒补发扫描失败 reason={}: {}", reason, e.getMessage(), e);
-        }
+        reminderCatchUpCoordinator.requestCatchUp(reason);
     }
 
     /** 任务状态离开提醒范围时取消旧计划（扫描层以 status_entered_at + 状态过滤为准）。 */

@@ -32,7 +32,8 @@ import java.util.stream.Collectors;
 @Service
 public class ReminderRuleService {
 
-    private static final Pattern INTERVAL_UNIT_PATTERN = Pattern.compile("(?i)minute|hour|day|week");
+    /** 与产品约定一致：hour / day / week（不再开放 minute，避免扫描 period 爆炸）。 */
+    private static final Pattern INTERVAL_UNIT_PATTERN = Pattern.compile("(?i)hour|day|week");
 
     @Autowired
     private SystemRoleMapper systemRoleMapper;
