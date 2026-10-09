@@ -132,12 +132,53 @@ public final class RowReadabilitySupport {
         if (containsAnyToken(mark, ABSENT_MARK_TOKENS)) {
             return true;
         }
+        if (observationsIndicateAbsent(record)) {
+            return true;
+        }
         String arrive = safe(record.getString("ARRIVEE"));
         String depart = safe(record.getString("DEPAR"));
         boolean timesEmpty = isUnknown(arrive) && isUnknown(depart);
         boolean identityEmpty = isUnknown(safe(record.getString("NO")))
                 && isUnknown(safe(record.getString("NOM_PRENOM")));
         return timesEmpty && identityEmpty;
+    }
+
+    /**
+     * 模型 JSON 落库前：备注含 ABSENT / 标记含未出勤时，清空到离休息并统一标记为「未出勤」。
+     * 避免备注写了缺勤却仍带上识别到的打卡时间。
+     *
+     * @return true 表示本行已按未出勤规范化
+     */
+    public static boolean applyAbsentObservationRule(JSONObject record) {
+        if (record == null || isDeletedRow(record)) {
+            return false;
+        }
+        if (Boolean.TRUE.equals(record.getBoolean("_manuallyAdded"))) {
+            return false;
+        }
+        String mark = safe(record.getString("Mark"));
+        boolean fromMark = containsAnyToken(mark, ABSENT_MARK_TOKENS);
+        boolean fromObservations = observationsIndicateAbsent(record);
+        if (!fromMark && !fromObservations) {
+            return false;
+        }
+        record.put("ARRIVEE", "");
+        record.put("DEPAR", "");
+        record.put("PAUSE", "");
+        record.put("Mark", "未出勤");
+        return true;
+    }
+
+    /** 备注列是否含 ABSENT / absent 等缺勤词（与标记词表对齐，大小写不敏感）。 */
+    public static boolean observationsIndicateAbsent(JSONObject record) {
+        if (record == null) {
+            return false;
+        }
+        String observations = safe(record.getString("Observations"));
+        if (observations.isEmpty()) {
+            return false;
+        }
+        return containsAnyToken(observations, ABSENT_MARK_TOKENS);
     }
 
     /**

@@ -21,6 +21,7 @@ import com.attendance.util.RecognizedTimeNormalizer;
 import com.attendance.util.RecognizedTextNormalizer;
 import com.attendance.util.RecognizedDateNormalizer;
 import com.attendance.util.NightShiftMarkSupport;
+import com.attendance.util.RowReadabilitySupport;
 import com.attendance.util.SignatureMarkResolver;
 import okhttp3.*;
 import org.slf4j.Logger;
@@ -1145,6 +1146,8 @@ public class AIParserService {
         normalized.put("anomalies", anomalies.getJSONArray("anomalies"));
 
         salvageMisplacedMarkColumn(normalized);
+        // 备注 ABSENT / 标记未出勤：清空到离休息，标记统一为未出勤（再生成 SmartMark）
+        RowReadabilitySupport.applyAbsentObservationRule(normalized);
         normalized.put("SmartMark", generateSmartMark(normalized));
 
         String signatureMark = SignatureMarkResolver.resolveFromAiOutput(
