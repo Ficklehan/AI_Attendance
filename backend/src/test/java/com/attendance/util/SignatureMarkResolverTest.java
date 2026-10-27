@@ -83,13 +83,19 @@ class SignatureMarkResolverTest {
     }
 
     @Test
-    void resolveFromAiOutputInfersSignedWhenAttendancePresent() {
-        assertEquals(SignatureMarkResolver.SIGNED,
+    void resolveFromAiOutputDoesNotInferSignedFromTimes() {
+        assertEquals(SignatureMarkResolver.UNSIGNED,
+                SignatureMarkResolver.resolveFromAiOutput("", false, "正常", "09:00", "14:00", "正常"));
+        assertEquals(SignatureMarkResolver.UNSIGNED,
                 SignatureMarkResolver.resolveFromAiOutput("", false, "正常", "12:00", "", "正常"));
         assertEquals(SignatureMarkResolver.UNSIGNED,
                 SignatureMarkResolver.resolveFromAiOutput("", false, "未出勤", "", "", "未出勤"));
         assertEquals(SignatureMarkResolver.UNSIGNED,
                 SignatureMarkResolver.resolveFromAiOutput("", true, "正常", "12:00", "", "正常"));
+        assertFalse(SignatureMarkResolver.shouldInferSignedWhenEmpty("09:00", "14:00", "正常", "正常"));
+        assertFalse(SignatureMarkResolver.hasPixelSignature("已签字"));
+        assertFalse(SignatureMarkResolver.hasPixelSignature(""));
+        assertTrue(SignatureMarkResolver.hasPixelSignature("Thiam"));
     }
 
     @Test

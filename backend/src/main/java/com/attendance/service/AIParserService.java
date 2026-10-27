@@ -21,6 +21,9 @@ import com.attendance.util.RecognizedTimeNormalizer;
 import com.attendance.util.RecognizedTextNormalizer;
 import com.attendance.util.RecognizedDateNormalizer;
 import com.attendance.util.NightShiftMarkSupport;
+import com.attendance.util.RecognitionStatusMark;
+import com.attendance.util.RecognitionImageEnhanceSupport;
+import com.attendance.util.RecognitionVisionImageSupport;
 import com.attendance.util.RowReadabilitySupport;
 import com.attendance.util.SignatureMarkResolver;
 import okhttp3.*;
@@ -43,11 +46,13 @@ public class AIParserService {
     private static final Logger log = LoggerFactory.getLogger(AIParserService.class);
 
     /** 标记列合法分类值（提示词定义的枚举，模型输出中文）。 */
-    private static final Set<String> BASE_MARK_TOKENS =
-            new HashSet<>(Arrays.asList("手写", "模糊", "正常", "未出勤"));
+    private static final Set<String> BASE_MARK_TOKENS = new HashSet<>(RecognitionStatusMark.MODEL_MARK_TOKENS);
     /** 标记列可接受的全部系统 token（含系统重算/删除态）。 */
     private static final Set<String> KNOWN_MARK_TOKENS =
-            new HashSet<>(Arrays.asList("手写", "模糊", "正常", "未出勤", "夜班", "已删除"));
+            new HashSet<>(Arrays.asList(
+                    "手写", "模糊", "正常", "未出勤", "缺卡",
+                    "到达缺卡", "离开缺卡", "到达缺位", "离开缺位", "缺位",
+                    "夜班", "已删除"));
 
     @Autowired
     private MimoProperties mimoProperties;
@@ -108,8 +113,13 @@ public class AIParserService {
 
     public void parseImageStreamByLine(String base64Image, String country, ParseCallback callback) {
         try {
-            PromptBundle prompts = loadRecognitionPrompts(country);
-            parseImageStreamByLineWithConfig(base64Image, "image/jpeg", prompts.aiPrompt, prompts.continuePrompt, callback);
+            List<RecognitionVisionImageSupport.VisionImagePart> visionParts =
+                    buildVisionPartsFromBase64(base64Image, "image/jpeg");
+            PromptBundle loaded = loadRecognitionPrompts(country);
+            PromptBundle prompts = new PromptBundle(
+                    RecognitionVisionImageSupport.withMultiImageGuide(loaded.aiPrompt, visionParts.size()),
+                    loaded.continuePrompt);
+            parseImageStreamByLineWithConfig(visionParts, prompts.aiPrompt, prompts.continuePrompt, callback);
         } catch (Exception e) {
             log.error("AI解析初始化失败", e);
             callback.onError(e);
@@ -139,17 +149,29 @@ public class AIParserService {
             workingCountryForPays.set(workingCountry != null && !workingCountry.trim().isEmpty()
                     ? workingCountry.trim().toUpperCase()
                     : resolveCountry(promptCountry));
-            String base64Image = Base64.getEncoder().encodeToString(imageBytes);
             String mimeType = detectImageMimeType(imageBytes, originalFilename);
-            log.info("准备上传图片到 {}，文件名: {}, MIME类型: {}, 大小: {} bytes",
-                    recognitionModelRuntime.displayEngineName(), originalFilename, mimeType, imageBytes.length);
+            List<RecognitionVisionImageSupport.VisionImagePart> visionParts =
+                    prepareEnhancedFullPageParts(imageBytes, mimeType);
+            PromptBundle loaded = loadRecognitionPrompts(promptCountry, trace);
+            PromptBundle prompts = new PromptBundle(
+                    RecognitionVisionImageSupport.withMultiImageGuide(loaded.aiPrompt, visionParts.size()),
+                    loaded.continuePrompt);
+            log.info("准备上传图片到 {}，文件名: {}, MIME类型: {}, 大小: {} bytes, visionParts={}",
+                    recognitionModelRuntime.displayEngineName(), originalFilename, mimeType, imageBytes.length,
+                    visionParts.size());
 
-            PromptBundle prompts = loadRecognitionPrompts(promptCountry, trace);
             if (trace != null) {
                 JSONObject req = new JSONObject();
                 req.put("mimeType", mimeType);
                 req.put("imageBytes", imageBytes.length);
-                req.put("base64Chars", base64Image.length());
+                req.put("visionPartCount", visionParts.size());
+                req.put("visionTiled", visionParts.size() > 1);
+                req.put("visionDetail", RecognitionVisionImageSupport.DETAIL_HIGH);
+                JSONArray kinds = new JSONArray();
+                for (RecognitionVisionImageSupport.VisionImagePart part : visionParts) {
+                    kinds.add(part.getKind() + ":" + part.getWidth() + "x" + part.getHeight());
+                }
+                req.put("visionParts", kinds);
                 req.put("dataUrlPrefix", "data:" + mimeType + ";base64,");
                 req.put("model", recognitionModelRuntime.getModel());
                 req.put("apiUrl", recognitionModelRuntime.getApiUrl());
@@ -166,7 +188,7 @@ public class AIParserService {
                 req.put("messageHasImagePart", true);
                 trace.step("model_request", req);
             }
-            parseImageStreamByLineWithConfig(base64Image, mimeType, prompts.aiPrompt, prompts.continuePrompt, callback, trace);
+            parseImageStreamByLineWithConfig(visionParts, prompts.aiPrompt, prompts.continuePrompt, callback, trace);
         } catch (Exception e) {
             log.error("AI解析初始化失败", e);
             if (trace != null) {
@@ -302,13 +324,70 @@ public class AIParserService {
 
 
 
-    private void parseImageStreamByLineWithConfig(String base64Image, String mimeType, String aiPrompt,
-                                                   String continuePrompt, ParseCallback callback) {
-        parseImageStreamByLineWithConfig(base64Image, mimeType, aiPrompt, continuePrompt, callback, null);
+    private List<RecognitionVisionImageSupport.VisionImagePart> buildVisionPartsFromBase64(
+            String base64Image, String mimeType) {
+        String cleanBase64 = stripDataUrlPrefix(base64Image);
+        byte[] imageBytes;
+        try {
+            imageBytes = Base64.getDecoder().decode(cleanBase64);
+        } catch (IllegalArgumentException e) {
+            log.warn("无法解码 base64 图片，回退为单图请求: {}", e.getMessage());
+            RecognitionVisionImageSupport.VisionImagePart fallback =
+                    new RecognitionVisionImageSupport.VisionImagePart(
+                            mimeType, cleanBase64, "overview", -1, -1,
+                            cleanBase64 == null ? 0 : cleanBase64.length());
+            return Collections.singletonList(fallback);
+        }
+        List<RecognitionVisionImageSupport.VisionImagePart> parts =
+                prepareEnhancedFullPageParts(imageBytes, mimeType);
+        if (parts == null || parts.isEmpty()) {
+            RecognitionVisionImageSupport.VisionImagePart fallback =
+                    new RecognitionVisionImageSupport.VisionImagePart(
+                            mimeType, cleanBase64, "overview", -1, -1, imageBytes.length);
+            return Collections.singletonList(fallback);
+        }
+        return parts;
     }
 
-    private void parseImageStreamByLineWithConfig(String base64Image, String mimeType, String aiPrompt,
-                                                   String continuePrompt, ParseCallback callback,
+    /** 整页增强后只送一张完整表，不再按列/行裁切。 */
+    private List<RecognitionVisionImageSupport.VisionImagePart> prepareEnhancedFullPageParts(
+            byte[] imageBytes, String mimeType) {
+        RecognitionImageEnhanceSupport.Result enhanced =
+                RecognitionImageEnhanceSupport.enhance(imageBytes, mimeType);
+        byte[] bytes = enhanced.getBytes() != null ? enhanced.getBytes() : imageBytes;
+        String mime = enhanced.getMimeType() != null ? enhanced.getMimeType() : mimeType;
+        log.info("整页增强: changed={}, deskew={}°, {} -> {} bytes, mime={}",
+                enhanced.isChanged(), enhanced.getDeskewDegrees(),
+                imageBytes == null ? 0 : imageBytes.length,
+                bytes == null ? 0 : bytes.length, mime);
+        List<RecognitionVisionImageSupport.VisionImagePart> parts =
+                RecognitionVisionImageSupport.buildParts(bytes, mime, false);
+        if (parts == null || parts.isEmpty()) {
+            parts = RecognitionVisionImageSupport.buildParts(imageBytes, mimeType, false);
+        }
+        return parts;
+    }
+
+    private static String stripDataUrlPrefix(String base64Image) {
+        if (base64Image == null) {
+            return "";
+        }
+        if (base64Image.startsWith("data:")) {
+            int commaIndex = base64Image.indexOf(",");
+            if (commaIndex > 0) {
+                return base64Image.substring(commaIndex + 1);
+            }
+        }
+        return base64Image;
+    }
+
+    private void parseImageStreamByLineWithConfig(List<RecognitionVisionImageSupport.VisionImagePart> visionParts,
+                                                   String aiPrompt, String continuePrompt, ParseCallback callback) {
+        parseImageStreamByLineWithConfig(visionParts, aiPrompt, continuePrompt, callback, null);
+    }
+
+    private void parseImageStreamByLineWithConfig(List<RecognitionVisionImageSupport.VisionImagePart> visionParts,
+                                                   String aiPrompt, String continuePrompt, ParseCallback callback,
                                                    RecognitionTrace trace) {
         Set<Integer> failedKeyIndices = new HashSet<>();
         Exception lastError = null;
@@ -330,7 +409,7 @@ public class AIParserService {
             activeKeyLease.set(lease);
             try {
                 parseImageStreamByLineWithConfigInner(
-                        base64Image, mimeType, aiPrompt, continuePrompt, callback, trace);
+                        visionParts, aiPrompt, continuePrompt, callback, trace);
                 return;
             } catch (Exception e) {
                 lastError = e;
@@ -371,9 +450,9 @@ public class AIParserService {
         }
     }
 
-    private void parseImageStreamByLineWithConfigInner(String base64Image, String mimeType, String aiPrompt,
-                                                   String continuePrompt, ParseCallback callback,
-                                                   RecognitionTrace trace) {
+    private void parseImageStreamByLineWithConfigInner(
+            List<RecognitionVisionImageSupport.VisionImagePart> visionParts, String aiPrompt,
+            String continuePrompt, ParseCallback callback, RecognitionTrace trace) {
         try {
             List<JSONObject> extractedRecords = new ArrayList<>();
             Set<String> seenRecords = new HashSet<>();
@@ -381,30 +460,27 @@ public class AIParserService {
 
             JSONObject firstUserMsg = new JSONObject();
             firstUserMsg.put("role", "user");
-            
+
             JSONArray contentArray = new JSONArray();
-            
+
             JSONObject textPart = new JSONObject();
             textPart.put("type", "text");
             textPart.put("text", aiPrompt);
             contentArray.add(textPart);
-            
-            JSONObject imagePart = new JSONObject();
-            imagePart.put("type", "image_url");
-            
-            JSONObject imageUrlObj = new JSONObject();
-            // 确保是纯 base64，不带 data URL 前缀
-            String cleanBase64 = base64Image;
-            if (cleanBase64.startsWith("data:")) {
-                int commaIndex = cleanBase64.indexOf(",");
-                if (commaIndex > 0) {
-                    cleanBase64 = cleanBase64.substring(commaIndex + 1);
+
+            List<RecognitionVisionImageSupport.VisionImagePart> parts =
+                    visionParts == null ? Collections.<RecognitionVisionImageSupport.VisionImagePart>emptyList()
+                            : visionParts;
+            for (RecognitionVisionImageSupport.VisionImagePart part : parts) {
+                if (part == null) {
+                    continue;
                 }
+                contentArray.add(RecognitionVisionImageSupport.toImageUrlBlock(part));
             }
-            imageUrlObj.put("url", "data:" + mimeType + ";base64," + cleanBase64);
-            imagePart.put("image_url", imageUrlObj);
-            contentArray.add(imagePart);
-            
+            log.info("识图请求图片块: engine={}, count={}, detail={}",
+                    recognitionModelRuntime.displayEngineName(), parts.size(),
+                    RecognitionVisionImageSupport.DETAIL_HIGH);
+
             firstUserMsg.put("content", contentArray);
             messages.add(firstUserMsg);
 
@@ -478,6 +554,15 @@ public class AIParserService {
                 resp.put("rawFull", lastRecognitionRawText != null ? lastRecognitionRawText : "");
                 resp.put("parsedRecordCount", extractedRecords.size());
                 trace.step("model_response", resp);
+            }
+
+            int copiedClockWiped = RowReadabilitySupport.applyCopiedClockWipe(extractedRecords);
+            if (copiedClockWiped > 0) {
+                log.info("已清除抄自班次/邻行的到离: count={}", copiedClockWiped);
+                for (JSONObject rec : extractedRecords) {
+                    applyAttendanceMarks(rec);
+                    RecognizedFieldSanitizer.annotateAndSanitizeRecord(rec);
+                }
             }
 
             if (recognitionQualityGuard.looksFabricated(extractedRecords)) {
@@ -894,6 +979,10 @@ public class AIParserService {
             log.warn("跳过提示词示例记录: {} - {}", normalized.getString("NO"), normalized.getString("NOM_PRENOM"));
             return;
         }
+        if (RowReadabilitySupport.isNamelessEmptyClockRow(normalized)) {
+            log.info("跳过无姓名且到离为空的印刷空行: NO={}", normalized.getString("NO"));
+            return;
+        }
         if (recoveredFromMerge || RecognizedRecordShapeSupport.isNormalizedShapeMalformed(normalized, rawFieldCount)) {
             String reason = recoveredFromMerge ? "merged_row_recovered" : "invalid_field_shape";
             RecognizedRecordShapeSupport.markMalformed(normalized, reason);
@@ -1148,10 +1237,34 @@ public class AIParserService {
         salvageMisplacedMarkColumn(normalized);
         // 备注 ABSENT / 标记未出勤：清空到离休息，标记统一为未出勤（再生成 SmartMark）
         RowReadabilitySupport.applyAbsentObservationRule(normalized);
-        normalized.put("SmartMark", generateSmartMark(normalized));
+        applyAttendanceMarks(normalized);
 
+        RecognizedFieldSanitizer.annotateAndSanitizeRecord(normalized);
+        return normalized;
+    }
+
+    /**
+     * 到离被 ABSENT / 抄袭时间规则清空后，按当前格子重算标记、签字与工时。
+     * 签字只看签名格（或模型对该格的转写），不用到达/离开推断已签字。
+     */
+    private void applyAttendanceMarks(JSONObject normalized) {
+        if (normalized == null) {
+            return;
+        }
+        normalized.put("SmartMark", generateSmartMark(normalized));
+        RowReadabilitySupport.dropAbsentIfBlurred(normalized);
+        String signatureSource = normalized.getString("SIGNATURE");
+        if (SignatureMarkResolver.SIGNED.equals(signatureSource)
+                || SignatureMarkResolver.UNSIGNED.equals(signatureSource)) {
+            String raw = normalized.getString("SIGNATURE_RAW");
+            signatureSource = raw != null ? raw : "";
+        }
+        if (!SignatureMarkResolver.hasPixelSignature(signatureSource)
+                && !RowReadabilitySupport.hasRecognizedPunchTime(normalized)) {
+            signatureSource = "";
+        }
         String signatureMark = SignatureMarkResolver.resolveFromAiOutput(
-                rawAiSignature,
+                signatureSource,
                 normalized.getBooleanValue("isDeleted"),
                 normalized.getString("SmartMark"),
                 normalized.getString("ARRIVEE"),
@@ -1159,12 +1272,8 @@ public class AIParserService {
                 normalized.getString("Mark"));
         normalized.put("SIGNATURE", signatureMark);
         normalized.put("CHECKER", signatureMark);
-
         RecordFeishuPrepareSupport.enrichDatetimeFields(normalized);
         RecordFeishuPrepareSupport.enrichWorkHours(normalized);
-
-        RecognizedFieldSanitizer.annotateAndSanitizeRecord(normalized);
-        return normalized;
     }
 
     /**
@@ -1411,15 +1520,6 @@ public class AIParserService {
 
         String arriveTime = record.getString("ARRIVEE");
         String departTime = record.getString("DEPAR");
-        boolean isArriveEmpty = arriveTime == null
-                || arriveTime.trim().isEmpty()
-                || "???".equals(arriveTime.trim())
-                || "illegible".equalsIgnoreCase(arriveTime.trim());
-        boolean isDepartEmpty = departTime == null
-                || departTime.trim().isEmpty()
-                || "???".equals(departTime.trim())
-                || "illegible".equalsIgnoreCase(departTime.trim());
-        boolean isAbsent = isArriveEmpty && isDepartEmpty;
 
         JSONObject quality = detectRecordQuality(record);
         List<String> marks = new ArrayList<>();
@@ -1431,19 +1531,22 @@ public class AIParserService {
             for (String part : existingMark.split("[;；,，]")) {
                 String mark = part == null ? "" : part.trim();
                 // 仅保留合法分类值，避免模型误放进「标记」列的备注等自由文本污染/覆盖标记
-                if (mark.isEmpty() || !BASE_MARK_TOKENS.contains(mark)) {
+                if (mark.isEmpty()) {
                     continue;
                 }
-                if (!marks.contains(mark)) {
-                    marks.add(mark);
+                String canonical = RecognitionStatusMark.canonicalizeToken(mark);
+                if (!BASE_MARK_TOKENS.contains(canonical)) {
+                    continue;
+                }
+                if (!marks.contains(canonical)) {
+                    marks.add(canonical);
                 }
             }
         }
 
-        if (isAbsent) {
-            if (!marks.contains("未出勤")) {
-                marks.add("未出勤");
-            }
+        // 只认第13位标记：禁止用 ARRIVEE/DEPAR 皆空推断未出勤。模糊优先于未出勤。
+        if (marks.contains("模糊")) {
+            marks.remove("未出勤");
         } else if (marks.isEmpty()) {
             if (quality.getBooleanValue("isHandwritten")) {
                 marks.add("手写");
@@ -1459,7 +1562,7 @@ public class AIParserService {
         }
 
         String shiftSchedule = record.getString("HORAIRES_DU_TRAVAIL");
-        if (!isAbsent) {
+        if (!marks.contains("未出勤") && !marks.contains("模糊")) {
             String shiftType = detectShiftType(arriveTime, departTime, shiftSchedule);
             if ("夜班".equals(shiftType) && !marks.contains("夜班")) {
                 marks.add("夜班");

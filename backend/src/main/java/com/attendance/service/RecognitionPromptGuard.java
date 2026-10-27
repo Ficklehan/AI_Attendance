@@ -19,19 +19,30 @@ public class RecognitionPromptGuard {
 
     /** 识别与续写共用，替代原【硬性要求】+ HANDWRITING_MARK_RULE 重复段落 */
     public static final String API_OUTPUT_CONSTRAINT = "\n\n【输出约束·API】\n"
-            + "· 每行合法JSON数组；禁表头占位/照抄示例；看不清???/\"\"，禁编造凑行\n"
-            + "· 先读表头定位列再填格，禁按固定左右位置猜；第6位AGENCE=供应商，第7位HORAIRES=班次，二者禁互换\n"
-            + "· 每行独立JSON数组16字段，行末]后换行；禁多列拼一串、禁false[\"53\"类粘连\n"
-            + "· 先NO姓名再到离；名/工号???或空→到离必空\n"
-            + "· SIGNATURE只填员工签名列(Firma等关键词列)单元格，禁表头字面量\n"
-            + "· Entrepot与Date读表格上方页头，本页每行相同；禁到人员明细列猜仓库/日期\n"
-            + "· 第16位DATE_RAW=页头日期从左到右三段数字，格式\"段A/段B/段C\"（如09/07/2026），禁止按常识对调\n"
+            + "· 铁律：每个字段只读该行该列单元格像素。宁可空串\"\"，禁止从邻行、班次、页头、Pause、备注、提示词、常识抄任何值\n"
+            + "· 只输出JSON数组行，禁止```json包裹；空值用\"\"不用null；每行16字段，行末]后换行\n"
+            + "· 禁表头占位/照抄NAME_ABSENT/NAME_PRESENT/NAME_REWRITE等对照姓名；看不清用\"\"，禁编造\n"
+            + "· 先读表头定位列再填格；第6位AGENCE=供应商，第7位HORAIRES=班次，二者禁互换\n"
+            + "· 禁多列拼一串、禁false[\"53\"类粘连\n"
+            + "· 姓名格有印刷或手写姓名（含表体第一行）必须输出；到离空=未出勤。仅姓名格完全空白且到离都空才跳过\n"
+            + "· 第8、9位=到达/离开：只读本行到离格。本格只有印刷冒号或空白时必须\"\",\"\"，即使第7位班次有时间、邻行有时间、备注写ABSENT\n"
+            + "· 姓名格划掉旧名、另写新名→只输出新名，已删除=false。姓名不含?\n"
+            + "· 格内有笔迹看不清→该字段\"\"、标模糊；模糊与未出勤不同时出现\n"
+            + "· JSON对照（禁止当结果）：空到离[\"1\",\"France\",\"WH\",\"2026-09-21\",\"NAME_ABSENT\",\"AG\",\"16:00-23:00\",\"\",\"\",\"0\",\"\",\"ABSENT\",\"未出勤\",\"false\",\"\",\"09/21/2026\"]\n"
+            + "· SIGNATURE只填本行签名格，无笔迹必须\"\"，禁抄邻行签名\n"
+            + "· Entrepot与Date读表格上方页头，本页每行相同\n"
+            + "· 第16位DATE_RAW=页头日期左到右三段，格式\"段A/段B/段C\"，禁止按常识对调\n"
             + "· Date仍输出YYYY-MM-DD；程序用DATE_RAW按段A=月、段B=日重装Date\n"
-            + "· 16字段顺序与标记/PAGE_NUM/DATE_RAW规则以正文为准";
+            + "· 输出前自检第8、9位：本格无手写数字就必须是两个空串。宁可空，不许抄";
 
     private static final Set<String> EXAMPLE_KEYS = new HashSet<>(Arrays.asList(
             "1|张三", "2|李四", "3|王五",
-            "1|John Smith", "2|Jane Doe", "3|Bob Wilson"
+            "1|John Smith", "2|Jane Doe", "3|Bob Wilson",
+            "A|NAME_ABSENT", "B|NAME_PRESENT", "1|NAME_ABSENT", "2|NAME_PRESENT"
+    ));
+
+    private static final Set<String> SCHEMA_PLACEHOLDER_NAMES = new HashSet<>(Arrays.asList(
+            "NAME_ABSENT", "NAME_PRESENT", "NAME_REWRITE"
     ));
 
     private static final Set<String> HEADER_NAME_VALUES = new HashSet<>(Arrays.asList(
@@ -71,7 +82,7 @@ public class RecognitionPromptGuard {
         }
         String no = safe(record.getString("NO"));
         String name = safe(record.getString("NOM_PRENOM"));
-        if (EXAMPLE_KEYS.contains(no + "|" + name)) {
+        if (EXAMPLE_KEYS.contains(no + "|" + name) || SCHEMA_PLACEHOLDER_NAMES.contains(name)) {
             return true;
         }
         if ("张三".equals(name) && "1".equals(no)) {

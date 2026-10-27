@@ -16,9 +16,10 @@
     "marks": {
       "normal": "Docházka v pořádku",
       "handwriting": "Ručně psané",
-      "blurred": "Rozmazané",
+      "blurred": "Rozmazané (nutná kontrola)",
       "nightShift": "Noční směna",
       "absent": "Nepřítomen",
+      "missingPunch": "Chybějící záznam",
       "deleted": "Smazané",
       "signedConfirmed": "Podepsáno (potvrzeno)",
       "unsignedConfirmed": "Nepodepsáno (potvrzeno)",

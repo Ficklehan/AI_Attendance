@@ -230,7 +230,7 @@ Page({
     runWithCountryGate(() => {
       tt.chooseImage({
         count: 9,
-        sizeType: ['compressed'],
+        sizeType: ['original'],
         sourceType: ['album'],
         success: (res) => {
           const nextImages = (res.tempFilePaths || []).map((path) => ({

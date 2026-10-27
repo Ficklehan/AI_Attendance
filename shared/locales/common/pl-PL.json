@@ -16,9 +16,10 @@
     "marks": {
       "normal": "Obecność poprawna",
       "handwriting": "Odręczny",
-      "blurred": "Rozmazany",
+      "blurred": "Rozmazany (wymaga weryfikacji)",
       "nightShift": "Zmiana nocna",
       "absent": "Nieobecny",
+      "missingPunch": "Brak odbicia",
       "deleted": "Usunięty",
       "signedConfirmed": "Podpisane (potwierdzone)",
       "unsignedConfirmed": "Brak podpisu (potwierdzone)",

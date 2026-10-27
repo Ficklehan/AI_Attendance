@@ -91,6 +91,10 @@ public class RecognitionModelRuntime {
         return RecognitionEngineConfigService.ENGINE_MIMO.equals(getActiveEngine());
     }
 
+    public boolean isDeepSeekEngine() {
+        return RecognitionEngineConfigService.ENGINE_DEEPSEEK.equals(getActiveEngine());
+    }
+
     public String displayEngineName() {
         return RecognitionEngineConfigService.ENGINE_DEEPSEEK.equals(getActiveEngine()) ? "DeepSeek" : "MiMo";
     }

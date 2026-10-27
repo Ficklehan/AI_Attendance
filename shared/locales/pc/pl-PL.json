@@ -143,7 +143,7 @@
     "uploadTitle": "Prześlij Obrazy Obecności",
     "uploadDesc": "Obsługuje formaty JPG, PNG, system automatycznie kompresuje i przeprowadza rozpoznawanie AI",
     "uploadArea": "Kliknij lub przeciągnij, aby przesłać",
-    "uploadHint": "Obsługuje wiele obrazów, max 10MB na obraz",
+    "uploadHint": "Obsługuje wiele obrazów, max 20MB na obraz",
     "selectedCount": "Wybrano {count} obrazów",
     "totalSize": "Całkowity rozmiar: {size}",
     "startRecognize": "Rozpocznij Rozpoznawanie",

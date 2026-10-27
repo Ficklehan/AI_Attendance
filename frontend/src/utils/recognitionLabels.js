@@ -12,6 +12,7 @@ const {
   markContains,
   markHasKind,
   stripSignatureMarksFromSmartMark,
+  isAbsentByMark,
 } = markCore
 
 function stripNightShiftMarkParts(mark) {
@@ -53,6 +54,7 @@ export {
   markContains,
   markHasKind,
   stripSignatureMarksFromSmartMark,
+  isAbsentByMark,
 }
 
 const LEGACY_ANOMALY_KEYS = {
@@ -122,19 +124,9 @@ export function isSignatureStruckOut(rawSignature) {
     || lower.includes('cancellato')
 }
 
-export function shouldInferSignedWhenEmpty(record) {
-  if (!record) return false
-  const mark = String(record.Mark || record.mark || '').trim()
-  const smartMark = String(record.SmartMark || record.smartMark || '').trim()
-  const arrivee = record.ARRIVEE ?? record.arrival ?? ''
-  const depart = record.DEPAR ?? record.departure ?? ''
-  const hasAbsent = (m) => splitSmartMarkParts(m).includes('未出勤')
-  if (hasAbsent(mark) || hasAbsent(smartMark)) return false
-  const hasTime = (t) => {
-    const v = String(t || '').trim()
-    return v && v !== '???' && /^\d{1,2}:\d{2}$/.test(v)
-  }
-  return hasTime(arrivee) || hasTime(depart)
+export function shouldInferSignedWhenEmpty() {
+  // 签字只来自签名格，禁止用到达/离开非空推断已签字（邻行抄来的时间会假签）。
+  return false
 }
 
 export function sanitizeAiSignature(value) {
@@ -293,6 +285,7 @@ export function getMarkColorForPart(part) {
   if (isSignatureResultMark(part)) return 'default'
   if (markContains(part, 'absent')) return 'error'
   if (markContains(part, 'blurred')) return 'warning'
+  if (markContains(part, 'missingPunch')) return 'warning'
   if (markContains(part, 'handwriting')) return 'processing'
   if (markContains(part, 'nightShift')) return 'purple'
   if (markContains(part, 'normal')) return 'success'
@@ -313,10 +306,17 @@ export function buildRecordMarkTags(record, { getDisplayMark, isAbsentRow, t, ha
   if (record?.isDeleted) {
     return [{ key: 'deleted', label: t('recognition.marks.deleted'), color: 'default' }]
   }
-  if (isAbsentRow(record)) {
+  const displayMark = getDisplayMark(record)
+  if (markHasKind(displayMark, 'blurred')) {
+    return [{ key: 'blurred', label: t('recognition.marks.blurred'), color: 'warning' }]
+  }
+  if (typeof isAbsentRow === 'function' ? isAbsentRow(record) : isAbsentByMark(record)) {
     return [{ key: 'absent', label: t('recognition.marks.absent'), color: 'error' }]
   }
-  let parts = splitSmartMarkParts(getDisplayMark(record))
+  if (markHasKind(displayMark, 'missingPunch')) {
+    return [{ key: 'missingPunch', label: t('recognition.marks.missingPunch'), color: 'warning' }]
+  }
+  let parts = splitSmartMarkParts(displayMark)
     .filter((part) => !markContains(part, 'normal'))
   const tags = parts.map((part, index) => ({
     key: `mark-${part}-${index}`,

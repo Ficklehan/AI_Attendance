@@ -25,7 +25,15 @@ class RecognizedTextNormalizerTest {
     @Test
     void normalizePersonName_keepsNonEmptyParentheses() {
         assertEquals("Jean (temp)", RecognizedTextNormalizer.normalizePersonName("Jean (temp)"));
-        assertEquals("Jean (temp)", RecognizedTextNormalizer.normalizePersonName("Jean（temp）"));
+        assertEquals("Jean（temp）", RecognizedTextNormalizer.normalizePersonName("Jean（temp）"));
+    }
+
+    @Test
+    void normalizePersonName_stripsQuestionMarksAndKeepsBlurToken() {
+        assertEquals("???", RecognizedTextNormalizer.normalizePersonName("???"));
+        assertEquals("???", RecognizedTextNormalizer.normalizePersonName("?"));
+        assertEquals("Jean Dupont", RecognizedTextNormalizer.normalizePersonName("Jean? Dupont"));
+        assertEquals("Jean", RecognizedTextNormalizer.normalizePersonName("Jean？"));
     }
 
     @Test

@@ -26,7 +26,7 @@ public final class RecognizedFieldSanitizer {
         if (trimmed.isEmpty() || "-".equals(trimmed) || "—".equals(trimmed)) {
             return true;
         }
-        if ("???".equals(trimmed) || "??".equals(trimmed)) {
+        if (isQuestionMarkPlaceholder(trimmed)) {
             return true;
         }
         return "illegible".equalsIgnoreCase(trimmed)
@@ -37,7 +37,7 @@ public final class RecognizedFieldSanitizer {
                 || "none".equalsIgnoreCase(trimmed);
     }
 
-    /** 模型明确标为无法辨认（不含空白） */
+    /** 模型明确标为无法辨认（不含空白）。姓名里的问号也视为看不清，不是姓名字符。 */
     public static boolean isExplicitUnreadable(String value) {
         if (value == null) {
             return false;
@@ -46,10 +46,26 @@ public final class RecognizedFieldSanitizer {
         if (trimmed.isEmpty()) {
             return false;
         }
-        return "???".equals(trimmed)
-                || "??".equals(trimmed)
+        return isQuestionMarkPlaceholder(trimmed)
                 || "illegible".equalsIgnoreCase(trimmed)
                 || "unknown".equalsIgnoreCase(trimmed);
+    }
+
+    /** `?` / `???` / `？` 等：不是姓名内容，表示模糊。 */
+    public static boolean isQuestionMarkPlaceholder(String value) {
+        if (value == null) {
+            return false;
+        }
+        String marks = value.trim().replace('？', '?').replace(" ", "");
+        if (marks.isEmpty()) {
+            return false;
+        }
+        for (int i = 0; i < marks.length(); i++) {
+            if (marks.charAt(i) != '?') {
+                return false;
+            }
+        }
+        return true;
     }
 
     private static final String[] TIME_FIELD_KEYS = {

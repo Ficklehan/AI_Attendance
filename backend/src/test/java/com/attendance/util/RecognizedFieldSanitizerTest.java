@@ -10,6 +10,19 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 class RecognizedFieldSanitizerTest {
 
     @Test
+    void annotate_treats_question_mark_name_as_unreadable() {
+        JSONObject record = new JSONObject();
+        record.put("NOM_PRENOM", "?");
+        record.put("SmartMark", "未出勤");
+
+        RecognizedFieldSanitizer.annotateAndSanitizeRecord(record);
+
+        assertEquals("", record.getString("NOM_PRENOM"));
+        assertTrue(record.getJSONArray("_unreadableFields").contains("NOM_PRENOM"));
+        assertEquals("未出勤", record.getString("SmartMark"));
+    }
+
+    @Test
     void annotate_moves_unreadable_tokens_to_metadata() {
         JSONObject record = new JSONObject();
         record.put("NO", "1001");

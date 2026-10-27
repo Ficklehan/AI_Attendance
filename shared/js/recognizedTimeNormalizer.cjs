@@ -85,7 +85,7 @@ function normalizeCompactClockToken(timeStr) {
   let match = str.match(/^(\d{1,2}):(\d{1,2})$/)
   if (match) {
     const formatted = formatValidClock(parseInt(match[1], 10), parseInt(match[2], 10))
-    if (formatted) return formatted
+    return formatted || ''
   }
 
   const withSeconds = str.match(/^(\d{1,2}):(\d{2}):(\d{2})$/)

@@ -143,7 +143,7 @@
     "uploadTitle": "Nahrát Obrázky Docházky",
     "uploadDesc": "Podporuje JPG, PNG a PDF; obrázky se automaticky komprimují, PDF se rozpoznává po stránkách",
     "uploadArea": "Klikněte nebo přetáhněte pro nahrání",
-    "uploadHint": "Podporuje více obrázků, max 10MB na obrázek",
+    "uploadHint": "Podporuje více obrázků, max 20MB na obrázek",
     "selectedCount": "{count} obrázků vybráno",
     "totalSize": "Celková velikost: {size}",
     "startRecognize": "Spustit Rozpoznávání",

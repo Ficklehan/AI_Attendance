@@ -31,15 +31,27 @@ public final class RecognizedTextNormalizer {
             return "";
         }
         String s = raw.trim();
-        if (s.isEmpty() || RecognizedFieldSanitizer.isUnrecognized(s)) {
+        if (s.isEmpty()) {
             return "";
         }
+        // 问号不是姓名字符：整格都是 ? 则保留 ??? 给后续标模糊；夹在姓名里的 ? 去掉。
+        if (RecognizedFieldSanitizer.isExplicitUnreadable(s)) {
+            return "???";
+        }
+        if (RecognizedFieldSanitizer.isUnrecognized(s)) {
+            return "";
+        }
+        s = s.replace("？", "?").replace("?", "");
         s = s.replaceAll(BRACKET_QUOTE, "");
         s = s.replaceAll("\\(\\s*\\)", "");
         s = s.replaceAll("（\\s*）", "");
         s = s.replaceAll("（\\s*\\)", "");
         s = s.replaceAll("\\(\\s*）", "");
-        return collapseSpaces(s);
+        s = collapseSpaces(s);
+        if (s.isEmpty()) {
+            return "???";
+        }
+        return s;
     }
 
     public static String normalizeLabelText(String raw) {

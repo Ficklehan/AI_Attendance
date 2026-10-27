@@ -59,7 +59,7 @@ const LEGACY_EXACT = {
   '无法识别图片格式，请使用 JPG/PNG 拍照后重试': 'errors.unrecognizedImageFormat',
   '无法识别文件格式，请使用 JPG/PNG 或 PDF': 'errors.unrecognizedImageFormat',
   '系统异常，请稍后重试': 'errors.systemError',
-  '文件大小超出限制，最大支持10MB': 'errors.fileSizeExceeded',
+  '文件大小超出限制，最大支持20MB': 'errors.fileSizeExceeded',
   '接口不存在': 'errors.apiNotFound',
   '请求方法不支持': 'errors.methodNotAllowed',
   '请求失败': 'errors.requestFailed',

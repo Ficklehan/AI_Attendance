@@ -16,9 +16,10 @@
     "marks": {
       "normal": "Anwesenheit korrekt",
       "handwriting": "Handschrift",
-      "blurred": "Unscharf",
+      "blurred": "Unscharf (manuelle Prüfung)",
       "nightShift": "Nachtschicht",
       "absent": "Abwesend",
+      "missingPunch": "Fehlende Stempelung",
       "deleted": "Gelöscht",
       "signedConfirmed": "Unterschrieben (bestätigt)",
       "unsignedConfirmed": "Nicht unterschrieben (bestätigt)",

@@ -49,7 +49,7 @@ public class RecognitionQualityGuard {
             if (trimmed.contains("示例") && !trimmed.startsWith("[")) {
                 inExampleSection = true;
                 out.append(line).append('\n');
-                out.append("（输出时：禁止输出本段示例中的任何姓名、中介、时间；仅按图片单元格填写；看不清用 ??? 或 \"\"，严禁编造或猜测补全）\n");
+                out.append("（输出时：禁止输出本段示例中的任何姓名、中介、时间；仅按图片单元格填写；看不清用 \"\"，严禁编造或猜测补全）\n");
                 continue;
             }
             if (inExampleSection) {

@@ -10,6 +10,7 @@ const {
   markContains,
   markHasKind,
   stripSignatureMarksFromSmartMark,
+  isAbsentByMark,
 } = markCore
 
 function stripNightShiftMarkParts(mark) {
@@ -101,19 +102,8 @@ function isSignatureStruckOut(rawSignature) {
   return lower.includes('划线') || lower.includes('划掉') || String(rawSignature).trim() === '划线删除'
 }
 
-function shouldInferSignedWhenEmpty(record) {
-  if (!record) return false
-  const mark = String(record.Mark || record.mark || '').trim()
-  const smartMark = String(record.SmartMark || record.smartMark || '').trim()
-  const hasAbsent = (m) => splitSmartMarkParts(m).includes('未出勤')
-  if (hasAbsent(mark) || hasAbsent(smartMark)) return false
-  const arrivee = record.ARRIVEE ?? record.arrival ?? ''
-  const depart = record.DEPAR ?? record.departure ?? ''
-  const hasTime = (t) => {
-    const v = String(t || '').trim()
-    return v && v !== '???' && /^\d{1,2}:\d{2}$/.test(v)
-  }
-  return hasTime(arrivee) || hasTime(depart)
+function shouldInferSignedWhenEmpty() {
+  return false
 }
 
 function sanitizeAiSignature(value) {
@@ -276,5 +266,6 @@ module.exports = {
   calculateRecordStats,
   stripSignatureMarksFromSmartMark,
   translateSignatureMark,
-  getSignatureMarkTagClass
+  getSignatureMarkTagClass,
+  isAbsentByMark
 }

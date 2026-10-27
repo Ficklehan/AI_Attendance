@@ -9,6 +9,7 @@ const MARK_DETECT = {
   nightShift: ['夜班', 'night', 'noche', 'nuit', 'notte', 'nacht', 'noc', 'nocka'],
   deleted: ['已删除', 'deleted', 'eliminado', 'supprimé', 'gelöscht', 'verwijderd'],
   normal: ['正常', 'normal', 'normale', 'normaal'],
+  missingPunch: ['缺卡', '到达缺卡', '离开缺卡', '到达缺位', '离开缺位', '缺位'],
 }
 
 const SIGNATURE_RESULT_MARKS = new Set(['已签字', '未签字', '已签字确认', '未签字确认'])
@@ -112,6 +113,20 @@ function withInferredNightShiftMark(mark, record) {
   return refreshNightShiftInSmartMark(mark, record)
 }
 
+/**
+ * 未出勤只看第13位标记。含「模糊」一律不是未出勤；不得用到离皆空覆盖模型标记。
+ */
+function isAbsentByMark(record) {
+  if (!record || record._restored || record.isDeleted || record.deleted || record._manuallyAdded) {
+    return false
+  }
+  const mark = stripSignatureMarksFromSmartMark(String(
+    record.SmartMark || record.smartMark || record.Mark || record.mark || '',
+  ).trim())
+  if (markHasKind(mark, 'blurred')) return false
+  return markHasKind(mark, 'absent')
+}
+
 module.exports = {
   MARK_DETECT,
   SIGNATURE_RESULT_MARKS,
@@ -122,4 +137,5 @@ module.exports = {
   stripSignatureMarksFromSmartMark,
   withInferredNightShiftMark,
   refreshNightShiftInSmartMark,
+  isAbsentByMark,
 }

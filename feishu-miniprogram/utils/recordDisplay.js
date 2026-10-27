@@ -18,7 +18,8 @@ const {
   stripSignatureMarksFromSmartMark,
   translateSignatureMark,
   refreshNightShiftInSmartMark,
-  getRawSmartMark
+  getRawSmartMark,
+  isAbsentByMark
 } = require('./recognitionLabels')
 
 function pickField(record, ...keys) {
@@ -125,13 +126,7 @@ function getEffectiveSmartMark(record) {
 }
 
 function isAbsentRow(record) {
-  if (!record || record._restored || record.isDeleted) return false
-  if (record._manuallyAdded) return false
-  const mark = getEffectiveSmartMark(record)
-  if (mark.indexOf('未出勤') !== -1 || markContains(mark, 'absent')) return true
-  const arrive = pickField(record, 'ARRIVEE', 'ArriveTime')
-  const depart = pickField(record, 'DEPAR', 'DepartTime')
-  return !arrive && !depart
+  return isAbsentByMark(record)
 }
 
 /** 与 PC TaskEdit 恢复未出勤行一致：可再改成正常出勤数据 */

@@ -98,7 +98,8 @@ public final class RecognizedTimeNormalizer {
 
     if (str.matches("\\d{1,2}:\\d{2}")) {
       String[] parts = str.split(":");
-      return String.format("%02d:%s", Integer.parseInt(parts[0]), parts[1]);
+      String clock = formatClock(Integer.parseInt(parts[0]), Integer.parseInt(parts[1]));
+      return clock != null ? clock : "";
     }
 
     Matcher matcherH = Pattern.compile("^(\\d{1,2})[hH]$", Pattern.CASE_INSENSITIVE).matcher(str);
@@ -122,7 +123,10 @@ public final class RecognizedTimeNormalizer {
 
     Matcher matcher4Digits = Pattern.compile("^(\\d{2})(\\d{2})$").matcher(str);
     if (matcher4Digits.matches()) {
-      return matcher4Digits.group(1) + ":" + matcher4Digits.group(2);
+      String clock = formatClock(
+          Integer.parseInt(matcher4Digits.group(1)),
+          Integer.parseInt(matcher4Digits.group(2)));
+      return clock != null ? clock : "";
     }
 
     Matcher matcher1Digit = Pattern.compile("^(\\d)$").matcher(str);
@@ -174,6 +178,27 @@ public final class RecognizedTimeNormalizer {
       return false;
     }
     return value.trim().matches("\\d{1,2}:\\d{2}");
+  }
+
+  /**
+   * 班次起止时刻。无法解析为两个合法 HH:MM 时返回 {@code null}。
+   */
+  public static String[] splitShiftStartEnd(String raw) {
+    String normalized = normalizeShiftSchedule(raw);
+    if (normalized == null) {
+      return null;
+    }
+    String trimmed = normalized.trim();
+    int dash = trimmed.indexOf('-');
+    if (dash <= 0 || dash >= trimmed.length() - 1) {
+      return null;
+    }
+    String start = normalizeClockTime(trimmed.substring(0, dash));
+    String end = normalizeClockTime(trimmed.substring(dash + 1));
+    if (!isValidClockTime(start) || !isValidClockTime(end)) {
+      return null;
+    }
+    return new String[]{start, end};
   }
 
   /** 法文考勤表常见非时间标注（OCR 误入到/离/班次列），无时间点时视为无法辨认 */

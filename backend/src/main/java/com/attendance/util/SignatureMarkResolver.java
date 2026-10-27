@@ -184,9 +184,8 @@ public final class SignatureMarkResolver {
         if (!sanitized.isEmpty()) {
             return resolve(sanitized);
         }
-        if (shouldInferSignedWhenEmpty(arrivee, depart, mark, smartMark)) {
-            return SIGNED;
-        }
+        // 签字只来自签名格（或模型对该格的转写）。禁止因到达/离开非空而补「已签字」，
+        // 否则邻行抄来的时间会把空签名行变成「已签字出勤」，挡住未出勤清空。
         return UNSIGNED;
     }
 
@@ -210,12 +209,23 @@ public final class SignatureMarkResolver {
         return false;
     }
 
+    /**
+     * 历史逻辑曾用到达/离开非空推断已签字；会把抄来的时间变成「已签字出勤」并挡住 ABSENT 清空。
+     * 现已关闭：空签名格一律未签字。
+     */
     public static boolean shouldInferSignedWhenEmpty(
             String arrivee, String depart, String mark, String smartMark) {
-        if (containsAbsentMark(mark) || containsAbsentMark(smartMark)) {
+        return false;
+    }
+
+    /**
+     * 签名格是否有笔迹转写。{@code 已签字}/{@code 未签字} 是分类标记，不是格子里的手写。
+     */
+    public static boolean hasPixelSignature(String signature) {
+        if (isBlankSignature(signature)) {
             return false;
         }
-        return hasFilledTime(arrivee) || hasFilledTime(depart);
+        return !isSignatureMarkToken(signature);
     }
 
     public static boolean isBlankSignature(String signature) {
@@ -248,28 +258,5 @@ public final class SignatureMarkResolver {
             return false;
         }
         return ILLEGIBLE_SIGNATURE_TOKENS.contains(trimmed.toLowerCase(Locale.ROOT));
-    }
-
-    private static boolean containsAbsentMark(String mark) {
-        if (mark == null || mark.trim().isEmpty()) {
-            return false;
-        }
-        for (String part : mark.split("[;；,，]")) {
-            if ("未出勤".equals(part == null ? "" : part.trim())) {
-                return true;
-            }
-        }
-        return false;
-    }
-
-    private static boolean hasFilledTime(String time) {
-        if (time == null) {
-            return false;
-        }
-        String trimmed = time.trim();
-        if (trimmed.isEmpty() || "???".equals(trimmed) || "illegible".equalsIgnoreCase(trimmed)) {
-            return false;
-        }
-        return trimmed.matches("\\d{1,2}:\\d{2}");
     }
 }

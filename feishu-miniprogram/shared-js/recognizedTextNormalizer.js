@@ -22,16 +22,24 @@ function isWorkerNoExtractable(raw) {
   return normalizeWorkerNo(raw).length > 0
 }
 
-/** 姓名：保留有内容的括号；删除空括号 Jean() / Jean（） → Jean */
+function isQuestionMarkPlaceholder(raw) {
+  const marks = String(raw ?? '').trim().replace(/？/g, '?').replace(/\s+/g, '')
+  return marks.length > 0 && /^\?+$/.test(marks)
+}
+
+/** 姓名：不含问号（问号=模糊）；保留有内容的括号；删除空括号 Jean() / Jean（） → Jean */
 function normalizePersonName(raw) {
   let s = String(raw ?? '').trim()
   if (!s) return ''
+  if (isQuestionMarkPlaceholder(s)) return '???'
+  s = s.replace(/[?？]/g, '')
   s = s.replace(BRACKET_QUOTE_RE, '')
   s = s.replace(/\(\s*\)/g, '')
   s = s.replace(/（\s*）/g, '')
   s = s.replace(/（\s*\)/g, '')
   s = s.replace(/\(\s*）/g, '')
-  return collapseSpaces(s)
+  s = collapseSpaces(s)
+  return s || '???'
 }
 
 /** 仓库 / 中介：去除括号及引号类符号 */

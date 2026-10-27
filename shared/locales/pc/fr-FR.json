@@ -1063,7 +1063,7 @@
     "aiParsePreviewLabel": "Aperçu de la réponse du modèle",
     "validationFailed": "Échec de validation : {detail}",
     "missingParameter": "Paramètre manquant : {name}",
-    "fileSizeExceeded": "Fichier trop volumineux (max 10 Mo)",
+    "fileSizeExceeded": "Fichier trop volumineux (max 20 Mo)",
     "apiNotFound": "Point d'API introuvable",
     "methodNotAllowed": "Méthode HTTP non autorisée",
     "dbMigrationRequired": "Schéma BDD obsolète. Exécutez les migrations sous backend/config/migration",

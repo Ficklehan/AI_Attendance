@@ -487,7 +487,7 @@
     "uploadTitle": "上传考勤图片",
     "uploadDesc": "支持 JPG、PNG、PDF 格式；图片将自动压缩，PDF 将按页识别",
     "uploadArea": "点击或拖拽上传",
-    "uploadHint": "支持多张图片，单张最多10MB",
+    "uploadHint": "支持多张图片，单张最多20MB",
     "selectedCount": "已选择 {count} 张图片",
     "totalSize": "总大小: {size}",
     "startRecognize": "开始识别",

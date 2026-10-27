@@ -121,6 +121,7 @@ show_usage() {
     echo "  help           显示帮助信息"
     echo ""
     echo "本地开发:"
+    echo "  ./start.sh restart-dev             # ★ 前后端一起重启（后台守护）"
     echo "  ./start.sh dev"
     echo "  SKIP_DB_INIT=1 ./start.sh backend   # 跳过数据库初始化询问"
     echo ""
@@ -216,8 +217,9 @@ case "${1:-all}" in
         ;;
     restart)
         echo "错误: ./start.sh restart 已移除（曾误指向生产）。"
-        echo "  本地: ./start.sh dev  或  ./scripts/use-local-dev.sh"
-        echo "  生产: ./start.sh restart-prod"
+        echo "  本地前后端一起重启: ./start.sh restart-dev"
+        echo "  本地仅后端:         ./start.sh dev"
+        echo "  生产:               ./start.sh restart-prod"
         exit 1
         ;;
     help|--help|-h)

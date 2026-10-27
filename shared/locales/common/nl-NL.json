@@ -16,9 +16,10 @@
     "marks": {
       "normal": "Aanwezigheid correct",
       "handwriting": "Handgeschreven",
-      "blurred": "Wazig",
+      "blurred": "Wazig (handmatige controle)",
       "nightShift": "Nachtdienst",
       "absent": "Afwezig",
+      "missingPunch": "Ontbrekende prik",
       "deleted": "Verwijderd",
       "signedConfirmed": "Getekend (bevestigd)",
       "unsignedConfirmed": "Niet getekend (bevestigd)",

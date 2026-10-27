@@ -19,6 +19,10 @@ public final class RowReadabilitySupport {
             "未出勤", "absent", "ausente", "abwesend", "afwezig", "nieobecny", "nepřítom"
     );
 
+    private static final List<String> BLUR_MARK_TOKENS = Arrays.asList(
+            "模糊", "blur", "borroso", "unscharf", "wazig", "rozmazan", "nieostry"
+    );
+
     private static final Map<String, String[]> FIELD_ALIASES = new HashMap<>();
 
     static {
@@ -113,39 +117,51 @@ public final class RowReadabilitySupport {
                 || !isUnknown(safe(record.getString("NOM_PRENOM")));
     }
 
-    public static boolean isDeletedRow(JSONObject record) {
-        return record != null && Boolean.TRUE.equals(record.getBoolean("isDeleted"));
-    }
-
-    public static boolean isAbsentRow(JSONObject record) {
+    /**
+     * 印刷空行：姓名格确认空白（无笔迹），且到达/离开都空。
+     * 有姓名、或姓名格有笔迹但看不清（???）的行都要保留；??? 是模糊，不是「没有姓名」。
+     */
+    public static boolean isNamelessEmptyClockRow(JSONObject record) {
         if (record == null) {
             return false;
         }
         if (Boolean.TRUE.equals(record.getBoolean("_manuallyAdded"))) {
             return false;
         }
-        String smartMark = safe(record.getString("SmartMark"));
-        if (containsAnyToken(smartMark, ABSENT_MARK_TOKENS)) {
+        // 姓名格有笔迹但看不清：sanitize 后值为空，但会记入 _unreadableFields / 残留 ???。这类行要保留。
+        if (isFieldUnreadable(record, "NOM_PRENOM")
+                || RecognizedFieldSanitizer.isExplicitUnreadable(getFieldValue(record, "NOM_PRENOM"))) {
+            return false;
+        }
+        return isPrintedBlankName(getFieldValue(record, "NOM_PRENOM"))
+                && RecognizedFieldSanitizer.isUnrecognized(getFieldValue(record, "ARRIVEE"))
+                && RecognizedFieldSanitizer.isUnrecognized(getFieldValue(record, "DEPAR"));
+    }
+
+    /** 印刷占位/空姓名，不含模型用问号表示的看不清。 */
+    static boolean isPrintedBlankName(String name) {
+        if (name == null) {
             return true;
         }
-        String mark = safe(record.getString("Mark"));
-        if (containsAnyToken(mark, ABSENT_MARK_TOKENS)) {
-            return true;
-        }
-        if (observationsIndicateAbsent(record)) {
-            return true;
-        }
-        String arrive = safe(record.getString("ARRIVEE"));
-        String depart = safe(record.getString("DEPAR"));
-        boolean timesEmpty = isUnknown(arrive) && isUnknown(depart);
-        boolean identityEmpty = isUnknown(safe(record.getString("NO")))
-                && isUnknown(safe(record.getString("NOM_PRENOM")));
-        return timesEmpty && identityEmpty;
+        String trimmed = name.trim();
+        return trimmed.isEmpty() || "-".equals(trimmed) || "—".equals(trimmed);
+    }
+
+    public static boolean isDeletedRow(JSONObject record) {
+        return record != null && Boolean.TRUE.equals(record.getBoolean("isDeleted"));
+    }
+
+    public static boolean isAbsentRow(JSONObject record) {
+        return RecognitionStatusMark.isAbsentStatus(record);
     }
 
     /**
-     * 模型 JSON 落库前：备注含 ABSENT / 标记含未出勤时，清空到离休息并统一标记为「未出勤」。
-     * 避免备注写了缺勤却仍带上识别到的打卡时间。
+     * 模型 JSON 落库前：备注含 ABSENT / 标记含未出勤时的收口。
+     * <ul>
+     *   <li>本格备注 ABSENT 且签名格无笔迹（空，或仅「已签字/未签字」分类词）：视为未出勤；
+     *       到离即使被模型填了也清掉（邻行/班次抄来的时间）。</li>
+     *   <li>本格已有合法到离且签名格有真实转写：视为出勤；漏进来的纯 ABSENT 备注清掉。</li>
+     * </ul>
      *
      * @return true 表示本行已按未出勤规范化
      */
@@ -156,17 +172,219 @@ public final class RowReadabilitySupport {
         if (Boolean.TRUE.equals(record.getBoolean("_manuallyAdded"))) {
             return false;
         }
+        boolean fromObservations = observationsIndicateAbsent(record);
+        if (fromObservations && !hasPixelSignature(record) && !hasBlurMark(record)) {
+            clearCopiedClocks(record);
+            return true;
+        }
+        if (hasRecognizedPunchTime(record) || hasBlurMark(record)) {
+            if (isPureAbsentObservation(record.getString("Observations"))
+                    && (hasPixelSignature(record) || hasBlurMark(record))) {
+                record.put("Observations", "");
+            }
+            return false;
+        }
         String mark = safe(record.getString("Mark"));
         boolean fromMark = containsAnyToken(mark, ABSENT_MARK_TOKENS);
-        boolean fromObservations = observationsIndicateAbsent(record);
         if (!fromMark && !fromObservations) {
             return false;
+        }
+        clearCopiedClocks(record);
+        return true;
+    }
+
+    /**
+     * 整页解析完成后：清掉抄自本行班次或邻行的到离。
+     * <p>
+     * 触发条件：到达/离开均已填，且等于本行 HORAIRES 起止，或等于同页邻行到离；
+     * 并且有独立缺勤证据——备注 ABSENT、签名格空白、标记未出勤，
+     * 或到离同时等于邻行且等于本行班次（双重抄袭指纹）。
+     * 手写时间与班次不同的真实出勤行不清理。模糊行不清理。
+     */
+    public static int applyCopiedClockWipe(List<JSONObject> records) {
+        if (records == null || records.isEmpty()) {
+            return 0;
+        }
+        int wiped = 0;
+        for (int i = 0; i < records.size(); i++) {
+            JSONObject record = records.get(i);
+            JSONObject prev = neighborInSheet(records, i, -1);
+            JSONObject next = neighborInSheet(records, i, 1);
+            if (shouldWipeCopiedClocks(record, prev, next)) {
+                clearCopiedClocks(record);
+                wiped++;
+            }
+        }
+        return wiped;
+    }
+
+    static boolean shouldWipeCopiedClocks(JSONObject record, JSONObject prev, JSONObject next) {
+        if (record == null || isDeletedRow(record)) {
+            return false;
+        }
+        if (Boolean.TRUE.equals(record.getBoolean("_manuallyAdded"))) {
+            return false;
+        }
+        if (hasBlurMark(record) || !hasRecognizedPunchTime(record)) {
+            return false;
+        }
+        boolean matchShift = clocksMatchOwnShift(record);
+        boolean matchNeighbor = clocksMatch(record, prev) || clocksMatch(record, next);
+        if (!matchShift && !matchNeighbor) {
+            return false;
+        }
+        boolean independentAbsence = observationsIndicateAbsent(record)
+                || containsAnyToken(safe(record.getString("Mark")), ABSENT_MARK_TOKENS)
+                || containsAnyToken(safe(record.getString("SmartMark")), ABSENT_MARK_TOKENS)
+                || isBlankRawSignature(record)
+                || (matchShift && matchNeighbor);
+        return independentAbsence;
+    }
+
+    static boolean isBlankRawSignature(JSONObject record) {
+        if (record == null) {
+            return true;
+        }
+        return SignatureMarkResolver.isBlankSignature(record.getString("SIGNATURE"));
+    }
+
+    static boolean hasPixelSignature(JSONObject record) {
+        if (record == null) {
+            return false;
+        }
+        String raw = record.getString("SIGNATURE_RAW");
+        if (raw != null && !raw.trim().isEmpty()) {
+            return SignatureMarkResolver.hasPixelSignature(raw);
+        }
+        return SignatureMarkResolver.hasPixelSignature(record.getString("SIGNATURE"));
+    }
+
+    static void clearCopiedClocks(JSONObject record) {
+        if (record == null) {
+            return;
         }
         record.put("ARRIVEE", "");
         record.put("DEPAR", "");
         record.put("PAUSE", "");
         record.put("Mark", "未出勤");
-        return true;
+        record.remove("ARRIVEE_DATE");
+        record.remove("DEPAR_DATE");
+        record.remove("ARRIVEE_DATETIME");
+        record.remove("DEPAR_DATETIME");
+        record.remove("WorkHours");
+        if (!SignatureMarkResolver.hasPixelSignature(record.getString("SIGNATURE"))
+                && !SignatureMarkResolver.hasPixelSignature(record.getString("SIGNATURE_RAW"))) {
+            record.put("SIGNATURE", "");
+            record.put("SIGNATURE_RAW", "");
+        }
+    }
+
+    static boolean clocksMatchOwnShift(JSONObject record) {
+        String[] pair = clockPair(record);
+        String[] shift = RecognizedTimeNormalizer.splitShiftStartEnd(
+                getFieldValue(record, "HORAIRES_DU_TRAVAIL"));
+        if (pair == null || shift == null) {
+            return false;
+        }
+        return pair[0].equals(shift[0]) && pair[1].equals(shift[1]);
+    }
+
+    static boolean clocksMatch(JSONObject left, JSONObject right) {
+        String[] a = clockPair(left);
+        String[] b = clockPair(right);
+        if (a == null || b == null) {
+            return false;
+        }
+        return a[0].equals(b[0]) && a[1].equals(b[1]);
+    }
+
+    static String[] clockPair(JSONObject record) {
+        if (record == null) {
+            return null;
+        }
+        String arrive = RecognizedTimeNormalizer.normalizeClockTime(getFieldValue(record, "ARRIVEE"));
+        String depart = RecognizedTimeNormalizer.normalizeClockTime(getFieldValue(record, "DEPAR"));
+        if (!RecognizedTimeNormalizer.isValidClockTime(arrive)
+                || !RecognizedTimeNormalizer.isValidClockTime(depart)) {
+            return null;
+        }
+        return new String[]{arrive, depart};
+    }
+
+    static JSONObject neighborInSheet(List<JSONObject> records, int index, int direction) {
+        if (records == null || index < 0 || index >= records.size() || direction == 0) {
+            return null;
+        }
+        JSONObject current = records.get(index);
+        String date = sheetDateKey(current);
+        String warehouse = sheetWarehouseKey(current);
+        int j = index + direction;
+        while (j >= 0 && j < records.size()) {
+            JSONObject candidate = records.get(j);
+            if (!isDeletedRow(candidate)
+                    && date.equals(sheetDateKey(candidate))
+                    && warehouse.equals(sheetWarehouseKey(candidate))) {
+                return candidate;
+            }
+            j += direction;
+        }
+        return null;
+    }
+
+    private static String sheetDateKey(JSONObject record) {
+        return safe(getFieldValue(record, "Date"));
+    }
+
+    private static String sheetWarehouseKey(JSONObject record) {
+        return safe(getFieldValue(record, "Entrepot")).toLowerCase(Locale.ROOT);
+    }
+
+    /**
+     * 模糊与未出勤互斥：模型因格内有笔迹看不清而标了模糊时，去掉未出勤，不得两标并存。
+     */
+    public static void dropAbsentIfBlurred(JSONObject record) {
+        if (record == null || !hasBlurMark(record)) {
+            return;
+        }
+        record.put("Mark", removeAbsentTokens(record.getString("Mark")));
+        record.put("SmartMark", removeAbsentTokens(record.getString("SmartMark")));
+    }
+
+    /** 模型因看不清标了模糊：不得改判未出勤，也不得用邻行 ABSENT 覆盖。 */
+    public static boolean hasBlurMark(JSONObject record) {
+        if (record == null) {
+            return false;
+        }
+        return containsAnyToken(safe(record.getString("Mark")), BLUR_MARK_TOKENS)
+                || containsAnyToken(safe(record.getString("SmartMark")), BLUR_MARK_TOKENS);
+    }
+
+    /** 到达或离开已识别出合法 HH:MM。 */
+    public static boolean hasRecognizedPunchTime(JSONObject record) {
+        if (record == null) {
+            return false;
+        }
+        return isValidClock(getFieldValue(record, "ARRIVEE"))
+                || isValidClock(getFieldValue(record, "DEPAR"));
+    }
+
+    static boolean isPureAbsentObservation(String observations) {
+        String text = safe(observations);
+        if (text.isEmpty()) {
+            return false;
+        }
+        String lower = text.toLowerCase(Locale.ROOT);
+        for (String token : ABSENT_MARK_TOKENS) {
+            if (lower.equals(token.toLowerCase(Locale.ROOT))) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    private static boolean isValidClock(String raw) {
+        String clock = RecognizedTimeNormalizer.normalizeClockTime(raw);
+        return clock != null && clock.matches("\\d{2}:\\d{2}");
     }
 
     /** 备注列是否含 ABSENT / absent 等缺勤词（与标记词表对齐，大小写不敏感）。 */
@@ -205,6 +423,27 @@ public final class RowReadabilitySupport {
             return Collections.emptyList();
         }
         return requiredFields;
+    }
+
+    static String removeAbsentTokens(String mark) {
+        if (mark == null || mark.trim().isEmpty()) {
+            return "";
+        }
+        StringBuilder kept = new StringBuilder();
+        for (String part : mark.split("[;；,，]")) {
+            String token = part == null ? "" : part.trim();
+            if (token.isEmpty()) {
+                continue;
+            }
+            if (containsAnyToken(token, ABSENT_MARK_TOKENS)) {
+                continue;
+            }
+            if (kept.length() > 0) {
+                kept.append(';');
+            }
+            kept.append(token);
+        }
+        return kept.toString();
     }
 
     public static boolean containsAnyToken(String text, List<String> tokens) {

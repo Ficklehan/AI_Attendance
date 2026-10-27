@@ -14,7 +14,7 @@ public class DeepSeekProperties {
     private String apiKeys;
     private String apiUrl;
     private String model = "deepseek-v4-flash-vision-exp";
-    private double temperature = 0.3;
+    private double temperature = 0;
     private int maxTokens = 8192;
     private double topP = 0.9;
 

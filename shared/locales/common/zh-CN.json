@@ -16,9 +16,10 @@
     "marks": {
       "normal": "考勤正确",
       "handwriting": "手写",
-      "blurred": "模糊",
+      "blurred": "模糊（需人工介入）",
       "nightShift": "夜班",
       "absent": "未出勤",
+      "missingPunch": "缺卡",
       "deleted": "已删除",
       "unsigned": "未签字",
       "signedConfirmed": "已签字确认",

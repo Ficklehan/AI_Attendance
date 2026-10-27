@@ -14,7 +14,7 @@ public class MimoProperties {
     private String apiKeys;
     private String apiUrl;
     private String model = "mimo-v2.5";
-    private double temperature = 0.3;
+    private double temperature = 0;
     private int maxTokens = 8192;
     private double topP = 0.9;
 

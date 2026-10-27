@@ -16,9 +16,10 @@
     "marks": {
       "normal": "Attendance correct",
       "handwriting": "Handwritten",
-      "blurred": "Blurry",
+      "blurred": "Blurry (needs review)",
       "nightShift": "Night shift",
       "absent": "Absent",
+      "missingPunch": "Missing punch",
       "deleted": "Deleted",
       "unsigned": "Unsigned",
       "signedConfirmed": "Signed (confirmed)",

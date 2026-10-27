@@ -94,7 +94,7 @@ Page({
     runWithCountryGate(() => {
       tt.chooseImage({
         count: 1,
-        sizeType: ['compressed'],
+        sizeType: ['original'],
         sourceType: ['album'],
         success: (res) => {
           if (res.tempFilePaths.length > 0) {

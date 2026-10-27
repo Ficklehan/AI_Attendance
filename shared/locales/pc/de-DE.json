@@ -143,7 +143,7 @@
     "uploadTitle": "Anwesenheitsbilder Hochladen",
     "uploadDesc": "Unterstützt JPG, PNG-Formate, System komprimiert automatisch und führt KI-Erkennung durch",
     "uploadArea": "Klicken oder ziehen zum Hochladen",
-    "uploadHint": "Unterstützt mehrere Bilder, max 10MB pro Bild",
+    "uploadHint": "Unterstützt mehrere Bilder, max 20MB pro Bild",
     "selectedCount": "{count} Bilder ausgewählt",
     "totalSize": "Gesamtgröße: {size}",
     "startRecognize": "Erkennung Starten",

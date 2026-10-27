@@ -16,9 +16,10 @@
     "marks": {
       "normal": "Presenza corretta",
       "handwriting": "Manoscritto",
-      "blurred": "Illeggibile / sfocato",
+      "blurred": "Illeggibile (revisione manuale)",
       "nightShift": "Turno notturno",
       "absent": "Assente",
+      "missingPunch": "Timbratura mancante",
       "deleted": "Eliminato",
       "unsigned": "Non firmato",
       "signedConfirmed": "Firmato (confermato)",

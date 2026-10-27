@@ -143,7 +143,7 @@
     "uploadTitle": "Aanwezigheidsafbeeldingen Uploaden",
     "uploadDesc": "Ondersteunt JPG, PNG en PDF; afbeeldingen worden automatisch gecomprimeerd; PDF per pagina herkend",
     "uploadArea": "Klik of sleep om te uploaden",
-    "uploadHint": "Ondersteunt meerdere afbeeldingen, max 10MB per afbeelding",
+    "uploadHint": "Ondersteunt meerdere afbeeldingen, max 20MB per afbeelding",
     "selectedCount": "{count} afbeeldingen geselecteerd",
     "totalSize": "Totale grootte: {size}",
     "startRecognize": "Herkenning starten",

@@ -340,7 +340,7 @@ Page({
     this._chooseInProgress = true
     tt.chooseImage({
       count: 1,
-      sizeType: ['compressed'],
+      sizeType: ['original'],
       sourceType: ['camera'],
       success: (res) => {
         this._chooseInProgress = false
@@ -367,7 +367,7 @@ Page({
   chooseFromGallery: function () {
     tt.chooseImage({
       count: 1,
-      sizeType: ['compressed'],
+      sizeType: ['original'],
       sourceType: ['album'],
       success: (res) => {
         if (res.tempFilePaths && res.tempFilePaths.length > 0) {
