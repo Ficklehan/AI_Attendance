@@ -1,9 +1,12 @@
+/** DeepSeek 单边上限 8192；上传默认留足去白边后再填 1300² 的底像素。 */
+export const VISION_UPLOAD_MAX_EDGE = 4096
+
 export async function compressImage(file, options = {}) {
   const {
-    maxSizeKB = 2000,
-    maxWidth = 2000,
-    maxHeight = 2000,
-    quality = 0.8
+    maxSizeKB = 8000,
+    maxWidth = VISION_UPLOAD_MAX_EDGE,
+    maxHeight = VISION_UPLOAD_MAX_EDGE,
+    quality = 0.9
   } = options
 
   return new Promise((resolve, reject) => {

@@ -34,7 +34,7 @@ class RecognitionImageEnhanceSupportTest {
     }
 
     @Test
-    void fadedSheetBecomesReadableJpeg() throws Exception {
+    void fadedSheetBecomesReadableJpegNearBudget() throws Exception {
         byte[] png = fadedSheetPng(640, 480);
         RecognitionImageEnhanceSupport.Result result =
                 RecognitionImageEnhanceSupport.enhance(png, "image/png");
@@ -42,8 +42,9 @@ class RecognitionImageEnhanceSupportTest {
         assertEquals("image/jpeg", result.getMimeType());
         BufferedImage out = ImageIO.read(new ByteArrayInputStream(result.getBytes()));
         assertNotNull(out);
-        assertEquals(640, out.getWidth());
-        assertEquals(480, out.getHeight());
+        long pixels = (long) out.getWidth() * (long) out.getHeight();
+        double ratio = pixels / (double) RecognitionImageEnhanceSupport.MODEL_PIXEL_BUDGET;
+        assertTrue(ratio > 0.9d && ratio < 1.1d, "pixels=" + pixels + " ratio=" + ratio);
         assertTrue(luminanceRange(out) > luminanceRange(ImageIO.read(new ByteArrayInputStream(png))));
     }
 
@@ -60,11 +61,51 @@ class RecognitionImageEnhanceSupportTest {
     }
 
     @Test
+    void paperMarginIsCroppedButTableStaysWhole() {
+        BufferedImage src = whiteImage(400, 500);
+        Graphics2D g = src.createGraphics();
+        g.setColor(Color.DARK_GRAY);
+        g.fillRect(80, 100, 240, 280);
+        g.dispose();
+        BufferedImage cropped = RecognitionImageEnhanceSupport.cropPaperMargin(src);
+        assertTrue(cropped.getWidth() < 400, "width=" + cropped.getWidth());
+        assertTrue(cropped.getHeight() < 500, "height=" + cropped.getHeight());
+        assertTrue(cropped.getWidth() > 240);
+        assertTrue(cropped.getHeight() > 280);
+    }
+
+    @Test
+    void fitToModelPixelBudgetScalesUpAndDown() {
+        BufferedImage small = whiteImage(400, 300);
+        BufferedImage up = RecognitionImageEnhanceSupport.fitToModelPixelBudget(small);
+        long upPixels = (long) up.getWidth() * (long) up.getHeight();
+        assertTrue(upPixels > 400L * 300L);
+        assertTrue(Math.abs(upPixels - RecognitionImageEnhanceSupport.MODEL_PIXEL_BUDGET)
+                < RecognitionImageEnhanceSupport.MODEL_PIXEL_BUDGET * 0.05d);
+
+        BufferedImage large = whiteImage(2600, 2000);
+        BufferedImage down = RecognitionImageEnhanceSupport.fitToModelPixelBudget(large);
+        long downPixels = (long) down.getWidth() * (long) down.getHeight();
+        assertTrue(downPixels < 2600L * 2000L);
+        assertTrue(Math.abs(downPixels - RecognitionImageEnhanceSupport.MODEL_PIXEL_BUDGET)
+                < RecognitionImageEnhanceSupport.MODEL_PIXEL_BUDGET * 0.05d);
+    }
+
+    @Test
     void smallSkewOfRuledSheetIsDetected() throws Exception {
         BufferedImage sheet = ruledSheet(400, 500);
         BufferedImage tilted = RecognitionImageEnhanceSupport.rotate(sheet, 2.0d);
         double estimated = RecognitionImageEnhanceSupport.estimateDeskewDegrees(tilted);
         assertTrue(Math.abs(estimated - 2.0d) <= 1.0d, "deskew=" + estimated);
+    }
+
+    private static BufferedImage whiteImage(int width, int height) {
+        BufferedImage image = new BufferedImage(width, height, BufferedImage.TYPE_INT_RGB);
+        Graphics2D g = image.createGraphics();
+        g.setColor(Color.WHITE);
+        g.fillRect(0, 0, width, height);
+        g.dispose();
+        return image;
     }
 
     private static byte[] fadedSheetPng(int width, int height) throws Exception {

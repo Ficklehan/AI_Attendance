@@ -1,10 +1,10 @@
 /**
- * 与 PC compressImage 对齐：上传前压缩为 JPEG，降低体积并统一格式。
+ * 与 PC compressImage 对齐：保留去白边后填满 1300² 所需底像素，勿先砍到 1600。
  */
 const { t } = require('./i18n')
 
-const MAX_EDGE = 1600
-const QUALITY = 80
+const MAX_EDGE = 4096
+const QUALITY = 90
 
 function getFileInfo(filePath) {
   return new Promise((resolve, reject) => {

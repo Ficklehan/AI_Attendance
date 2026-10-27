@@ -470,11 +470,12 @@ const prepareSelectedFile = async (file) => {
       return
     }
 
+    // Keep enough pixels for backend margin-crop + 1300² budget fill; do not crush to 1600.
     const compressedFile = await compressImage(file, {
-      maxSizeKB: 2000,
-      maxWidth: 1600,
-      maxHeight: 1600,
-      quality: 0.85,
+      maxSizeKB: 8000,
+      maxWidth: 4096,
+      maxHeight: 4096,
+      quality: 0.9,
     })
     processedHashes.value.add(hash)
 

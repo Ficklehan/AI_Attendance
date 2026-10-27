@@ -17,16 +17,20 @@ import java.io.ByteArrayOutputStream;
 import java.util.Iterator;
 
 /**
- * 识图前整页增强：不裁列、不裁行。摆正小倾角、拉开对比、轻度锐化，
- * 让铅笔细笔在模型缩到约 800×800 后仍能看见。
+ * 识图前整页增强：不裁列、不裁行。去纸面白边后按 DeepSeek Flash 约 1300×1300
+ * 像素预算缩放，再摆正、拉开对比、轻度锐化，让表格内容吃满单图视觉 token。
  */
 public final class RecognitionImageEnhanceSupport {
 
+    /** DeepSeek Flash 单图约 1300×1300 总像素预算。 */
+    static final int MODEL_PIXEL_BUDGET = 1300 * 1300;
     static final int MAX_LONG_EDGE = 4096;
     static final float JPEG_QUALITY = 0.92f;
     static final float SHARPEN_AMOUNT = 0.35f;
     static final double MIN_DESKEW_DEGREES = 0.4d;
     static final double MAX_DESKEW_DEGREES = 5.0d;
+    /** 相对预算偏差小于此比例则不再缩放。 */
+    static final double BUDGET_SCALE_EPS = 0.02d;
 
     private RecognitionImageEnhanceSupport() {
     }
@@ -82,6 +86,8 @@ public final class RecognitionImageEnhanceSupport {
             } else {
                 deskew = 0;
             }
+            rgb = cropPaperMargin(rgb);
+            rgb = fitToModelPixelBudget(rgb);
             stretchContrast(rgb);
             rgb = sharpen(rgb);
             byte[] jpeg = encodeJpeg(rgb);
@@ -110,6 +116,92 @@ public final class RecognitionImageEnhanceSupport {
         return rgb;
     }
 
+    /**
+     * 去掉大块白边，让整张表吃满模型约 1300×1300 预算。不切行、不切列。
+     */
+    static BufferedImage cropPaperMargin(BufferedImage src) {
+        if (src == null) {
+            return src;
+        }
+        int width = src.getWidth();
+        int height = src.getHeight();
+        if (width < 32 || height < 32) {
+            return src;
+        }
+        int minX = width;
+        int minY = height;
+        int maxX = -1;
+        int maxY = -1;
+        int step = Math.max(1, Math.max(width, height) / 1200);
+        for (int y = 0; y < height; y += step) {
+            for (int x = 0; x < width; x += step) {
+                if (luminance(src.getRGB(x, y)) < 242) {
+                    if (x < minX) {
+                        minX = x;
+                    }
+                    if (y < minY) {
+                        minY = y;
+                    }
+                    if (x > maxX) {
+                        maxX = x;
+                    }
+                    if (y > maxY) {
+                        maxY = y;
+                    }
+                }
+            }
+        }
+        if (maxX < minX || maxY < minY) {
+            return src;
+        }
+        int pad = Math.max(16, Math.min(width, height) / 40);
+        minX = Math.max(0, minX - pad);
+        minY = Math.max(0, minY - pad);
+        maxX = Math.min(width - 1, maxX + pad);
+        maxY = Math.min(height - 1, maxY + pad);
+        int cropW = maxX - minX + 1;
+        int cropH = maxY - minY + 1;
+        if (cropW >= width * 0.92d && cropH >= height * 0.92d) {
+            return src;
+        }
+        if (cropW < width * 0.45d || cropH < height * 0.45d) {
+            return src;
+        }
+        BufferedImage dst = new BufferedImage(cropW, cropH, BufferedImage.TYPE_INT_RGB);
+        Graphics2D g = dst.createGraphics();
+        try {
+            g.setColor(Color.WHITE);
+            g.fillRect(0, 0, cropW, cropH);
+            g.drawImage(src, 0, 0, cropW, cropH, minX, minY, minX + cropW, minY + cropH, null);
+        } finally {
+            g.dispose();
+        }
+        return dst;
+    }
+
+    /**
+     * 等比缩放到总像素贴近 {@link #MODEL_PIXEL_BUDGET}（可放大可缩小），
+     * 避免白边裁完后吃不满 token，或大图交给模型再乱缩。
+     */
+    static BufferedImage fitToModelPixelBudget(BufferedImage src) {
+        if (src == null) {
+            return src;
+        }
+        int width = src.getWidth();
+        int height = src.getHeight();
+        long pixels = (long) width * (long) height;
+        if (pixels <= 0) {
+            return src;
+        }
+        double scale = Math.sqrt(MODEL_PIXEL_BUDGET / (double) pixels);
+        if (Math.abs(scale - 1.0d) < BUDGET_SCALE_EPS) {
+            return src;
+        }
+        int w = Math.max(1, (int) Math.round(width * scale));
+        int h = Math.max(1, (int) Math.round(height * scale));
+        return scaleImage(src, w, h);
+    }
+
     static BufferedImage limitLongEdge(BufferedImage src) {
         int longEdge = Math.max(src.getWidth(), src.getHeight());
         if (longEdge <= MAX_LONG_EDGE) {
@@ -118,10 +210,15 @@ public final class RecognitionImageEnhanceSupport {
         double scale = MAX_LONG_EDGE / (double) longEdge;
         int w = Math.max(1, (int) Math.round(src.getWidth() * scale));
         int h = Math.max(1, (int) Math.round(src.getHeight() * scale));
+        return scaleImage(src, w, h);
+    }
+
+    private static BufferedImage scaleImage(BufferedImage src, int w, int h) {
         BufferedImage dst = new BufferedImage(w, h, BufferedImage.TYPE_INT_RGB);
         Graphics2D g = dst.createGraphics();
         try {
             g.setRenderingHint(RenderingHints.KEY_INTERPOLATION, RenderingHints.VALUE_INTERPOLATION_BICUBIC);
+            g.setRenderingHint(RenderingHints.KEY_RENDERING, RenderingHints.VALUE_RENDER_QUALITY);
             g.setColor(Color.WHITE);
             g.fillRect(0, 0, w, h);
             g.drawImage(src, 0, 0, w, h, null);
