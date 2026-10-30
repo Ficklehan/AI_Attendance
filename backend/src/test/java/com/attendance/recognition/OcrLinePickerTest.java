@@ -4,6 +4,8 @@ import com.attendance.recognition.dto.CellOcrResult;
 import org.junit.jupiter.api.Test;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 class OcrLinePickerTest {
 
@@ -68,5 +70,13 @@ class OcrLinePickerTest {
         ocr.lines.add("SCARLOSFELIX GONZALEZROSALES");
         ocr.lines.add("SCARLOSFELIX GONZALEZROSALES");
         assertEquals("SCARLOSFELIX GONZALEZROSALES", OcrLinePicker.name(ocr));
+    }
+
+    @Test
+    void gluedNameNeedsVlm() {
+        assertTrue(OcrLinePicker.needsNameVlm("SISSOKOMODIBO"));
+        assertTrue(OcrLinePicker.needsNameVlm("MANGUERAGENERUWEERAMOS SISSOKOMODIBC"));
+        assertFalse(OcrLinePicker.needsNameVlm("GAYE"));
+        assertFalse(OcrLinePicker.needsNameVlm(""));
     }
 }
