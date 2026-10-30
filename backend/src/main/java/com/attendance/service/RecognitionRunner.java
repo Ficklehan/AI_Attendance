@@ -345,7 +345,7 @@ public class RecognitionRunner {
 
         if (records.isEmpty() && !recognitionSupport.shouldUseSimulatedRecognition()) {
             if (useOcrPrimaryPipeline() && structuredRecognitionPipeline.doctorOk()) {
-                throw new IllegalStateException("识别结果为空，请检查 DeepSeek Harness 是否返回人员行");
+                throw new IllegalStateException("识别结果为空，请检查 vision_ground 是否标出人员行");
             }
             String preview = aiParserService.getLastRecognitionRawText();
             String msg = "识别结果为空，请检查图片是否清晰。模型回复: "

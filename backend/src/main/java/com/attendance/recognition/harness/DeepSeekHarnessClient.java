@@ -1,8 +1,8 @@
 package com.attendance.recognition.harness;
 
 import com.attendance.config.RecognitionProperties;
+import com.attendance.recognition.FlashKeyGate;
 import com.attendance.recognition.LayoutNormalizer;
-import com.attendance.recognition.TableGridLocator;
 import com.attendance.recognition.dto.BBox;
 import com.attendance.recognition.dto.CellCrop;
 import com.attendance.recognition.dto.GroundedCell;
@@ -38,66 +38,122 @@ public class DeepSeekHarnessClient {
     private final VisionGroundClient groundClient;
     private final RecognitionProperties properties;
     private final CropZoomCli cropZoomCli;
+    private final FlashKeyGate keyGate;
 
     public DeepSeekHarnessClient(VisionGroundClient groundClient, RecognitionProperties properties,
-                                 CropZoomCli cropZoomCli) {
+                                 CropZoomCli cropZoomCli, FlashKeyGate keyGate) {
         this.groundClient = groundClient;
         this.properties = properties;
         this.cropZoomCli = cropZoomCli;
+        this.keyGate = keyGate;
     }
 
-    public PageLayout groundPage(BufferedImage source, String countryCode, String apiKey) throws Exception {
+    public PageLayout groundPage(BufferedImage source, String countryCode, String fallbackKey) throws Exception {
         int previewWidth = Math.max(200, properties.getHarness().getPreviewWidth());
-        byte[] preview = toPng(scaleToWidth(source, previewWidth));
-        TableGridLocator.Grid grid = TableGridLocator.locate(source);
-        if (grid.ok()) {
-            PageLayout layout = new PageLayout();
-            layout.sourceWidth = source.getWidth();
-            layout.sourceHeight = source.getHeight();
-            layout.source = "table_grid";
-            layout.gridXs = grid.xs;
-            layout.gridYs = grid.ys;
-            layout.headerRows = grid.headerRows;
-            layout.cells = TableGridLocator.toCells(grid);
-            fillHeader(layout, preview, previewWidth, apiKey);
-            LayoutNormalizer.normalize(layout);
-            log.info("table_grid cols={} bodyRows={} cells={} xs={} warehouse={} dateRaw={}",
-                    grid.columnCount(), grid.bodyRowCount(), layout.cells.size(),
-                    java.util.Arrays.toString(grid.xs), layout.warehouse, layout.dateRaw);
-            return layout;
-        }
-        log.warn("table_grid 未找到稳定格线，回退 vision_ground");
-        PageLayout layout = groundClient.ground(preview, "image/png", previewWidth, countryCode, apiKey);
-        layout.sourceWidth = source.getWidth();
-        layout.sourceHeight = source.getHeight();
-        layout.source = "vision_ground";
+        int bandCount = Math.max(1, properties.getHarness().getGroundBands());
         int pad = properties.getHarness().getPadPx();
-        List<GroundedCell> remapped = new ArrayList<GroundedCell>();
-        for (GroundedCell cell : layout.cells) {
-            if (cell.bbox == null) {
-                continue;
+        List<BandSpec> bands = splitBands(source.getHeight(), bandCount);
+        ExecutorService pool = Executors.newFixedThreadPool(Math.max(1, bands.size()));
+        List<Future<PageLayout>> futures = new ArrayList<Future<PageLayout>>();
+        try {
+            for (int i = 0; i < bands.size(); i++) {
+                final BandSpec band = bands.get(i);
+                final boolean top = i == 0;
+                futures.add(pool.submit(new Callable<PageLayout>() {
+                    @Override
+                    public PageLayout call() throws Exception {
+                        return groundBand(source, band, previewWidth, pad, countryCode, fallbackKey, top);
+                    }
+                }));
             }
-            BBox box = cell.bbox.remapFromPreview(previewWidth, source.getWidth())
-                    .padded(pad, source.getWidth(), source.getHeight());
-            remapped.add(new GroundedCell(cell.row, cell.field, box));
+            PageLayout merged = new PageLayout();
+            merged.sourceWidth = source.getWidth();
+            merged.sourceHeight = source.getHeight();
+            merged.source = "vision_ground";
+            merged.bandCount = bands.size();
+            merged.previewWidth = previewWidth;
+            for (int i = 0; i < futures.size(); i++) {
+                PageLayout part = futures.get(i).get();
+                if (part == null) {
+                    continue;
+                }
+                if ((merged.warehouse == null || merged.warehouse.isEmpty()) && part.warehouse != null) {
+                    merged.warehouse = part.warehouse;
+                }
+                if ((merged.dateRaw == null || merged.dateRaw.isEmpty()) && part.dateRaw != null) {
+                    merged.dateRaw = part.dateRaw;
+                }
+                if ((merged.pageNum == null || merged.pageNum.isEmpty()) && part.pageNum != null) {
+                    merged.pageNum = part.pageNum;
+                }
+                merged.cells.addAll(part.cells);
+            }
+            LayoutNormalizer.normalize(merged);
+            log.info("vision_ground bands={} cells={} warehouse={} dateRaw={}",
+                    bands.size(), merged.cells.size(), merged.warehouse, merged.dateRaw);
+            return merged;
+        } finally {
+            pool.shutdown();
         }
-        layout.cells = remapped;
-        LayoutNormalizer.normalize(layout);
-        log.info("vision_ground cells={}, warehouse={}, dateRaw={}",
-                layout.cells.size(), layout.warehouse, layout.dateRaw);
-        return layout;
     }
 
-    private void fillHeader(PageLayout layout, byte[] preview, int previewWidth, String apiKey) {
+    private PageLayout groundBand(BufferedImage source, BandSpec band, int previewWidth, int pad,
+                                  String countryCode, String fallbackKey, boolean keepHeader)
+            throws Exception {
+        BufferedImage slice = source.getSubimage(0, band.y0, source.getWidth(), band.h);
+        byte[] preview = toPng(scaleToWidth(slice, previewWidth));
+        FlashKeyGate.HeldKey held = keyGate.acquireOrFallback(fallbackKey);
         try {
-            PageLayout header = groundClient.groundHeader(preview, "image/png", previewWidth, apiKey);
-            if (header != null) {
-                layout.warehouse = header.warehouse;
-                layout.dateRaw = header.dateRaw;
-                layout.pageNum = header.pageNum;
+            PageLayout layout = groundClient.ground(preview, "image/png", previewWidth, countryCode, held.apiKey());
+            if (!keepHeader) {
+                layout.warehouse = "";
+                layout.dateRaw = "";
+                layout.pageNum = "";
             }
-        } catch (Exception e) {
-            log.warn("页头 ground 失败: {}", e.getMessage());
+            List<GroundedCell> remapped = new ArrayList<GroundedCell>();
+            for (int i = 0; i < layout.cells.size(); i++) {
+                GroundedCell cell = layout.cells.get(i);
+                if (cell.bbox == null) {
+                    continue;
+                }
+                BBox box = cell.bbox.remapFromPreview(previewWidth, source.getWidth());
+                box.y = box.y + band.y0;
+                box = box.padded(pad, source.getWidth(), source.getHeight());
+                remapped.add(new GroundedCell(cell.row, cell.field, box));
+            }
+            layout.cells = remapped;
+            return layout;
+        } finally {
+            held.close();
+        }
+    }
+
+    static List<BandSpec> splitBands(int height, int bandCount) {
+        List<BandSpec> bands = new ArrayList<BandSpec>();
+        int n = Math.max(1, bandCount);
+        if (n == 1 || height < 80) {
+            bands.add(new BandSpec(0, height));
+            return bands;
+        }
+        int step = Math.max(1, height / n);
+        int bandH = Math.min(height, (int) Math.round(step * 1.20d));
+        for (int i = 0; i < n; i++) {
+            int y0 = Math.max(0, i * step - (int) Math.round(step * 0.10d));
+            if (y0 + bandH > height) {
+                y0 = Math.max(0, height - bandH);
+            }
+            bands.add(new BandSpec(y0, Math.min(bandH, height - y0)));
+        }
+        return bands;
+    }
+
+    static final class BandSpec {
+        final int y0;
+        final int h;
+
+        BandSpec(int y0, int h) {
+            this.y0 = y0;
+            this.h = h;
         }
     }
 

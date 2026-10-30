@@ -327,10 +327,11 @@ public class RecognitionProperties {
         private int zoomTarget = 800;
         private int zoomMaxScale = 16;
         private String zoomMode = "nearest";
-        private int previewWidth = 1000;
+        private int previewWidth = 1600;
         private int padPx = 2;
+        private int groundBands = 3;
         private boolean preferCli = true;
-        private int maxVlmCellsPerPage = 24;
+        private int maxVlmCellsPerPage = 64;
         private int vlmParallelism = 8;
         private int groundTimeoutMs = 90000;
         private int vlmTimeoutMs = 45000;
@@ -407,6 +408,14 @@ public class RecognitionProperties {
 
         public void setPreviewWidth(int previewWidth) {
             this.previewWidth = previewWidth;
+        }
+
+        public int getGroundBands() {
+            return groundBands;
+        }
+
+        public void setGroundBands(int groundBands) {
+            this.groundBands = groundBands;
         }
 
         public int getPadPx() {

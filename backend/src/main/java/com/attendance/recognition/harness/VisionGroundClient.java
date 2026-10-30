@@ -71,7 +71,7 @@ public class VisionGroundClient {
         JSONObject body = new JSONObject();
         body.put("model", runtime.getModel());
         body.put("messages", messages);
-        body.put("max_tokens", 4096);
+        body.put("max_tokens", 8192);
         body.put("stream", Boolean.FALSE);
         body.put("temperature", 0);
         JSONObject thinking = new JSONObject();
@@ -129,6 +129,9 @@ public class VisionGroundClient {
                 + "\"cells\":[{\"row\":1,\"field\":\"NAME|AGENCY|SHIFT|ARRIVEE|DEPAR|PAUSE|SIGNATURE|OBSERVATIONS|NO\","
                 + "\"x\":0,\"y\":0,\"w\":0,\"h\":0}]}\n"
                 + "Coordinates are pixels on THIS image, origin top-left. One object per body row per field.\n"
+                + "Start at the first data row immediately below the printed column header. "
+                + "List every body row through the last numbered or named row, including empty rows. "
+                + "Do not start mid-table. Do not skip rows.\n"
                 + "Do not read digit values. Do not guess times. Empty header fields use \"\".\n"
                 + "Long diagonal strokes through clock columns are strikethrough, not a reason to skip those cells.";
     }

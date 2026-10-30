@@ -15,15 +15,11 @@ import com.attendance.recognition.dto.OcrRawResult;
 import com.attendance.recognition.dto.PageLayout;
 import com.attendance.recognition.harness.DeepSeekHarnessClient;
 import com.attendance.recognition.harness.HarnessHeadlessClient;
-import com.attendance.recognition.dto.HarnessSheet;
-import com.attendance.recognition.harness.HarnessJsonParser;
 import com.attendance.recognition.harness.HarnessRecordPostProcessor;
-import com.attendance.recognition.harness.HarnessSheetMapper;
 import com.attendance.recognition.ink.CellInkAnalyzer;
 import com.attendance.recognition.ink.LongLineRemover;
 import com.attendance.recognition.ink.NameStrikeDetector;
 import com.attendance.recognition.ocr.OcrClient;
-import com.attendance.service.MimoKeyLease;
 import com.attendance.service.NightShiftConfigService;
 import com.attendance.service.RecognitionEngineConfigService;
 import com.attendance.service.RecognitionModelRuntime;
@@ -39,6 +35,7 @@ import java.awt.image.BufferedImage;
 import java.io.File;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.awt.Graphics2D;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
@@ -52,7 +49,7 @@ import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
 
 /**
- * ocr_primary：Java 把原图交给 DeepSeek Harness headless，识别全在 Harness 内。
+ * ocr_primary：Harness vision_ground + crop_zoom 切格，Java 并行 OCR 印刷列、并行 VLM 读到离格。
  */
 @Component
 public class StructuredRecognitionPipeline {
@@ -70,6 +67,8 @@ public class StructuredRecognitionPipeline {
     private final MimoProperties mimoProperties;
     private final HarnessHeadlessClient headlessClient;
     private final HarnessRecordPostProcessor recordPostProcessor;
+    private final FlashKeyGate keyGate;
+    private final RowGridRebuilder rowGrid;
     private final ExecutorService cellPool;
 
     public StructuredRecognitionPipeline(RecognitionProperties properties,
@@ -82,7 +81,9 @@ public class StructuredRecognitionPipeline {
                                          DeepSeekProperties deepSeekProperties,
                                          MimoProperties mimoProperties,
                                          HarnessHeadlessClient headlessClient,
-                                         HarnessRecordPostProcessor recordPostProcessor) {
+                                         HarnessRecordPostProcessor recordPostProcessor,
+                                         FlashKeyGate keyGate,
+                                         RowGridRebuilder rowGrid) {
         this.properties = properties;
         this.harnessClient = harnessClient;
         this.ocrClient = ocrClient;
@@ -94,6 +95,8 @@ public class StructuredRecognitionPipeline {
         this.mimoProperties = mimoProperties;
         this.headlessClient = headlessClient;
         this.recordPostProcessor = recordPostProcessor;
+        this.keyGate = keyGate;
+        this.rowGrid = rowGrid;
         final int threads = Math.max(2, properties.getOcr().getParallelism());
         this.cellPool = Executors.newFixedThreadPool(threads, new ThreadFactory() {
             private final AtomicInteger seq = new AtomicInteger();
@@ -113,75 +116,98 @@ public class StructuredRecognitionPipeline {
     }
 
     public boolean doctorOk() {
-        return headlessClient.available();
+        if (!properties.getOcr().isEnabled() || !properties.getHarness().isEnabled()) {
+            return false;
+        }
+        if (!ocrClient.doctorOk()) {
+            return false;
+        }
+        String key = resolveApiKey();
+        return key != null && !key.trim().isEmpty();
     }
 
     public String doctorMessage() {
-        return headlessClient.doctorMessage();
+        if (!properties.getOcr().isEnabled() || !properties.getHarness().isEnabled()) {
+            return "ocr/harness disabled";
+        }
+        if (!ocrClient.doctorOk()) {
+            return ocrClient.doctorMessage();
+        }
+        String key = resolveApiKey();
+        if (key == null || key.trim().isEmpty()) {
+            return "missing vision API key";
+        }
+        return "ok";
     }
 
     public List<JSONObject> recognizePage(byte[] imageBytes, String filename, String promptCountry,
                                           String workingCountry, RecognitionTrace trace) throws Exception {
         Path workDir = Files.createTempDirectory("clockai-harness-");
         try {
-            Path image = workDir.resolve(pageFileName(filename));
-            Files.write(image, imageBytes);
+            BufferedImage source = DeepSeekHarnessClient.decode(imageBytes);
             if (trace != null) {
                 JSONObject start = new JSONObject();
                 start.put("filename", filename);
                 start.put("pipeline", "ocr_primary");
                 start.put("country", promptCountry);
-                start.put("delegate", "dsh-headless");
-                start.put("image", image.toString());
+                start.put("delegate", "vision_ground+parallel_vlm");
+                start.put("pageW", Integer.valueOf(source.getWidth()));
+                start.put("pageH", Integer.valueOf(source.getHeight()));
+                start.put("keyPoolSize", Integer.valueOf(runtime.getKeyPoolSize()));
+                start.put("model", runtime.getModel());
                 trace.step("harness_page_start", start);
             }
-            HarnessHeadlessClient.ExtractResult extracted =
-                    headlessClient.extract(image, promptCountry, workDir, trace);
+            PageLayout layout = harnessClient.groundPage(source, promptCountry, resolveApiKey());
+            rowGrid.rebuild(source, layout, workDir);
             if (trace != null) {
-                JSONObject raw = new JSONObject();
-                raw.put("sessionId", extracted.sessionId);
-                raw.put("toolCalls", Integer.valueOf(extracted.toolCalls));
-                raw.put("answerPreview", RecognitionTrace.preview(extracted.answer, 1500));
-                trace.step("harness_answer", raw);
+                trace.step("layout_detected", layoutTrace(layout));
             }
-            HarnessSheet sheet =
-                    HarnessJsonParser.parseSheet(extracted.answer);
+            if (layout.cells == null || layout.cells.isEmpty()) {
+                List<JSONObject> failed = new ArrayList<JSONObject>();
+                failed.add(structureFailed(workingCountry, layout, promptCountry));
+                return failed;
+            }
+            List<CellCrop> crops = harnessClient.cropZoom(source, layout, workDir);
             if (trace != null) {
-                JSONObject parsed = new JSONObject();
-                parsed.put("rowCount", Integer.valueOf(sheet.rows.size()));
-                parsed.put("warehouse", sheet.warehouse);
-                parsed.put("dateRaw", sheet.dateRaw);
-                parsed.put("pageNum", sheet.pageNum);
-                trace.step("harness_sheet", parsed);
+                trace.step("crop_zoom", cropTrace(crops));
             }
+            ocrPrintedParallel(crops);
+            Map<Integer, Map<String, CellCrop>> byRow = indexCrops(crops);
+            List<Integer> rowIds = new ArrayList<Integer>(byRow.keySet());
+            Collections.sort(rowIds);
+            List<RowWork> works = new ArrayList<RowWork>();
+            for (int i = 0; i < rowIds.size(); i++) {
+                int row = rowIds.get(i).intValue();
+                Map<String, CellCrop> cells = byRow.get(Integer.valueOf(row));
+                works.add(new RowWork(row, cells, buildRow(row, cells, layout)));
+            }
+            fillClocksParallel(works);
+            int vlmCells = adviseParallel(works, trace);
+            NightShiftConfigDTO nightShift = nightShiftConfigService.getConfigForCountry(promptCountry);
             List<JSONObject> records = new ArrayList<JSONObject>();
-            double accept = properties.getRule().getAcceptThreshold();
-            for (int i = 0; i < sheet.rows.size(); i++) {
-                OcrRawResult rawRow =
-                        HarnessSheetMapper.toRaw(sheet.rows.get(i), sheet, accept);
-                JSONObject record = ruleEngine.apply(rawRow, workingCountry,
-                        nightShiftConfigService.getConfigForCountry(promptCountry));
+            for (int i = 0; i < works.size(); i++) {
+                RowWork work = works.get(i);
+                JSONObject record = ruleEngine.apply(work.raw, workingCountry, nightShift);
                 RecordCountryDefaults.applyWorkingCountryPays(record, workingCountry);
                 record.put("_harnessUsed", Boolean.TRUE);
                 records.add(record);
                 if (trace != null) {
-                    JSONObject clock = new JSONObject();
-                    clock.put("no", record.getString("NO"));
-                    clock.put("name", record.getString("NOM_PRENOM"));
-                    clock.put("arrive", record.getString("ARRIVEE"));
-                    clock.put("depart", record.getString("DEPAR"));
-                    clock.put("arrivoConf", record.get("_arrivoConfidence"));
-                    clock.put("uscitaConf", record.get("_uscitaConfidence"));
+                    JSONObject cellOcr = new JSONObject();
+                    cellOcr.put("row", Integer.valueOf(work.row));
+                    cellOcr.put("printed", printedTrace(work.cells));
+                    cellOcr.put("arrive", evidenceJson(work.raw.arrive));
+                    cellOcr.put("depart", evidenceJson(work.raw.depart));
+                    trace.step("cell_ocr", cellOcr);
+                    JSONObject clock = clockExtractJson(work, record);
                     clock.put("arrivoBbox", record.get("_arrivoBbox"));
                     clock.put("uscitaBbox", record.get("_uscitaBbox"));
-                    clock.put("mark", record.getString("Mark"));
-                    clock.put("markWhy", record.getString("_markWhy"));
                     trace.step("clock_extract", clock);
                 }
             }
             dropTrailingEmpty(records);
             if (trace != null) {
                 JSONObject done = new JSONObject();
+                done.put("vlmCells", Integer.valueOf(vlmCells));
                 done.put("recordCount", Integer.valueOf(records.size()));
                 done.put("marks", markCounts(records));
                 trace.step("harness_page_done", done);
@@ -290,32 +316,11 @@ public class StructuredRecognitionPipeline {
             evidence.putDiag("clockPick", "blank_after_line");
             return;
         }
-        String digitsClock = readDigitBoxes(forOcr, crop.pngPath, evidence, rule);
-        if (digitsClock != null && digitsClock.matches("\\d{2}:\\d{2}")) {
-            evidence.source = "ocr";
-            evidence.text = digitsClock;
-            evidence.lowConfidence = false;
-            evidence.putDiag("chosen", digitsClock);
-            evidence.putDiag("clockPick", "digits");
-            evidence.putDiag("ocrTextBeforeFlash", digitsClock);
-            return;
-        }
-        CellOcrResult ocr = ocrClient.ocrCell(writeTemp(forOcr, crop.pngPath));
-        evidence.source = "ocr";
-        evidence.confidence = ocr.confidence;
-        evidence.lowConfidence = true;
-        evidence.ocrLines = ocr.lines != null ? ocr.lines : new ArrayList<String>();
-        evidence.putDiag("ocrPrimary", ocr.primaryLine());
-        evidence.putDiag("ocrLines", evidence.ocrLines);
-        evidence.putDiag("ocrConf", round4(ocr.confidence));
-        evidence.putDiag("ocrLow", Boolean.valueOf(ocr.lowConfidence));
-        String picker = OcrLinePicker.clock(ocr);
-        evidence.putDiag("pickerClock", picker);
+        evidence.source = "crop";
         evidence.text = "";
-        evidence.putDiag("chosen", "");
-        evidence.putDiag("clockPick", "digits_incomplete");
-        evidence.putDiag("ocrTextBeforeFlash", picker);
-        evidence.putDiag("ocrIncomplete", Boolean.TRUE);
+        evidence.lowConfidence = true;
+        evidence.putDiag("clockPick", "ink_need_vlm");
+        evidence.putDiag("ocrTextBeforeFlash", "");
     }
 
     private String readDigitBoxes(BufferedImage image, Path original, CellEvidence evidence,
@@ -481,6 +486,7 @@ public class StructuredRecognitionPipeline {
             RowWork work = works.get(i);
             planAdvise(work, "ARRIVEE", work.raw.arrive, work.cells.get("ARRIVEE"), review, jobs, skip);
             planAdvise(work, "DEPAR", work.raw.depart, work.cells.get("DEPAR"), review, jobs, skip);
+            planNameAdvise(work, jobs, skip);
         }
         int wanted = jobs.size();
         int cap = properties.getHarness().getMaxVlmCellsPerPage();
@@ -488,12 +494,14 @@ public class StructuredRecognitionPipeline {
         if (jobs.size() > cap) {
             for (int i = cap; i < jobs.size(); i++) {
                 AdviseJob extra = jobs.get(i);
-                extra.evidence.putDiag("flashSkip", "vlm_cap");
-                extra.evidence.putDiag("advise", "need_but_vlm_cap");
+                if (extra.evidence != null) {
+                    extra.evidence.putDiag("flashSkip", "vlm_cap");
+                    extra.evidence.putDiag("advise", "need_but_vlm_cap");
+                }
                 JSONObject s = new JSONObject();
                 s.put("row", extra.row);
                 s.put("field", extra.field);
-                s.put("reason", extra.evidence.diag.get("advise"));
+                s.put("reason", "need_but_vlm_cap");
                 capped.add(s);
             }
             jobs = new ArrayList<AdviseJob>(jobs.subList(0, cap));
@@ -507,6 +515,24 @@ public class StructuredRecognitionPipeline {
             plan.put("capped", capped);
             trace.step("flash_plan", plan);
         }
+        int ran = runAdviseJobs(jobs, trace, false);
+        List<AdviseJob> retries = new ArrayList<AdviseJob>();
+        for (int i = 0; i < jobs.size(); i++) {
+            AdviseJob job = jobs.get(i);
+            if (job.evidence != null && shouldRetryIllegible(job.evidence)
+                    && job.crop != null && job.crop.image != null) {
+                BufferedImage inset = insetImage(job.crop.image, 0.12d);
+                job.evidence.putDiag("flashRetry", Boolean.TRUE);
+                retries.add(new AdviseJob(job.evidence, job.crop, job.row, job.field, job.work, inset));
+            }
+        }
+        if (!retries.isEmpty()) {
+            ran += runAdviseJobs(retries, trace, true);
+        }
+        return ran;
+    }
+
+    private int runAdviseJobs(List<AdviseJob> jobs, RecognitionTrace trace, boolean retry) throws Exception {
         if (jobs.isEmpty()) {
             return 0;
         }
@@ -516,9 +542,30 @@ public class StructuredRecognitionPipeline {
             tasks.add(new Callable<Void>() {
                 @Override
                 public Void call() {
+                    FlashKeyGate.HeldKey held = keyGate.acquireOrFallback(resolveApiKey());
                     try {
+                        BufferedImage img = job.image != null ? job.image : job.crop.image;
+                        if ("NAME".equals(job.field)) {
+                            String before = job.work.raw.name;
+                            String name = cellAdvisor.adviseName(img, held.apiKey());
+                            if (name != null && !name.trim().isEmpty()) {
+                                job.work.raw.name = name.trim();
+                            }
+                            if (trace != null) {
+                                JSONObject d = new JSONObject();
+                                d.put("row", job.row);
+                                d.put("field", "NAME");
+                                d.put("ocrBefore", before);
+                                d.put("name", job.work.raw.name);
+                                d.put("keyIndex", Integer.valueOf(held.keyIndex()));
+                                d.put("retry", Boolean.valueOf(retry));
+                                trace.step("harness_cell", d);
+                            }
+                            return null;
+                        }
                         Object before = job.evidence.diag.get("ocrTextBeforeFlash");
-                        cellAdvisor.advise(job.evidence, job.crop.image, acquireFlashKey());
+                        cellAdvisor.advise(job.evidence, img, held.apiKey());
+                        job.evidence.putDiag("keyIndex", Integer.valueOf(held.keyIndex()));
                         if (trace != null) {
                             JSONObject d = new JSONObject();
                             d.put("row", job.row);
@@ -531,19 +578,26 @@ public class StructuredRecognitionPipeline {
                             d.put("flashIllegible", job.evidence.diag.get("flashIllegible"));
                             d.put("flashRaw", job.evidence.diag.get("flashRaw"));
                             d.put("source", job.evidence.source);
+                            d.put("keyIndex", Integer.valueOf(held.keyIndex()));
+                            d.put("retry", Boolean.valueOf(retry));
                             trace.step("harness_cell", d);
                         }
                     } catch (Exception e) {
                         log.warn("cell advisor failed row={} field={}: {}", job.row, job.field, e.getMessage());
-                        job.evidence.lowConfidence = true;
-                        job.evidence.putDiag("flashError", e.getMessage());
+                        if (job.evidence != null) {
+                            job.evidence.lowConfidence = true;
+                            job.evidence.putDiag("flashError", e.getMessage());
+                        }
                         if (trace != null) {
                             JSONObject d = new JSONObject();
                             d.put("row", job.row);
                             d.put("field", job.field);
                             d.put("error", e.getMessage());
+                            d.put("keyIndex", Integer.valueOf(held.keyIndex()));
                             trace.step("harness_cell", d);
                         }
+                    } finally {
+                        held.close();
                     }
                     return null;
                 }
@@ -583,19 +637,37 @@ public class StructuredRecognitionPipeline {
             skip.add(s);
             return;
         }
-        jobs.add(new AdviseJob(evidence, crop, work.row, field));
+        jobs.add(new AdviseJob(evidence, crop, work.row, field, work, crop.image));
     }
 
-    private String acquireFlashKey() {
-        try {
-            MimoKeyLease lease = runtime.acquireKeyExcluding(Collections.<Integer>emptySet());
-            if (lease != null && lease.getApiKey() != null && !lease.getApiKey().trim().isEmpty()) {
-                return lease.getApiKey().trim();
-            }
-        } catch (Exception e) {
-            log.warn("Flash key 池借用失败，回退第一把: {}", e.getMessage());
+    private void planNameAdvise(RowWork work, List<AdviseJob> jobs, JSONArray skip) {
+        if (!OcrLinePicker.needsNameVlm(work.raw.name)) {
+            return;
         }
-        return resolveApiKey();
+        CellCrop crop = work.cells.get("NAME");
+        if (!hasCrop(crop) || crop.image == null) {
+            JSONObject s = new JSONObject();
+            s.put("row", work.row);
+            s.put("field", "NAME");
+            s.put("reason", "no_crop");
+            skip.add(s);
+            return;
+        }
+        jobs.add(new AdviseJob(null, crop, work.row, "NAME", work, crop.image));
+    }
+
+    static boolean shouldRetryIllegible(CellEvidence evidence) {
+        if (evidence == null) {
+            return false;
+        }
+        if (evidence.hasLegalClock()) {
+            return false;
+        }
+        Object illegible = evidence.diag.get("flashIllegible");
+        if (!Boolean.TRUE.equals(illegible)) {
+            return false;
+        }
+        return evidence.hasInk || evidence.inkAfterLineRemoval || evidence.hasLongLine;
     }
 
     static String adviseDecision(CellEvidence evidence, double reviewThreshold) {
@@ -604,6 +676,13 @@ public class StructuredRecognitionPipeline {
         }
         boolean ink = evidence.inkAfterLineRemoval || evidence.hasInk;
         if (!ink) {
+            if (evidence.hasLongLine) {
+                return "need_borderline_line";
+            }
+            double ratio = toDouble(evidence.diag.get("inkDarkRatio"));
+            if (ratio >= 0.015d) {
+                return "need_borderline_ink";
+            }
             return "skip_no_ink";
         }
         boolean legal = evidence.hasLegalClock();
@@ -618,6 +697,38 @@ public class StructuredRecognitionPipeline {
             return "need_low_conf";
         }
         return "need_conf_below_review";
+    }
+
+    static double toDouble(Object value) {
+        if (value instanceof Number) {
+            return ((Number) value).doubleValue();
+        }
+        if (value == null) {
+            return 0;
+        }
+        try {
+            return Double.parseDouble(String.valueOf(value));
+        } catch (Exception e) {
+            return 0;
+        }
+    }
+
+    static BufferedImage insetImage(BufferedImage src, double frac) {
+        if (src == null) {
+            return src;
+        }
+        int padX = Math.max(2, (int) Math.round(src.getWidth() * frac));
+        int padY = Math.max(2, (int) Math.round(src.getHeight() * frac));
+        int w = src.getWidth() - 2 * padX;
+        int h = src.getHeight() - 2 * padY;
+        if (w < 8 || h < 8) {
+            return src;
+        }
+        BufferedImage out = new BufferedImage(w, h, BufferedImage.TYPE_INT_RGB);
+        Graphics2D g = out.createGraphics();
+        g.drawImage(src, 0, 0, w, h, padX, padY, padX + w, padY + h, null);
+        g.dispose();
+        return out;
     }
 
     private void runAll(List<Callable<Void>> tasks, int perTaskMs) throws Exception {
@@ -761,12 +872,16 @@ public class StructuredRecognitionPipeline {
         final CellCrop crop;
         final int row;
         final String field;
+        final RowWork work;
+        final BufferedImage image;
 
-        AdviseJob(CellEvidence evidence, CellCrop crop, int row, String field) {
+        AdviseJob(CellEvidence evidence, CellCrop crop, int row, String field, RowWork work, BufferedImage image) {
             this.evidence = evidence;
             this.crop = crop;
             this.row = row;
             this.field = field;
+            this.work = work;
+            this.image = image;
         }
     }
 
@@ -854,6 +969,19 @@ public class StructuredRecognitionPipeline {
         g.put("headerRows", layout.headerRows);
         g.put("pageW", layout.sourceWidth);
         g.put("pageH", layout.sourceHeight);
+        g.put("gridSource", layout.gridSource);
+        g.put("rowH", Integer.valueOf(layout.rowH));
+        g.put("firstY", Integer.valueOf(layout.firstY));
+        g.put("bandCount", Integer.valueOf(layout.bandCount));
+        int rows = 0;
+        if (layout.gridYs != null && layout.gridYs.length > 0) {
+            rows = layout.gridYs.length;
+        } else {
+            for (int i = 0; i < layout.cells.size(); i++) {
+                rows = Math.max(rows, layout.cells.get(i).row);
+            }
+        }
+        g.put("rowCount", Integer.valueOf(rows));
         JSONArray clockBoxes = new JSONArray();
         JSONArray cells = new JSONArray();
         int cap = Math.min(layout.cells.size(), 80);

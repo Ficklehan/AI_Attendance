@@ -39,12 +39,12 @@ public class OcrDoctorStartupRunner implements ApplicationRunner {
                 ? cropZoomCli.resolveBin().toString()
                 : "missing (Java CropZoomTool fallback)";
         if (ok) {
-            log.info("dsh headless 可用; crop-zoom CLI {}", crop);
+            log.info("ocr_primary 可用 (vision_ground + 并行 VLM); crop-zoom CLI {}", crop);
         } else if (properties.getOcr().isFallbackLegacyOnUnavailable()) {
-            log.warn("dsh headless 不可用，ocr_primary 将回退 legacy: {}; crop-zoom {}",
+            log.warn("ocr_primary 未就绪，将回退 legacy: {}; crop-zoom {}",
                     pipeline.doctorMessage(), crop);
         } else {
-            log.error("dsh headless 不可用且未允许回退: {}; crop-zoom {}",
+            log.error("ocr_primary 未就绪且未允许回退: {}; crop-zoom {}",
                     pipeline.doctorMessage(), crop);
         }
     }

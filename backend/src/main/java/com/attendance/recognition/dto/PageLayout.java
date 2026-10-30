@@ -11,6 +11,10 @@ public class PageLayout {
     public int sourceWidth;
     public int sourceHeight;
     public String source = "";
+    public String gridSource = "";
+    public int rowH;
+    public int firstY;
+    public int bandCount;
     public int[] gridXs;
     public int[] gridYs;
     public int headerRows;

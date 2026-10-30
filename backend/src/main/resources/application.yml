@@ -114,10 +114,11 @@ attendance:
       zoom-target: 800
       zoom-max-scale: 16
       zoom-mode: nearest
-      preview-width: 1000
+      preview-width: 1600
       pad-px: 2
+      ground-bands: 3
       prefer-cli: ${RECOGNITION_CROP_PREFER_CLI:true}
-      max-vlm-cells-per-page: 24
+      max-vlm-cells-per-page: 64
       vlm-parallelism: ${RECOGNITION_VLM_PARALLELISM:8}
       ground-timeout-ms: 90000
       vlm-timeout-ms: 45000

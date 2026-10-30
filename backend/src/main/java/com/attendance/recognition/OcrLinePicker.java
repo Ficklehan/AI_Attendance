@@ -77,6 +77,28 @@ public final class OcrLinePicker {
         return foldDoubledName(sb.toString().replaceAll("\\s+", " ").trim());
     }
 
+    public static boolean needsNameVlm(String name) {
+        if (name == null) {
+            return false;
+        }
+        String t = name.replaceAll("\\s+", " ").trim();
+        if (t.isEmpty()) {
+            return false;
+        }
+        int letters = latinLetters(t);
+        if (letters >= 10 && t.indexOf(' ') < 0) {
+            return true;
+        }
+        String[] parts = t.split(" ");
+        int longTok = 0;
+        for (int i = 0; i < parts.length; i++) {
+            if (latinLetters(parts[i]) >= 8) {
+                longTok++;
+            }
+        }
+        return longTok >= 2;
+    }
+
     static boolean sameNameToken(String a, String b) {
         if (a == null || b == null) {
             return false;

@@ -42,6 +42,12 @@ public class DeepSeekCellAdvisor {
                     + "Ink present but not a complete HH:MM → time \"\" and illegible true.\n"
                     + "Do not guess from shift, neighbor rows, or common work hours. Look only at this crop.";
 
+    public static final String NAME_PROMPT =
+            "This image is ONE printed name cell on an attendance timesheet.\n"
+                    + "Output JSON only: {\"name\":\"\"}\n"
+                    + "Read the printed Latin name as written. Keep spaces between words. One person only.\n"
+                    + "Do not guess missing letters. Do not copy neighbor rows.";
+
     private final RecognitionModelRuntime runtime;
     private final RecognitionProperties properties;
     private final OkHttpClient http = new OkHttpClient.Builder()
@@ -97,6 +103,53 @@ public class DeepSeekCellAdvisor {
         apply(evidence, raw);
     }
 
+    public String adviseName(BufferedImage crop, String apiKey) throws Exception {
+        if (crop == null) {
+            return "";
+        }
+        ByteArrayOutputStream buf = new ByteArrayOutputStream();
+        ImageIO.write(crop, "png", buf);
+        JSONArray content = new JSONArray();
+        JSONObject textPart = new JSONObject();
+        textPart.put("type", "text");
+        textPart.put("text", NAME_PROMPT);
+        content.add(textPart);
+        JSONObject imageUrl = new JSONObject();
+        imageUrl.put("url", "data:image/png;base64," + Base64.getEncoder().encodeToString(buf.toByteArray()));
+        imageUrl.put("detail", "high");
+        JSONObject imagePart = new JSONObject();
+        imagePart.put("type", "image_url");
+        imagePart.put("image_url", imageUrl);
+        content.add(imagePart);
+        JSONObject user = new JSONObject();
+        user.put("role", "user");
+        user.put("content", content);
+        JSONArray messages = new JSONArray();
+        messages.add(user);
+        JSONObject body = new JSONObject();
+        body.put("model", runtime.getModel());
+        body.put("messages", messages);
+        body.put("max_tokens", 128);
+        body.put("stream", Boolean.FALSE);
+        body.put("temperature", 0);
+        JSONObject thinking = new JSONObject();
+        thinking.put("type", "disabled");
+        body.put("thinking", thinking);
+        return applyName(post(body, apiKey));
+    }
+
+    public static String applyName(String raw) {
+        JSONObject obj = extract(raw);
+        if (obj == null) {
+            return "";
+        }
+        String name = obj.getString("name");
+        if (name == null) {
+            return "";
+        }
+        return name.trim().replaceAll("\\s+", " ");
+    }
+
     public static void apply(CellEvidence evidence, String raw) {
         JSONObject obj = extract(raw);
         if (obj == null) {
@@ -147,7 +200,8 @@ public class DeepSeekCellAdvisor {
         String text = raw.trim();
         try {
             JSONObject direct = JSON.parseObject(text);
-            if (direct != null && (direct.containsKey("time") || direct.containsKey("illegible"))) {
+            if (direct != null && (direct.containsKey("time") || direct.containsKey("illegible")
+                    || direct.containsKey("name"))) {
                 return direct;
             }
         } catch (Exception ignored) {

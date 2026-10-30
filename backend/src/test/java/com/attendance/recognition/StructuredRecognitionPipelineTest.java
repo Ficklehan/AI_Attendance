@@ -69,6 +69,8 @@ class StructuredRecognitionPipelineTest {
         garbage.hasInk = true;
         garbage.inkAfterLineRemoval = true;
         garbage.text = "";
+        garbage.source = "crop";
+        garbage.lowConfidence = true;
         assertEquals("need_no_legal", StructuredRecognitionPipeline.adviseDecision(garbage, 0.50d));
     }
 
