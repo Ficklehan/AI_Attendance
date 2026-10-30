@@ -110,8 +110,7 @@ public final class ClockCellInkDetector {
     }
 
     static void forceBlurReview(JSONObject record) {
-        record.put("ARRIVEE", "");
-        record.put("DEPAR", "");
+        // 只标模糊待复核，禁止清空模型返回的到离
         record.put("Mark", "模糊");
         record.put("SmartMark", "模糊");
         record.put("_reviewReason", "clock_ink");

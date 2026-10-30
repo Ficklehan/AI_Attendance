@@ -1615,7 +1615,16 @@ const onCopyPasteCellMouseDown = (record, field, event) => {
   if (event.button !== 0) return
   if (!isCellPasteTarget(record, field)) return
   const target = event.target
-  if (target && typeof target.closest === 'function' && target.closest('.cell-copy-paste')) return
+  if (target && typeof target.closest === 'function') {
+    // 复制/粘贴按钮自己处理
+    if (target.closest('.cell-copy-paste')) return
+    // 点在可编辑控件上：允许聚焦手改，不要强制粘贴（休息分钟曾因此只能粘贴）
+    if (target.closest(
+      'input, textarea, select, .ant-input, .ant-input-number, .ant-picker, .ant-select, .clock-time-field',
+    )) {
+      return
+    }
+  }
   event.preventDefault()
   event.stopPropagation()
   pasteCellValue(record, field)

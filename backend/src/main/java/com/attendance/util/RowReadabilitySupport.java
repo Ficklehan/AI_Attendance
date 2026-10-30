@@ -158,12 +158,12 @@ public final class RowReadabilitySupport {
     /**
      * 模型 JSON 落库前：备注含 ABSENT / 标记含未出勤时的收口。
      * <ul>
-     *   <li>本格备注 ABSENT 且签名格无笔迹（空，或仅「已签字/未签字」分类词）：视为未出勤；
-     *       到离即使被模型填了也清掉（邻行/班次抄来的时间）。</li>
+     *   <li>本格备注 ABSENT 且签名格无笔迹：标记未出勤，但<strong>不清空</strong>模型返回的到离/休息。</li>
      *   <li>本格已有合法到离且签名格有真实转写：视为出勤；漏进来的纯 ABSENT 备注清掉。</li>
      * </ul>
+     * 模型字段只允许页面人工修改；Java 禁止把 ARRIVEE/DEPAR/PAUSE 置空。
      *
-     * @return true 表示本行已按未出勤规范化
+     * @return true 表示本行已按未出勤规范化（仅标记，不清格子）
      */
     public static boolean applyAbsentObservationRule(JSONObject record) {
         if (record == null || isDeletedRow(record)) {
@@ -174,7 +174,7 @@ public final class RowReadabilitySupport {
         }
         boolean fromObservations = observationsIndicateAbsent(record);
         if (fromObservations && !hasPixelSignature(record) && !hasBlurMark(record)) {
-            clearCopiedClocks(record);
+            markAbsentKeepModelClocks(record);
             return true;
         }
         if (hasRecognizedPunchTime(record) || hasBlurMark(record)) {
@@ -189,56 +189,22 @@ public final class RowReadabilitySupport {
         if (!fromMark && !fromObservations) {
             return false;
         }
-        clearCopiedClocks(record);
+        markAbsentKeepModelClocks(record);
         return true;
     }
 
     /**
-     * 整页解析完成后：清掉抄自本行班次或邻行的到离。
-     * <p>
-     * 触发条件：到达/离开均已填，且等于本行 HORAIRES 起止，或等于同页邻行到离；
-     * 并且有独立缺勤证据——备注 ABSENT、签名格空白、标记未出勤，
-     * 或到离同时等于邻行且等于本行班次（双重抄袭指纹）。
-     * 手写时间与班次不同的真实出勤行不清理。模糊行不清理。
+     * 历史：曾清掉「疑似抄自班次/邻行」的到离。
+     * 现策略：Java <strong>不得</strong>清空模型返回的 ARRIVEE/DEPAR/PAUSE；
+     * 需要改数只走页面人工编辑。本方法保留调用点，恒返回 0。
      */
     public static int applyCopiedClockWipe(List<JSONObject> records) {
-        if (records == null || records.isEmpty()) {
-            return 0;
-        }
-        int wiped = 0;
-        for (int i = 0; i < records.size(); i++) {
-            JSONObject record = records.get(i);
-            JSONObject prev = neighborInSheet(records, i, -1);
-            JSONObject next = neighborInSheet(records, i, 1);
-            if (shouldWipeCopiedClocks(record, prev, next)) {
-                clearCopiedClocks(record);
-                wiped++;
-            }
-        }
-        return wiped;
+        return 0;
     }
 
+    /** @deprecated 禁止清空模型到离；保留供旧测试/诊断引用，恒为 false。 */
     static boolean shouldWipeCopiedClocks(JSONObject record, JSONObject prev, JSONObject next) {
-        if (record == null || isDeletedRow(record)) {
-            return false;
-        }
-        if (Boolean.TRUE.equals(record.getBoolean("_manuallyAdded"))) {
-            return false;
-        }
-        if (hasBlurMark(record) || !hasRecognizedPunchTime(record)) {
-            return false;
-        }
-        boolean matchShift = clocksMatchOwnShift(record);
-        boolean matchNeighbor = clocksMatch(record, prev) || clocksMatch(record, next);
-        if (!matchShift && !matchNeighbor) {
-            return false;
-        }
-        boolean independentAbsence = observationsIndicateAbsent(record)
-                || containsAnyToken(safe(record.getString("Mark")), ABSENT_MARK_TOKENS)
-                || containsAnyToken(safe(record.getString("SmartMark")), ABSENT_MARK_TOKENS)
-                || isBlankRawSignature(record)
-                || (matchShift && matchNeighbor);
-        return independentAbsence;
+        return false;
     }
 
     static boolean isBlankRawSignature(JSONObject record) {
@@ -259,24 +225,21 @@ public final class RowReadabilitySupport {
         return SignatureMarkResolver.hasPixelSignature(record.getString("SIGNATURE"));
     }
 
-    static void clearCopiedClocks(JSONObject record) {
+    /**
+     * 标记未出勤，但保留模型返回的 ARRIVEE/DEPAR/PAUSE（禁止 Java 清空模型 JSON）。
+     */
+    static void markAbsentKeepModelClocks(JSONObject record) {
         if (record == null) {
             return;
         }
-        record.put("ARRIVEE", "");
-        record.put("DEPAR", "");
-        record.put("PAUSE", "");
         record.put("Mark", "未出勤");
-        record.remove("ARRIVEE_DATE");
-        record.remove("DEPAR_DATE");
-        record.remove("ARRIVEE_DATETIME");
-        record.remove("DEPAR_DATETIME");
-        record.remove("WorkHours");
-        if (!SignatureMarkResolver.hasPixelSignature(record.getString("SIGNATURE"))
-                && !SignatureMarkResolver.hasPixelSignature(record.getString("SIGNATURE_RAW"))) {
-            record.put("SIGNATURE", "");
-            record.put("SIGNATURE_RAW", "");
-        }
+    }
+
+    /**
+     * @deprecated 禁止清空模型到离/休息。请用 {@link #markAbsentKeepModelClocks(JSONObject)}。
+     */
+    static void clearCopiedClocks(JSONObject record) {
+        markAbsentKeepModelClocks(record);
     }
 
     static boolean clocksMatchOwnShift(JSONObject record) {

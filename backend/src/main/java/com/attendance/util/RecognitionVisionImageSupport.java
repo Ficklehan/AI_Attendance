@@ -84,10 +84,15 @@ public final class RecognitionVisionImageSupport {
     }
 
     public static List<VisionImagePart> buildParts(byte[] imageBytes, String mimeType, boolean tile) {
-        VisionImagePart overview = overviewPart(imageBytes, mimeType);
-        if (!tile || overview == null) {
+        if (!tile) {
+            VisionImagePart overview = overviewPart(imageBytes, mimeType);
             return overview == null ? Collections.<VisionImagePart>emptyList()
                     : Collections.singletonList(overview);
+        }
+        // 分条：概览压到模型预算，条带从高清原图裁，避免整页先缩再切导致细字糊掉
+        VisionImagePart overview = overviewPartWithinBudget(imageBytes, mimeType);
+        if (overview == null) {
+            return Collections.emptyList();
         }
         List<VisionImagePart> strips = buildStrips(imageBytes, overview);
         if (strips.isEmpty()) {
@@ -97,6 +102,45 @@ public final class RecognitionVisionImageSupport {
         parts.add(overview);
         parts.addAll(strips);
         return parts;
+    }
+
+    /** 整页概览：总像素贴近 Flash 预算，供模型建立全局表结构。 */
+    private static VisionImagePart overviewPartWithinBudget(byte[] imageBytes, String mimeType) {
+        BufferedImage src = readImage(imageBytes);
+        if (src == null) {
+            return overviewPart(imageBytes, mimeType);
+        }
+        long pixels = (long) src.getWidth() * (long) src.getHeight();
+        if (pixels <= 0) {
+            return overviewPart(imageBytes, mimeType);
+        }
+        double scale = Math.sqrt(MODEL_PIXEL_BUDGET / (double) pixels);
+        if (Math.abs(scale - 1.0d) < 0.02d) {
+            return overviewPart(imageBytes, mimeType);
+        }
+        int w = Math.max(1, (int) Math.round(src.getWidth() * scale));
+        int h = Math.max(1, (int) Math.round(src.getHeight() * scale));
+        BufferedImage scaled = new BufferedImage(w, h, BufferedImage.TYPE_INT_RGB);
+        Graphics2D g = scaled.createGraphics();
+        try {
+            g.setRenderingHint(RenderingHints.KEY_INTERPOLATION, RenderingHints.VALUE_INTERPOLATION_BICUBIC);
+            g.setColor(Color.WHITE);
+            g.fillRect(0, 0, w, h);
+            g.drawImage(src, 0, 0, w, h, null);
+        } finally {
+            g.dispose();
+        }
+        byte[] jpeg = encodeJpeg(scaled);
+        if (jpeg == null || jpeg.length == 0) {
+            return overviewPart(imageBytes, mimeType);
+        }
+        return new VisionImagePart(
+                "image/jpeg",
+                Base64.getEncoder().encodeToString(jpeg),
+                "overview",
+                w,
+                h,
+                jpeg.length);
     }
 
     public static String withMultiImageGuide(String aiPrompt, int imageCount) {

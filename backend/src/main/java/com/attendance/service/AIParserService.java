@@ -347,21 +347,40 @@ public class AIParserService {
         return parts;
     }
 
-    /** 整页增强后只送一张完整表，不再按列/行裁切。 */
+    /**
+     * 整页增强（保留高分辨率）后送「预算内概览 + 重叠高清分条」，
+     * 避免只压到 1300² 导致 Arrivée/Départ/Pause 手写糊掉。
+     */
     private List<RecognitionVisionImageSupport.VisionImagePart> prepareEnhancedFullPageParts(
             byte[] imageBytes, String mimeType) {
         RecognitionImageEnhanceSupport.Result enhanced =
-                RecognitionImageEnhanceSupport.enhance(imageBytes, mimeType);
+                RecognitionImageEnhanceSupport.enhance(imageBytes, mimeType, false);
         byte[] bytes = enhanced.getBytes() != null ? enhanced.getBytes() : imageBytes;
         String mime = enhanced.getMimeType() != null ? enhanced.getMimeType() : mimeType;
-        log.info("整页增强: changed={}, deskew={}°, {} -> {} bytes, mime={}",
+        log.info("整页增强: changed={}, deskew={}°, fitBudget=false, {} -> {} bytes, mime={}",
                 enhanced.isChanged(), enhanced.getDeskewDegrees(),
                 imageBytes == null ? 0 : imageBytes.length,
                 bytes == null ? 0 : bytes.length, mime);
         List<RecognitionVisionImageSupport.VisionImagePart> parts =
-                RecognitionVisionImageSupport.buildParts(bytes, mime, false);
+                RecognitionVisionImageSupport.buildParts(bytes, mime, true);
+        if (parts == null || parts.isEmpty()) {
+            RecognitionImageEnhanceSupport.Result fitted =
+                    RecognitionImageEnhanceSupport.enhance(imageBytes, mimeType, true);
+            byte[] fittedBytes = fitted.getBytes() != null ? fitted.getBytes() : imageBytes;
+            String fittedMime = fitted.getMimeType() != null ? fitted.getMimeType() : mimeType;
+            parts = RecognitionVisionImageSupport.buildParts(fittedBytes, fittedMime, false);
+        }
         if (parts == null || parts.isEmpty()) {
             parts = RecognitionVisionImageSupport.buildParts(imageBytes, mimeType, false);
+        } else {
+            StringBuilder kinds = new StringBuilder();
+            for (int i = 0; i < parts.size(); i++) {
+                if (i > 0) {
+                    kinds.append(',');
+                }
+                kinds.append(parts.get(i).getKind());
+            }
+            log.info("识图分条: partCount={}, kinds={}", parts.size(), kinds);
         }
         return parts;
     }
@@ -554,14 +573,8 @@ public class AIParserService {
                 trace.step("model_response", resp);
             }
 
-            int copiedClockWiped = RowReadabilitySupport.applyCopiedClockWipe(extractedRecords);
-            if (copiedClockWiped > 0) {
-                log.info("已清除抄自班次/邻行的到离: count={}", copiedClockWiped);
-                for (JSONObject rec : extractedRecords) {
-                    applyAttendanceMarks(rec);
-                    RecognizedFieldSanitizer.annotateAndSanitizeRecord(rec);
-                }
-            }
+            // 禁止 Java 清空模型返回的 ARRIVEE/DEPAR/PAUSE；改数只走页面人工编辑
+            RowReadabilitySupport.applyCopiedClockWipe(extractedRecords);
 
             if (recognitionQualityGuard.looksFabricated(extractedRecords)) {
                 log.warn("拒绝照抄提示词示例的识别结果");
@@ -1233,7 +1246,7 @@ public class AIParserService {
         normalized.put("anomalies", anomalies.getJSONArray("anomalies"));
 
         salvageMisplacedMarkColumn(normalized);
-        // 备注 ABSENT / 标记未出勤：清空到离休息，标记统一为未出勤（再生成 SmartMark）
+        // 备注 ABSENT / 标记未出勤：只改标记，不清空模型返回的到离/休息
         RowReadabilitySupport.applyAbsentObservationRule(normalized);
         applyAttendanceMarks(normalized);
 
@@ -1242,8 +1255,9 @@ public class AIParserService {
     }
 
     /**
-     * 到离被 ABSENT / 抄袭时间规则清空后，按当前格子重算标记、签字与工时。
+     * 按当前格子重算标记、签字与工时。
      * 签字只看签名格（或模型对该格的转写），不用到达/离开推断已签字。
+     * 不清空模型返回的 ARRIVEE/DEPAR/PAUSE。
      */
     private void applyAttendanceMarks(JSONObject normalized) {
         if (normalized == null) {

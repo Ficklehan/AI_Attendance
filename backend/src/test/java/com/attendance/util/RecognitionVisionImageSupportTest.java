@@ -33,9 +33,10 @@ class RecognitionVisionImageSupportTest {
                 RecognitionVisionImageSupport.buildParts(png, "image/png", true);
         assertTrue(parts.size() >= 3, "expected overview + at least 2 strips, got " + parts.size());
         assertEquals("overview", parts.get(0).getKind());
-        assertEquals("image/png", parts.get(0).getMimeType());
-        assertEquals(800, parts.get(0).getWidth());
-        assertEquals(2400, parts.get(0).getHeight());
+        assertEquals("image/jpeg", parts.get(0).getMimeType());
+        long overviewPixels = (long) parts.get(0).getWidth() * (long) parts.get(0).getHeight();
+        double ratio = overviewPixels / (double) RecognitionVisionImageSupport.MODEL_PIXEL_BUDGET;
+        assertTrue(ratio > 0.9d && ratio < 1.1d, "overview should fit Flash budget, ratio=" + ratio);
         for (int i = 1; i < parts.size(); i++) {
             assertEquals("strip", parts.get(i).getKind());
             assertEquals("image/jpeg", parts.get(i).getMimeType());

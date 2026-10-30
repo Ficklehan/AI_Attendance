@@ -96,7 +96,39 @@ class RecognitionImageEnhanceSupportTest {
         BufferedImage sheet = ruledSheet(400, 500);
         BufferedImage tilted = RecognitionImageEnhanceSupport.rotate(sheet, 2.0d);
         double estimated = RecognitionImageEnhanceSupport.estimateDeskewDegrees(tilted);
-        assertTrue(Math.abs(estimated - 2.0d) <= 1.0d, "deskew=" + estimated);
+        assertTrue(Math.abs(estimated - 2.0d) <= 0.6d, "deskew=" + estimated);
+    }
+
+    @Test
+    void whitenPaperLiftsNearWhiteWithoutCrushingInk() {
+        BufferedImage image = whiteImage(40, 40);
+        Graphics2D g = image.createGraphics();
+        g.setColor(new Color(236, 236, 236));
+        g.fillRect(0, 0, 40, 40);
+        g.setColor(new Color(70, 70, 70));
+        g.fillRect(10, 10, 8, 8);
+        g.dispose();
+        int inkBefore = luminanceAt(image, 12, 12);
+        RecognitionImageEnhanceSupport.whitenPaper(image);
+        assertTrue(luminanceAt(image, 2, 2) > 245);
+        assertTrue(Math.abs(luminanceAt(image, 12, 12) - inkBefore) <= 2);
+    }
+
+    @Test
+    void boostInkDarkensMidtones() {
+        BufferedImage image = whiteImage(20, 20);
+        Graphics2D g = image.createGraphics();
+        g.setColor(new Color(140, 140, 140));
+        g.fillRect(0, 0, 20, 20);
+        g.dispose();
+        int before = luminanceAt(image, 5, 5);
+        RecognitionImageEnhanceSupport.boostInk(image);
+        assertTrue(luminanceAt(image, 5, 5) < before);
+    }
+
+    private static int luminanceAt(BufferedImage image, int x, int y) {
+        int rgb = image.getRGB(x, y);
+        return (((rgb >> 16) & 0xff) * 299 + ((rgb >> 8) & 0xff) * 587 + (rgb & 0xff) * 114) / 1000;
     }
 
     private static BufferedImage whiteImage(int width, int height) {

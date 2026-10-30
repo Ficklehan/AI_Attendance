@@ -18,19 +18,29 @@ import java.util.Iterator;
 
 /**
  * 识图前整页增强：不裁列、不裁行。去纸面白边后按 DeepSeek Flash 约 1300×1300
- * 像素预算缩放，再摆正、拉开对比、轻度锐化，让表格内容吃满单图视觉 token。
+ * 像素预算缩放；加强纠偏、对比、纸白净化与锐化，让表格细字吃满单图视觉 token。
  */
 public final class RecognitionImageEnhanceSupport {
 
     /** DeepSeek Flash 单图约 1300×1300 总像素预算。 */
     static final int MODEL_PIXEL_BUDGET = 1300 * 1300;
     static final int MAX_LONG_EDGE = 4096;
-    static final float JPEG_QUALITY = 0.92f;
-    static final float SHARPEN_AMOUNT = 0.35f;
-    static final double MIN_DESKEW_DEGREES = 0.4d;
-    static final double MAX_DESKEW_DEGREES = 5.0d;
+    static final float JPEG_QUALITY = 0.95f;
+    /** 缩放后再锐化，抵消下采样发糊。 */
+    static final float SHARPEN_AMOUNT = 0.58f;
+    static final double MIN_DESKEW_DEGREES = 0.25d;
+    static final double MAX_DESKEW_DEGREES = 6.0d;
+    static final double DESKEW_COARSE_STEP = 0.5d;
+    static final double DESKEW_FINE_STEP = 0.2d;
     /** 相对预算偏差小于此比例则不再缩放。 */
     static final double BUDGET_SCALE_EPS = 0.02d;
+    /** 亮度高于此视为纸白候选，裁边更敢切。 */
+    static final int MARGIN_PAPER_LUM = 248;
+    /** 裁后仍占原图此比例以上则视为几乎无白边，跳过。 */
+    static final double MARGIN_SKIP_KEEP_RATIO = 0.96d;
+    static final double CONTRAST_TRIM_PCT = 0.01d;
+    static final int CONTRAST_TARGET_LOW = 6;
+    static final int CONTRAST_TARGET_SPAN = 248;
 
     private RecognitionImageEnhanceSupport() {
     }
@@ -66,6 +76,13 @@ public final class RecognitionImageEnhanceSupport {
     }
 
     public static Result enhance(byte[] imageBytes, String mimeType) {
+        return enhance(imageBytes, mimeType, true);
+    }
+
+    /**
+     * @param fitBudget true=压到 Flash ~1300²；false=保留高分辨率（供分条高清裁切）
+     */
+    public static Result enhance(byte[] imageBytes, String mimeType, boolean fitBudget) {
         if (imageBytes == null || imageBytes.length == 0) {
             return new Result(imageBytes, mimeType, false, 0);
         }
@@ -87,8 +104,13 @@ public final class RecognitionImageEnhanceSupport {
                 deskew = 0;
             }
             rgb = cropPaperMargin(rgb);
-            rgb = fitToModelPixelBudget(rgb);
+            // 先在较高分辨率拉对比/净化纸白；单图模式再压预算，分条模式保留高分辨率
             stretchContrast(rgb);
+            whitenPaper(rgb);
+            boostInk(rgb);
+            if (fitBudget) {
+                rgb = fitToModelPixelBudget(rgb);
+            }
             rgb = sharpen(rgb);
             byte[] jpeg = encodeJpeg(rgb);
             if (jpeg == null || jpeg.length == 0) {
@@ -132,10 +154,10 @@ public final class RecognitionImageEnhanceSupport {
         int minY = height;
         int maxX = -1;
         int maxY = -1;
-        int step = Math.max(1, Math.max(width, height) / 1200);
+        int step = Math.max(1, Math.max(width, height) / 1600);
         for (int y = 0; y < height; y += step) {
             for (int x = 0; x < width; x += step) {
-                if (luminance(src.getRGB(x, y)) < 242) {
+                if (luminance(src.getRGB(x, y)) < MARGIN_PAPER_LUM) {
                     if (x < minX) {
                         minX = x;
                     }
@@ -154,17 +176,18 @@ public final class RecognitionImageEnhanceSupport {
         if (maxX < minX || maxY < minY) {
             return src;
         }
-        int pad = Math.max(16, Math.min(width, height) / 40);
+        // 少留白边，把像素预算留给表格本体
+        int pad = Math.max(8, Math.min(width, height) / 64);
         minX = Math.max(0, minX - pad);
         minY = Math.max(0, minY - pad);
         maxX = Math.min(width - 1, maxX + pad);
         maxY = Math.min(height - 1, maxY + pad);
         int cropW = maxX - minX + 1;
         int cropH = maxY - minY + 1;
-        if (cropW >= width * 0.92d && cropH >= height * 0.92d) {
+        if (cropW >= width * MARGIN_SKIP_KEEP_RATIO && cropH >= height * MARGIN_SKIP_KEEP_RATIO) {
             return src;
         }
-        if (cropW < width * 0.45d || cropH < height * 0.45d) {
+        if (cropW < width * 0.40d || cropH < height * 0.40d) {
             return src;
         }
         BufferedImage dst = new BufferedImage(cropW, cropH, BufferedImage.TYPE_INT_RGB);
@@ -229,7 +252,7 @@ public final class RecognitionImageEnhanceSupport {
     }
 
     static double estimateDeskewDegrees(BufferedImage src) {
-        int probeW = Math.min(640, src.getWidth());
+        int probeW = Math.min(720, src.getWidth());
         int probeH = Math.max(1, (int) Math.round(src.getHeight() * (probeW / (double) src.getWidth())));
         BufferedImage probe = new BufferedImage(probeW, probeH, BufferedImage.TYPE_INT_RGB);
         Graphics2D g = probe.createGraphics();
@@ -239,18 +262,27 @@ public final class RecognitionImageEnhanceSupport {
         } finally {
             g.dispose();
         }
+        double bestAngle = bestDeskewAngle(probe, -MAX_DESKEW_DEGREES, MAX_DESKEW_DEGREES, DESKEW_COARSE_STEP);
+        // 粗搜后再细搜，减少半度台阶带来的残余倾斜
+        double fineLo = Math.max(-MAX_DESKEW_DEGREES, bestAngle - DESKEW_COARSE_STEP);
+        double fineHi = Math.min(MAX_DESKEW_DEGREES, bestAngle + DESKEW_COARSE_STEP);
+        bestAngle = bestDeskewAngle(probe, fineLo, fineHi, DESKEW_FINE_STEP);
+        if (Math.abs(bestAngle) >= MAX_DESKEW_DEGREES - 1e-6) {
+            return 0;
+        }
+        return bestAngle;
+    }
+
+    private static double bestDeskewAngle(BufferedImage probe, double from, double to, double step) {
         double bestAngle = 0;
         double bestScore = Double.NEGATIVE_INFINITY;
-        for (double angle = -MAX_DESKEW_DEGREES; angle <= MAX_DESKEW_DEGREES + 1e-6; angle += 0.5d) {
-            BufferedImage rotated = Math.abs(angle) < 1e-6 ? probe : rotate(probe, -angle);
+        for (double angle = from; angle <= to + 1e-9; angle += step) {
+            BufferedImage rotated = Math.abs(angle) < 1e-9 ? probe : rotate(probe, -angle);
             double score = horizontalInkVariance(rotated);
             if (score > bestScore) {
                 bestScore = score;
                 bestAngle = angle;
             }
-        }
-        if (Math.abs(bestAngle) >= MAX_DESKEW_DEGREES - 1e-6) {
-            return 0;
         }
         return bestAngle;
     }
@@ -309,7 +341,7 @@ public final class RecognitionImageEnhanceSupport {
     static void stretchContrast(BufferedImage image) {
         int w = image.getWidth();
         int h = image.getHeight();
-        int step = Math.max(1, Math.max(w, h) / 800);
+        int step = Math.max(1, Math.max(w, h) / 1000);
         int[] hist = new int[256];
         int samples = 0;
         for (int y = 0; y < h; y += step) {
@@ -321,8 +353,8 @@ public final class RecognitionImageEnhanceSupport {
         if (samples < 16) {
             return;
         }
-        int lowCount = Math.max(1, (int) Math.round(samples * 0.02d));
-        int highCount = Math.max(1, (int) Math.round(samples * 0.02d));
+        int lowCount = Math.max(1, (int) Math.round(samples * CONTRAST_TRIM_PCT));
+        int highCount = Math.max(1, (int) Math.round(samples * CONTRAST_TRIM_PCT));
         int low = 0;
         int seen = 0;
         for (int i = 0; i < 256; i++) {
@@ -341,16 +373,65 @@ public final class RecognitionImageEnhanceSupport {
                 break;
             }
         }
-        if (high - low < 48) {
+        if (high - low < 40) {
             return;
         }
-        double scale = 230.0d / (high - low);
+        double scale = CONTRAST_TARGET_SPAN / (double) (high - low);
         for (int y = 0; y < h; y++) {
             for (int x = 0; x < w; x++) {
                 int rgb = image.getRGB(x, y);
-                int r = clamp((int) Math.round((((rgb >> 16) & 0xff) - low) * scale + 12));
-                int gch = clamp((int) Math.round((((rgb >> 8) & 0xff) - low) * scale + 12));
-                int b = clamp((int) Math.round(((rgb & 0xff) - low) * scale + 12));
+                int r = clamp((int) Math.round((((rgb >> 16) & 0xff) - low) * scale + CONTRAST_TARGET_LOW));
+                int gch = clamp((int) Math.round((((rgb >> 8) & 0xff) - low) * scale + CONTRAST_TARGET_LOW));
+                int b = clamp((int) Math.round(((rgb & 0xff) - low) * scale + CONTRAST_TARGET_LOW));
+                image.setRGB(x, y, (r << 16) | (gch << 8) | b);
+            }
+        }
+    }
+
+    /** 近白像素拉向纯白，减少灰底抢对比、也让格线/字迹相对更干净。 */
+    static void whitenPaper(BufferedImage image) {
+        int w = image.getWidth();
+        int h = image.getHeight();
+        for (int y = 0; y < h; y++) {
+            for (int x = 0; x < w; x++) {
+                int rgb = image.getRGB(x, y);
+                int lum = luminance(rgb);
+                if (lum < 228) {
+                    continue;
+                }
+                // 228→保持，255→纯白，中间平滑抬升
+                double t = (lum - 228) / 27.0d;
+                if (t > 1.0d) {
+                    t = 1.0d;
+                }
+                double lift = 0.55d + 0.45d * t;
+                int r = clamp((int) Math.round(((rgb >> 16) & 0xff) * (1.0d - lift) + 255 * lift));
+                int gch = clamp((int) Math.round(((rgb >> 8) & 0xff) * (1.0d - lift) + 255 * lift));
+                int b = clamp((int) Math.round((rgb & 0xff) * (1.0d - lift) + 255 * lift));
+                image.setRGB(x, y, (r << 16) | (gch << 8) | b);
+            }
+        }
+    }
+
+    /** 压暗中灰墨迹，手写/打印细字更清晰，不伤近白纸面。 */
+    static void boostInk(BufferedImage image) {
+        int w = image.getWidth();
+        int h = image.getHeight();
+        for (int y = 0; y < h; y++) {
+            for (int x = 0; x < w; x++) {
+                int rgb = image.getRGB(x, y);
+                int lum = luminance(rgb);
+                if (lum <= 28 || lum >= 210) {
+                    continue;
+                }
+                // 中间调略压暗：越接近字迹区压得越多
+                double strength = lum < 120
+                        ? 0.18d
+                        : 0.18d * ((210 - lum) / 90.0d);
+                double factor = 1.0d - strength;
+                int r = clamp((int) Math.round(((rgb >> 16) & 0xff) * factor));
+                int gch = clamp((int) Math.round(((rgb >> 8) & 0xff) * factor));
+                int b = clamp((int) Math.round((rgb & 0xff) * factor));
                 image.setRGB(x, y, (r << 16) | (gch << 8) | b);
             }
         }

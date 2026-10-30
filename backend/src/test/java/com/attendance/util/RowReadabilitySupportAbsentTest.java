@@ -34,7 +34,7 @@ class RowReadabilitySupportAbsentTest {
     }
 
     @Test
-    void clearsCopiedTimesWhenAbsentAndTokenSigned() {
+    void marksAbsentButKeepsModelClocksWhenAbsentAndTokenSigned() {
         JSONObject record = new JSONObject();
         record.put("NOM_PRENOM", "JOSEPH Lucien (artiste) (18/09/1988)");
         record.put("HORAIRES_DU_TRAVAIL", "08:00-14:00");
@@ -47,13 +47,15 @@ class RowReadabilitySupportAbsentTest {
         record.put("PAUSE", "0");
 
         assertTrue(RowReadabilitySupport.applyAbsentObservationRule(record));
-        assertEquals("", record.getString("ARRIVEE"));
-        assertEquals("", record.getString("DEPAR"));
-        assertEquals("", record.getString("PAUSE"));
+        // Java 不得清空模型到离/休息；只改标记
+        assertEquals("09:00", record.getString("ARRIVEE"));
+        assertEquals("14:00", record.getString("DEPAR"));
+        assertEquals("0", record.getString("PAUSE"));
         assertEquals("未出勤", record.getString("Mark"));
         assertEquals("ABSENT", record.getString("Observations"));
-        assertEquals("", record.getString("SIGNATURE"));
-        assertTrue(RowReadabilitySupport.isAbsentRow(record));
+        assertEquals("已签字", record.getString("SIGNATURE"));
+        // 到离仍在时不算「未出勤行」（有可用到离），避免误把出勤清成空
+        assertFalse(RowReadabilitySupport.isAbsentRow(record));
     }
 
     @Test
@@ -73,7 +75,7 @@ class RowReadabilitySupportAbsentTest {
     }
 
     @Test
-    void clearsCopiedTimesWhenAbsentAndUnsigned() {
+    void marksAbsentButKeepsModelClocksWhenAbsentAndUnsigned() {
         JSONObject record = new JSONObject();
         record.put("NOM_PRENOM", "JOSEPH Lucien");
         record.put("Observations", "ABSENT");
@@ -84,12 +86,12 @@ class RowReadabilitySupportAbsentTest {
         record.put("PAUSE", "0");
 
         assertTrue(RowReadabilitySupport.applyAbsentObservationRule(record));
-        assertEquals("", record.getString("ARRIVEE"));
-        assertEquals("", record.getString("DEPAR"));
-        assertEquals("", record.getString("PAUSE"));
+        assertEquals("09:00", record.getString("ARRIVEE"));
+        assertEquals("14:00", record.getString("DEPAR"));
+        assertEquals("0", record.getString("PAUSE"));
         assertEquals("未出勤", record.getString("Mark"));
         assertEquals("ABSENT", record.getString("Observations"));
-        assertTrue(RowReadabilitySupport.isAbsentRow(record));
+        assertFalse(RowReadabilitySupport.isAbsentRow(record));
     }
 
     @Test
@@ -105,7 +107,7 @@ class RowReadabilitySupportAbsentTest {
         assertTrue(RowReadabilitySupport.applyAbsentObservationRule(record));
         assertEquals("", record.getString("ARRIVEE"));
         assertEquals("", record.getString("DEPAR"));
-        assertEquals("", record.getString("PAUSE"));
+        assertEquals("00", record.getString("PAUSE"));
         assertEquals("未出勤", record.getString("Mark"));
         assertTrue(RowReadabilitySupport.isAbsentRow(record));
     }
@@ -246,7 +248,7 @@ class RowReadabilitySupportAbsentTest {
     }
 
     @Test
-    void wipesShiftCopyWhenUnsigned() {
+    void neverWipesModelClocksEvenWhenUnsignedShiftMatch() {
         JSONObject record = new JSONObject();
         record.put("NOM_PRENOM", "JOSEPH Lucien");
         record.put("HORAIRES_DU_TRAVAIL", "08:00-14:00");
@@ -258,14 +260,15 @@ class RowReadabilitySupportAbsentTest {
         record.put("Mark", "正常");
 
         List<JSONObject> rows = Collections.singletonList(record);
-        assertEquals(1, RowReadabilitySupport.applyCopiedClockWipe(rows));
-        assertEquals("", record.getString("ARRIVEE"));
-        assertEquals("", record.getString("DEPAR"));
-        assertEquals("未出勤", record.getString("Mark"));
+        assertEquals(0, RowReadabilitySupport.applyCopiedClockWipe(rows));
+        assertEquals("08:00", record.getString("ARRIVEE"));
+        assertEquals("14:00", record.getString("DEPAR"));
+        assertEquals("0", record.getString("PAUSE"));
+        assertEquals("正常", record.getString("Mark"));
     }
 
     @Test
-    void wipesNeighborIdenticalClocksWhenAbsent() {
+    void absentMarkKeepsModelClocksAndNeighborsUntouched() {
         JSONObject row1 = frenchRow("JOSEPH Lucien", "09:00", "14:00", "已签字", "ABSENT");
         JSONObject row2 = frenchRow("THIAM BASSIROU", "09:00", "14:00", "Thiam", "");
         JSONObject row3 = frenchRow("NSUMBU MAYALA MARIE PAUL", "09:00", "14:00", "Nsumbu", "");
@@ -273,8 +276,8 @@ class RowReadabilitySupportAbsentTest {
 
         assertTrue(RowReadabilitySupport.applyAbsentObservationRule(row1));
         assertEquals(0, RowReadabilitySupport.applyCopiedClockWipe(rows));
-        assertEquals("", row1.getString("ARRIVEE"));
-        assertEquals("", row1.getString("DEPAR"));
+        assertEquals("09:00", row1.getString("ARRIVEE"));
+        assertEquals("14:00", row1.getString("DEPAR"));
         assertEquals("未出勤", row1.getString("Mark"));
         assertEquals("09:00", row2.getString("ARRIVEE"));
         assertEquals("14:00", row2.getString("DEPAR"));
@@ -283,15 +286,15 @@ class RowReadabilitySupportAbsentTest {
     }
 
     @Test
-    void wipesNeighborCopyWhenSignatureEmpty() {
+    void neverWipesNeighborCopyEvenWhenSignatureEmpty() {
         JSONObject emptySig = frenchRow("JOSEPH Lucien", "09:00", "14:00", "", "");
         JSONObject present = frenchRow("THIAM BASSIROU", "09:00", "14:00", "Thiam", "");
         List<JSONObject> rows = Arrays.asList(emptySig, present);
 
-        assertEquals(1, RowReadabilitySupport.applyCopiedClockWipe(rows));
-        assertEquals("", emptySig.getString("ARRIVEE"));
-        assertEquals("", emptySig.getString("DEPAR"));
-        assertEquals("未出勤", emptySig.getString("Mark"));
+        assertEquals(0, RowReadabilitySupport.applyCopiedClockWipe(rows));
+        assertEquals("09:00", emptySig.getString("ARRIVEE"));
+        assertEquals("14:00", emptySig.getString("DEPAR"));
+        assertEquals("正常", emptySig.getString("Mark"));
         assertEquals("09:00", present.getString("ARRIVEE"));
         assertEquals("14:00", present.getString("DEPAR"));
     }
@@ -319,6 +322,29 @@ class RowReadabilitySupportAbsentTest {
         assertEquals("09:00", row2.getString("ARRIVEE"));
         assertEquals("09:00", row3.getString("ARRIVEE"));
         assertEquals("正常", row2.getString("Mark"));
+    }
+
+    @Test
+    void keepsSignedRowsEvenWhenClocksMatchShiftAndNeighbors() {
+        // 同班次多人到手写与印刷班次相同是常态，不能当抄袭清空
+        JSONObject row1 = frenchRow("GONZALEZ", "10:00", "19:00", "已签字", "");
+        row1.put("HORAIRES_DU_TRAVAIL", "10:00-19:00");
+        row1.put("PAUSE", "60");
+        JSONObject row2 = frenchRow("SISSOKO", "10:00", "19:00", "已签字", "");
+        row2.put("HORAIRES_DU_TRAVAIL", "10:00-19:00");
+        row2.put("PAUSE", "60");
+        JSONObject row3 = frenchRow("NAYEM", "10:00", "19:00", "已签字", "");
+        row3.put("HORAIRES_DU_TRAVAIL", "10:00-19:00");
+        row3.put("PAUSE", "60");
+        List<JSONObject> rows = Arrays.asList(row1, row2, row3);
+
+        assertEquals(0, RowReadabilitySupport.applyCopiedClockWipe(rows));
+        assertEquals("10:00", row1.getString("ARRIVEE"));
+        assertEquals("19:00", row1.getString("DEPAR"));
+        assertEquals("60", row1.getString("PAUSE"));
+        assertEquals("10:00", row2.getString("ARRIVEE"));
+        assertEquals("60", row3.getString("PAUSE"));
+        assertEquals("正常", row1.getString("Mark"));
     }
 
     private static JSONObject frenchRow(String name, String arrive, String depart,
