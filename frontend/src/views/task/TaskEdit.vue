@@ -1923,13 +1923,12 @@ const EXCEPTION_TYPE_UNLOCKED_FIELDS = new Set([
   'AGENCE_INTERIMAIRE',
 ])
 
-/** 无框且不可改：序号、仓库、班次、休息、备注、页码 */
+/** 无框且不可改：序号、仓库、班次、备注、页码（休息分钟可改，识别错时可校正） */
 const UNBOXED_LOCKED_FIELDS = new Set([
   'PAGE_NUM',
   'NO',
   'Entrepot',
   'HORAIRES_DU_TRAVAIL',
-  'PAUSE',
   'Observations',
 ])
 
