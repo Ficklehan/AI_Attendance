@@ -39,6 +39,10 @@ function stripSignatureMarksFromSmartMark(mark) {
   return parts.length ? parts.join(';') : ''
 }
 
+function stripAbsentMarkParts(mark) {
+  return splitSmartMarkParts(mark).filter((part) => !markContains(part, 'absent'))
+}
+
 function parseClockToMinutes(timeStr) {
   if (timeStr == null) return -1
   const str = String(timeStr).trim()
@@ -79,6 +83,26 @@ function hasUsableArriveAndDepart(arrive, depart) {
   return parseClockToMinutes(arrive) >= 0 && parseClockToMinutes(depart) >= 0
 }
 
+function recordHasUsablePunchTimes(record) {
+  if (!record) return false
+  const arrive = record.ARRIVEE ?? record.arrival ?? ''
+  const depart = record.DEPAR ?? record.departure ?? ''
+  return hasUsableArriveAndDepart(arrive, depart)
+}
+
+/**
+ * 模型「未出勤」只是初判。当前行已有有效到离（人工更正后的事实）时去掉未出勤。
+ */
+function reconcileAbsentMarkWithClocks(mark, record) {
+  const source = mark == null || mark === '' ? (record?.SmartMark || record?.Mark || '') : mark
+  if (!recordHasUsablePunchTimes(record)) {
+    return source == null ? '' : String(source)
+  }
+  let parts = stripAbsentMarkParts(source)
+  if (!parts.length) parts = ['正常']
+  return [...new Set(parts)].join(';')
+}
+
 function shouldMarkNightShiftByRecord(record) {
   if (!record || record.isDeleted) return false
   const arrive = record.ARRIVEE ?? record.arrival ?? ''
@@ -95,13 +119,15 @@ function refreshNightShiftInSmartMark(mark, record) {
   if (!record || record.isDeleted) {
     return stripNightShiftMarkParts(mark || '').join(';')
   }
-  const markSources = [mark, record.SmartMark, record.Mark, record.mark, record.smartMark]
-    .filter(Boolean)
-    .join(';')
-  if (markContains(markSources, 'absent') || markContains(markSources, 'deleted')) {
-    return stripNightShiftMarkParts(mark || record.SmartMark || '').join(';')
+  const reconciled = reconcileAbsentMarkWithClocks(mark || record.SmartMark || '', record)
+  if (markContains(reconciled, 'deleted')) {
+    return stripNightShiftMarkParts(reconciled).join(';')
   }
-  let parts = stripNightShiftMarkParts(mark || record.SmartMark || record.Mark || '')
+  // 仍带未出勤 = 到离未齐，保持未出勤，不推夜班
+  if (markContains(reconciled, 'absent')) {
+    return stripNightShiftMarkParts(reconciled).join(';')
+  }
+  let parts = stripNightShiftMarkParts(reconciled)
   if (!parts.length) parts = ['正常']
   if (shouldMarkNightShiftByRecord(record)) {
     parts = [...parts, '夜班']
@@ -114,7 +140,8 @@ function withInferredNightShiftMark(mark, record) {
 }
 
 /**
- * 未出勤只看第13位标记。含「模糊」一律不是未出勤；不得用到离皆空覆盖模型标记。
+ * 未出勤以模型第13位为初判；含「模糊」不是未出勤。
+ * 当前行已有有效到离时，视为已更正出勤，不再只凭模型标记判未出勤。
  */
 function isAbsentByMark(record) {
   if (!record || record._restored || record.isDeleted || record.deleted || record._manuallyAdded) {
@@ -124,7 +151,9 @@ function isAbsentByMark(record) {
     record.SmartMark || record.smartMark || record.Mark || record.mark || '',
   ).trim())
   if (markHasKind(mark, 'blurred')) return false
-  return markHasKind(mark, 'absent')
+  if (!markHasKind(mark, 'absent')) return false
+  if (recordHasUsablePunchTimes(record)) return false
+  return true
 }
 
 module.exports = {
@@ -135,6 +164,9 @@ module.exports = {
   markContains,
   markHasKind,
   stripSignatureMarksFromSmartMark,
+  stripAbsentMarkParts,
+  reconcileAbsentMarkWithClocks,
+  recordHasUsablePunchTimes,
   withInferredNightShiftMark,
   refreshNightShiftInSmartMark,
   isAbsentByMark,

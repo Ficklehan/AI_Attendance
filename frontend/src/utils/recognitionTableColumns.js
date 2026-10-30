@@ -18,8 +18,8 @@ export const TASK_DETAIL_COMPACT_WIDTHS = {
   country: 76,
   Entrepot: 100,
   warehouse: 100,
-  Date: 96,
-  date: 96,
+  Date: 128,
+  date: 128,
   NOM_PRENOM: 176,
   name: 176,
   AGENCE_INTERIMAIRE: 100,
@@ -158,7 +158,7 @@ export function buildRecognitionTableColumns(t, options = {}) {
   const timeCompact = compactIdentityColumns
     ? (dense
       ? {
-        Date: { width: 86, autoWidth: false, minWidth: 86, maxWidth: 86, density: 'compact' },
+        Date: { width: 118, autoWidth: false, minWidth: 118, maxWidth: 118, density: 'compact' },
         HORAIRES_DU_TRAVAIL: { width: 68, autoWidth: false, minWidth: 64, maxWidth: 72, density: 'compact' },
         ARRIVEE: { width: 48, autoWidth: false, minWidth: 44, maxWidth: 52, density: 'compact', align: 'center' },
         DEPAR: { width: 48, autoWidth: false, minWidth: 44, maxWidth: 52, density: 'compact', align: 'center' },
@@ -168,7 +168,7 @@ export function buildRecognitionTableColumns(t, options = {}) {
         SIGNATURE: { width: 36, autoWidth: false, minWidth: 32, maxWidth: 40, density: 'compact' },
       }
       : {
-        Date: { width: 96, autoWidth: false, minWidth: 96, maxWidth: 96, density: 'compact' },
+        Date: { width: 128, autoWidth: false, minWidth: 128, maxWidth: 128, density: 'compact' },
         HORAIRES_DU_TRAVAIL: { width: 100, autoWidth: false, minWidth: 92, maxWidth: 112, density: 'compact' },
         ARRIVEE: { width: 67, autoWidth: false, minWidth: 60, maxWidth: 76, density: 'compact', align: 'center' },
         DEPAR: { width: 67, autoWidth: false, minWidth: 60, maxWidth: 76, density: 'compact', align: 'center' },

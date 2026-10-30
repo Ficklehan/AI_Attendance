@@ -123,7 +123,12 @@ function createRequiredRecordFields(deps) {
     if (record.isDeleted) return true
     const mark = getRecordMark(record)
     if (markContains(mark, 'deleted')) return true
-    if (!record._restored && (mark.indexOf('未出勤') !== -1 || markContains(mark, 'absent'))) return true
+    // 模型未出勤只是初判：到离已更正齐则不再当未出勤豁免
+    if (!record._restored && (mark.indexOf('未出勤') !== -1 || markContains(mark, 'absent'))) {
+      const arrive = pickField(record, ['ARRIVEE', 'arrival'])
+      const depart = pickField(record, ['DEPAR', 'departure'])
+      if (!hasFilledText(arrive) || !hasFilledText(depart)) return true
+    }
     return false
   }
 
@@ -148,8 +153,12 @@ function createRequiredRecordFields(deps) {
   function collectConfirmValidationIssues(records, config) {
     const cfg = config || activeConfig
     const isAbsentByMark = (row) => {
+      if (!row || row._restored) return false
       const mark = getRecordMark(row)
-      return mark.indexOf('未出勤') !== -1 || markContains(mark, 'absent')
+      if (!(mark.indexOf('未出勤') !== -1 || markContains(mark, 'absent'))) return false
+      const arrive = pickField(row, ['ARRIVEE', 'arrival'])
+      const depart = pickField(row, ['DEPAR', 'departure'])
+      return !(hasFilledText(arrive) && hasFilledText(depart))
     }
     const issues = []
     ;(records || []).forEach((record, index) => {

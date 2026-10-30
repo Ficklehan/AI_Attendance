@@ -10,6 +10,7 @@ const {
   markContains,
   markHasKind,
   stripSignatureMarksFromSmartMark,
+  reconcileAbsentMarkWithClocks,
   isAbsentByMark,
 } = markCore
 
@@ -17,18 +18,16 @@ function stripNightShiftMarkParts(mark) {
   return splitSmartMarkParts(mark).filter((part) => !markContains(part, 'nightShift'))
 }
 
-/** 按当前到离/排班重算夜班标记（可增可删，与 PC TaskEdit 一致） */
+/** 按当前到离/排班重算夜班标记；有效到离时清掉模型未出勤初判 */
 function refreshNightShiftInSmartMark(mark, record, taskCountry) {
   if (!record || record.isDeleted) {
     return stripNightShiftMarkParts(mark || '').join(';')
   }
-  const markSources = [mark, record.SmartMark, record.Mark, record.mark, record.smartMark]
-    .filter(Boolean)
-    .join(';')
-  if (markContains(markSources, 'absent') || markContains(markSources, 'deleted')) {
-    return stripNightShiftMarkParts(mark || record.SmartMark || '').join(';')
+  const reconciled = reconcileAbsentMarkWithClocks(mark || record.SmartMark || '', record)
+  if (markContains(reconciled, 'deleted') || markContains(reconciled, 'absent')) {
+    return stripNightShiftMarkParts(reconciled).join(';')
   }
-  let parts = stripNightShiftMarkParts(mark || record.SmartMark || record.Mark || '')
+  let parts = stripNightShiftMarkParts(reconciled)
   if (!parts.length) parts = ['正常']
   if (shouldMarkNightShift(record, taskCountry)) {
     parts = [...parts, '夜班']

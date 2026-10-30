@@ -76,10 +76,11 @@ public class RecognitionPromptService {
 
     private String loadContinuePromptFromDb(String effective) {
         RecognitionPrompt row = recognitionPromptMapper.selectByCountry(effective);
-        if (row == null || row.getContinuePrompt() == null || row.getContinuePrompt().trim().isEmpty()) {
-            row = recognitionPromptMapper.selectByCountry("default");
+        if (row != null) {
+            return row.getContinuePrompt() != null ? row.getContinuePrompt() : "";
         }
-        return row != null ? row.getContinuePrompt() : null;
+        RecognitionPrompt fallback = recognitionPromptMapper.selectByCountry("default");
+        return fallback != null ? fallback.getContinuePrompt() : null;
     }
 
     private void clearPromptCache() {

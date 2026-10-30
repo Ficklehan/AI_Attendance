@@ -72,7 +72,8 @@ public final class RecognitionStatusMark {
     }
 
     /**
-     * 未出勤只看标记。含模糊则不是未出勤；禁止用到离皆空覆盖模型标记。
+     * 未出勤以模型标记为初判。含模糊则不是未出勤；禁止用到离皆空推断未出勤。
+     * 当前行已有有效到离（人工更正后的事实）时，不再只凭模型未出勤标记判定。
      */
     public static boolean isAbsentStatus(JSONObject record) {
         if (record == null) {
@@ -91,7 +92,20 @@ public final class RecognitionStatusMark {
         if (containsBlur(combined)) {
             return false;
         }
-        return containsAbsent(combined);
+        if (!containsAbsent(combined)) {
+            return false;
+        }
+        return !hasUsableArriveAndDepart(record);
+    }
+
+    static boolean hasUsableArriveAndDepart(JSONObject record) {
+        if (record == null) {
+            return false;
+        }
+        String arrive = RecognizedTimeNormalizer.normalizeClockTime(record.getString("ARRIVEE"));
+        String depart = RecognizedTimeNormalizer.normalizeClockTime(record.getString("DEPAR"));
+        return arrive != null && arrive.matches("\\d{2}:\\d{2}")
+                && depart != null && depart.matches("\\d{2}:\\d{2}");
     }
 
     static String joinMarks(String smartMark, String mark) {

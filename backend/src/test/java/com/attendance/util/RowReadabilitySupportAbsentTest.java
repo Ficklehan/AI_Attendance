@@ -57,7 +57,7 @@ class RowReadabilitySupportAbsentTest {
     }
 
     @Test
-    void keepsTimesWhenMarkSaysAbsentButPunchFilled() {
+    void keepsTimesAndClearsAbsentWhenPunchFilled() {
         JSONObject record = new JSONObject();
         record.put("Observations", "");
         record.put("Mark", "未出勤");
@@ -68,7 +68,8 @@ class RowReadabilitySupportAbsentTest {
         assertFalse(RowReadabilitySupport.applyAbsentObservationRule(record));
         assertEquals("09:00", record.getString("ARRIVEE"));
         assertEquals("14:00", record.getString("DEPAR"));
-        assertTrue(RowReadabilitySupport.isAbsentRow(record));
+        // 有效到离优先于模型未出勤初判（人工更正后的事实）
+        assertFalse(RowReadabilitySupport.isAbsentRow(record));
     }
 
     @Test

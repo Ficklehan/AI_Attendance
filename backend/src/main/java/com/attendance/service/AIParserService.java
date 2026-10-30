@@ -242,19 +242,17 @@ public class AIParserService {
             aiPrompt = markdownConfigService.getAiPrompt("default");
             continuePrompt = markdownConfigService.getContinuePrompt("default");
         }
-        if (continuePrompt == null || continuePrompt.trim().isEmpty()) {
-            continuePrompt = markdownConfigService.getContinuePrompt("default");
-        }
 
         if (aiPrompt == null || aiPrompt.trim().isEmpty()) {
             throw new BusinessException(ErrorCode.AI_PARSE_ERROR, ErrorKeys.AI_PROMPT_NOT_FOUND);
         }
-        if (continuePrompt == null || continuePrompt.trim().isEmpty()) {
-            throw new BusinessException(ErrorCode.AI_PARSE_ERROR, ErrorKeys.AI_CONTINUE_PROMPT_NOT_FOUND);
-        }
 
         String apiPrompt = recognitionPromptGuard.preparePromptForApi(aiPrompt, recognitionQualityGuard);
-        continuePrompt = recognitionPromptGuard.preparePromptForApi(continuePrompt.trim(), null);
+        if (continuePrompt == null || continuePrompt.trim().isEmpty()) {
+            continuePrompt = PromptCanonicalParser.DEFAULT_CONTINUE;
+        } else {
+            continuePrompt = recognitionPromptGuard.preparePromptForApi(continuePrompt.trim(), null);
+        }
         String section = markdownConfigService.describePromptSection(configCountry);
         log.info("AI识别提示词: requestCountry={}, effectiveCountry={}, section={}, configLen={}, apiLen={}",
                 requestedCountry, configCountry, section, aiPrompt.length(), apiPrompt.length());

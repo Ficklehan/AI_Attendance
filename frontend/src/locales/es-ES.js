@@ -184,6 +184,8 @@ export default {
     "copy": "Copy",
     "copied": "Copied",
     "copyFailed": "Copy failed",
+    "paste": "Paste",
+    "pasteOver": "Paste over",
     "undo": "Undo"
   },
   "validation": {
@@ -579,6 +581,7 @@ export default {
     "workRegionBanner": "Task work region: {region}",
     "workRegionBannerHint": "This task was created under a work region. The Pays column in each row matches that region automatically and cannot be edited manually.",
     "workRegionMismatchHint": "Some legacy rows do not match the task work region. Re-upload and select the correct work region before recognizing again.",
+    "cellCopiedPasteHint": "Copied. Click a cell to overwrite it",
     "addManualRow": "Add row",
     "addManualRowHint": "Append a blank attendance row at the end for manual entry",
     "manualRowAdded": "Blank row added",

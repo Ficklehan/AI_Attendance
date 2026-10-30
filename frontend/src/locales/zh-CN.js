@@ -184,6 +184,8 @@ export default {
     "copy": "复制",
     "copied": "已复制",
     "copyFailed": "复制失败",
+    "paste": "粘贴",
+    "pasteOver": "粘贴覆盖",
     "undo": "撤销"
   },
   "validation": {
@@ -886,6 +888,7 @@ export default {
     "workRegionBanner": "任务工作地区：{region}",
     "workRegionBannerHint": "本任务在上传识别时绑定了工作地区。表内「国家」列自动对应该地区，不可手动修改。",
     "workRegionMismatchHint": "存在历史识别数据与任务工作地区不一致，请重新上传并选择正确工作地区后识别。",
+    "cellCopiedPasteHint": "已复制，再点击要覆盖的格子",
     "addManualRow": "添加行",
     "addManualRowHint": "在表格末尾追加一条空白考勤记录，便于手动补录",
     "manualRowAdded": "已添加空白行",

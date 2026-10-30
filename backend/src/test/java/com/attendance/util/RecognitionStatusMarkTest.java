@@ -29,12 +29,22 @@ class RecognitionStatusMarkTest {
     }
 
     @Test
-    void absentMarkWinsEvenIfTimesFilled() {
+    void absentMarkStaysWhenClocksEmpty() {
         JSONObject record = new JSONObject();
         record.put("Mark", "未出勤");
-        record.put("ARRIVEE", "09:00");
-        record.put("DEPAR", "14:00");
+        record.put("ARRIVEE", "");
+        record.put("DEPAR", "");
         assertTrue(RecognitionStatusMark.isAbsentStatus(record));
+    }
+
+    @Test
+    void correctedClocksClearModelAbsentStatus() {
+        JSONObject record = new JSONObject();
+        record.put("Mark", "未出勤");
+        record.put("SmartMark", "未出勤");
+        record.put("ARRIVEE", "10:00");
+        record.put("DEPAR", "19:00");
+        assertFalse(RecognitionStatusMark.isAbsentStatus(record));
     }
 
     @Test

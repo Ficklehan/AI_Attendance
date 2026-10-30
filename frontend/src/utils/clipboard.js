@@ -33,3 +33,14 @@ export async function copyTextToClipboard(text) {
   document.body.removeChild(textarea)
   return copied
 }
+
+export async function readTextFromClipboard() {
+  if (typeof navigator !== 'undefined' && navigator.clipboard?.readText) {
+    try {
+      return (await navigator.clipboard.readText()) || ''
+    } catch {
+      return ''
+    }
+  }
+  return ''
+}

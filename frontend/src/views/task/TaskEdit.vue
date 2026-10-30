@@ -448,74 +448,111 @@
                 </div>
               </template>
               <template v-else-if="column.key === 'HORAIRES_DU_TRAVAIL'">
-                <div class="format-field-cell" v-auto-shrink-font :id="fieldCellDomId(record, 'HORAIRES_DU_TRAVAIL')">
-                  <a-tooltip v-if="isFieldEditable(record, 'HORAIRES_DU_TRAVAIL')" :title="fieldFormatTooltip(record,'HORAIRES_DU_TRAVAIL')">
-                    <a-input
-                      v-model:value="record.HORAIRES_DU_TRAVAIL"
-                      size="small"
-                      :class="fieldInputClass(record, 'HORAIRES_DU_TRAVAIL')"
-                      :style="mutedStrikeStyle(record)"
-                      :bordered="false"
-                      :placeholder="fieldCellPlaceholder(record, 'HORAIRES_DU_TRAVAIL')"
-                      @focus="onCalibratableFieldFocusHandler(record)"
-                      @change="onReadableFieldChange(record, 'HORAIRES_DU_TRAVAIL')"
-                      @pressEnter="(e) => onFormatFieldPressEnter(record, 'HORAIRES_DU_TRAVAIL', e)"
-                      @blur="() => onFormatFieldBlur(record, 'HORAIRES_DU_TRAVAIL')"
+                <div
+                  class="format-field-cell copy-paste-cell"
+                  :class="{ 'is-paste-target': isCellPasteTarget(record, 'HORAIRES_DU_TRAVAIL') }"
+                  v-auto-shrink-font
+                  :id="fieldCellDomId(record, 'HORAIRES_DU_TRAVAIL')"
+                  @mousedown.capture="onCopyPasteCellMouseDown(record, 'HORAIRES_DU_TRAVAIL', $event)"
+                >
+                  <div class="copy-paste-cell__row">
+                    <div class="copy-paste-cell__value">
+                      <a-tooltip v-if="isFieldEditable(record, 'HORAIRES_DU_TRAVAIL')" :title="fieldFormatTooltip(record,'HORAIRES_DU_TRAVAIL')">
+                        <a-input
+                          v-model:value="record.HORAIRES_DU_TRAVAIL"
+                          size="small"
+                          :class="fieldInputClass(record, 'HORAIRES_DU_TRAVAIL')"
+                          :style="mutedStrikeStyle(record)"
+                          :bordered="false"
+                          :placeholder="fieldCellPlaceholder(record, 'HORAIRES_DU_TRAVAIL')"
+                          @focus="onCalibratableFieldFocusHandler(record)"
+                          @change="onReadableFieldChange(record, 'HORAIRES_DU_TRAVAIL')"
+                          @pressEnter="(e) => onFormatFieldPressEnter(record, 'HORAIRES_DU_TRAVAIL', e)"
+                          @blur="() => onFormatFieldBlur(record, 'HORAIRES_DU_TRAVAIL')"
+                        />
+                      </a-tooltip>
+                      <RowStrikeText v-else :muted="isRowMuted(record)" :cell-class="fieldTextClass(record, 'HORAIRES_DU_TRAVAIL')">{{ displayRecordField(record, 'HORAIRES_DU_TRAVAIL') }}</RowStrikeText>
+                    </div>
+                    <CellCopyPasteButtons
+                      :can-copy="canCopyCell(record, 'HORAIRES_DU_TRAVAIL')"
+                      :can-paste="isCellPasteTarget(record, 'HORAIRES_DU_TRAVAIL')"
+                      @copy="copyCellValue(record, 'HORAIRES_DU_TRAVAIL')"
+                      @paste="pasteCellValue(record, 'HORAIRES_DU_TRAVAIL')"
                     />
-                  </a-tooltip>
-                  <RowStrikeText v-else :muted="isRowMuted(record)" :cell-class="fieldTextClass(record, 'HORAIRES_DU_TRAVAIL')">{{ displayRecordField(record, 'HORAIRES_DU_TRAVAIL') }}</RowStrikeText>
+                  </div>
                   <FieldChangeHint :hint="getFieldChangeHint(record, 'HORAIRES_DU_TRAVAIL')" />
                   <div v-if="showFormatHintBelow(record, 'HORAIRES_DU_TRAVAIL')" class="format-hint-below">{{ fieldFormatTooltip(record,'HORAIRES_DU_TRAVAIL') }}</div>
                 </div>
               </template>
               <template v-else-if="column.key === 'Date'">
-                <div class="format-field-cell" :id="fieldCellDomId(record, 'Date')">
-                  <div
-                    v-if="isFieldEditable(record, 'Date') || canSwapRecordDate(record)"
-                    class="date-field-row"
-                  >
-                    <div class="date-field-main">
-                      <a-tooltip v-if="isFieldEditable(record, 'Date')" :title="fieldFormatTooltip(record,'Date')">
-                        <a-date-picker
-                          :value="datePickerValue(record.Date)"
-                          size="small"
-                          class="task-edit-date-picker"
-                          :class="fieldInputClass(record, 'Date')"
-                          :style="mutedStrikeStyle(record)"
-                          format="YYYY-MM-DD"
-                          value-format="YYYY-MM-DD"
-                          :bordered="false"
-                          :allow-clear="false"
-                          :placeholder="dateFieldPlaceholder(record)"
-                          @focus="onCalibratableFieldFocusHandler(record)"
-                          @update:value="(v) => onDatePickerUpdate(record, v)"
-                        >
-                          <template #suffixIcon>
-                            <span class="date-picker-suffix-hidden" />
-                          </template>
-                        </a-date-picker>
-                      </a-tooltip>
-                      <span
-                        v-else
-                        class="date-field-text"
-                        :class="fieldTextClass(record, 'Date')"
-                      >{{ displayRecordField(record, 'Date') }}</span>
-                    </div>
-                    <a-tooltip
-                      v-if="canSwapRecordDate(record)"
-                      :title="$t('taskEdit.swapMonthDayHint', { from: record.Date, to: swapDateTarget(record) })"
-                    >
-                      <button
-                        type="button"
-                        class="date-swap-btn"
-                        :aria-label="$t('taskEdit.swapMonthDayHint', { from: record.Date, to: swapDateTarget(record) })"
-                        @click.stop="swapRecordDateMonthDay(record)"
+                <div
+                  class="format-field-cell copy-paste-cell"
+                  :class="{ 'is-paste-target': isCellPasteTarget(record, 'Date') }"
+                  :id="fieldCellDomId(record, 'Date')"
+                  data-date-cell="1"
+                  :data-row-key="getRowKey(record)"
+                  @copy.capture="(e) => onDateCellCopy(e, record)"
+                  @paste.capture="(e) => onDateCellPaste(e, record)"
+                  @keydown.capture="(e) => onDateCellKeydown(e, record)"
+                  @mousedown.capture="onCopyPasteCellMouseDown(record, 'Date', $event)"
+                >
+                  <div class="copy-paste-cell__row">
+                    <div class="copy-paste-cell__value">
+                      <div
+                        v-if="isFieldEditable(record, 'Date') || canSwapRecordDate(record)"
+                        class="date-field-row"
                       >
-                        {{ $t('taskEdit.swapMonthDay') }}
-                      </button>
-                    </a-tooltip>
+                        <div class="date-field-main">
+                          <a-tooltip v-if="isFieldEditable(record, 'Date')" :title="dateFieldEditTitle(record)">
+                            <a-date-picker
+                              :value="datePickerValue(record.Date)"
+                              size="small"
+                              class="task-edit-date-picker"
+                              :class="fieldInputClass(record, 'Date')"
+                              :style="mutedStrikeStyle(record)"
+                              format="YYYY-MM-DD"
+                              value-format="YYYY-MM-DD"
+                              :bordered="false"
+                              :allow-clear="false"
+                              input-read-only
+                              :placeholder="dateFieldPlaceholder(record)"
+                              @focus="onCalibratableFieldFocusHandler(record)"
+                              @update:value="(v) => onDatePickerUpdate(record, v)"
+                            >
+                              <template #suffixIcon>
+                                <span class="date-picker-suffix-hidden" />
+                              </template>
+                            </a-date-picker>
+                          </a-tooltip>
+                          <span
+                            v-else
+                            class="date-field-text"
+                            :class="fieldTextClass(record, 'Date')"
+                          >{{ displayRecordField(record, 'Date') }}</span>
+                        </div>
+                        <a-tooltip
+                          v-if="canSwapRecordDate(record)"
+                          :title="$t('taskEdit.swapMonthDayHint', { from: record.Date, to: swapDateTarget(record) })"
+                        >
+                          <button
+                            type="button"
+                            class="date-swap-btn"
+                            :aria-label="$t('taskEdit.swapMonthDayHint', { from: record.Date, to: swapDateTarget(record) })"
+                            @click.stop="swapRecordDateMonthDay(record)"
+                          >
+                            {{ $t('taskEdit.swapMonthDay') }}
+                          </button>
+                        </a-tooltip>
+                      </div>
+                      <RowStrikeText v-else :muted="isRowMuted(record)" :cell-class="fieldTextClass(record, 'Date')">{{ displayRecordField(record, 'Date') }}</RowStrikeText>
+                    </div>
+                    <CellCopyPasteButtons
+                      :can-copy="canCopyCell(record, 'Date')"
+                      :can-paste="isCellPasteTarget(record, 'Date')"
+                      @copy="copyCellValue(record, 'Date')"
+                      @paste="pasteCellValue(record, 'Date')"
+                    />
                   </div>
-                  <RowStrikeText v-else :muted="isRowMuted(record)" :cell-class="fieldTextClass(record, 'Date')">{{ displayRecordField(record, 'Date') }}</RowStrikeText>
                   <FieldChangeHint
                     :hint="getFieldChangeHint(record, 'Date')"
                     show-restore
@@ -525,22 +562,41 @@
                 </div>
               </template>
               <template v-else-if="column.key === 'ARRIVEE'">
-                <div class="format-field-cell" v-auto-shrink-font :id="fieldCellDomId(record, 'ARRIVEE')">
-                  <ClockTimeField
-                    v-if="isFieldEditable(record, 'ARRIVEE')"
-                    :value="record.ARRIVEE"
-                    size="small"
-                    embedded
-                    :bordered="false"
-                    :input-class="fieldInputClass(record, 'ARRIVEE')"
-                    :input-style="mutedStrikeStyle(record)"
-                    :placeholder="fieldCellPlaceholder(record, 'ARRIVEE')"
-                    @focus="onCalibratableFieldFocusHandler(record)"
-                    @update:value="(v) => onClockTimeUpdate(record, 'ARRIVEE', v)"
-                    @input="() => onTimeFieldInput(record, 'ARRIVEE')"
-                    @commit="() => onFormatFieldBlur(record, 'ARRIVEE')"
-                  />
-                  <RowStrikeText v-else :muted="isRowMuted(record)" :cell-class="fieldTextClass(record, 'ARRIVEE')">{{ displayRecordField(record, 'ARRIVEE') }}</RowStrikeText>
+                <div
+                  class="format-field-cell copy-paste-cell"
+                  :class="{ 'is-paste-target': isCellPasteTarget(record, 'ARRIVEE') }"
+                  v-auto-shrink-font
+                  :id="fieldCellDomId(record, 'ARRIVEE')"
+                  data-time-cell="1"
+                  data-time-field="ARRIVEE"
+                  :data-row-key="getRowKey(record)"
+                  @mousedown.capture="onCopyPasteCellMouseDown(record, 'ARRIVEE', $event)"
+                >
+                  <div class="copy-paste-cell__row">
+                    <div class="copy-paste-cell__value">
+                      <ClockTimeField
+                        v-if="isFieldEditable(record, 'ARRIVEE')"
+                        :value="record.ARRIVEE"
+                        size="small"
+                        embedded
+                        :bordered="false"
+                        :input-class="fieldInputClass(record, 'ARRIVEE')"
+                        :placeholder="fieldCellPlaceholder(record, 'ARRIVEE')"
+                        @focus="onCalibratableFieldFocusHandler(record)"
+                        @update:value="(v) => onClockTimeUpdate(record, 'ARRIVEE', v)"
+                        @input="() => onTimeFieldInput(record, 'ARRIVEE')"
+                        @commit="() => onFormatFieldBlur(record, 'ARRIVEE')"
+                        @navigate="(nav) => navigateTimeCell(record, 'ARRIVEE', nav?.dir)"
+                      />
+                      <RowStrikeText v-else :muted="isRowMuted(record)" :cell-class="fieldTextClass(record, 'ARRIVEE')">{{ displayRecordField(record, 'ARRIVEE') }}</RowStrikeText>
+                    </div>
+                    <CellCopyPasteButtons
+                      :can-copy="canCopyCell(record, 'ARRIVEE')"
+                      :can-paste="isCellPasteTarget(record, 'ARRIVEE')"
+                      @copy="copyCellValue(record, 'ARRIVEE')"
+                      @paste="pasteCellValue(record, 'ARRIVEE')"
+                    />
+                  </div>
                   <FieldChangeHint
                     :hint="getFieldChangeHint(record, 'ARRIVEE')"
                     show-restore
@@ -552,22 +608,41 @@
                 </div>
               </template>
               <template v-else-if="column.key === 'DEPAR'">
-                <div class="format-field-cell" v-auto-shrink-font :id="fieldCellDomId(record, 'DEPAR')">
-                  <ClockTimeField
-                    v-if="isFieldEditable(record, 'DEPAR')"
-                    :value="record.DEPAR"
-                    size="small"
-                    embedded
-                    :bordered="false"
-                    :input-class="fieldInputClass(record, 'DEPAR')"
-                    :input-style="mutedStrikeStyle(record)"
-                    :placeholder="fieldCellPlaceholder(record, 'DEPAR')"
-                    @focus="onCalibratableFieldFocusHandler(record)"
-                    @update:value="(v) => onClockTimeUpdate(record, 'DEPAR', v)"
-                    @input="() => onTimeFieldInput(record, 'DEPAR')"
-                    @commit="() => onFormatFieldBlur(record, 'DEPAR')"
-                  />
-                  <RowStrikeText v-else :muted="isRowMuted(record)" :cell-class="fieldTextClass(record, 'DEPAR')">{{ displayRecordField(record, 'DEPAR') }}</RowStrikeText>
+                <div
+                  class="format-field-cell copy-paste-cell"
+                  :class="{ 'is-paste-target': isCellPasteTarget(record, 'DEPAR') }"
+                  v-auto-shrink-font
+                  :id="fieldCellDomId(record, 'DEPAR')"
+                  data-time-cell="1"
+                  data-time-field="DEPAR"
+                  :data-row-key="getRowKey(record)"
+                  @mousedown.capture="onCopyPasteCellMouseDown(record, 'DEPAR', $event)"
+                >
+                  <div class="copy-paste-cell__row">
+                    <div class="copy-paste-cell__value">
+                      <ClockTimeField
+                        v-if="isFieldEditable(record, 'DEPAR')"
+                        :value="record.DEPAR"
+                        size="small"
+                        embedded
+                        :bordered="false"
+                        :input-class="fieldInputClass(record, 'DEPAR')"
+                        :placeholder="fieldCellPlaceholder(record, 'DEPAR')"
+                        @focus="onCalibratableFieldFocusHandler(record)"
+                        @update:value="(v) => onClockTimeUpdate(record, 'DEPAR', v)"
+                        @input="() => onTimeFieldInput(record, 'DEPAR')"
+                        @commit="() => onFormatFieldBlur(record, 'DEPAR')"
+                        @navigate="(nav) => navigateTimeCell(record, 'DEPAR', nav?.dir)"
+                      />
+                      <RowStrikeText v-else :muted="isRowMuted(record)" :cell-class="fieldTextClass(record, 'DEPAR')">{{ displayRecordField(record, 'DEPAR') }}</RowStrikeText>
+                    </div>
+                    <CellCopyPasteButtons
+                      :can-copy="canCopyCell(record, 'DEPAR')"
+                      :can-paste="isCellPasteTarget(record, 'DEPAR')"
+                      @copy="copyCellValue(record, 'DEPAR')"
+                      @paste="pasteCellValue(record, 'DEPAR')"
+                    />
+                  </div>
                   <FieldChangeHint
                     :hint="getFieldChangeHint(record, 'DEPAR')"
                     show-restore
@@ -579,9 +654,24 @@
                 </div>
               </template>
               <template v-else-if="column.key === 'PAUSE'">
-                <div class="field-with-change-hint" v-auto-shrink-font>
-                  <a-input-number v-if="isFieldEditable(record, 'PAUSE')" v-model:value="record.PAUSE" size="small" :class="fieldInputClass(record, 'PAUSE')" :style="mutedStrikeStyle(record)" :bordered="false" :controls="false" :min="0" :precision="0" style="width: 100%" @focus="onCalibratableFieldFocusHandler(record)" @blur="() => normalizeRecordPauseOnBlur(record)" />
-                  <RowStrikeText v-else :muted="isRowMuted(record)" :cell-class="fieldTextClass(record, 'PAUSE')">{{ formatPauseDisplay(record.PAUSE) }}</RowStrikeText>
+                <div
+                  class="field-with-change-hint copy-paste-cell"
+                  :class="{ 'is-paste-target': isCellPasteTarget(record, 'PAUSE') }"
+                  v-auto-shrink-font
+                  @mousedown.capture="onCopyPasteCellMouseDown(record, 'PAUSE', $event)"
+                >
+                  <div class="copy-paste-cell__row">
+                    <div class="copy-paste-cell__value">
+                      <a-input-number v-if="isFieldEditable(record, 'PAUSE')" v-model:value="record.PAUSE" size="small" :class="fieldInputClass(record, 'PAUSE')" :style="mutedStrikeStyle(record)" :bordered="false" :controls="false" :min="0" :precision="0" style="width: 100%" @focus="onCalibratableFieldFocusHandler(record)" @blur="() => normalizeRecordPauseOnBlur(record)" />
+                      <RowStrikeText v-else :muted="isRowMuted(record)" :cell-class="fieldTextClass(record, 'PAUSE')">{{ formatPauseDisplay(record.PAUSE) }}</RowStrikeText>
+                    </div>
+                    <CellCopyPasteButtons
+                      :can-copy="canCopyCell(record, 'PAUSE')"
+                      :can-paste="isCellPasteTarget(record, 'PAUSE')"
+                      @copy="copyCellValue(record, 'PAUSE')"
+                      @paste="pasteCellValue(record, 'PAUSE')"
+                    />
+                  </div>
                   <FieldChangeHint :hint="getFieldChangeHint(record, 'PAUSE')" />
                 </div>
               </template>
@@ -812,6 +902,9 @@ import PageShell from '@/components/PageShell.vue'
 import TruncatedTag from '@/components/TruncatedTag.vue'
 import RowStrikeText from '@/components/RowStrikeText.vue'
 import ClockTimeField from '@/components/ClockTimeField.vue'
+import CellCopyPasteButtons from '@/components/CellCopyPasteButtons.vue'
+import { findNextEditableTimeCell } from '@/utils/timeGridEdit'
+import { copyTextToClipboard } from '@/utils/clipboard'
 import FieldChangeHint from '@/components/FieldChangeHint.vue'
 import ImagePreviewModal from '@/components/ImagePreviewModal.vue'
 import ImageCompareDockShell from '@/components/ImageCompareDockShell.vue'
@@ -1127,8 +1220,8 @@ const exceptionTypeDisplayLabel = (record) => {
 }
 
 const fieldInputClass = (record, field) => {
-  // 已删除 / 未出勤：不提示缺填或格式说明
-  if (isRowMuted(record)) {
+  // 已删除 / 未出勤：不提示缺填或格式说明。可改的格不加删除线以免挡住填写。
+  if (isRowMuted(record) && !isFieldEditable(record, field)) {
     return { 'row-muted-strike-text': true }
   }
   const requiredEmpty = isRequiredFieldEmpty(record, field)
@@ -1280,6 +1373,32 @@ const onClockTimeUpdate = (record, field, value) => {
   if (!record) return
   record[field] = value == null ? '' : value
   onTimeFieldInput(record, field)
+  // 模型未出勤只是初判：到离补齐后立刻清掉未出勤，避免识别说明仍显示未出勤
+  if (field === 'ARRIVEE' || field === 'DEPAR') {
+    refreshRecordNightShiftMark(record)
+    invalidateRowCache(record)
+  }
+}
+
+const focusTimeCell = (record, field) => {
+  const id = fieldCellDomId(record, field)
+  if (!id) return
+  const root = document.getElementById(id)
+  const input = root?.querySelector?.('.clock-time-field__key')
+  if (typeof input?.focus === 'function') input.focus()
+}
+
+const navigateTimeCell = (record, field, dir) => {
+  if (!record || !dir) return
+  const rows = tableRecords.value
+  const start = rows.findIndex((row) => getRowKey(row) === getRowKey(record))
+  if (start < 0) return
+  const next = findNextEditableTimeCell(rows, start, field, dir, isFieldEditable)
+  if (!next) return
+  if (next.rowIndex >= visibleRowCount.value) {
+    visibleRowCount.value = Math.min(next.rowIndex + 1, rows.length)
+  }
+  nextTick(() => focusTimeCell(next.record, next.field))
 }
 
 const restoreFieldOriginal = (record, field) => {
@@ -1356,6 +1475,189 @@ const dateFieldPlaceholder = (record) => {
   const str = record?.Date == null ? '' : String(record.Date).trim()
   if (str && !isValidCanonicalDate(str)) return str
   return fieldCellPlaceholder(record, 'Date') || fieldFormatTooltip(record, 'Date')
+}
+
+const dateFieldEditTitle = (record) => {
+  const copyHint = t('taskEdit.cellCopiedPasteHint')
+  const formatHint = fieldFormatTooltip(record, 'Date')
+  return formatHint ? `${copyHint}\n${formatHint}` : copyHint
+}
+
+const canonicalDateText = (record) => {
+  const raw = record?.Date == null ? '' : String(record.Date).trim()
+  return isValidCanonicalDate(raw) ? raw : ''
+}
+
+const parseDateClipboardText = (text) => {
+  const raw = String(text || '').trim().split(/\r?\n/)[0].split('\t')[0].trim()
+  if (!raw) return ''
+  const normalized = normalizeDate(raw)
+  return isValidCanonicalDate(normalized) ? normalized : ''
+}
+
+const COPY_PASTE_FIELDS = new Set([
+  'Date',
+  'HORAIRES_DU_TRAVAIL',
+  'ARRIVEE',
+  'DEPAR',
+  'PAUSE',
+])
+
+const cellClipboard = ref(null)
+
+const getCopyableCellText = (record, field) => {
+  if (!record || !COPY_PASTE_FIELDS.has(field)) return ''
+  if (field === 'PAUSE') {
+    const minutes = normalizePauseMinutes(record.PAUSE)
+    return minutes === '' ? '' : String(minutes)
+  }
+  if (field === 'Date') {
+    return canonicalDateText(record) || String(record.Date || '').trim()
+  }
+  const raw = record[field]
+  return raw == null ? '' : String(raw).trim()
+}
+
+const canCopyCell = (record, field) => getCopyableCellText(record, field) !== ''
+
+const canReceiveCellPaste = (record, field) => {
+  if (!record || !COPY_PASTE_FIELDS.has(field)) return false
+  if (isConfirmedTask.value || isRecordDeleted(record)) return false
+  if (!canEditRequiredFields(record)) return false
+  return true
+}
+
+const isCellPasteTarget = (record, field) => {
+  const clip = cellClipboard.value
+  if (!clip || clip.field !== field) return false
+  if (!canReceiveCellPaste(record, field)) return false
+  if (getRowKey(record) === clip.sourceKey) return false
+  return true
+}
+
+const copyCellValue = async (record, field) => {
+  const value = getCopyableCellText(record, field)
+  if (!value) return
+  cellClipboard.value = {
+    field,
+    value,
+    sourceKey: getRowKey(record),
+  }
+  const ok = await copyTextToClipboard(value)
+  if (!ok) {
+    message.error(t('common.copyFailed'))
+    return
+  }
+  message.success(t('taskEdit.cellCopiedPasteHint'))
+}
+
+const restoreAbsentAfterPaste = (record) => {
+  if (!record || record.isDeleted) return
+  if (!record._restored) {
+    record._prevMark = record.SmartMark
+  }
+  record._restored = true
+  refreshRecordNightShiftMark(record)
+  const mark = String(record.SmartMark || record.Mark || '')
+  if (!mark || mark.includes('未出勤')) {
+    record.SmartMark = '正常'
+    refreshRecordNightShiftMark(record)
+  }
+  if (record.Mark != null && record.Mark !== '') {
+    record.Mark = record.SmartMark
+  }
+  syncRecordExceptionType(record)
+  const index = records.value.findIndex((row) => getRowKey(row) === getRowKey(record))
+  if (index >= 0) {
+    records.value.splice(index, 1, record)
+  }
+  invalidateRowCache(record)
+  scheduleRequiredMissingCountUpdate(true)
+  scheduleAnomalyCountUpdate(true)
+  scheduleDraftSave(true)
+}
+
+const applyPastedCellValue = (record, field, value) => {
+  if (!record) return false
+  const wasAbsent = isAbsentRow(record)
+  onCalibratableFieldFocusHandler(record)
+  let applied = false
+  if (field === 'Date') {
+    const date = parseDateClipboardText(value)
+    if (!date) return false
+    onDatePickerUpdate(record, date)
+    applied = true
+  } else if (field === 'ARRIVEE' || field === 'DEPAR') {
+    onClockTimeUpdate(record, field, value)
+    onFormatFieldBlur(record, field)
+    applied = true
+  } else if (field === 'HORAIRES_DU_TRAVAIL') {
+    record.HORAIRES_DU_TRAVAIL = value
+    onFormatFieldBlur(record, field)
+    applied = true
+  } else if (field === 'PAUSE') {
+    record.PAUSE = value
+    normalizeRecordPauseOnBlur(record)
+    applied = true
+  }
+  if (applied && wasAbsent) restoreAbsentAfterPaste(record)
+  return applied
+}
+
+const pasteCellValue = (record, field) => {
+  const clip = cellClipboard.value
+  if (!clip || clip.field !== field) return
+  if (!canReceiveCellPaste(record, field)) return
+  applyPastedCellValue(record, field, clip.value)
+}
+
+const onCopyPasteCellMouseDown = (record, field, event) => {
+  if (event.button !== 0) return
+  if (!isCellPasteTarget(record, field)) return
+  const target = event.target
+  if (target && typeof target.closest === 'function' && target.closest('.cell-copy-paste')) return
+  event.preventDefault()
+  event.stopPropagation()
+  pasteCellValue(record, field)
+}
+
+const onCellClipboardKeydown = (event) => {
+  if (event.key === 'Escape' && cellClipboard.value) {
+    cellClipboard.value = null
+  }
+}
+
+const onDateCellCopy = (event, record) => {
+  const date = getCopyableCellText(record, 'Date')
+  if (!date) return
+  event.preventDefault()
+  event.clipboardData?.setData('text/plain', date)
+  cellClipboard.value = {
+    field: 'Date',
+    value: date,
+    sourceKey: getRowKey(record),
+  }
+  copyTextToClipboard(date)
+}
+
+const onDateCellPaste = (event, record) => {
+  if (!canReceiveCellPaste(record, 'Date')) return
+  const text = event.clipboardData?.getData('text/plain') || event.clipboardData?.getData('text') || ''
+  event.preventDefault()
+  event.stopPropagation()
+  const date = parseDateClipboardText(text)
+  if (!date) return
+  applyPastedCellValue(record, 'Date', date)
+}
+
+const onDateCellKeydown = (event, record) => {
+  const mod = event.ctrlKey || event.metaKey
+  if (!mod || event.altKey) return
+  const key = String(event.key || '').toLowerCase()
+  if (key !== 'c') return
+  if (!canCopyCell(record, 'Date')) return
+  event.preventDefault()
+  copyCellValue(record, 'Date')
 }
 
 const onDatePickerUpdate = (record, value) => {
@@ -1598,16 +1900,37 @@ const canCalibrateRecord = computed(
 const isRecordEditable = (record) =>
   !isConfirmedTask.value && !isRecordDeleted(record) && !isAbsentRow(record)
 
-/** 姓名 / 仓库 / 中介：不因「考勤正确」锁死，行可编辑时随时可改 */
+/** 无框字段仅姓名、中介机构可改；不因「考勤正确」锁死 */
 const EXCEPTION_TYPE_UNLOCKED_FIELDS = new Set([
   'NOM_PRENOM',
+  'AGENCE_INTERIMAIRE',
+])
+
+/** 无框且不可改：序号、仓库、班次、休息、备注、页码 */
+const UNBOXED_LOCKED_FIELDS = new Set([
+  'PAGE_NUM',
+  'NO',
   'Entrepot',
+  'HORAIRES_DU_TRAVAIL',
+  'PAUSE',
+  'Observations',
+])
+
+const ABSENT_EDITABLE_FIELDS = new Set([
+  'Date',
+  'ARRIVEE',
+  'DEPAR',
+  'NOM_PRENOM',
   'AGENCE_INTERIMAIRE',
 ])
 
 const isFieldEditable = (record, field) => {
-  if (!isRecordEditable(record)) return false
+  if (isConfirmedTask.value || isRecordDeleted(record)) return false
+  if (UNBOXED_LOCKED_FIELDS.has(field)) return false
+  const absentAllowed = isAbsentRow(record) && ABSENT_EDITABLE_FIELDS.has(field)
+  if (!absentAllowed && !isRecordEditable(record)) return false
   if (EXCEPTION_TYPE_UNLOCKED_FIELDS.has(field)) return true
+  if (absentAllowed) return true
   // 格式不正确时始终允许改该字段，避免被「考勤正确」锁死
   if (isFormatFieldInvalid(record, field)) return true
   if (isConfiguredRequiredField(field) && !canEditRequiredFields(record)) return false
@@ -2677,9 +3000,11 @@ onMounted(async () => {
     /* ignore */
   }
   loadTask()
+  window.addEventListener('keydown', onCellClipboardKeydown)
 })
 
 onUnmounted(() => {
+  window.removeEventListener('keydown', onCellClipboardKeydown)
   isComponentMounted = false
   expandedDuplicateRowKeys.value = []
   if (requiredValidationDebounceTimer) window.clearTimeout(requiredValidationDebounceTimer)
@@ -4227,6 +4552,26 @@ watch(headerFilters, () => {
     justify-content: flex-start;
   }
 
+  .copy-paste-cell__row {
+    display: flex;
+    align-items: center;
+    gap: 2px;
+    min-width: 0;
+    width: 100%;
+  }
+
+  .copy-paste-cell__value {
+    flex: 1 1 auto;
+    min-width: 0;
+  }
+
+  .copy-paste-cell.is-paste-target {
+    outline: 1px dashed $primary;
+    outline-offset: -1px;
+    background: rgba($primary, 0.06);
+    cursor: copy;
+  }
+
   .cell-auto-shrink {
     min-width: 0;
     max-width: 100%;
@@ -4496,6 +4841,13 @@ watch(headerFilters, () => {
         text-decoration: none !important;
         font-style: normal !important;
       }
+    }
+
+    .ant-table-tbody > tr.absent-row .clock-time-field,
+    .ant-table-tbody > tr.absent-row .clock-time-field * {
+      color: $text-primary !important;
+      font-style: normal !important;
+      text-decoration: none !important;
     }
     
     .ant-table-tbody > tr.blurred-row {

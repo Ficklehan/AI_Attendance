@@ -837,10 +837,10 @@ const wizardSteps = [
 
 const defaultContinuePrompt = '接续上文继续输出，格式与字段不变（含第16位 DATE_RAW），不重复已输出行。'
 
-/** 配置页以库内容为准；库空则空编辑框，不再注入本地硬编码模板 */
+/** 配置页以库内容为准；空继续提示词保持空，不再回填默认文案 */
 const applyPromptFromApi = (aiRes) => {
   configs.aiPrompt = aiRes?.data?.ai_prompt || ''
-  configs.continuePrompt = aiRes?.data?.continue_prompt || defaultContinuePrompt
+  configs.continuePrompt = aiRes?.data?.continue_prompt != null ? String(aiRes.data.continue_prompt) : ''
 }
 
 const defaultFieldMapping = [

@@ -12,7 +12,7 @@ import java.util.regex.Pattern;
  */
 public final class PromptCanonicalParser {
 
-    private static final String DEFAULT_CONTINUE = "请接续上文继续输出，不要重复已有内容，保持相同格式。";
+    public static final String DEFAULT_CONTINUE = "请接续上文继续输出，不要重复已有内容，保持相同格式。";
 
     /** 文件级章节标题：default 两节 + 各国识别/继续。 */
     private static final Pattern FILE_HEADING = Pattern.compile(

@@ -184,6 +184,8 @@ export default {
     "copy": "Copia",
     "copied": "Copiato",
     "copyFailed": "Copia non riuscita",
+    "paste": "Incolla",
+    "pasteOver": "Incolla sopra",
     "undo": "Annulla"
   },
   "validation": {
@@ -886,6 +888,7 @@ export default {
     "workRegionBanner": "Area di lavoro dell'attività: {region}",
     "workRegionBannerHint": "Questa attività è stata creata all'interno di un'area di lavoro. La colonna Pays di ogni riga corrisponde automaticamente a quell'area e non è modificabile manualmente.",
     "workRegionMismatchHint": "Alcune righe storiche non corrispondono all'area di lavoro dell'attività. Ricarica e seleziona l'area di lavoro corretta prima di eseguire di nuovo il riconoscimento.",
+    "cellCopiedPasteHint": "Copiato. Clicca una cella per sovrascriverla",
     "addManualRow": "Aggiungi riga",
     "addManualRowHint": "Aggiunge in fondo una riga di presenza vuota per l'inserimento manuale",
     "manualRowAdded": "Riga vuota aggiunta",

@@ -94,7 +94,7 @@ const props = defineProps({
   inputStyle: { type: [String, Object], default: undefined },
 })
 
-const emit = defineEmits(['update:value', 'focus', 'commit', 'input'])
+const emit = defineEmits(['update:value', 'focus', 'commit', 'input', 'navigate'])
 
 const keyInput = ref(null)
 const pickerPopupHost = ref(null)
@@ -107,6 +107,7 @@ const confirming = ref(false)
 
 const hourText = computed(() => segmentText(draft.value.hour))
 const minuteText = computed(() => segmentText(draft.value.minute))
+const committedClock = () => commitClockDraft(draft.value) || String(props.value ?? '').trim()
 
 const canonicalValue = computed(() => {
   const raw = String(props.value ?? '').trim()
@@ -287,8 +288,51 @@ const onPick = (next) => {
   })
 }
 
+const writeClipboard = async (text) => {
+  if (!text) return false
+  try {
+    if (navigator.clipboard?.writeText) {
+      await navigator.clipboard.writeText(text)
+      return true
+    }
+  } catch {
+    /* fallback below */
+  }
+  try {
+    const helper = document.createElement('textarea')
+    helper.value = text
+    helper.setAttribute('readonly', 'readonly')
+    helper.style.position = 'fixed'
+    helper.style.left = '-9999px'
+    document.body.appendChild(helper)
+    helper.select()
+    const ok = document.execCommand('copy')
+    helper.remove()
+    return ok
+  } catch {
+    return false
+  }
+}
+
+const copyCurrentClock = () => {
+  const clock = committedClock()
+  if (!clock) return
+  writeClipboard(clock)
+}
+
+const clearClock = () => {
+  closePickerWithoutConfirm()
+  applyDraft(draftFromClockValue(''), { emitComplete: false })
+  emit('update:value', '')
+  emit('commit', '')
+}
+
 const onPaste = (event) => {
   const text = event.clipboardData?.getData('text') || event.clipboardData?.getData('text/plain') || ''
+  if (text.includes('\t') || text.includes('\n')) {
+    event.preventDefault()
+    return
+  }
   const pasted = draftFromPastedText(text)
   if (!pasted) return
   event.preventDefault()
@@ -320,6 +364,21 @@ const onBlur = (event) => {
 }
 
 const onKeydown = (event) => {
+  const mod = event.ctrlKey || event.metaKey
+  if (mod && !event.altKey) {
+    const key = String(event.key || '').toLowerCase()
+    if (key === 'c') {
+      event.preventDefault()
+      copyCurrentClock()
+      return
+    }
+    if (key === 'x') {
+      event.preventDefault()
+      copyCurrentClock()
+      clearClock()
+      return
+    }
+  }
   if (event.key === 'Escape') {
     event.preventDefault()
     closePickerWithoutConfirm()
@@ -336,40 +395,56 @@ const onKeydown = (event) => {
     }
     if (confirming.value || skipConfirmOnClose.value) return
     commitDraftValue()
-    keyInput.value?.blur()
+    emit('navigate', { dir: event.shiftKey ? 'up' : 'down' })
     return
   }
   if (event.key === 'Tab') {
-    if (!event.shiftKey && draft.value.segment === 'hour') {
-      event.preventDefault()
-      draft.value = moveClockSegment(draft.value, 'minute')
-      return
-    }
-    if (event.shiftKey && draft.value.segment === 'minute') {
-      event.preventDefault()
-      draft.value = moveClockSegment(draft.value, 'hour')
-    }
+    event.preventDefault()
+    commitDraftValue()
+    emit('navigate', { dir: event.shiftKey ? 'prev' : 'next' })
     return
   }
   if (event.key === 'ArrowRight' || event.key === ':') {
     event.preventDefault()
+    if (event.key === 'ArrowRight' && draft.value.segment === 'minute') {
+      commitDraftValue()
+      emit('navigate', { dir: 'next' })
+      return
+    }
     draft.value = moveClockSegment(draft.value, 'minute')
     return
   }
   if (event.key === 'ArrowLeft') {
     event.preventDefault()
+    if (draft.value.segment === 'hour') {
+      commitDraftValue()
+      emit('navigate', { dir: 'prev' })
+      return
+    }
     draft.value = moveClockSegment(draft.value, 'hour')
+    return
+  }
+  if (event.key === 'ArrowUp') {
+    event.preventDefault()
+    commitDraftValue()
+    emit('navigate', { dir: 'up' })
+    return
+  }
+  if (event.key === 'ArrowDown') {
+    event.preventDefault()
+    commitDraftValue()
+    emit('navigate', { dir: 'down' })
+    return
+  }
+  if (event.key === 'F4') {
+    event.preventDefault()
+    openPicker()
     return
   }
   if (event.key === 'Backspace') {
     event.preventDefault()
     closePickerWithoutConfirm()
     applyDraft(applyClockBackspace(draft.value), { emitComplete: false })
-    return
-  }
-  if (event.key === 'ArrowDown' || event.key === 'F4') {
-    event.preventDefault()
-    openPicker()
     return
   }
   if (/^\d$/.test(event.key)) {
@@ -411,7 +486,7 @@ onBeforeUnmount(() => {
   document.removeEventListener('keydown', onDocumentKeydown, true)
 })
 
-defineExpose({ openPicker })
+defineExpose({ openPicker, focus: focusKeyInput })
 </script>
 
 <style lang="scss" scoped>
@@ -429,6 +504,7 @@ defineExpose({ openPicker })
   min-width: 0;
   min-height: 22px;
   padding: 0 4px;
+  overflow: visible;
   border: 1px solid transparent;
   border-radius: 4px;
   background: #fff;
