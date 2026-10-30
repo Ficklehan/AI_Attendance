@@ -36,4 +36,11 @@ class DeepSeekCellAdvisorTest {
         assertTrue(DeepSeekCellAdvisor.CELL_PROMPT.contains("Do not guess from shift"));
         assertTrue(!DeepSeekCellAdvisor.CELL_PROMPT.contains("10:00"));
     }
+
+    @Test
+    void applyNameKeepsSpaces() {
+        assertEquals("SISSOKO MODIBO", DeepSeekCellAdvisor.applyName("{\"name\":\"SISSOKO MODIBO\"}"));
+        assertEquals("", DeepSeekCellAdvisor.applyName("{\"illegible\":true}"));
+        assertTrue(DeepSeekCellAdvisor.NAME_PROMPT.contains("One person only"));
+    }
 }

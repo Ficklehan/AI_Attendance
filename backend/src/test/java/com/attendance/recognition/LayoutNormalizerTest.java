@@ -76,4 +76,24 @@ class LayoutNormalizerTest {
         }
         assertEquals(695, nameW);
     }
+
+    @Test
+    void overlappingBandSamePhysicalRowDedupesToOne() {
+        PageLayout layout = new PageLayout();
+        layout.cells.add(new GroundedCell(1, "NAME", new BBox(412, 1201, 695, 57)));
+        layout.cells.add(new GroundedCell(1, "ARRIVEE", new BBox(1598, 1201, 245, 57)));
+        layout.cells.add(new GroundedCell(8, "NAME", new BBox(412, 1210, 690, 60)));
+        layout.cells.add(new GroundedCell(8, "ARRIVEE", new BBox(1598, 1210, 250, 60)));
+        LayoutNormalizer.normalize(layout);
+        int names = 0;
+        int maxRow = 0;
+        for (GroundedCell cell : layout.cells) {
+            if ("NAME".equals(cell.field)) {
+                names++;
+            }
+            maxRow = Math.max(maxRow, cell.row);
+        }
+        assertEquals(1, names);
+        assertEquals(1, maxRow);
+    }
 }

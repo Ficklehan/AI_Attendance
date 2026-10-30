@@ -50,5 +50,7 @@ class VisionGroundClientTest {
         assertTrue(prompt.contains("Arrivo"));
         assertTrue(!prompt.contains("19:00"));
         assertTrue(!prompt.contains("SISSOKO"));
+        assertTrue(prompt.contains("first data row"));
+        assertTrue(prompt.contains("Do not skip rows"));
     }
 }

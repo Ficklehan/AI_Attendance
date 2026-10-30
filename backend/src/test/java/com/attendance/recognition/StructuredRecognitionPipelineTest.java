@@ -80,6 +80,29 @@ class StructuredRecognitionPipelineTest {
         assertTrue(harness.isPreferCli());
         assertEquals(800, harness.getZoomTarget());
         assertEquals(8, harness.getVlmParallelism());
-        assertEquals(24, harness.getMaxVlmCellsPerPage());
+        assertEquals(64, harness.getMaxVlmCellsPerPage());
+        assertEquals(1600, harness.getPreviewWidth());
+        assertEquals(3, harness.getGroundBands());
+    }
+
+    @Test
+    void adviseDecisionSendsBorderlineInkToVlm() {
+        com.attendance.recognition.dto.CellEvidence borderline = new com.attendance.recognition.dto.CellEvidence();
+        borderline.putDiag("inkDarkRatio", Double.valueOf(0.0235d));
+        assertEquals("need_borderline_ink", StructuredRecognitionPipeline.adviseDecision(borderline, 0.50d));
+
+        com.attendance.recognition.dto.CellEvidence empty = new com.attendance.recognition.dto.CellEvidence();
+        empty.putDiag("inkDarkRatio", Double.valueOf(0.012d));
+        assertEquals("skip_no_ink", StructuredRecognitionPipeline.adviseDecision(empty, 0.50d));
+    }
+
+    @Test
+    void illegibleInkCellRetries() {
+        com.attendance.recognition.dto.CellEvidence ev = new com.attendance.recognition.dto.CellEvidence();
+        ev.hasInk = true;
+        ev.putDiag("flashIllegible", Boolean.TRUE);
+        assertTrue(StructuredRecognitionPipeline.shouldRetryIllegible(ev));
+        ev.text = "10:00";
+        assertFalse(StructuredRecognitionPipeline.shouldRetryIllegible(ev));
     }
 }
