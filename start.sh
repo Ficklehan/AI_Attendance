@@ -111,7 +111,7 @@ show_usage() {
     echo "  all            启动所有服务 (后端 dev + 前端)"
     echo "  backend        仅启动后端 (profile: dev, localhost:8080)"
     echo "  dev            同 use-local-dev：杀 8080 后前台启动 dev（推荐）"
-    echo "  restart-dev    本地前后端重启（先 stop 再 start，后台守护）"
+    echo "  restart-dev    本地前后端 + DeepSeek Harness 重启（先 stop 再 start，后台守护）"
     echo "  frontend       仅启动前端 (http://localhost:5175/clockai/)"
     echo "  init           初始化数据库"
     echo "  apply          ★ 改 production.yaml 后执行（render + 按 mode 重启）"
@@ -121,7 +121,7 @@ show_usage() {
     echo "  help           显示帮助信息"
     echo ""
     echo "本地开发:"
-    echo "  ./start.sh restart-dev             # ★ 前后端一起重启（后台守护）"
+    echo "  ./start.sh restart-dev             # ★ 前后端 + Harness 一起重启（后台守护）"
     echo "  ./start.sh dev"
     echo "  SKIP_DB_INIT=1 ./start.sh backend   # 跳过数据库初始化询问"
     echo ""
@@ -217,7 +217,7 @@ case "${1:-all}" in
         ;;
     restart)
         echo "错误: ./start.sh restart 已移除（曾误指向生产）。"
-        echo "  本地前后端一起重启: ./start.sh restart-dev"
+        echo "  本地前后端+Harness重启: ./start.sh restart-dev"
         echo "  本地仅后端:         ./start.sh dev"
         echo "  生产:               ./start.sh restart-prod"
         exit 1

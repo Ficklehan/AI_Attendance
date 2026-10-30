@@ -93,6 +93,44 @@ attendance:
       task-lock-seconds: 900
       leader-lock-seconds: 55
       semaphore-ttl-seconds: 3600
+    pipeline: ${RECOGNITION_PIPELINE:ocr_primary}
+    ocr:
+      enabled: true
+      engine: dsh-ocr-local
+      plugin-root: ${DSH_OCR_PLUGIN_ROOT:}
+      python-path: ${DSH_OCR_PYTHON:}
+      model-dir: ${DSH_OCR_MODELS:}
+      timeout-ms: 8000
+      parallelism: ${RECOGNITION_OCR_PARALLELISM:8}
+      fallback-legacy-on-unavailable: ${RECOGNITION_OCR_FALLBACK_LEGACY:true}
+    harness:
+      enabled: true
+      profile: attendance
+      crop-plugin: dsh-crop-zoom
+      ground-plugin: dsh-vision-router
+      crop-zoom-bin: ${DSH_CROP_ZOOM_BIN:}
+      dsh-bin: ${DSH_BIN:}
+      extract-timeout-ms: ${RECOGNITION_HARNESS_TIMEOUT_MS:600000}
+      zoom-target: 800
+      zoom-max-scale: 16
+      zoom-mode: nearest
+      preview-width: 1000
+      pad-px: 2
+      prefer-cli: ${RECOGNITION_CROP_PREFER_CLI:true}
+      max-vlm-cells-per-page: 24
+      vlm-parallelism: ${RECOGNITION_VLM_PARALLELISM:8}
+      ground-timeout-ms: 90000
+      vlm-timeout-ms: 45000
+    rule:
+      accept-threshold: 0.85
+      review-threshold: 0.50
+      ignore-long-line: true
+      ink-dark-ratio: 0.028
+      ink-variance: 280
+      line-angle-min: 20
+      line-angle-max: 75
+      blur-keep-text: true
+      dark-luminance: 165
   performance:
     slow-sql-ms: 500
     slow-api-ms: 800

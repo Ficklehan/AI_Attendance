@@ -13,6 +13,7 @@
         :auto-orient-enabled="autoOrientEnabled"
         :show-auto-orient-toggle="true"
         :show-gesture-hint="false"
+        :highlight-boxes="highlightBoxes"
         layout="dock"
         @update:auto-orient-enabled="autoOrientEnabled = $event"
         @update:index="emit('update:index', $event)"
@@ -45,6 +46,7 @@ const props = defineProps({
   index: { type: Number, default: 0 },
   loading: { type: Boolean, default: false },
   title: { type: String, default: '' },
+  highlightBoxes: { type: Array, default: () => [] },
 })
 
 const emit = defineEmits(['update:open', 'update:index', 'fullscreen'])

@@ -861,6 +861,7 @@
         v-model:index="previewCurrentIndex"
         :images="previewImagesList"
         :title="$t('tasks.imagePreview')"
+        :highlight-boxes="highlightBoxes"
         @fullscreen="openPreviewFullscreen"
       />
     </div>
@@ -870,6 +871,7 @@
     v-model:open="previewFullscreenOpen"
     v-model:index="previewCurrentIndex"
     :images="previewImagesList"
+    :highlight-boxes="highlightBoxes"
   />
 
   <RecordCalibrationModal
@@ -909,6 +911,7 @@ import FieldChangeHint from '@/components/FieldChangeHint.vue'
 import ImagePreviewModal from '@/components/ImagePreviewModal.vue'
 import ImageCompareDockShell from '@/components/ImageCompareDockShell.vue'
 import { useTaskImagePreview } from '@/composables/useTaskImagePreview'
+import { boxesForPage } from '@/utils/ocrBboxes'
 import RecordCalibrationModal from '@/components/RecordCalibrationModal.vue'
 import TaskDeleteModal from '@/components/TaskDeleteModal.vue'
 import TableSortableHeader from '@/components/TableSortableHeader.vue'
@@ -1358,6 +1361,13 @@ const fieldCellDomId = (record, field) => {
 
 const customTableRow = (record) => ({
   id: `field-row-${getRowKey(record)}`,
+  onClick: () => {
+    selectedPreviewRowKey.value = getRowKey(record)
+    const page = Number(record?._pageIndex || 0)
+    if (previewImagesList.value.length > 0) {
+      openImagePreviewAt(page)
+    }
+  },
 })
 
 const onTimeFieldInput = (record, field) => {
@@ -1756,6 +1766,13 @@ const {
   loadTaskImageUrls,
   openImagePreviewAt,
 } = useTaskImagePreview()
+const selectedPreviewRowKey = ref('')
+const highlightBoxes = computed(() => boxesForPage(
+  records.value,
+  previewCurrentIndex.value,
+  selectedPreviewRowKey.value,
+  getRowKey,
+))
 const task = ref(null)
 const countryStore = useCountryStore()
 const canDeleteTask = computed(() => {
@@ -2015,6 +2032,9 @@ const getRowClassName = (record) => {
   const base = getBaseRowClassName(record) || ''
   const extras = []
   if (hasRecordFieldChanges(record)) extras.push('has-field-changes')
+  if (selectedPreviewRowKey.value && getRowKey(record) === selectedPreviewRowKey.value) {
+    extras.push('preview-selected-row')
+  }
   // 未出勤 / 已删除：仅删除线，不加底纹，绝不叠待确认底
   if (
     isRowMuted(record)
@@ -3988,6 +4008,10 @@ watch(headerFilters, () => {
     $field-change-hint-slot: 11px;
     $field-change-stack-h: $field-change-control-h + $field-change-hint-slot;
     $field-change-pad-y: 4px;
+
+    :deep(.ant-table-tbody > tr.preview-selected-row > td) {
+      box-shadow: inset 0 0 0 1px rgba($primary, 0.45);
+    }
 
     :deep(.ant-table-tbody > tr.has-field-changes > td) {
       position: relative;

@@ -7,6 +7,8 @@ import com.attendance.service.AIParserService;
 import com.attendance.service.ConfigService;
 import com.attendance.service.RecognitionConcurrencyGuard;
 import com.attendance.service.RecognitionJobService;
+import com.attendance.config.RecognitionProperties;
+import com.attendance.recognition.StructuredRecognitionPipeline;
 import com.attendance.service.RecognitionRunner;
 import com.attendance.dto.ImageQualityAssessment;
 import com.attendance.service.ImageQualityConfigService;
@@ -107,6 +109,12 @@ public class LocalUploadController {
 
     @Autowired
     private FileStorage fileStorage;
+
+    @Autowired
+    private StructuredRecognitionPipeline structuredRecognitionPipeline;
+
+    @Autowired
+    private RecognitionProperties recognitionProperties;
 
     @Value("${server.servlet.context-path:}")
     private String servletContextPath;
@@ -304,6 +312,61 @@ public class LocalUploadController {
                 String contentType = image.getContentType();
                 log.info("图片信息 - 文件名: {}, Content-Type: {}, 大小: {} bytes", originalFilename, contentType, fileBytes.length);
                 log.info("开始 AI 识别: pages={}, filename={}", pages.size(), originalFilename);
+                boolean useHarness = recognitionProperties.isOcrPrimary()
+                        && recognitionProperties.getOcr().isEnabled()
+                        && recognitionProperties.getHarness().isEnabled()
+                        && structuredRecognitionPipeline.doctorOk();
+                if (useHarness) {
+                    try {
+                        for (int pageIndex = 0; pageIndex < pages.size(); pageIndex++) {
+                            UploadMediaSupport.ImagePage page = pages.get(pageIndex);
+                            List<JSONObject> parsed = structuredRecognitionPipeline.recognizePage(
+                                    page.getBytes(), page.getLabel(), configCountry, workingCountry, trace);
+                            for (JSONObject record : parsed) {
+                                RecordCountryDefaults.applyMissingPays(record, workingCountry);
+                                record.put("_pageIndex", Integer.valueOf(pageIndex));
+                                records.add(record);
+                                JSONObject recordEvent = new JSONObject();
+                                recordEvent.put("record", record);
+                                emitter.send(SseEmitter.event()
+                                        .name("record")
+                                        .data(recordEvent.toJSONString(), MediaType.APPLICATION_JSON));
+                            }
+                        }
+                        String engineTag = "harness:" + configCountry;
+                        appendRawData(newTaskId, records, engineTag, trace);
+                        sendTraceDump(emitter, trace);
+                        JSONObject completeEvent = new JSONObject();
+                        completeEvent.put("taskId", newTaskId);
+                        completeEvent.put("rowCount", records.size());
+                        completeEvent.put("promptCountry", configCountry);
+                        completeEvent.put("pageCount", pages.size());
+                        emitter.send(SseEmitter.event()
+                                .name("complete")
+                                .data(completeEvent.toJSONString(), MediaType.APPLICATION_JSON));
+                        emitter.complete();
+                    } catch (Exception e) {
+                        log.error("ocr_primary SSE 识别失败", e);
+                        try {
+                            trace.step("recognition_failed", "message", e.getMessage());
+                            taskService.failTask(newTaskId,
+                                    RecognitionFailureMessages.toClientMessage(e), trace);
+                            sendTraceDump(emitter, trace);
+                            JSONObject errorEvent = buildErrorEvent(e);
+                            emitter.send(SseEmitter.event()
+                                    .name("error")
+                                    .data(errorEvent.toJSONString(), MediaType.APPLICATION_JSON));
+                            emitter.complete();
+                        } catch (IOException ex) {
+                            log.error("错误发送失败", ex);
+                        }
+                    }
+                } else {
+                if (!structuredRecognitionPipeline.doctorOk()
+                        && recognitionProperties.isOcrPrimary()
+                        && recognitionProperties.getOcr().isFallbackLegacyOnUnavailable()) {
+                    log.warn("ocr_primary 未就绪，SSE 回退 legacy: {}", structuredRecognitionPipeline.doctorMessage());
+                }
                 final Exception[] streamError = {null};
                 final boolean[] streamCompleted = {false};
                 for (int pageIndex = 0; pageIndex < pages.size(); pageIndex++) {
@@ -398,6 +461,7 @@ public class LocalUploadController {
                     } catch (Exception ex) {
                         emitter.completeWithError(ex);
                     }
+                }
                 }
             }
 

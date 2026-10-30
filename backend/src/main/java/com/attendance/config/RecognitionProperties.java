@@ -26,6 +26,11 @@ public class RecognitionProperties {
     private final Queue queue = new Queue();
     private final Executor executor = new Executor();
     private final Distributed distributed = new Distributed();
+    /** legacy = 整页 VLM；ocr_primary = Harness 切格 + dsh-ocr-local */
+    private String pipeline = "ocr_primary";
+    private final Ocr ocr = new Ocr();
+    private final Harness harness = new Harness();
+    private final Rule rule = new Rule();
 
     public int getMaxPerUser() {
         return maxPerUser;
@@ -210,6 +215,346 @@ public class RecognitionProperties {
 
         public void setSemaphoreTtlSeconds(int semaphoreTtlSeconds) {
             this.semaphoreTtlSeconds = semaphoreTtlSeconds;
+        }
+    }
+
+    public String getPipeline() {
+        return pipeline;
+    }
+
+    public void setPipeline(String pipeline) {
+        this.pipeline = pipeline;
+    }
+
+    public Ocr getOcr() {
+        return ocr;
+    }
+
+    public Harness getHarness() {
+        return harness;
+    }
+
+    public Rule getRule() {
+        return rule;
+    }
+
+    public boolean isOcrPrimary() {
+        return pipeline == null || "ocr_primary".equalsIgnoreCase(pipeline.trim())
+                || "structured".equalsIgnoreCase(pipeline.trim());
+    }
+
+    public static class Ocr {
+        private boolean enabled = true;
+        private String engine = "dsh-ocr-local";
+        private String pluginRoot = "";
+        private String pythonPath = "";
+        private String modelDir = "";
+        private int timeoutMs = 8000;
+        private int parallelism = 8;
+        private boolean fallbackLegacyOnUnavailable = true;
+
+        public boolean isEnabled() {
+            return enabled;
+        }
+
+        public void setEnabled(boolean enabled) {
+            this.enabled = enabled;
+        }
+
+        public String getEngine() {
+            return engine;
+        }
+
+        public void setEngine(String engine) {
+            this.engine = engine;
+        }
+
+        public String getPluginRoot() {
+            return pluginRoot;
+        }
+
+        public void setPluginRoot(String pluginRoot) {
+            this.pluginRoot = pluginRoot;
+        }
+
+        public String getPythonPath() {
+            return pythonPath;
+        }
+
+        public void setPythonPath(String pythonPath) {
+            this.pythonPath = pythonPath;
+        }
+
+        public String getModelDir() {
+            return modelDir;
+        }
+
+        public void setModelDir(String modelDir) {
+            this.modelDir = modelDir;
+        }
+
+        public int getTimeoutMs() {
+            return timeoutMs;
+        }
+
+        public void setTimeoutMs(int timeoutMs) {
+            this.timeoutMs = timeoutMs;
+        }
+
+        public int getParallelism() {
+            return parallelism;
+        }
+
+        public void setParallelism(int parallelism) {
+            this.parallelism = parallelism;
+        }
+
+        public boolean isFallbackLegacyOnUnavailable() {
+            return fallbackLegacyOnUnavailable;
+        }
+
+        public void setFallbackLegacyOnUnavailable(boolean fallbackLegacyOnUnavailable) {
+            this.fallbackLegacyOnUnavailable = fallbackLegacyOnUnavailable;
+        }
+    }
+
+    public static class Harness {
+        private boolean enabled = true;
+        private String profile = "attendance";
+        private String cropPlugin = "dsh-crop-zoom";
+        private String groundPlugin = "dsh-vision-router";
+        private String cropZoomBin = "";
+        private int zoomTarget = 800;
+        private int zoomMaxScale = 16;
+        private String zoomMode = "nearest";
+        private int previewWidth = 1000;
+        private int padPx = 2;
+        private boolean preferCli = true;
+        private int maxVlmCellsPerPage = 24;
+        private int vlmParallelism = 8;
+        private int groundTimeoutMs = 90000;
+        private int vlmTimeoutMs = 45000;
+        private String dshBin = "";
+        private int extractTimeoutMs = 600000;
+
+        public boolean isEnabled() {
+            return enabled;
+        }
+
+        public void setEnabled(boolean enabled) {
+            this.enabled = enabled;
+        }
+
+        public String getProfile() {
+            return profile;
+        }
+
+        public void setProfile(String profile) {
+            this.profile = profile;
+        }
+
+        public String getCropPlugin() {
+            return cropPlugin;
+        }
+
+        public void setCropPlugin(String cropPlugin) {
+            this.cropPlugin = cropPlugin;
+        }
+
+        public String getGroundPlugin() {
+            return groundPlugin;
+        }
+
+        public void setGroundPlugin(String groundPlugin) {
+            this.groundPlugin = groundPlugin;
+        }
+
+        public String getCropZoomBin() {
+            return cropZoomBin;
+        }
+
+        public void setCropZoomBin(String cropZoomBin) {
+            this.cropZoomBin = cropZoomBin;
+        }
+
+        public int getZoomTarget() {
+            return zoomTarget;
+        }
+
+        public void setZoomTarget(int zoomTarget) {
+            this.zoomTarget = zoomTarget;
+        }
+
+        public int getZoomMaxScale() {
+            return zoomMaxScale;
+        }
+
+        public void setZoomMaxScale(int zoomMaxScale) {
+            this.zoomMaxScale = zoomMaxScale;
+        }
+
+        public String getZoomMode() {
+            return zoomMode;
+        }
+
+        public void setZoomMode(String zoomMode) {
+            this.zoomMode = zoomMode;
+        }
+
+        public int getPreviewWidth() {
+            return previewWidth;
+        }
+
+        public void setPreviewWidth(int previewWidth) {
+            this.previewWidth = previewWidth;
+        }
+
+        public int getPadPx() {
+            return padPx;
+        }
+
+        public void setPadPx(int padPx) {
+            this.padPx = padPx;
+        }
+
+        public boolean isPreferCli() {
+            return preferCli;
+        }
+
+        public void setPreferCli(boolean preferCli) {
+            this.preferCli = preferCli;
+        }
+
+        public int getMaxVlmCellsPerPage() {
+            return maxVlmCellsPerPage;
+        }
+
+        public void setMaxVlmCellsPerPage(int maxVlmCellsPerPage) {
+            this.maxVlmCellsPerPage = maxVlmCellsPerPage;
+        }
+
+        public int getVlmParallelism() {
+            return vlmParallelism;
+        }
+
+        public void setVlmParallelism(int vlmParallelism) {
+            this.vlmParallelism = vlmParallelism;
+        }
+
+        public int getGroundTimeoutMs() {
+            return groundTimeoutMs;
+        }
+
+        public void setGroundTimeoutMs(int groundTimeoutMs) {
+            this.groundTimeoutMs = groundTimeoutMs;
+        }
+
+        public int getVlmTimeoutMs() {
+            return vlmTimeoutMs;
+        }
+
+        public void setVlmTimeoutMs(int vlmTimeoutMs) {
+            this.vlmTimeoutMs = vlmTimeoutMs;
+        }
+
+        public String getDshBin() {
+            return dshBin;
+        }
+
+        public void setDshBin(String dshBin) {
+            this.dshBin = dshBin;
+        }
+
+        public int getExtractTimeoutMs() {
+            return extractTimeoutMs;
+        }
+
+        public void setExtractTimeoutMs(int extractTimeoutMs) {
+            this.extractTimeoutMs = extractTimeoutMs;
+        }
+    }
+
+    public static class Rule {
+        private double acceptThreshold = 0.85d;
+        private double reviewThreshold = 0.50d;
+        private boolean ignoreLongLine = true;
+        private double inkDarkRatio = 0.028d;
+        private double inkVariance = 280d;
+        private int lineAngleMin = 20;
+        private int lineAngleMax = 75;
+        private boolean blurKeepText = true;
+        private int darkLuminance = 165;
+
+        public double getAcceptThreshold() {
+            return acceptThreshold;
+        }
+
+        public void setAcceptThreshold(double acceptThreshold) {
+            this.acceptThreshold = acceptThreshold;
+        }
+
+        public double getReviewThreshold() {
+            return reviewThreshold;
+        }
+
+        public void setReviewThreshold(double reviewThreshold) {
+            this.reviewThreshold = reviewThreshold;
+        }
+
+        public boolean isIgnoreLongLine() {
+            return ignoreLongLine;
+        }
+
+        public void setIgnoreLongLine(boolean ignoreLongLine) {
+            this.ignoreLongLine = ignoreLongLine;
+        }
+
+        public double getInkDarkRatio() {
+            return inkDarkRatio;
+        }
+
+        public void setInkDarkRatio(double inkDarkRatio) {
+            this.inkDarkRatio = inkDarkRatio;
+        }
+
+        public double getInkVariance() {
+            return inkVariance;
+        }
+
+        public void setInkVariance(double inkVariance) {
+            this.inkVariance = inkVariance;
+        }
+
+        public int getLineAngleMin() {
+            return lineAngleMin;
+        }
+
+        public void setLineAngleMin(int lineAngleMin) {
+            this.lineAngleMin = lineAngleMin;
+        }
+
+        public int getLineAngleMax() {
+            return lineAngleMax;
+        }
+
+        public void setLineAngleMax(int lineAngleMax) {
+            this.lineAngleMax = lineAngleMax;
+        }
+
+        public boolean isBlurKeepText() {
+            return blurKeepText;
+        }
+
+        public void setBlurKeepText(boolean blurKeepText) {
+            this.blurKeepText = blurKeepText;
+        }
+
+        public int getDarkLuminance() {
+            return darkLuminance;
+        }
+
+        public void setDarkLuminance(int darkLuminance) {
+            this.darkLuminance = darkLuminance;
         }
     }
 }

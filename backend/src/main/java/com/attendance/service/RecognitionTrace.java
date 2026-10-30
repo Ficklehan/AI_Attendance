@@ -31,7 +31,7 @@ public class RecognitionTrace {
         this.stepListener = listener;
     }
 
-    public void step(String phase, JSONObject detail) {
+    public synchronized void step(String phase, JSONObject detail) {
         JSONObject entry = new JSONObject();
         entry.put("at", Instant.now().toString());
         entry.put("phase", phase);
@@ -54,7 +54,7 @@ public class RecognitionTrace {
         step(phase, detail);
     }
 
-    public JSONObject toJson() {
+    public synchronized JSONObject toJson() {
         JSONObject root = new JSONObject();
         root.put("taskId", taskId);
         root.put("client", client);

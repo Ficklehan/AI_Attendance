@@ -70,19 +70,34 @@
           <a-spin size="small" />
           <span>{{ $t('taskEdit.autoOrienting') }}</span>
         </div>
-        <img
+        <div
           v-if="currentSrc"
-          ref="imgRef"
-          :key="currentSrc"
-          :src="currentSrc"
-          class="ipv-image"
-          :class="{ 'ipv-image--pending': loading }"
+          class="ipv-stage"
+          :class="{ 'ipv-stage--pending': loading }"
           :style="imageStyle"
-          draggable="false"
-          :alt="$t('tasks.imagePreview')"
-          @load="onImageLoad"
-          @error="onImageError"
-        />
+        >
+          <img
+            ref="imgRef"
+            :key="currentSrc"
+            :src="currentSrc"
+            class="ipv-image"
+            draggable="false"
+            :alt="$t('tasks.imagePreview')"
+            @load="handleImageLoad"
+            @error="onImageError"
+          />
+          <div v-if="overlayBoxes.length" class="ipv-boxes">
+            <div
+              v-for="box in overlayBoxes"
+              :key="box.key"
+              class="ipv-box"
+              :class="'ipv-box--' + box.tone"
+              :style="box.style"
+            >
+              <span v-if="box.label" class="ipv-box-label">{{ box.label }}</span>
+            </div>
+          </div>
+        </div>
         <a-spin v-else class="ipv-loading" />
 
         <template v-if="imageList.length > 1 && layout === 'dock'">
@@ -210,12 +225,14 @@ const props = defineProps({
   viewportMinHeight: { type: String, default: '52vh' },
   viewportMaxHeight: { type: String, default: '72vh' },
   imageNames: { type: Array, default: () => [] },
+  highlightBoxes: { type: Array, default: () => [] },
 })
 
 const emit = defineEmits(['update:autoOrientEnabled', 'update:index'])
 
 const { t } = useI18n()
 const downloading = ref(false)
+const naturalSize = ref({ w: 0, h: 0 })
 
 const {
   viewportRef,
@@ -272,6 +289,35 @@ const viewportStyle = computed(() => {
     maxHeight: props.viewportMaxHeight,
     flex: '1 1 auto',
   }
+})
+
+const handleImageLoad = (event) => {
+  const img = imgRef.value || event?.target
+  if (img && img.naturalWidth) {
+    naturalSize.value = { w: img.naturalWidth, h: img.naturalHeight }
+  }
+  onImageLoad(event)
+}
+
+watch(currentSrc, () => {
+  naturalSize.value = { w: 0, h: 0 }
+})
+
+const overlayBoxes = computed(() => {
+  const nw = naturalSize.value.w
+  const nh = naturalSize.value.h
+  if (!nw || !nh) return []
+  return (props.highlightBoxes || []).map((box, i) => ({
+    key: `${i}-${box.x}-${box.y}-${box.w}-${box.h}`,
+    label: box.label || '',
+    tone: box.tone || 'ok',
+    style: {
+      left: `${(Number(box.x) / nw) * 100}%`,
+      top: `${(Number(box.y) / nh) * 100}%`,
+      width: `${(Number(box.w) / nw) * 100}%`,
+      height: `${(Number(box.h) / nh) * 100}%`,
+    },
+  }))
 })
 
 const downloadCurrentImage = async () => {
@@ -553,9 +599,9 @@ watch(viewportRef, (el, prev) => {
   pointer-events: none;
 }
 
-.ipv-image {
-  max-width: none;
-  max-height: none;
+.ipv-stage {
+  position: relative;
+  display: inline-block;
   transform-origin: center center;
   will-change: transform;
   pointer-events: none;
@@ -563,6 +609,56 @@ watch(viewportRef, (el, prev) => {
   &--pending {
     visibility: hidden;
   }
+}
+
+.ipv-image {
+  display: block;
+  max-width: none;
+  max-height: none;
+  pointer-events: none;
+}
+
+.ipv-boxes {
+  position: absolute;
+  inset: 0;
+}
+
+.ipv-box {
+  position: absolute;
+  box-sizing: border-box;
+  border: 2px solid $success;
+  background: rgba($success, 0.12);
+
+  &--blur {
+    border-color: $warning;
+    background: rgba($warning, 0.2);
+  }
+
+  &--absent {
+    border-color: rgba($text-secondary, 0.75);
+    background: rgba($text-secondary, 0.1);
+  }
+}
+
+.ipv-box-label {
+  position: absolute;
+  left: 0;
+  top: 0;
+  transform: translateY(-100%);
+  padding: 1px 4px;
+  font-size: 10px;
+  line-height: 1.2;
+  white-space: nowrap;
+  color: #fff;
+  background: $success-dark;
+}
+
+.ipv-box--blur .ipv-box-label {
+  background: $warning-dark;
+}
+
+.ipv-box--absent .ipv-box-label {
+  background: $text-secondary;
 }
 
 .ipv-loading {

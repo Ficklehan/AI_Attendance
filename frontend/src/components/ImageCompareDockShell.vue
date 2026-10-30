@@ -17,6 +17,7 @@
       :images="images"
       :loading="loading"
       :title="title"
+      :highlight-boxes="highlightBoxes"
       @fullscreen="emit('fullscreen')"
     />
   </div>
@@ -41,6 +42,7 @@ const props = defineProps({
   images: { type: Array, default: () => [] },
   loading: { type: Boolean, default: false },
   title: { type: String, default: '' },
+  highlightBoxes: { type: Array, default: () => [] },
 })
 
 const emit = defineEmits(['update:open', 'update:index', 'fullscreen'])

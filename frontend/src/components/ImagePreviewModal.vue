@@ -25,6 +25,7 @@
       :viewport-min-height="viewportMinHeight"
       :viewport-max-height="viewportMaxHeight"
       :image-names="imageNames"
+      :highlight-boxes="highlightBoxes"
       @update:index="onIndexUpdate"
     />
   </a-modal>
@@ -43,6 +44,7 @@ const props = defineProps({
   autoOrientEnabled: { type: Boolean, default: true },
   fullscreen: { type: Boolean, default: true },
   imageNames: { type: Array, default: () => [] },
+  highlightBoxes: { type: Array, default: () => [] },
 })
 
 const emit = defineEmits(['update:open', 'update:index'])

@@ -96,9 +96,9 @@ public final class RecognizedTimeNormalizer {
       return normalizeClockTime(tokens.get(0));
     }
 
-    if (str.matches("\\d{1,2}:\\d{2}")) {
-      String[] parts = str.split(":");
-      String clock = formatClock(Integer.parseInt(parts[0]), Integer.parseInt(parts[1]));
+    Matcher hm = Pattern.compile("^(\\d{1,2}):(\\d{1,2})$").matcher(str);
+    if (hm.matches()) {
+      String clock = formatClock(Integer.parseInt(hm.group(1)), Integer.parseInt(hm.group(2)));
       return clock != null ? clock : "";
     }
 
@@ -129,12 +129,33 @@ public final class RecognizedTimeNormalizer {
       return clock != null ? clock : "";
     }
 
-    Matcher matcher1Digit = Pattern.compile("^(\\d)$").matcher(str);
-    if (matcher1Digit.matches()) {
-      return String.format("%02d:00", Integer.parseInt(matcher1Digit.group(1)));
-    }
-
     return str;
+  }
+
+  /** 到/离格：原文必须自带 : 或 h，禁止 0→00:00、0010→00:10。 */
+  public static String normalizeHandwrittenClock(String raw) {
+    if (raw == null) {
+      return "";
+    }
+    String str = raw.trim();
+    if (str.isEmpty() || RecognizedFieldSanitizer.isUnrecognized(str)) {
+      return "";
+    }
+    if (!hasClockSeparator(str)) {
+      return "";
+    }
+    String normalized = normalizeClockTime(str);
+    if (normalized == null || !normalized.matches("\\d{2}:\\d{2}")) {
+      return "";
+    }
+    return normalized;
+  }
+
+  public static boolean hasClockSeparator(String raw) {
+    if (raw == null) {
+      return false;
+    }
+    return raw.trim().matches("(?i).*\\d{1,2}[:hH]\\d{0,2}.*");
   }
 
   /**

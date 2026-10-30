@@ -6,8 +6,10 @@ import com.alibaba.fastjson.JSONObject;
 import com.attendance.common.BusinessException;
 import com.attendance.common.ErrorCode;
 import com.attendance.common.ErrorKeys;
+import com.attendance.config.RecognitionProperties;
 import com.attendance.dto.ImageQualityAssessment;
 import com.attendance.dto.RecognitionCheckpoint;
+import com.attendance.recognition.StructuredRecognitionPipeline;
 import com.attendance.util.RecordCountryDefaults;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -57,6 +59,12 @@ public class RecognitionRunner {
     @Autowired
     @Qualifier("recognitionExecutor")
     private Executor recognitionExecutor;
+
+    @Autowired
+    private StructuredRecognitionPipeline structuredRecognitionPipeline;
+
+    @Autowired
+    private RecognitionProperties recognitionProperties;
 
     private static final int PROGRESS_COUNT_EVERY = 5;
     private static final int FULL_RAW_FLUSH_EVERY = 20;
@@ -246,6 +254,42 @@ public class RecognitionRunner {
                     recognitionModelRuntime.displayEngineName(),
                     originalFilename, promptCountry, fileBytes.length);
 
+            boolean skipLegacyVlm = false;
+            if (useOcrPrimaryPipeline()) {
+                if (!structuredRecognitionPipeline.doctorOk()) {
+                    String doctor = structuredRecognitionPipeline.doctorMessage();
+                    if (recognitionProperties.getOcr().isFallbackLegacyOnUnavailable()) {
+                        log.warn("ocr_primary 环境未就绪，回退 legacy: {}", doctor);
+                        if (trace != null) {
+                            trace.step("ocr_primary_fallback_legacy", "reason", doctor);
+                        }
+                    } else {
+                        error[0] = new IllegalStateException("dsh-ocr-local 未就绪: " + doctor);
+                        done.countDown();
+                        skipLegacyVlm = true;
+                    }
+                } else {
+                    try {
+                        List<JSONObject> parsed = structuredRecognitionPipeline.recognizePage(
+                                fileBytes, originalFilename, promptCountry, workingCountry, trace);
+                        for (JSONObject record : parsed) {
+                            RecordCountryDefaults.applyMissingPays(record, workingCountry);
+                            records.add(record);
+                        }
+                        skipLegacyVlm = true;
+                        done.countDown();
+                    } catch (Exception e) {
+                        log.error("ocr_primary 识别失败", e);
+                        error[0] = e;
+                        skipLegacyVlm = true;
+                        done.countDown();
+                    }
+                }
+            }
+
+            if (skipLegacyVlm) {
+                // Harness 管线已完成或已失败
+            } else {
             AIParserService.ParseCallback callback = new AIParserService.ParseCallback() {
                 @Override
                 public void onRecord(JSONObject record) {
@@ -282,6 +326,7 @@ public class RecognitionRunner {
 
             aiParserService.parseImageStreamByLineFromBytes(
                     fileBytes, originalFilename, promptCountry, workingCountry, callback, trace);
+            }
         }
 
         if (!done.await(RECOGNITION_TIMEOUT_SECONDS, TimeUnit.SECONDS)) {
@@ -290,8 +335,18 @@ public class RecognitionRunner {
         if (error[0] != null) {
             throw error[0];
         }
+        int page = imageIndex != null ? imageIndex.intValue() : 0;
+        for (int i = 0; i < records.size(); i++) {
+            JSONObject rec = records.get(i);
+            if (rec != null && !rec.containsKey("_pageIndex")) {
+                rec.put("_pageIndex", Integer.valueOf(page));
+            }
+        }
 
         if (records.isEmpty() && !recognitionSupport.shouldUseSimulatedRecognition()) {
+            if (useOcrPrimaryPipeline() && structuredRecognitionPipeline.doctorOk()) {
+                throw new IllegalStateException("识别结果为空，请检查 DeepSeek Harness 是否返回人员行");
+            }
             String preview = aiParserService.getLastRecognitionRawText();
             String msg = "识别结果为空，请检查图片是否清晰。模型回复: "
                     + (preview.length() > 200 ? preview.substring(0, 200) + "..." : preview);
@@ -307,13 +362,19 @@ public class RecognitionRunner {
             RecordCountryDefaults.applyMissingPays(record, workingCountry);
         }
 
-        String country = recognitionSupport.shouldUseSimulatedRecognition()
-                ? (promptCountry != null ? promptCountry : "default")
-                : aiParserService.getLastPromptCountry();
-        String engine = recognitionSupport.shouldUseSimulatedRecognition()
-                ? "simulated"
-                : (recognitionSupport.getActiveEngine() + ":"
-                    + (country != null ? country : "default"));
+        String country;
+        String engine;
+        if (recognitionSupport.shouldUseSimulatedRecognition()) {
+            country = promptCountry != null ? promptCountry : "default";
+            engine = "simulated";
+        } else if (useOcrPrimaryPipeline() && structuredRecognitionPipeline.doctorOk()) {
+            country = promptCountry != null ? promptCountry : "default";
+            engine = "harness:" + country;
+        } else {
+            country = aiParserService.getLastPromptCountry();
+            engine = recognitionSupport.getActiveEngine() + ":"
+                    + (country != null ? country : "default");
+        }
 
         if (trace != null) {
             JSONObject doneMeta = new JSONObject();
@@ -672,6 +733,12 @@ public class RecognitionRunner {
                                 List<JSONObject> records, String engineTag) {
         flushProgress(taskId, records, engineTag, true);
         taskService.saveRecognitionCheckpoint(taskId, checkpoint);
+    }
+
+    private boolean useOcrPrimaryPipeline() {
+        return recognitionProperties.isOcrPrimary()
+                && recognitionProperties.getOcr().isEnabled()
+                && recognitionProperties.getHarness().isEnabled();
     }
 
     private static boolean hasPartialRawData(com.attendance.entity.Task task) {

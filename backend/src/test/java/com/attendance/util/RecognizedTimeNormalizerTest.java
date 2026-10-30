@@ -41,5 +41,19 @@ class RecognizedTimeNormalizerTest {
         assertEquals("15:41", RecognizedTimeNormalizer.normalizeClockTime("15:41"));
         assertEquals("13:41", RecognizedTimeNormalizer.normalizeClockTime("13:41"));
         assertEquals("09:43", RecognizedTimeNormalizer.normalizeClockTime("9:43"));
+        assertEquals("19:00", RecognizedTimeNormalizer.normalizeClockTime("19:0"));
+        assertEquals("12:00", RecognizedTimeNormalizer.normalizeClockTime("12:0"));
+        assertEquals("09:00", RecognizedTimeNormalizer.normalizeClockTime("9:0"));
+    }
+
+    @Test
+    void handwrittenClockRejectsBareDigits() {
+        assertEquals("", RecognizedTimeNormalizer.normalizeHandwrittenClock("0"));
+        assertEquals("", RecognizedTimeNormalizer.normalizeHandwrittenClock("00"));
+        assertEquals("", RecognizedTimeNormalizer.normalizeHandwrittenClock("0010"));
+        assertEquals("", RecognizedTimeNormalizer.normalizeHandwrittenClock("8"));
+        assertEquals("", RecognizedTimeNormalizer.normalizeHandwrittenClock("280:0"));
+        assertEquals("19:00", RecognizedTimeNormalizer.normalizeHandwrittenClock("19:0"));
+        assertEquals("10:00", RecognizedTimeNormalizer.normalizeHandwrittenClock("10:00"));
     }
 }
