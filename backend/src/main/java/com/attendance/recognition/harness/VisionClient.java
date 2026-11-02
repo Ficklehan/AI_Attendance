@@ -4,6 +4,7 @@ import com.alibaba.fastjson.JSON;
 import com.alibaba.fastjson.JSONArray;
 import com.alibaba.fastjson.JSONObject;
 import com.attendance.config.DeepSeekProperties;
+import com.attendance.config.MimoProperties;
 import com.attendance.service.RecognitionModelRuntime;
 import okhttp3.MediaType;
 import okhttp3.OkHttpClient;
@@ -38,6 +39,7 @@ public class VisionClient {
 
     private final RecognitionModelRuntime runtime;
     private final DeepSeekProperties deepSeekProperties;
+    private final MimoProperties mimoProperties;
     private final AtomicInteger keyCursor = new AtomicInteger();
     private final OkHttpClient http = new OkHttpClient.Builder()
             .connectTimeout(30, TimeUnit.SECONDS)
@@ -45,9 +47,11 @@ public class VisionClient {
             .writeTimeout(60, TimeUnit.SECONDS)
             .build();
 
-    public VisionClient(RecognitionModelRuntime runtime, DeepSeekProperties deepSeekProperties) {
+    public VisionClient(RecognitionModelRuntime runtime, DeepSeekProperties deepSeekProperties,
+                        MimoProperties mimoProperties) {
         this.runtime = runtime;
         this.deepSeekProperties = deepSeekProperties;
+        this.mimoProperties = mimoProperties;
     }
 
     /**
@@ -105,6 +109,40 @@ public class VisionClient {
         return new String[] {str(root, "warehouse"), str(root, "date_raw", "dateRaw")};
     }
 
+    /** 读时钟列：crop 整列放大 2x，逐行读手写 HH:MM，返回 times 列表（空行 ""）；失败返回 null。 */
+    public List<String> readClockColumn(BufferedImage columnCrop) throws Exception {
+        BufferedImage zoomed = scale2x(columnCrop);
+        String prompt = "This image is ONE column of an attendance timesheet showing handwritten clock times "
+                + "(format HH:MM), one per data row, from top to bottom. There may be a printed column header "
+                + "near the top — ignore it. Read every data row in order.\n"
+                + "Output JSON only, no markdown: {\"times\":[\"HH:MM\",\"HH:MM\",...]}\n"
+                + "Use \"\" for an empty row. Include every row, do not skip empty rows.\n";
+        String raw = complete(zoomed, prompt, 1024);
+        JSONObject root = extractObject(raw);
+        if (root == null || root.getJSONArray("times") == null) {
+            return null;
+        }
+        JSONArray arr = root.getJSONArray("times");
+        List<String> out = new ArrayList<String>();
+        for (int i = 0; i < arr.size(); i++) {
+            Object v = arr.get(i);
+            out.add(v == null ? "" : String.valueOf(v).trim());
+        }
+        return out;
+    }
+
+    private static BufferedImage scale2x(BufferedImage src) {
+        int w = src.getWidth() * 2;
+        int h = src.getHeight() * 2;
+        BufferedImage out = new BufferedImage(w, h, BufferedImage.TYPE_INT_RGB);
+        java.awt.Graphics2D g = out.createGraphics();
+        g.setRenderingHint(java.awt.RenderingHints.KEY_INTERPOLATION,
+                java.awt.RenderingHints.VALUE_INTERPOLATION_BILINEAR);
+        g.drawImage(src, 0, 0, w, h, null);
+        g.dispose();
+        return out;
+    }
+
     private String complete(BufferedImage image, String prompt, int maxTokens) throws Exception {
         byte[] png = toPng(image);
         JSONArray content = new JSONArray();
@@ -138,7 +176,7 @@ public class VisionClient {
 
         String key = nextKey();
         if (key == null || key.trim().isEmpty()) {
-            throw new IllegalStateException("DeepSeek API Key 未配置，无法调用视觉");
+            throw new IllegalStateException("识别引擎 API Key 未配置，无法调用视觉");
         }
         Request request = new Request.Builder()
                 .url(runtime.getApiUrl() + "/chat/completions")
@@ -166,15 +204,20 @@ public class VisionClient {
     }
 
     private String nextKey() {
-        List<String> keys = deepSeekProperties.getResolvedApiKeys();
+        if (runtime.isMimoEngine()) {
+            return nextKeyFrom(mimoProperties.getResolvedApiKeys(), mimoProperties.getApiKey());
+        }
+        return nextKeyFrom(deepSeekProperties.getResolvedApiKeys(), deepSeekProperties.getApiKey());
+    }
+
+    private String nextKeyFrom(List<String> keys, String singleKey) {
         if (keys != null && !keys.isEmpty()) {
             int n = keys.size();
             int i = (keyCursor.getAndIncrement() & Integer.MAX_VALUE) % n;
             String k = keys.get(i);
             return k == null ? "" : k.trim();
         }
-        String k = deepSeekProperties.getApiKey();
-        return k == null ? "" : k.trim();
+        return singleKey == null ? "" : singleKey.trim();
     }
 
     static JSONObject extractObject(String raw) {

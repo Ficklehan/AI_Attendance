@@ -136,10 +136,12 @@ public class StructuredRecognitionPipeline {
             JSONArray names = readNames(source, nameX0, nameX1, rowEdges, workDir);
             String[] header = readHeader(source, rowEdges, workDir);
 
-            // 4. 逐格本地 OCR 时钟 + 组装。
+            // 4. 时钟：视觉读整列（方案 A），失败回退本地逐格 OCR。
             int headerRows = 1;
             double accept = properties.getRule().getAcceptThreshold();
             NightShiftConfigDTO nightShift = nightShiftConfigService.getConfigForCountry(promptCountry);
+            List<String> arriveTimes = readClockColumnVisual(source, arriveX0, arriveX1, rowEdges, headerRows);
+            List<String> departTimes = readClockColumnVisual(source, departX0, departX1, rowEdges, headerRows);
             List<JSONObject> records = new ArrayList<JSONObject>();
             int rowCount = Math.max(0, rowEdges.length - 1 - headerRows);
             for (int r = 0; r < rowCount; r++) {
@@ -150,8 +152,14 @@ public class StructuredRecognitionPipeline {
                 }
                 OcrRawResult raw = new OcrRawResult();
                 raw.rowIndex = r + 1;
-                raw.arrive = ocrClock(source, arriveX0, arriveX1, y, h, workDir, accept, 0);
-                raw.depart = ocrClock(source, departX0, departX1, y, h, workDir, accept, 0);
+                raw.arrive = visualClockEvidence(arriveTimes, r, arriveX0, arriveX1, y, h);
+                raw.depart = visualClockEvidence(departTimes, r, departX0, departX1, y, h);
+                if (raw.arrive == null) {
+                    raw.arrive = ocrClock(source, arriveX0, arriveX1, y, h, workDir, accept, 0);
+                }
+                if (raw.depart == null) {
+                    raw.depart = ocrClock(source, departX0, departX1, y, h, workDir, accept, 0);
+                }
                 raw.name = nameAt(names, r);
                 raw.nameStruck = struckAt(names, r);
                 raw.headerWarehouse = header[0];
@@ -260,6 +268,39 @@ public class StructuredRecognitionPipeline {
             }
         }
         return -1;
+    }
+
+    /** 视觉读整列时钟（方案 A）：crop 表体列，交给 VisionClient 逐行读 HH:MM；失败返回 null。 */
+    private List<String> readClockColumnVisual(BufferedImage source, int x0, int x1, int[] rowEdges,
+                                               int headerRows) {
+        int cy = Math.max(0, rowEdges[headerRows]);
+        int ch = Math.min(source.getHeight() - cy, rowEdges[rowEdges.length - 1] - cy);
+        int cw = Math.min(source.getWidth() - x0, x1 - x0);
+        if (cw <= 8 || ch <= 8) {
+            return null;
+        }
+        BufferedImage crop = source.getSubimage(Math.max(0, x0), cy, cw, ch);
+        try {
+            return visionClient.readClockColumn(crop);
+        } catch (Exception e) {
+            log.warn("视觉读时钟列失败，回退本地 OCR: {}", e.getMessage());
+            return null;
+        }
+    }
+
+    /** 由视觉读到的整列 times 构造单行 CellEvidence；视觉不可用（null）或越界返回 null，触发回退。 */
+    private static CellEvidence visualClockEvidence(List<String> times, int r, int x0, int x1, int y, int h) {
+        if (times == null || r >= times.size()) {
+            return null;
+        }
+        String t = times.get(r);
+        CellEvidence ev = new CellEvidence();
+        ev.source = "vision";
+        ev.text = t == null ? "" : t.trim();
+        ev.hasInk = !ev.text.isEmpty();
+        ev.inkAfterLineRemoval = ev.hasInk;
+        ev.bbox = new BBox(Math.max(0, x0), Math.max(0, y), Math.max(0, x1 - x0), Math.max(0, h));
+        return ev;
     }
 
     private CellEvidence ocrClock(BufferedImage source, int x0, int x1, int y, int h, Path workDir,
