@@ -60,7 +60,7 @@ public final class TableGridDetector {
                 maxSpan = span[i];
             }
         }
-        int thresh = Math.max(350, maxSpan * 80 / 100);
+        int thresh = Math.max(200, maxSpan * 30 / 100);
         List<int[]> edges = dedupEdges(columnPeaks(span, thresh), 24);
         List<Integer> out = new ArrayList<Integer>();
         for (int i = 0; i < edges.size(); i++) {

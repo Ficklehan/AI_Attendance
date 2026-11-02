@@ -111,7 +111,7 @@ public class VisionClient {
 
     /** 读时钟列：crop 整列放大 2x，逐行读手写 HH:MM，返回 times 列表（空行 ""）；失败返回 null。 */
     public List<String> readClockColumn(BufferedImage columnCrop) throws Exception {
-        BufferedImage zoomed = scale2x(columnCrop);
+        BufferedImage zoomed = scaleBy(columnCrop, 2.0);
         String prompt = "This image is ONE column of an attendance timesheet showing handwritten clock times "
                 + "(format HH:MM), one per data row, from top to bottom. There may be a printed column header "
                 + "near the top — ignore it. Read every data row in order.\n"
@@ -131,9 +131,31 @@ public class VisionClient {
         return out;
     }
 
-    private static BufferedImage scale2x(BufferedImage src) {
-        int w = src.getWidth() * 2;
-        int h = src.getHeight() * 2;
+    /**
+     * 整表读：crop 表体（所有列 × 表体行）用 JPEG 原尺寸直传，一次读每行的 no/name/struck/agency/shift/arrive/depart/pause。
+     * 返回 rows JSONArray；失败返回 null。
+     */
+    public JSONArray readTableBody(BufferedImage tableCrop) throws Exception {
+        String prompt = "This is an attendance timesheet table body. Columns left-to-right: "
+                + "NO, NAME, AGENCY, SHIFT, ARRIVEE, DEPAR, PAUSE.\n"
+                + "The first row may be the column header — skip it. Read every data row top-to-bottom.\n"
+                + "Output JSON only, no markdown:\n"
+                + "{\"rows\":[{\"no\":\"1\",\"name\":\"...\",\"struck\":false,\"agency\":\"...\","
+                + "\"shift\":\"10:00-19:00\",\"arrive\":\"10:00\",\"depart\":\"19:00\",\"pause\":\"60\"},...]}\n"
+                + "Use \"\" for empty cells. \"struck\" = the name is crossed out with no replacement written. "
+                + "Include every row, do not skip empty rows.\n";
+        BufferedImage zoomed = scaleBy(tableCrop, 1.5);
+        String raw = complete(zoomed, prompt, 4096, "jpeg");
+        JSONObject root = extractObject(raw);
+        if (root == null || root.getJSONArray("rows") == null) {
+            return null;
+        }
+        return root.getJSONArray("rows");
+    }
+
+    private static BufferedImage scaleBy(BufferedImage src, double factor) {
+        int w = (int) Math.round(src.getWidth() * factor);
+        int h = (int) Math.round(src.getHeight() * factor);
         BufferedImage out = new BufferedImage(w, h, BufferedImage.TYPE_INT_RGB);
         java.awt.Graphics2D g = out.createGraphics();
         g.setRenderingHint(java.awt.RenderingHints.KEY_INTERPOLATION,
@@ -144,14 +166,18 @@ public class VisionClient {
     }
 
     private String complete(BufferedImage image, String prompt, int maxTokens) throws Exception {
-        byte[] png = toPng(image);
+        return complete(image, prompt, maxTokens, "png");
+    }
+
+    private String complete(BufferedImage image, String prompt, int maxTokens, String format) throws Exception {
+        byte[] bytes = toBytes(image, format);
         JSONArray content = new JSONArray();
         JSONObject textPart = new JSONObject();
         textPart.put("type", "text");
         textPart.put("text", prompt);
         content.add(textPart);
         JSONObject imageUrl = new JSONObject();
-        imageUrl.put("url", "data:image/png;base64," + Base64.getEncoder().encodeToString(png));
+        imageUrl.put("url", "data:image/" + format + ";base64," + Base64.getEncoder().encodeToString(bytes));
         imageUrl.put("detail", "high");
         JSONObject imagePart = new JSONObject();
         imagePart.put("type", "image_url");
@@ -257,9 +283,9 @@ public class VisionClient {
         return "";
     }
 
-    private static byte[] toPng(BufferedImage image) throws Exception {
+    private static byte[] toBytes(BufferedImage image, String format) throws Exception {
         ByteArrayOutputStream buf = new ByteArrayOutputStream();
-        ImageIO.write(image, "png", buf);
+        ImageIO.write(image, format, buf);
         return buf.toByteArray();
     }
 }

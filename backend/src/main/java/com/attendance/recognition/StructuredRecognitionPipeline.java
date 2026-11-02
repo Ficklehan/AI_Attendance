@@ -114,34 +114,41 @@ public class StructuredRecognitionPipeline {
                 trace.step("harness_page_start", start);
             }
 
-            // 1. 定位列：视觉读表头列名定序号 → 投影法检测竖边给坐标；失败回退纯投影启发式。
-            TableGridDetector.Layout layout = resolveColumns(source, promptCountry, trace);
-            if (layout == null) {
+            // 1. 表体左右边界（投影法竖边 min/max），失败回退 detectLayout。
+            int[] bounds = tableBounds(source);
+            if (bounds == null) {
                 return structureFailedPage(workDir, trace, workingCountry, promptCountry, pageStart, "");
             }
-            int nameX0 = layout.nameX0;
-            int nameX1 = layout.nameX1;
-            int arriveX0 = layout.arriveX0;
-            int arriveX1 = layout.arriveX1;
-            int departX0 = layout.departX0;
-            int departX1 = layout.departX1;
+            int tableX0 = bounds[0];
+            int tableX1 = bounds[1];
 
-            // 2. 行检测（在姓名列到离岗列的宽范围内，行横线贯穿更明显）。
-            int[] rowEdges = TableGridDetector.detectRowEdges(source, nameX0 + 4, departX1 - 4);
+            // 2. 行检测（表体全宽范围，行横线贯穿更明显）。
+            int[] rowEdges = TableGridDetector.detectRowEdges(source, tableX0 + 4, tableX1 - 4);
             if (rowEdges == null || rowEdges.length < 3) {
                 return structureFailedPage(workDir, trace, workingCountry, promptCountry, pageStart, "");
             }
 
-            // 3. 姓名列 + 页头（视觉读大字）。
-            JSONArray names = readNames(source, nameX0, nameX1, rowEdges, workDir);
-            String[] header = readHeader(source, rowEdges, workDir);
+            // 3. 页头（仓库/日期）。
+            String[] header = readHeader(source, workDir);
 
-            // 4. 时钟：视觉读整列（方案 A），失败回退本地逐格 OCR。
+            // 4. 整表读一次读全所有列；失败回退逐列识别。
             int headerRows = 1;
             double accept = properties.getRule().getAcceptThreshold();
             NightShiftConfigDTO nightShift = nightShiftConfigService.getConfigForCountry(promptCountry);
-            List<String> arriveTimes = readClockColumnVisual(source, arriveX0, arriveX1, rowEdges, headerRows);
-            List<String> departTimes = readClockColumnVisual(source, departX0, departX1, rowEdges, headerRows);
+            JSONArray tableRows = readTableBody(source, tableX0, tableX1, rowEdges, headerRows);
+            TableGridDetector.Layout layout = null;
+            JSONArray names = null;
+            List<String> arriveTimes = null;
+            List<String> departTimes = null;
+            if (tableRows == null) {
+                layout = resolveColumns(source, promptCountry, trace);
+                if (layout != null) {
+                    names = readNames(source, layout.nameX0, layout.nameX1, rowEdges, workDir);
+                    arriveTimes = readClockColumnVisual(source, layout.arriveX0, layout.arriveX1, rowEdges, headerRows);
+                    departTimes = readClockColumnVisual(source, layout.departX0, layout.departX1, rowEdges, headerRows);
+                }
+            }
+
             List<JSONObject> records = new ArrayList<JSONObject>();
             int rowCount = Math.max(0, rowEdges.length - 1 - headerRows);
             for (int r = 0; r < rowCount; r++) {
@@ -152,16 +159,21 @@ public class StructuredRecognitionPipeline {
                 }
                 OcrRawResult raw = new OcrRawResult();
                 raw.rowIndex = r + 1;
-                raw.arrive = visualClockEvidence(arriveTimes, r, arriveX0, arriveX1, y, h);
-                raw.depart = visualClockEvidence(departTimes, r, departX0, departX1, y, h);
-                if (raw.arrive == null) {
-                    raw.arrive = ocrClock(source, arriveX0, arriveX1, y, h, workDir, accept, 0);
+                JSONObject row = (tableRows != null && r < tableRows.size()) ? tableRows.getJSONObject(r) : null;
+                if (row != null) {
+                    fillFromTableRow(raw, row);
+                } else if (layout != null) {
+                    raw.arrive = visualClockEvidence(arriveTimes, r, layout.arriveX0, layout.arriveX1, y, h);
+                    raw.depart = visualClockEvidence(departTimes, r, layout.departX0, layout.departX1, y, h);
+                    if (raw.arrive == null) {
+                        raw.arrive = ocrClock(source, layout.arriveX0, layout.arriveX1, y, h, workDir, accept, 0);
+                    }
+                    if (raw.depart == null) {
+                        raw.depart = ocrClock(source, layout.departX0, layout.departX1, y, h, workDir, accept, 0);
+                    }
+                    raw.name = nameAt(names, r);
+                    raw.nameStruck = struckAt(names, r);
                 }
-                if (raw.depart == null) {
-                    raw.depart = ocrClock(source, departX0, departX1, y, h, workDir, accept, 0);
-                }
-                raw.name = nameAt(names, r);
-                raw.nameStruck = struckAt(names, r);
                 raw.headerWarehouse = header[0];
                 raw.headerDateRaw = header[1];
                 JSONObject record = ruleEngine.apply(raw, workingCountry, nightShift);
@@ -194,7 +206,7 @@ public class StructuredRecognitionPipeline {
                 done.put("elapsedMs", Long.valueOf(System.currentTimeMillis() - pageStart));
                 done.put("workDir", workDir.toAbsolutePath().toString());
                 done.put("debug", Boolean.valueOf(properties.isDebug()));
-                done.put("cols", new int[] {nameX0, nameX1, arriveX0, arriveX1, departX0, departX1});
+                done.put("cols", new int[] {tableX0, tableX1});
                 done.put("rowEdges", rowEdges);
                 trace.step("harness_page_done", done);
             }
@@ -268,6 +280,62 @@ public class StructuredRecognitionPipeline {
             }
         }
         return -1;
+    }
+
+    /** 表体左右边界：投影竖边 min/max；不足两条时回退 detectLayout。 */
+    private int[] tableBounds(BufferedImage source) {
+        List<Integer> edges = TableGridDetector.detectColumnEdges(source);
+        if (edges != null && edges.size() >= 2) {
+            return new int[] {edges.get(0).intValue(), edges.get(edges.size() - 1).intValue()};
+        }
+        TableGridDetector.Layout l = TableGridDetector.detectLayout(source);
+        if (l != null) {
+            return new int[] {l.nameX0, Math.max(l.departX1, l.arriveX1)};
+        }
+        return null;
+    }
+
+    /** 整表读：crop 表体（所有列 × 表体行），视觉一次读全；失败返回 null。 */
+    private JSONArray readTableBody(BufferedImage source, int x0, int x1, int[] rowEdges, int headerRows) {
+        int cy = Math.max(0, rowEdges[headerRows]);
+        int ch = Math.min(source.getHeight() - cy, rowEdges[rowEdges.length - 1] - cy);
+        int cw = Math.min(source.getWidth() - x0, x1 - x0);
+        if (cw <= 8 || ch <= 8) {
+            return null;
+        }
+        BufferedImage crop = source.getSubimage(Math.max(0, x0), cy, cw, ch);
+        try {
+            return visionClient.readTableBody(crop);
+        } catch (Exception e) {
+            log.warn("整表读失败，回退逐列识别: {}", e.getMessage());
+            return null;
+        }
+    }
+
+    /** 由整表读的某行 JSON 填充 OcrRawResult 各字段。 */
+    private static void fillFromTableRow(OcrRawResult raw, JSONObject row) {
+        raw.noText = jsonStr(row, "no");
+        raw.name = jsonStr(row, "name");
+        raw.nameStruck = row.getBooleanValue("struck");
+        raw.agency = jsonStr(row, "agency");
+        raw.shift = jsonStr(row, "shift");
+        raw.pauseText = jsonStr(row, "pause");
+        raw.arrive = clockCell(jsonStr(row, "arrive"));
+        raw.depart = clockCell(jsonStr(row, "depart"));
+    }
+
+    private static CellEvidence clockCell(String t) {
+        CellEvidence ev = new CellEvidence();
+        ev.source = "vision";
+        ev.text = t == null ? "" : t.trim();
+        ev.hasInk = !ev.text.isEmpty();
+        ev.inkAfterLineRemoval = ev.hasInk;
+        return ev;
+    }
+
+    private static String jsonStr(JSONObject o, String key) {
+        Object v = o == null ? null : o.get(key);
+        return v == null ? "" : String.valueOf(v).trim();
     }
 
     /** 视觉读整列时钟（方案 A）：crop 表体列，交给 VisionClient 逐行读 HH:MM；失败返回 null。 */
@@ -448,12 +516,10 @@ public class StructuredRecognitionPipeline {
         }
     }
 
-    private String[] readHeader(BufferedImage source, int[] rowEdges, Path workDir) {
+    private String[] readHeader(BufferedImage source, Path workDir) {
         try {
-            int cy = 0;
-            int ch = Math.max(40, rowEdges[0]);
-            ch = Math.min(source.getHeight(), ch);
-            BufferedImage crop = source.getSubimage(0, cy, source.getWidth(), ch);
+            int ch = Math.min(source.getHeight(), source.getHeight() * 30 / 100);
+            BufferedImage crop = source.getSubimage(0, 0, source.getWidth(), ch);
             return visionClient.describeHeader(crop);
         } catch (Exception e) {
             log.warn("读页头失败: {}", e.getMessage());
