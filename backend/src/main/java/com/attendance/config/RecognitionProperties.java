@@ -26,8 +26,11 @@ public class RecognitionProperties {
     private final Queue queue = new Queue();
     private final Executor executor = new Executor();
     private final Distributed distributed = new Distributed();
-    /** legacy = 整页 VLM；ocr_primary = Harness 切格 + dsh-ocr-local */
+    /** legacy = 整页 VLM；ocr_primary = 原图交给 dsh headless，识别在 Harness 内完成 */
     private String pipeline = "ocr_primary";
+    /** 切图/trace 落到 logs/recognition-debug，不删 workDir */
+    private boolean debug = false;
+    private String debugDir = "";
     private final Ocr ocr = new Ocr();
     private final Harness harness = new Harness();
     private final Rule rule = new Rule();
@@ -226,6 +229,22 @@ public class RecognitionProperties {
         this.pipeline = pipeline;
     }
 
+    public boolean isDebug() {
+        return debug;
+    }
+
+    public void setDebug(boolean debug) {
+        this.debug = debug;
+    }
+
+    public String getDebugDir() {
+        return debugDir;
+    }
+
+    public void setDebugDir(String debugDir) {
+        this.debugDir = debugDir;
+    }
+
     public Ocr getOcr() {
         return ocr;
     }
@@ -321,20 +340,6 @@ public class RecognitionProperties {
     public static class Harness {
         private boolean enabled = true;
         private String profile = "attendance";
-        private String cropPlugin = "dsh-crop-zoom";
-        private String groundPlugin = "dsh-vision-router";
-        private String cropZoomBin = "";
-        private int zoomTarget = 800;
-        private int zoomMaxScale = 16;
-        private String zoomMode = "nearest";
-        private int previewWidth = 1600;
-        private int padPx = 2;
-        private int groundBands = 3;
-        private boolean preferCli = true;
-        private int maxVlmCellsPerPage = 64;
-        private int vlmParallelism = 8;
-        private int groundTimeoutMs = 90000;
-        private int vlmTimeoutMs = 45000;
         private String dshBin = "";
         private int extractTimeoutMs = 600000;
 
@@ -352,118 +357,6 @@ public class RecognitionProperties {
 
         public void setProfile(String profile) {
             this.profile = profile;
-        }
-
-        public String getCropPlugin() {
-            return cropPlugin;
-        }
-
-        public void setCropPlugin(String cropPlugin) {
-            this.cropPlugin = cropPlugin;
-        }
-
-        public String getGroundPlugin() {
-            return groundPlugin;
-        }
-
-        public void setGroundPlugin(String groundPlugin) {
-            this.groundPlugin = groundPlugin;
-        }
-
-        public String getCropZoomBin() {
-            return cropZoomBin;
-        }
-
-        public void setCropZoomBin(String cropZoomBin) {
-            this.cropZoomBin = cropZoomBin;
-        }
-
-        public int getZoomTarget() {
-            return zoomTarget;
-        }
-
-        public void setZoomTarget(int zoomTarget) {
-            this.zoomTarget = zoomTarget;
-        }
-
-        public int getZoomMaxScale() {
-            return zoomMaxScale;
-        }
-
-        public void setZoomMaxScale(int zoomMaxScale) {
-            this.zoomMaxScale = zoomMaxScale;
-        }
-
-        public String getZoomMode() {
-            return zoomMode;
-        }
-
-        public void setZoomMode(String zoomMode) {
-            this.zoomMode = zoomMode;
-        }
-
-        public int getPreviewWidth() {
-            return previewWidth;
-        }
-
-        public void setPreviewWidth(int previewWidth) {
-            this.previewWidth = previewWidth;
-        }
-
-        public int getGroundBands() {
-            return groundBands;
-        }
-
-        public void setGroundBands(int groundBands) {
-            this.groundBands = groundBands;
-        }
-
-        public int getPadPx() {
-            return padPx;
-        }
-
-        public void setPadPx(int padPx) {
-            this.padPx = padPx;
-        }
-
-        public boolean isPreferCli() {
-            return preferCli;
-        }
-
-        public void setPreferCli(boolean preferCli) {
-            this.preferCli = preferCli;
-        }
-
-        public int getMaxVlmCellsPerPage() {
-            return maxVlmCellsPerPage;
-        }
-
-        public void setMaxVlmCellsPerPage(int maxVlmCellsPerPage) {
-            this.maxVlmCellsPerPage = maxVlmCellsPerPage;
-        }
-
-        public int getVlmParallelism() {
-            return vlmParallelism;
-        }
-
-        public void setVlmParallelism(int vlmParallelism) {
-            this.vlmParallelism = vlmParallelism;
-        }
-
-        public int getGroundTimeoutMs() {
-            return groundTimeoutMs;
-        }
-
-        public void setGroundTimeoutMs(int groundTimeoutMs) {
-            this.groundTimeoutMs = groundTimeoutMs;
-        }
-
-        public int getVlmTimeoutMs() {
-            return vlmTimeoutMs;
-        }
-
-        public void setVlmTimeoutMs(int vlmTimeoutMs) {
-            this.vlmTimeoutMs = vlmTimeoutMs;
         }
 
         public String getDshBin() {

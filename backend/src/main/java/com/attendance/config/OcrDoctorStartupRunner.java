@@ -1,7 +1,6 @@
 package com.attendance.config;
 
 import com.attendance.recognition.StructuredRecognitionPipeline;
-import com.attendance.recognition.harness.CropZoomCli;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.boot.ApplicationArguments;
@@ -18,14 +17,11 @@ public class OcrDoctorStartupRunner implements ApplicationRunner {
 
     private final RecognitionProperties properties;
     private final StructuredRecognitionPipeline pipeline;
-    private final CropZoomCli cropZoomCli;
 
     public OcrDoctorStartupRunner(RecognitionProperties properties,
-                                  StructuredRecognitionPipeline pipeline,
-                                  CropZoomCli cropZoomCli) {
+                                  StructuredRecognitionPipeline pipeline) {
         this.properties = properties;
         this.pipeline = pipeline;
-        this.cropZoomCli = cropZoomCli;
     }
 
     @Override
@@ -35,17 +31,12 @@ public class OcrDoctorStartupRunner implements ApplicationRunner {
             return;
         }
         boolean ok = pipeline.doctorOk();
-        String crop = cropZoomCli.available() && cropZoomCli.resolveBin() != null
-                ? cropZoomCli.resolveBin().toString()
-                : "missing (Java CropZoomTool fallback)";
         if (ok) {
-            log.info("ocr_primary 可用 (vision_ground + 并行 VLM); crop-zoom CLI {}", crop);
+            log.info("ocr_primary 可用 (dsh headless extract)");
         } else if (properties.getOcr().isFallbackLegacyOnUnavailable()) {
-            log.warn("ocr_primary 未就绪，将回退 legacy: {}; crop-zoom {}",
-                    pipeline.doctorMessage(), crop);
+            log.warn("ocr_primary 未就绪，将回退 legacy: {}", pipeline.doctorMessage());
         } else {
-            log.error("ocr_primary 未就绪且未允许回退: {}; crop-zoom {}",
-                    pipeline.doctorMessage(), crop);
+            log.error("ocr_primary 未就绪且未允许回退: {}", pipeline.doctorMessage());
         }
     }
 }

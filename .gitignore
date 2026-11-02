@@ -76,3 +76,9 @@ logs/
 *.swp
 *~
 .cache/
+
+# --- 视觉路由运行时状态（勿提交）---
+.dsh-vision-router/
+
+# --- 本地调试 sink 产物（勿提交）---
+.cursor/

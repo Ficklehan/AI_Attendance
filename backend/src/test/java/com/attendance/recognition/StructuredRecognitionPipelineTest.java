@@ -54,55 +54,47 @@ class StructuredRecognitionPipelineTest {
     }
 
     @Test
-    void adviseDecisionSkipsLegalOcrAndNoInk() {
-        com.attendance.recognition.dto.CellEvidence legal = new com.attendance.recognition.dto.CellEvidence();
-        legal.hasInk = true;
-        legal.inkAfterLineRemoval = true;
-        legal.text = "10:00";
-        legal.confidence = 0.94d;
-        assertEquals("skip_ocr_legal", StructuredRecognitionPipeline.adviseDecision(legal, 0.50d));
-
-        com.attendance.recognition.dto.CellEvidence blank = new com.attendance.recognition.dto.CellEvidence();
-        assertEquals("skip_no_ink", StructuredRecognitionPipeline.adviseDecision(blank, 0.50d));
-
-        com.attendance.recognition.dto.CellEvidence garbage = new com.attendance.recognition.dto.CellEvidence();
-        garbage.hasInk = true;
-        garbage.inkAfterLineRemoval = true;
-        garbage.text = "";
-        garbage.source = "crop";
-        garbage.lowConfidence = true;
-        assertEquals("need_no_legal", StructuredRecognitionPipeline.adviseDecision(garbage, 0.50d));
+    void dropHeaderRowsRemovesColumnTitle() {
+        JSONObject header = new JSONObject();
+        header.put("NOM_PRENOM", "Cognome Nome");
+        JSONObject person = new JSONObject();
+        person.put("NOM_PRENOM", "GONZALEZ");
+        person.put("ARRIVEE", "10:00");
+        java.util.List<JSONObject> rows = new java.util.ArrayList<JSONObject>();
+        rows.add(header);
+        rows.add(person);
+        StructuredRecognitionPipeline.dropHeaderRows(rows);
+        assertEquals(1, rows.size());
+        assertEquals("GONZALEZ", rows.get(0).getString("NOM_PRENOM"));
+        assertTrue(StructuredRecognitionPipeline.isHeaderName("Nome e cognome"));
     }
 
     @Test
-    void harnessDefaultsPreferCliZoom800AndFlashPool8() {
+    void harnessDefaultsProfileAndTimeout() {
         RecognitionProperties.Harness harness = new RecognitionProperties().getHarness();
-        assertTrue(harness.isPreferCli());
-        assertEquals(800, harness.getZoomTarget());
-        assertEquals(8, harness.getVlmParallelism());
-        assertEquals(64, harness.getMaxVlmCellsPerPage());
-        assertEquals(1600, harness.getPreviewWidth());
-        assertEquals(3, harness.getGroundBands());
+        assertTrue(harness.isEnabled());
+        assertEquals("attendance", harness.getProfile());
+        assertEquals(600000, harness.getExtractTimeoutMs());
     }
 
     @Test
-    void adviseDecisionSendsBorderlineInkToVlm() {
-        com.attendance.recognition.dto.CellEvidence borderline = new com.attendance.recognition.dto.CellEvidence();
-        borderline.putDiag("inkDarkRatio", Double.valueOf(0.0235d));
-        assertEquals("need_borderline_ink", StructuredRecognitionPipeline.adviseDecision(borderline, 0.50d));
-
-        com.attendance.recognition.dto.CellEvidence empty = new com.attendance.recognition.dto.CellEvidence();
-        empty.putDiag("inkDarkRatio", Double.valueOf(0.012d));
-        assertEquals("skip_no_ink", StructuredRecognitionPipeline.adviseDecision(empty, 0.50d));
+    void pageFileNameKeepsJpeg() {
+        assertEquals("page.jpg", StructuredRecognitionPipeline.pageFileName("roma-foglio-20261028.jpg"));
+        assertEquals("page.png", StructuredRecognitionPipeline.pageFileName("sheet.png"));
+        assertEquals("page.png", StructuredRecognitionPipeline.pageFileName(null));
     }
 
     @Test
-    void illegibleInkCellRetries() {
-        com.attendance.recognition.dto.CellEvidence ev = new com.attendance.recognition.dto.CellEvidence();
-        ev.hasInk = true;
-        ev.putDiag("flashIllegible", Boolean.TRUE);
-        assertTrue(StructuredRecognitionPipeline.shouldRetryIllegible(ev));
-        ev.text = "10:00";
-        assertFalse(StructuredRecognitionPipeline.shouldRetryIllegible(ev));
+    void dropBlankNameAndClocksRemovesEmptyRows() {
+        JSONObject person = new JSONObject();
+        person.put("NOM_PRENOM", "GONZALEZ");
+        person.put("ARRIVEE", "10:00");
+        JSONObject blank = new JSONObject();
+        java.util.List<JSONObject> rows = new java.util.ArrayList<JSONObject>();
+        rows.add(person);
+        rows.add(blank);
+        StructuredRecognitionPipeline.dropBlankNameAndClocks(rows);
+        assertEquals(1, rows.size());
+        assertEquals("GONZALEZ", rows.get(0).getString("NOM_PRENOM"));
     }
 }

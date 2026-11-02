@@ -1,46 +1,17 @@
 package com.attendance.recognition;
 
-import java.text.Normalizer;
 import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.HashMap;
-import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
-import java.util.Set;
 
 /**
  * 各国表头别名，交给 vision_ground，禁止写具体时刻或人名。
  */
 public final class HarnessColumnCatalog {
 
-    private static final Set<String> CANONICAL = new HashSet<String>(Arrays.asList(
-            "NO", "NAME", "AGENCY", "SHIFT", "ARRIVEE", "DEPAR", "PAUSE", "SIGNATURE", "OBSERVATIONS"));
-    private static final Map<String, String> FIELD_ALIAS = buildAliasMap();
-
     private HarnessColumnCatalog() {
-    }
-
-    public static List<String> orderedFields() {
-        return new ArrayList<String>(Arrays.asList(
-                "NO", "NAME", "AGENCY", "SHIFT", "ARRIVEE", "DEPAR", "PAUSE", "SIGNATURE", "OBSERVATIONS"));
-    }
-
-    public static String canonicalField(String raw) {
-        if (raw == null) {
-            return "";
-        }
-        String key = aliasKey(raw);
-        if (key.isEmpty()) {
-            return "";
-        }
-        if (CANONICAL.contains(key)) {
-            return key;
-        }
-        String mapped = FIELD_ALIAS.get(key);
-        return mapped != null ? mapped : key;
     }
 
     public static String promptBlock(String countryCode) {
@@ -67,9 +38,10 @@ public final class HarnessColumnCatalog {
     static Map<String, List<String>> columnsFor(String code) {
         Map<String, List<String>> map = new LinkedHashMap<String, List<String>>();
         map.put("NO", aliases("NO", "N°", "Nr", "#"));
-        map.put("NAME", aliases("NOM_PRENOM", "Nome", "Nom", "Name", "Apellidos", "Cognome"));
+        map.put("NAME", aliases("NOM_PRENOM", "Nome", "Nom", "Name", "Apellidos", "Cognome",
+                "Nome e cognome", "Cognome Nome"));
         map.put("AGENCY", aliases("AGENCE", "Agenzia", "Agencia", "Agentur", "Agency", "Uitzend"));
-        map.put("SHIFT", aliases("HORAIRES", "Orario", "Horario", "Shift", "Dienst", "班次"));
+        map.put("SHIFT", aliases("HORAIRES", "Orario", "Horario", "Turno", "Shift", "Dienst", "班次"));
         if ("IT".equals(code)) {
             map.put("ARRIVEE", aliases("Arrivo", "Entrata", "In"));
             map.put("DEPAR", aliases("Uscita", "Usc.", "Out"));
@@ -98,39 +70,6 @@ public final class HarnessColumnCatalog {
         return map;
     }
 
-    static String aliasKey(String raw) {
-        if (raw == null) {
-            return "";
-        }
-        String n = Normalizer.normalize(raw.trim(), Normalizer.Form.NFD).replaceAll("\\p{M}+", "");
-        n = n.toUpperCase(Locale.ROOT).replaceAll("[^A-Z0-9]+", "");
-        return n;
-    }
-
-    private static Map<String, String> buildAliasMap() {
-        Map<String, String> map = new HashMap<String, String>();
-        String[] codes = new String[] {"FR", "IT", "ES", "DE", "NL", "PL", "CZ"};
-        for (int i = 0; i < codes.length; i++) {
-            Map<String, List<String>> cols = columnsFor(codes[i]);
-            for (Map.Entry<String, List<String>> e : cols.entrySet()) {
-                map.put(aliasKey(e.getKey()), e.getKey());
-                List<String> names = e.getValue();
-                for (int j = 0; j < names.size(); j++) {
-                    String k = aliasKey(names.get(j));
-                    if (k.length() > 1) {
-                        map.put(k, e.getKey());
-                    }
-                }
-            }
-        }
-        map.put("ARRIVO", "ARRIVEE");
-        map.put("USCITA", "DEPAR");
-        map.put("USC", "DEPAR");
-        map.put("NOMPRENOM", "NAME");
-        map.put("NR", "NO");
-        return map;
-    }
-
     private static List<String> aliases(String... names) {
         List<String> list = new ArrayList<String>();
         if (names != null) {
@@ -139,5 +78,45 @@ public final class HarnessColumnCatalog {
             }
         }
         return list;
+    }
+
+    /**
+     * 把视觉读到的表头文字匹配成规范字段名（NO/NAME/AGENCY/SHIFT/ARRIVEE/DEPAR/PAUSE/SIGNATURE/OBSERVATIONS）。
+     * 匹配不上返回 ""。用于按表头序号映射投影法检测到的竖边。
+     */
+    public static String matchField(String headerText) {
+        if (headerText == null) {
+            return "";
+        }
+        String key = normalize(headerText);
+        if (key.isEmpty()) {
+            return "";
+        }
+        String[] codes = new String[] {"FR", "IT", "ES", "DE", "NL", "PL", "CZ"};
+        for (int i = 0; i < codes.length; i++) {
+            Map<String, List<String>> cols = columnsFor(codes[i]);
+            for (Map.Entry<String, List<String>> e : cols.entrySet()) {
+                if (normalize(e.getKey()).equals(key)) {
+                    return e.getKey();
+                }
+                List<String> names = e.getValue();
+                for (int j = 0; j < names.size(); j++) {
+                    if (normalize(names.get(j)).equals(key)) {
+                        return e.getKey();
+                    }
+                }
+            }
+        }
+        return "";
+    }
+
+    /** 去重音、转大写、只留字母数字，用于表头别名比较。 */
+    static String normalize(String raw) {
+        if (raw == null) {
+            return "";
+        }
+        String n = java.text.Normalizer.normalize(raw.trim(), java.text.Normalizer.Form.NFD)
+                .replaceAll("\\p{M}+", "");
+        return n.toUpperCase(Locale.ROOT).replaceAll("[^A-Z0-9]", "");
     }
 }

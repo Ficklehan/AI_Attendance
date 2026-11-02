@@ -84,21 +84,111 @@ class HarnessJsonParserTest {
     }
 
     @Test
-    void buildTaskAsksForRowsJsonNotMark() {
-        String task = HarnessHeadlessClient.buildTask(java.nio.file.Paths.get("/tmp/x.png"), "FR", null);
-        assertTrue(task.contains("rows"));
-        assertTrue(task.contains("Do not output Mark"));
-        assertTrue(task.contains("ocr_image always"));
+    void parseSheetToleratesStringBooleansAndCellShapedHeaders() {
+        String raw = "{\"page_num\":{\"text\":\"1/1\",\"empty\":false},"
+                + "\"warehouse\":{\"text\":\"roma\"},\"date_raw\":{\"text\":\"29/10/2026\"},"
+                + "\"rows\":[{\"row_no\":\"1\",\"name\":{\"text\":\"GONZALEZ\"},"
+                + "\"name_crossed\":\"false\",\"name_has_replacement\":0,"
+                + "\"arrivo\":{\"text\":\"10:00\",\"empty\":\"false\"},"
+                + "\"uscita\":{\"text\":\"\",\"empty\":\"true\"}}]}";
+        HarnessSheet sheet = HarnessJsonParser.parseSheet(raw);
+        assertEquals("1/1", sheet.pageNum);
+        assertEquals("roma", sheet.warehouse);
+        assertEquals("29/10/2026", sheet.dateRaw);
+        assertEquals(1, sheet.rows.size());
+        assertFalse(sheet.rows.get(0).nameCrossed);
+        assertFalse(sheet.rows.get(0).nameHasReplacement);
+        assertEquals("10:00", sheet.rows.get(0).arrivo.text);
+        assertEquals(Boolean.FALSE, sheet.rows.get(0).arrivo.empty);
+        assertEquals(Boolean.TRUE, sheet.rows.get(0).uscita.empty);
     }
 
     @Test
-    void parseRunReadsFinalEvent() {
+    void buildTaskAsksForRowsJsonNotMark() {
+        String task = HarnessHeadlessClient.buildTask(java.nio.file.Paths.get("/tmp/x.png"), "FR", null);
+        assertTrue(task.contains("rows"));
+        assertTrue(task.contains("No Mark"));
+        assertTrue(task.contains("vision_ground"));
+        assertTrue(task.contains("crop_zoom"));
+        assertTrue(task.contains("sheet false"));
+        assertTrue(task.contains("vision_describe"));
+        assertTrue(task.contains("PIXEL ISOLATION"));
+        assertTrue(task.contains("never vision_describe the original page"));
+        assertTrue(task.contains("First output MUST be vision_ground"));
+        assertTrue(task.contains("Do not call ocr_image"));
+        assertTrue(task.contains("json false"));
+        assertTrue(task.contains("Locate these table columns"));
+        assertFalse(task.contains("json true"));
+        assertFalse(task.contains("Use skill attendance-sheet"));
+        assertFalse(task.contains("Call vision_describe exactly once on that image path"));
+        assertFalse(task.contains("First output MUST be a vision_describe"));
+        assertFalse(task.contains("ok:false"));
+        assertFalse(task.contains("ocr_image always"));
+    }
+
+    @Test
+    void buildTaskUsesItalianClockHeaders() {
+        String task = HarnessHeadlessClient.buildTask(java.nio.file.Paths.get("/tmp/x.png"), "IT", null);
+        assertTrue(task.contains("Arrivo"));
+        assertTrue(task.contains("Uscita"));
+        assertTrue(task.contains("PIXEL ISOLATION"));
+    }
+
+    @Test
+    void parseRunReadsFinalEventAndToolNames() {
         String stdout = "{\"type\":\"session\",\"sessionId\":\"s1\"}\n"
+                + "{\"type\":\"tool_call\",\"name\":\"vision_ground\"}\n"
                 + "{\"type\":\"tool_call\",\"name\":\"crop_zoom\"}\n"
+                + "{\"type\":\"tool_call\",\"name\":\"ocr_image\"}\n"
+                + "{\"type\":\"tool_call\",\"name\":\"ocr_image\"}\n"
+                + "{\"type\":\"tool_call\",\"name\":\"ocr_image\"}\n"
+                + "{\"type\":\"tool_call\",\"name\":\"vision_describe\"}\n"
+                + "{\"type\":\"tool_call\",\"name\":\"vision_describe\"}\n"
+                + "{\"type\":\"tool_result\"}\n"
                 + "{\"type\":\"final\",\"text\":\"{\\\"rows\\\":[]}\"}\n";
         HarnessHeadlessClient.RunResult run = HarnessHeadlessClient.parseRun(stdout, "", 0);
         assertEquals("s1", run.sessionId);
-        assertEquals(1, run.toolCalls);
+        assertEquals(8, run.toolCalls);
+        assertEquals(1, HarnessHeadlessClient.countTool(run.toolNames, "vision_ground"));
+        assertEquals(1, HarnessHeadlessClient.countTool(run.toolNames, "crop_zoom"));
+        assertEquals(3, HarnessHeadlessClient.countTool(run.toolNames, "ocr_image"));
+        assertEquals(2, HarnessHeadlessClient.countTool(run.toolNames, "vision_describe"));
         assertTrue(run.answer.contains("rows"));
+    }
+
+    @Test
+    void parseRunSalvagesRowsFromToolResultWhenAnswerEmpty() {
+        String stdout = "{\"type\":\"session\",\"sessionId\":\"s2\"}\n"
+                + "{\"type\":\"tool_call\",\"tool\":\"vision_describe\"}\n"
+                + "{\"type\":\"tool_result\",\"callId\":\"c1\",\"status\":\"completed\","
+                + "\"result\":\"{\\\"page_num\\\":\\\"1/1\\\",\\\"warehouse\\\":\\\"roma\\\","
+                + "\\\"date_raw\\\":\\\"10/29/2026\\\",\\\"rows\\\":[{\\\"row_no\\\":\\\"1\\\","
+                + "\\\"name\\\":{\\\"text\\\":\\\"GONZALEZ\\\"},\\\"arrivo\\\":{\\\"text\\\":\\\"10:00\\\"},"
+                + "\\\"uscita\\\":{\\\"text\\\":\\\"19:00\\\"}}]}\"}\n"
+                + "{\"type\":\"text\",\"text\":\"{\\\"page_num\\\":\\\"1\\\",\\\"warehouse\\\":\\\"\\\","
+                + "\\\"date_raw\\\":\\\"\\\",\\\"rows\\\":[]}\"}\n";
+        HarnessHeadlessClient.RunResult run = HarnessHeadlessClient.parseRun(stdout, "", 0);
+        assertTrue(run.salvagedFromToolResult);
+        assertTrue(run.toolResultHasRows);
+        HarnessSheet sheet = HarnessJsonParser.parseSheet(run.answer);
+        assertEquals(1, sheet.rows.size());
+        assertEquals("GONZALEZ", sheet.rows.get(0).name.text);
+        assertEquals("roma", sheet.warehouse);
+    }
+
+    @Test
+    void mapperDoesNotCopyShiftIntoClocks() {
+        String raw = "{\"rows\":[{\"row_no\":\"1\",\"name\":{\"text\":\"A\"},"
+                + "\"shift\":{\"text\":\"08:00-16:00\"},"
+                + "\"arrivo\":{\"text\":\"\",\"empty\":true,\"confidence\":1},"
+                + "\"uscita\":{\"text\":\"\",\"empty\":true,\"confidence\":1}}]}";
+        HarnessSheet sheet = HarnessJsonParser.parseSheet(raw);
+        AttendanceRuleEngine engine = new AttendanceRuleEngine(new RecognitionProperties());
+        JSONObject rec = engine.apply(HarnessSheetMapper.toRaw(sheet.rows.get(0), sheet, 0.85d),
+                "IT", NightShiftConfigDTO.defaults());
+        assertEquals("08:00-16:00", rec.getString("HORAIRES_DU_TRAVAIL"));
+        assertEquals("", rec.getString("ARRIVEE"));
+        assertEquals("", rec.getString("DEPAR"));
+        assertEquals("未出勤", rec.getString("Mark"));
     }
 }

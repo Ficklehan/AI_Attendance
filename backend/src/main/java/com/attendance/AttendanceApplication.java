@@ -24,7 +24,7 @@ public class AttendanceApplication {
         SpringApplication.run(AttendanceApplication.class, args);
     }
 
-    private static void loadDotenv() {
+    public static void loadDotenv() {
         String userDir = System.getProperty("user.dir");
         List<String> candidates = Arrays.asList(
             userDir,

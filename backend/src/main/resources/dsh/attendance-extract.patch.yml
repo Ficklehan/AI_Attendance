@@ -1,0 +1,68 @@
+# Overlay after the attendance profile.
+# Do NOT set reassertEverySteps>0: batch-tool-calls kind:'plugin' notices break Session V4.
+# Session model stays deepseek-vision so vision_describe is visible.
+# Pixels go only to DeepSeek Flash over api.deepseek.com. No OVH, no local OCR.
+# Clock isolation: crop_zoom column strips; Flash never sees SHIFT+clocks in one image.
+- id: tool-bash
+  disabled: true
+- id: llm-deepseek
+  config:
+    thinking: disabled
+    reasoningEffort: off
+- id: agent-loop
+  config:
+    maxParallelToolCalls: 1
+- id: agent-default-model
+  config:
+    provider: deepseek-vision
+    model: deepseek-flash
+- id: vision-router
+  config:
+    progressiveTools: false
+    tool: true
+    freeFallback: false
+    freeCloudFirst: false
+    provider: vision-http
+    model: deepseek/deepseek-flash
+    visionTaskTimeoutMs: 120000
+    timeoutMs: 120000
+    extraVisionModels:
+      - deepseek-flash
+      - deepseek-official/deepseek-flash
+    providers:
+      - provider: vision-http
+        model: deepseek/deepseek-flash
+        fallbacks:
+          - deepseek-2/deepseek-flash
+    httpProviders:
+      - name: deepseek
+        baseURL: https://api.deepseek.com/v1
+        model: deepseek-flash
+        apiKeyEnv: DEEPSEEK_API_KEY
+        maxTokens: 8192
+      - name: deepseek-2
+        baseURL: https://api.deepseek.com/v1
+        model: deepseek-flash
+        apiKeyEnv: DEEPSEEK_API_KEY_2
+        maxTokens: 8192
+    textProvider:
+      provider: deepseek-official
+      model: deepseek-flash
+- id: batch-tool-calls
+  config:
+    enabled: true
+    minCalls: 1
+    maxCalls: 5
+    mentionShell: false
+    reassertEverySteps: 0
+    extra: >-
+      Attendance extract isolation: never vision_describe the original page.
+      First output MUST be vision_ground (annotate false) for HEADER, NAME,
+      ARRIVEE, DEPAR, SHIFT as full-cell boxes (left grid line to right grid line), no times. Then ONE crop_zoom
+      sheet false mode nearest target 6000, separate PNGs labelled header/name/arrivo/uscita/shift.
+      Clock crops must not include SHIFT pixels. Never sheet true.
+      NAME/HEADER/SHIFT crops: vision_describe json false, one crop per call.
+      ARRIVEE/DEPAR crops: ocr_image full true (dsh-ocr local OCR), top-to-bottom = row order.
+      NAME crop = names/struck; HEADER crop = warehouse/date; SHIFT crop = shift.text only.
+      arrivo/uscita only from the ARRIVEE/DEPAR vision_ocr results, never from SHIFT.
+      Never bash/read_image/skill. Then emit rows JSON. Never emit rows:[].

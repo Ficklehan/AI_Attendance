@@ -111,6 +111,8 @@ public class AttendanceRuleEngine {
         record.put("Entrepot", raw.headerWarehouse == null ? "" : raw.headerWarehouse.trim());
         record.put("Mark", join(marks));
         record.put("SmartMark", join(marks));
+        record.put("_nameStruck", Boolean.valueOf(raw.nameStruck));
+        record.put("_nameHasReplacement", Boolean.valueOf(raw.nameHasReplacement));
 
         String signatureSource = raw.signatureHasInk ? "已签字" : (raw.signatureText == null ? "" : raw.signatureText);
         if (raw.signatureHasInk && (raw.signatureText == null || raw.signatureText.trim().isEmpty())) {
@@ -240,6 +242,12 @@ public class AttendanceRuleEngine {
             return;
         }
         record.put("_" + prefix + "Confidence", Double.valueOf(cell.confidence));
+        record.put("_" + prefix + "FlashTime", cell.diag.get("flashTime"));
+        record.put("_" + prefix + "FlashTimeRaw", cell.diag.get("flashTimeRaw"));
+        record.put("_" + prefix + "FlashDigits", cell.diag.get("flashDigits"));
+        record.put("_" + prefix + "ShapeCorrected", cell.diag.get("shapeCorrected"));
+        record.put("_" + prefix + "Advise", cell.diag.get("advise"));
+        record.put("_" + prefix + "ClockPick", cell.diag.get("clockPick"));
         if (cell.bbox != null) {
             com.alibaba.fastjson.JSONArray box = new com.alibaba.fastjson.JSONArray();
             box.add(Integer.valueOf(cell.bbox.x));

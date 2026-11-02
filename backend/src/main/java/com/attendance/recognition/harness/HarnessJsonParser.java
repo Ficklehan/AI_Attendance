@@ -90,9 +90,8 @@ public final class HarnessJsonParser {
             row.no.text = row.rowNo;
         }
         row.name = line(o, "name", "NOM_PRENOM");
-        row.nameCrossed = o.getBooleanValue("name_crossed") || o.getBooleanValue("nameCrossed");
-        row.nameHasReplacement = o.getBooleanValue("name_has_replacement")
-                || o.getBooleanValue("nameHasReplacement");
+        row.nameCrossed = truthy(o, "name_crossed", "nameCrossed");
+        row.nameHasReplacement = truthy(o, "name_has_replacement", "nameHasReplacement");
         row.agency = line(o, "agency", "AGENCE_INTERIMAIRE");
         row.shift = line(o, "shift", "HORAIRES_DU_TRAVAIL");
         row.arrivo = line(o, "arrivo", "ARRIVEE", "arrive");
@@ -139,7 +138,7 @@ public final class HarnessJsonParser {
             line.confidence = o.getDoubleValue("conf");
         }
         if (o.containsKey("empty")) {
-            line.empty = Boolean.valueOf(o.getBooleanValue("empty"));
+            line.empty = Boolean.valueOf(asBoolean(o.get("empty"), false));
         }
         line.bbox = parseBBox(o.get("bbox"));
         if (line.bbox == null) {
@@ -404,12 +403,63 @@ public final class HarnessJsonParser {
             return "";
         }
         for (int i = 0; i < keys.length; i++) {
-            String v = o.getString(keys[i]);
-            if (v != null && !v.trim().isEmpty()) {
-                return v.trim();
+            Object raw = o.get(keys[i]);
+            if (raw == null) {
+                continue;
+            }
+            if (raw instanceof JSONObject) {
+                Object text = ((JSONObject) raw).get("text");
+                if (text != null) {
+                    String t = String.valueOf(text).trim();
+                    if (!t.isEmpty() && !"null".equalsIgnoreCase(t)) {
+                        return t;
+                    }
+                }
+                continue;
+            }
+            String v = String.valueOf(raw).trim();
+            if (!v.isEmpty() && !"null".equalsIgnoreCase(v)) {
+                return v;
             }
         }
         return "";
+    }
+
+    /** Tolerant bool: models sometimes emit "false"/0/null/objects instead of JSON booleans. */
+    static boolean truthy(JSONObject o, String... keys) {
+        if (o == null || keys == null) {
+            return false;
+        }
+        for (int i = 0; i < keys.length; i++) {
+            if (!o.containsKey(keys[i])) {
+                continue;
+            }
+            return asBoolean(o.get(keys[i]), false);
+        }
+        return false;
+    }
+
+    static boolean asBoolean(Object raw, boolean defaultValue) {
+        if (raw == null) {
+            return defaultValue;
+        }
+        if (raw instanceof Boolean) {
+            return ((Boolean) raw).booleanValue();
+        }
+        if (raw instanceof Number) {
+            return ((Number) raw).intValue() != 0;
+        }
+        String s = String.valueOf(raw).trim();
+        if (s.isEmpty() || "null".equalsIgnoreCase(s)) {
+            return defaultValue;
+        }
+        if ("true".equalsIgnoreCase(s) || "1".equals(s) || "yes".equalsIgnoreCase(s)) {
+            return true;
+        }
+        if ("false".equalsIgnoreCase(s) || "0".equals(s) || "no".equalsIgnoreCase(s)) {
+            return false;
+        }
+        return defaultValue;
     }
 
     private static String cell(JSONArray row, int i) {

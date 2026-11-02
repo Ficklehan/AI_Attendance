@@ -1,28 +1,44 @@
 ---
 name: attendance-sheet
 description: >-
-  Extracts European warehouse attendance timesheets into structured OCR rows
-  with text, confidence, bbox, and name_crossed. Uses DeepSeek Harness tools
-  only: tiler for large scans, column strips + y-clustering, crop_zoom, then
-  ocr_image always. Vision only on that cell if OCR is empty or low-confidence.
+  Extracts European warehouse attendance timesheets into structured rows.
+  Ground columns, crop_zoom NAME/ARRIVEE/DEPAR strips, DeepSeek Flash describes
+  each strip alone. Never describe the original page. No local OCR, no OVH.
   Use when given a timesheet photo or asked to read Arrivée/Départ grids.
 ---
 
-# Attendance sheet OCR (Harness)
+# Attendance sheet extract (Harness)
 
 Read [`references/prompt.md`](references/prompt.md) for transcription iron rules (本格、不抄班次/邻行、欧式数字、印刷冒号格).
 
-Java only sends the image. You return **OCR evidence**. Do **not** output Mark / 已删除 / 正常 / 模糊 / 未出勤 — Java judges those.
+Java only sends the original image path. You return **OCR evidence**. Do **not** output Mark / 已删除 / 正常 / 模糊 / 未出勤 — Java judges those.
 
-## Tools (mandatory)
+## Tools
 
-1. **Large scan** — if either side > 1024px, call `tiler_route` `auto` or `always` before reading. Do not let the model downsample the whole A4 page.
-2. **Structure** — `vision_ground` to locate page-header warehouse + date, headers, every body row, columns: NO, NAME, AGENCY, SHIFT, ARRIVEE, DEPAR, PAUSE, SIGNATURE, OBSERVATIONS. Count body rows first; keep the first data row. Do not read clock digits here.
-3. **Column strips** — crop each clock/name **column** (not the whole page). Then split by row Y. Long diagonal strokes then occupy only a sliver of one cell.
-4. **`crop_zoom`** — each cell from the **original** image, `target` 800, `mode` nearest, `sheet` false. Arrivée/Départ: if a printed colon splits the cell, also crop hour and minute (or four digit boxes). Never invent boxes from page-width ratios.
-5. **`ocr_image` always** — every crop, even if the chat model can see images. Keep `text` only when complete and legal. Incomplete OCR is not a time. Copy `confidence` and `bbox` (original-pixel `[x1,y1,x2,y2]`).
-6. **Low conf reread** — if clock `confidence < 0.85` or text is not `HH:MM`, `crop_zoom` that cell again and `ocr_image`. Still bad → vision on **that crop only** (prompt.md 【0】【3】【4】). Never pass shift, neighbor, Pause, remarks.
-7. **`name_crossed`** — true only when a strike runs through the name cell and there is **no** replacement name. Old name struck + new name in cell → `name_crossed` false, `name.text` = new name, `name_has_replacement` true.
+Pixel isolation: Flash must never see SHIFT and clocks in the same image. Do not `vision_describe` the original page.
+
+1. **`vision_ground`** (first output, annotate false) on the original path. Boxes only, no times. Each box is the FULL cell from its left grid line to its right grid line (not just the header text): HEADER (warehouse/date band above the body), NAME, ARRIVEE, DEPAR, SHIFT. ARRIVEE/DEPAR boxes must not include SHIFT/Horaires.
+
+2. **`crop_zoom` once** on the original path: `sheet` false, `mode` nearest, `target` 6000. Separate PNGs labelled `header` / `name` / `arrivo` / `uscita` / `shift`. Never `sheet` true (stacking SHIFT with clocks leaks). Clock crops must not include SHIFT pixels.
+
+3. **`vision_describe`** with `json` false on the NAME / HEADER / SHIFT crop PNGs only, one crop per call (`paths` = that one file).
+   - NAME crop: full wrapped names; struck with no replacement → `name_crossed` true.
+   - HEADER crop: warehouse and `date_raw`.
+   - SHIFT crop (after clocks): `shift.text` only. Never write into arrivo/uscita.
+
+4. **`ocr_image`** (`full` true; call `ocr_setup` first if needed) on the ARRIVEE and DEPAR crop PNGs (dsh-ocr local OCR).
+   - ARRIVEE crop: column reads top-to-bottom = body rows top-to-bottom; each line is handwritten HH:MM, or empty if blank / only a printed colon. Do not invent times.
+   - DEPAR crop: same rule.
+
+Forbidden: `bash`; `read_image`; one cell one tool; `vision_describe` on the original path; putting SHIFT crop and a clock crop in the same describe.
+
+## `name_crossed`
+
+true only when a strike runs through the name cell and there is **no** replacement name. Old name struck + new name in cell → `name_crossed` false, `name.text` = new name, `name_has_replacement` true.
+
+## Merge
+
+`arrivo` only from the ARRIVEE crop describe. `uscita` only from the DEPAR crop describe. If that crop says empty, that clock stays empty even when shift is `10:00-19:00`.
 
 ## Output
 

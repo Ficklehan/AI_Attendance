@@ -142,12 +142,21 @@
 
 【4】到达/离开列提取规则
 
+读到离时必须先 **像素隔离**，禁止对原图 `vision_describe`（整页同时看见班次和到离，模型会用班次填空格）。
+
+1. `vision_ground`（annotate false）在原图上只定位框：HEADER、NAME、ARRIVEE、DEPAR、SHIFT。到达/离开框必须收紧，**不得包含班次列**。
+2. `crop_zoom` 一次：`sheet` false、`mode` nearest，分别写出 header/name/arrivo/uscita/shift PNG。禁止 `sheet` true 把班次和到离叠进同一张图。
+3. `vision_describe`（json false）只看裁好的 PNG，一次一个文件。ARRIVEE 条 question：这张图只有到达列、没有班次；每行手写 HH:MM，空白/印刷冒号→空。DEPAR 条同理。NAME/HEADER 另看。SHIFT 条只填 `shift.text`，禁止写入 arrivo/uscita。
+4. 合并：arrivo 只来自 ARRIVEE 条结果，uscita 只来自 DEPAR 条结果。条上是空则该时钟必须空，即使班次是 `10:00-19:00`。
+
+禁止一格一工具。列带第 n 行只读该行 Y，不抄邻行、不抄班次。
+
 **表头匹配**（不区分大小写）：
 - 到达：`Arrivée` / `Arrival` / `Arrivo` / `Actual` / `In`
 - 离开：`Départ` / `Departure` / `Partenza` / `Out`
 
 【4.1】执行顺序
-1. **定位列边界**：通过表头X坐标锁定本列范围，仅读该列像素。
+1. **定位列边界**：`vision_ground` 锁定 ARRIVEE/DEPAR 列带 X（不得含班次），`crop_zoom` 切整列 PNG，仅对该 PNG `vision_describe`。
 2. **检查是否为占位符/空白**：
    - 若该单元格为空白、印刷体 `0:00`、`0`、`☐`、`[ ]`、`___`、横线 `—` → 输出 `""`
 3. **读取字符序列**：提取该单元格内所有可见字符（数字、冒号、空格）。
@@ -217,7 +226,7 @@ Pays、Date 规范化、Mark、已删除由 Java 判定，不要输出。
 
 【8】输出格式
 
-输出前逐行自检：arrivo/uscita 必须只来自本行到达/离开格。本格只有印刷冒号或空白时这两格必须 `"text":""` 且 `"empty": true`，禁止写入邻行时间、班次时间或提示词里出现过的任何时刻。
+输出前逐行自检：arrivo 只来自 ARRIVEE 列条的 `vision_describe`，uscita 只来自 DEPAR 列条的 `vision_describe`。本格只有印刷冒号或空白时这两格必须 `"text":""` 且 `"empty": true`，禁止写入邻行时间、班次时间、SHIFT 条转录或提示词里出现过的任何时刻。
 
 最终回答 = **一个 JSON 对象**，见 SKILL.md。单元格 `{text,confidence,bbox:[x1,y1,x2,y2],empty?}`。不要 markdown 围栏，不要 `<<<行号>>>`，不要 16 列数组。
 

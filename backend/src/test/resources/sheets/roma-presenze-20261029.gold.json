@@ -1,0 +1,21 @@
+{
+  "id": "roma-presenze-20261029",
+  "warehouse": "roma",
+  "date": "2026-10-29",
+  "dateRaw": "10/29/2026",
+  "rows": [
+    {"no": "1", "nameContains": "GONZALEZ", "shift": "10:00-19:00", "arrive": "10:00", "depart": "19:00", "emptyClocks": false},
+    {"no": "2", "nameContains": "SISSOKO", "shift": "10:00-19:00", "arrive": "10:00", "depart": "19:00", "emptyClocks": false},
+    {"no": "3", "nameContains": "NAYEM", "shift": "10:00-19:00", "arrive": "10:00", "depart": "19:00", "emptyClocks": false},
+    {"no": "4", "nameContains": "LOREDANA", "shift": "10:00-19:00", "arrive": "", "depart": "", "emptyClocks": true, "nameStruck": true},
+    {"no": "5", "nameContains": "MANGUERA", "shift": "04:00-13:00", "arrive": "04:00", "depart": "13:00", "emptyClocks": false},
+    {"no": "6", "nameContains": "SISSOKO", "shift": "10:00-19:00", "arrive": "10:00", "depart": "19:00", "emptyClocks": false},
+    {"no": "7", "nameContains": "GAYE", "shift": "10:00-19:00", "arrive": "10:00", "depart": "19:00", "emptyClocks": false},
+    {"no": "8", "nameContains": "KHONDOKER", "shift": "10:00-19:00", "arrive": "10:00", "depart": "19:00", "emptyClocks": false},
+    {"no": "9", "nameContains": "ANIK", "shift": "10:00-19:00", "arrive": "10:00", "depart": "19:00", "emptyClocks": false},
+    {"no": "10", "nameContains": "MADY", "shift": "10:00-19:00", "arrive": "10:00", "depart": "19:00", "emptyClocks": false},
+    {"no": "11", "nameContains": "FORTI", "shift": "10:00-19:00", "arrive": "10:00", "depart": "19:00", "emptyClocks": false},
+    {"no": "12", "nameContains": "BERHE", "shift": "08:00-12:00", "arrive": "08:00", "depart": "12:00", "emptyClocks": false},
+    {"no": "13", "nameContains": "UDDIN", "shift": "10:00-19:00", "arrive": "10:00", "depart": "19:00", "emptyClocks": false}
+  ]
+}

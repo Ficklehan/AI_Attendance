@@ -1,22 +1,10 @@
 package com.attendance.recognition.dto;
 
-import java.util.ArrayList;
-import java.util.List;
-
+/**
+ * 页面级元信息：仅页头仓库/日期/页码。
+ */
 public class PageLayout {
     public String warehouse = "";
     public String dateRaw = "";
     public String pageNum = "";
-    public int previewWidth;
-    public int sourceWidth;
-    public int sourceHeight;
-    public String source = "";
-    public String gridSource = "";
-    public int rowH;
-    public int firstY;
-    public int bandCount;
-    public int[] gridXs;
-    public int[] gridYs;
-    public int headerRows;
-    public List<GroundedCell> cells = new ArrayList<GroundedCell>();
 }

@@ -24,6 +24,7 @@ import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.Executor;
+import java.util.concurrent.Semaphore;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.ExecutionException;
 
@@ -345,7 +346,7 @@ public class RecognitionRunner {
 
         if (records.isEmpty() && !recognitionSupport.shouldUseSimulatedRecognition()) {
             if (useOcrPrimaryPipeline() && structuredRecognitionPipeline.doctorOk()) {
-                throw new IllegalStateException("识别结果为空，请检查 vision_ground 是否标出人员行");
+                throw new IllegalStateException("识别结果为空，请检查 Harness 是否抽出人员行");
             }
             String preview = aiParserService.getLastRecognitionRawText();
             String msg = "识别结果为空，请检查图片是否清晰。模型回复: "
@@ -516,10 +517,13 @@ public class RecognitionRunner {
         final Object progressLock = new Object();
         final String engineTag = plannedEngine();
 
+        int dshConcurrency = Math.max(1, recognitionModelRuntime.getKeyPoolSize());
+        final Semaphore dshSlots = new Semaphore(dshConcurrency);
         if (trace != null) {
             JSONObject parallelMeta = new JSONObject();
             parallelMeta.put("pendingImages", total - startIndex);
             parallelMeta.put("keyPoolSize", recognitionModelRuntime.getKeyPoolSize());
+            parallelMeta.put("dshConcurrency", Integer.valueOf(dshConcurrency));
             trace.step("batch_recognition_parallel", parallelMeta);
         }
 
@@ -528,12 +532,16 @@ public class RecognitionRunner {
             final int imageIndex = i;
             final String fileKey = imageKeys.get(i);
             futures.add(CompletableFuture.runAsync(() -> {
+                boolean held = false;
                 try {
+                    dshSlots.acquire();
+                    held = true;
                     if (trace != null) {
                         JSONObject meta = new JSONObject();
                         meta.put("index", imageIndex + 1);
                         meta.put("total", total);
                         meta.put("fileKey", fileKey);
+                        meta.put("dshInFlight", Integer.valueOf(dshConcurrency - dshSlots.availablePermits()));
                         trace.step("batch_image_start", meta);
                     }
                     taskService.touchRecognitionHeartbeat(taskId);
@@ -554,8 +562,15 @@ public class RecognitionRunner {
                     }
                     log.info("多图并行识别完成单张: taskId={}, image={}/{}, rows={}",
                             taskId, imageIndex + 1, total, slice.records.size());
+                } catch (InterruptedException e) {
+                    Thread.currentThread().interrupt();
+                    throw new java.util.concurrent.CompletionException(e);
                 } catch (Exception e) {
                     throw new java.util.concurrent.CompletionException(e);
+                } finally {
+                    if (held) {
+                        dshSlots.release();
+                    }
                 }
             }, recognitionExecutor));
         }
@@ -603,6 +618,7 @@ public class RecognitionRunner {
             done.put("imageCount", total);
             done.put("recordCount", merged.size());
             done.put("parallel", true);
+            done.put("dshConcurrency", Integer.valueOf(dshConcurrency));
             trace.step("batch_recognition_done", done);
         }
 
