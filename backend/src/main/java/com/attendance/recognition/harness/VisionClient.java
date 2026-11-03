@@ -120,7 +120,9 @@ public class VisionClient {
      * 返回 rows JSONArray；失败返回 null。
      */
     public JSONArray readTableBody(BufferedImage tableCrop) throws Exception {
-        String raw = complete(tableCrop, visionPromptService.getPrompt("vision.prompt.table_body"), 4096, "jpeg");
+        // 窄表体（小图/竖图）放大 2x，否则手写时钟太小读不准；宽表体原尺寸即可
+        BufferedImage image = tableCrop.getWidth() < 800 ? scaleBy(tableCrop, 2.0) : tableCrop;
+        String raw = complete(image, visionPromptService.getPrompt("vision.prompt.table_body"), 4096, "jpeg");
         JSONObject root = extractObject(raw);
         if (root == null || root.getJSONArray("rows") == null) {
             return null;

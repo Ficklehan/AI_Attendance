@@ -26,12 +26,12 @@ public class VisionPromptService {
                 "识别考勤表主体：一次读取所有列所有行（行号/姓名/中介/班次/到达/离开/休息）。主路径使用。",
                 "This is an attendance timesheet table body. Columns left-to-right: "
                         + "NO, NAME, AGENCY, SHIFT, ARRIVEE, DEPAR, PAUSE.\n"
-                        + "The first row may be the column header — skip it. Read every data row top-to-bottom.\n"
+                        + "Read every data row top-to-bottom, including empty rows.\n"
                         + "Output JSON only, no markdown:\n"
                         + "{\"rows\":[{\"no\":\"1\",\"name\":\"...\",\"struck\":false,\"agency\":\"...\","
                         + "\"shift\":\"10:00-19:00\",\"arrive\":\"10:00\",\"depart\":\"19:00\",\"pause\":\"60\"},...]}\n"
                         + "Use \"\" for empty cells. \"struck\" = the name is crossed out with no replacement written. "
-                        + "Include every row, do not skip empty rows.\n"),
+                        + "Include every row, do not skip empty rows. Do not include the column header row in the output.\n"),
         HEADER("vision.prompt.header", "页头提示词",
                 "识别表格上方的页头带：仓库名（warehouse）与打印日期（date_raw）。主路径使用。",
                 "This image is the page header band of an attendance timesheet.\n"

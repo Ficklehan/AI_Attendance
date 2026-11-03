@@ -297,7 +297,8 @@ public class StructuredRecognitionPipeline {
 
     /** 整表读：crop 表体（所有列 × 表体行），视觉一次读全；失败返回 null。 */
     private JSONArray readTableBody(BufferedImage source, int x0, int x1, int[] rowEdges, int headerRows) {
-        int cy = Math.max(0, rowEdges[headerRows]);
+        // 含表头行一起 crop，交给视觉自行跳过表头；rowEdges[1] 在小图/竖图上可能是数据行内部线，切掉会错位
+        int cy = Math.max(0, rowEdges[0]);
         int ch = Math.min(source.getHeight() - cy, rowEdges[rowEdges.length - 1] - cy);
         int cw = Math.min(source.getWidth() - x0, x1 - x0);
         if (cw <= 8 || ch <= 8) {
