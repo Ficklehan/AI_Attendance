@@ -140,7 +140,7 @@ public class StructuredRecognitionPipeline {
             JSONArray names = null;
             List<String> arriveTimes = null;
             List<String> departTimes = null;
-            if (tableRows == null) {
+            if (tableRows == null || tableRows.isEmpty()) {
                 layout = resolveColumns(source, promptCountry, trace);
                 if (layout != null) {
                     names = readNames(source, layout.nameX0, layout.nameX1, rowEdges, workDir);
@@ -305,7 +305,13 @@ public class StructuredRecognitionPipeline {
         }
         BufferedImage crop = source.getSubimage(Math.max(0, x0), cy, cw, ch);
         try {
-            return visionClient.readTableBody(crop);
+            JSONArray rows = visionClient.readTableBody(crop);
+            if (rows == null || rows.isEmpty()) {
+                // MiMo 偶发返回空，重试一次
+                log.warn("整表读返回空，重试一次");
+                rows = visionClient.readTableBody(crop);
+            }
+            return rows;
         } catch (Exception e) {
             log.warn("整表读失败，回退逐列识别: {}", e.getMessage());
             return null;
