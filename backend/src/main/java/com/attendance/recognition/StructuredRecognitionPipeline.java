@@ -128,14 +128,14 @@ public class StructuredRecognitionPipeline {
                 return structureFailedPage(workDir, trace, workingCountry, promptCountry, pageStart, "");
             }
 
-            // 3. 页头（仓库/日期）。
-            String[] header = readHeader(source, workDir);
-
-            // 4. 整表读一次读全所有列；失败回退逐列识别。
+            // 3+4. 页头与整表读并行（整表读是主耗时，页头并行省掉其串行时间）。
+            java.util.concurrent.CompletableFuture<String[]> headerFuture =
+                    java.util.concurrent.CompletableFuture.supplyAsync(() -> readHeader(source, workDir));
             int headerRows = 1;
             double accept = properties.getRule().getAcceptThreshold();
             NightShiftConfigDTO nightShift = nightShiftConfigService.getConfigForCountry(promptCountry);
             JSONArray tableRows = readTableBody(source, tableX0, tableX1, rowEdges, headerRows);
+            String[] header = headerFuture.join();
             TableGridDetector.Layout layout = null;
             JSONArray names = null;
             List<String> arriveTimes = null;

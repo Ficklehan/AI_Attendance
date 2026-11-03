@@ -101,7 +101,7 @@ public class VisionClient {
         String prompt = "This image is the page header band of an attendance timesheet.\n"
                 + "Output JSON only, no markdown: {\"warehouse\":\"...\",\"date_raw\":\"...\"}\n"
                 + "warehouse = printed site/depot name (may be empty). date_raw = printed date exactly as written (may be empty).\n";
-        String raw = complete(crop, prompt, 256);
+        String raw = complete(crop, prompt, 256, "jpeg");
         JSONObject root = extractObject(raw);
         if (root == null) {
             return new String[] {"", ""};
@@ -144,8 +144,7 @@ public class VisionClient {
                 + "\"shift\":\"10:00-19:00\",\"arrive\":\"10:00\",\"depart\":\"19:00\",\"pause\":\"60\"},...]}\n"
                 + "Use \"\" for empty cells. \"struck\" = the name is crossed out with no replacement written. "
                 + "Include every row, do not skip empty rows.\n";
-        BufferedImage zoomed = scaleBy(tableCrop, 1.5);
-        String raw = complete(zoomed, prompt, 4096, "jpeg");
+        String raw = complete(tableCrop, prompt, 4096, "jpeg");
         JSONObject root = extractObject(raw);
         if (root == null || root.getJSONArray("rows") == null) {
             return null;
@@ -170,7 +169,9 @@ public class VisionClient {
     }
 
     private String complete(BufferedImage image, String prompt, int maxTokens, String format) throws Exception {
+        long t0 = System.currentTimeMillis();
         byte[] bytes = toBytes(image, format);
+        long t1 = System.currentTimeMillis();
         JSONArray content = new JSONArray();
         JSONObject textPart = new JSONObject();
         textPart.put("type", "text");
@@ -179,6 +180,7 @@ public class VisionClient {
         JSONObject imageUrl = new JSONObject();
         imageUrl.put("url", "data:image/" + format + ";base64," + Base64.getEncoder().encodeToString(bytes));
         imageUrl.put("detail", "high");
+        long t2 = System.currentTimeMillis();
         JSONObject imagePart = new JSONObject();
         imagePart.put("type", "image_url");
         imagePart.put("image_url", imageUrl);
@@ -211,6 +213,7 @@ public class VisionClient {
                 .post(RequestBody.create(body.toJSONString(), MediaType.parse("application/json")))
                 .build();
         Response response = http.newCall(request).execute();
+        long t3 = System.currentTimeMillis();
         ResponseBody responseBody = response.body();
         String contentStr = responseBody != null ? responseBody.string() : "";
         if (!response.isSuccessful()) {
@@ -226,6 +229,9 @@ public class VisionClient {
             return "";
         }
         JSONObject msg = choices.getJSONObject(0).getJSONObject("message");
+        log.info("vision {} {}x{} bytes={}KB enc={}ms b64={}ms http={}ms total={}ms",
+                format, image.getWidth(), image.getHeight(), bytes.length / 1024,
+                t1 - t0, t2 - t1, t3 - t2, System.currentTimeMillis() - t0);
         return msg != null ? str(msg, "content") : "";
     }
 
@@ -285,7 +291,20 @@ public class VisionClient {
 
     private static byte[] toBytes(BufferedImage image, String format) throws Exception {
         ByteArrayOutputStream buf = new ByteArrayOutputStream();
-        ImageIO.write(image, format, buf);
+        if ("jpeg".equalsIgnoreCase(format)) {
+            javax.imageio.ImageWriter writer = ImageIO.getImageWritersByFormatName("jpeg").next();
+            javax.imageio.ImageWriteParam param = writer.getDefaultWriteParam();
+            param.setCompressionMode(javax.imageio.ImageWriteParam.MODE_EXPLICIT);
+            param.setCompressionQuality(0.9f);
+            javax.imageio.stream.MemoryCacheImageOutputStream out =
+                    new javax.imageio.stream.MemoryCacheImageOutputStream(buf);
+            writer.setOutput(out);
+            writer.write(null, new javax.imageio.IIOImage(image, null, null), param);
+            out.close();
+            writer.dispose();
+        } else {
+            ImageIO.write(image, format, buf);
+        }
         return buf.toByteArray();
     }
 }
