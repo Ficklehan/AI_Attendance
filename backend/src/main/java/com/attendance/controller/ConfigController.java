@@ -17,11 +17,8 @@ import com.attendance.service.FeishuCountryConfigService;
 import com.attendance.service.NightShiftConfigService;
 import com.attendance.service.MarkdownConfigService;
 import com.attendance.service.PluginConfigService;
-import com.attendance.service.RecognitionPromptGuard;
 import com.attendance.service.RecognitionEngineConfigService;
-import com.attendance.service.RecognitionPromptService;
 import com.attendance.service.VisionPromptService;
-import com.attendance.service.RecognitionQualityGuard;
 import com.attendance.security.AdminAuthService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -47,15 +44,6 @@ public class ConfigController {
     private MarkdownConfigService markdownConfigService;
 
     @Autowired
-    private RecognitionPromptGuard recognitionPromptGuard;
-
-    @Autowired
-    private RecognitionQualityGuard recognitionQualityGuard;
-
-    @Autowired
-    private RecognitionPromptService recognitionPromptService;
-
-    @Autowired
     private VisionPromptService visionPromptService;
 
     @Autowired
@@ -78,44 +66,6 @@ public class ConfigController {
 
     private void requireAdmin() {
         adminAuthService.requireAdmin();
-    }
-
-    /**
-     * 查看识别时实际发给 MiMo 的提示词（与 PC/小程序上传共用逻辑），便于核对 prompts.md 是否生效。
-     */
-    @GetMapping("/recognition-prompt-preview")
-    public Result<Map<String, Object>> recognitionPromptPreview(
-            @RequestParam(required = false, defaultValue = "default") String country) {
-        requireAdmin();
-        CountryConfigBundle bundle = configService.getCountryConfigBundle(country);
-        String fromConfig = bundle.getAiPrompt();
-        String forApi = recognitionPromptGuard.preparePromptForApi(fromConfig, recognitionQualityGuard);
-        Map<String, Object> body = new HashMap<>();
-        body.put("requestCountry", bundle.getRequestCountry());
-        body.put("effectiveCountry", bundle.getEffectivePromptCountry());
-        body.put("effectivePromptCountry", bundle.getEffectivePromptCountry());
-        body.put("effectiveFeishuCountry", bundle.getEffectiveFeishuCountry());
-        body.put("promptFromGlobalFallback", bundle.isPromptFromGlobalFallback());
-        body.put("feishuFromGlobalFallback", bundle.isFeishuFromGlobalFallback());
-        body.put("promptSection", bundle.getPromptSection());
-        body.put("feishuAppTokenConfigured", bundle.getAppToken() != null && !bundle.getAppToken().trim().isEmpty());
-        body.put("feishuTableIdConfigured", bundle.getTableId() != null && !bundle.getTableId().trim().isEmpty());
-        body.put("fieldMappingCount", bundle.getFieldMapping() != null ? bundle.getFieldMapping().size() : 0);
-        body.put("feishuSyncEnabled", bundle.isSyncEnabled());
-        body.put("configPromptLength", fromConfig != null ? fromConfig.length() : 0);
-        body.put("apiPromptLength", forApi != null ? forApi.length() : 0);
-        body.put("includesExampleBlock", fromConfig != null && fromConfig.contains("示例"));
-        body.put("configPromptPreview", truncate(fromConfig, 1200));
-        body.put("apiPromptPreview", truncate(forApi, 1200));
-        return Result.success(body);
-    }
-
-    private static String truncate(String text, int max) {
-        if (text == null) {
-            return "";
-        }
-        String one = text.replace('\r', ' ').replace('\n', ' ');
-        return one.length() <= max ? one : one.substring(0, max) + "...";
     }
 
     @GetMapping
@@ -169,52 +119,6 @@ public class ConfigController {
         return Result.success(bundle.toPublicSummary());
     }
     
-    @GetMapping("/ai-prompt")
-    public Result<Map<String, String>> getAiPrompts(@RequestParam(required = false, defaultValue = "default") String country) {
-        requireAdmin();
-        Map<String, String> prompts = new HashMap<>();
-        // 配置页始终直读数据库，避免内存缓存导致「已保存仍显示旧文案」
-        String aiPrompt = recognitionPromptService.getAiPromptFresh(country);
-        String continuePrompt = recognitionPromptService.getContinuePromptFresh(country);
-        prompts.put("ai_prompt", aiPrompt != null ? aiPrompt : "");
-        prompts.put("continue_prompt", continuePrompt != null ? continuePrompt : "");
-        prompts.put("country", country);
-        prompts.put("effective_country", recognitionPromptService.resolveEffectivePromptCountry(country));
-        prompts.put("legacy_prompt", String.valueOf(recognitionPromptService.isLegacyPromptForCountry(country)));
-        return Result.success(prompts);
-    }
-
-    @GetMapping("/prompt-status")
-    public Result<Map<String, Object>> getPromptStatus() {
-        requireAdmin();
-        String content = recognitionPromptService.getAiPromptFresh("default");
-        Map<String, Object> body = new HashMap<>();
-        body.put("legacy", recognitionPromptService.isLegacyPromptInDatabase()
-                || recognitionPromptService.isMissingPageNumPromptInDatabase()
-                || recognitionPromptService.isMissingDateRawPromptInDatabase());
-        body.put("hasNewFields", content != null && content.contains("Pays,Entrepot"));
-        body.put("hasPageNum", content != null && content.contains("PAGE_NUM"));
-        body.put("hasDateRaw", content != null && content.contains("DATE_RAW"));
-        body.put("storage", "database");
-        body.put("rowCount", recognitionPromptService.countRows());
-        return Result.success(body);
-    }
-    
-    @PostMapping("/ai-prompt")
-    public Result<Void> updateAiPrompt(@RequestBody Map<String, String> request) {
-        requireAdmin();
-        try {
-            String country = request.getOrDefault("country", "default");
-            String aiPrompt = request.get("ai_prompt");
-            String continuePrompt = request.get("continue_prompt");
-            markdownConfigService.updatePrompt(country, aiPrompt, continuePrompt);
-            return Result.success(null, "AI提示词更新成功");
-        } catch (Exception e) {
-            log.error("更新AI提示词失败", e);
-            return Result.error(500, "更新失败: " + e.getMessage());
-        }
-    }
-
     /** 视觉识别提示词（整表读/页头/表头列名/时钟列/姓名列），全局配置，改完即生效。 */
     @GetMapping("/vision-prompts")
     public Result<JSONArray> getVisionPrompts() {
@@ -282,27 +186,6 @@ public class ConfigController {
         }
     }
 
-    @PostMapping("/update")
-    public Result<Void> updateConfig(@RequestBody Map<String, String> request) {
-        requireAdmin();
-        String configKey = request.get("configKey");
-        String configValue = request.get("configValue");
-        
-        if (configKey == null || configValue == null) {
-            return Result.error(400, "configKey 和 configValue 不能为空");
-        }
-        
-        configService.updateConfig(configKey, configValue);
-        return Result.success(null, "配置更新成功");
-    }
-
-    @PostMapping("/{configKey}/delete")
-    public Result<Void> deleteConfig(@PathVariable String configKey) {
-        requireAdmin();
-        configService.deleteConfig(configKey);
-        return Result.success(null, "配置删除成功");
-    }
-    
     /**
      * 仅刷新文件型配置（飞书连接、国家可选项等）。
      * 识别提示词已改为数据库唯一数据源，避免误覆盖用户编辑。
@@ -312,7 +195,6 @@ public class ConfigController {
         requireAdmin();
         try {
             markdownConfigService.loadConfigs();
-            recognitionPromptService.invalidateCache();
             log.info("配置已重新加载（飞书配置以数据库为准，未从 md 覆盖）");
             return Result.success(null, "配置已刷新");
         } catch (Exception e) {
@@ -355,32 +237,6 @@ public class ConfigController {
             return null;
         }
         return "true".equalsIgnoreCase(text) || "1".equals(text);
-    }
-
-    /**
-     * 重置识别提示词为标准模板。
-     * 不传 country：覆盖全部国家。传入 country：只覆盖该国家（配置页「应用最新模板」）。
-     */
-    @PostMapping("/reset-prompts")
-    public Result<Void> resetPromptsToStandard(
-            @RequestParam(required = false) String country) {
-        requireAdmin();
-        try {
-            if (country != null && !country.trim().isEmpty()) {
-                boolean ok = recognitionPromptService.applyCanonicalForCountry(country);
-                if (!ok) {
-                    return Result.error(500, "未找到该国家的标准提示词模板");
-                }
-                log.info("识别提示词已重置为标准模板: country={}", country);
-                return Result.success(null, "已将当前国家识别提示词重置为标准模板");
-            }
-            int seeded = recognitionPromptService.seedFromCanonical(true);
-            log.info("识别提示词已重置为标准模板: countries={}", seeded);
-            return Result.success(null, "已将识别提示词重置为标准模板（" + seeded + " 个国家）");
-        } catch (Exception e) {
-            log.error("重置提示词失败", e);
-            return Result.error(500, "重置提示词失败: " + e.getMessage());
-        }
     }
 
     @GetMapping("/system")

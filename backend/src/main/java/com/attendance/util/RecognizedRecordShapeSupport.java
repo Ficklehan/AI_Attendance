@@ -48,7 +48,7 @@ public final class RecognizedRecordShapeSupport {
     private RecognizedRecordShapeSupport() {
     }
 
-    /** 在 {@link com.attendance.service.AIParserService#repairMissingRowClosingBrackets} 之后调用。 */
+    /** 在修复行尾括号之后调用。 */
     public static String repairStickyRowBoundaries(String text) {
         if (text == null || text.isEmpty()) {
             return text;

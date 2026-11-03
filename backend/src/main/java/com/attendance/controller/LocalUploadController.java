@@ -3,7 +3,6 @@ package com.attendance.controller;
 import com.attendance.common.BusinessException;
 import com.attendance.common.ErrorCode;
 import com.attendance.common.ErrorKeys;
-import com.attendance.service.AIParserService;
 import com.attendance.service.ConfigService;
 import com.attendance.service.RecognitionConcurrencyGuard;
 import com.attendance.service.RecognitionJobService;
@@ -63,9 +62,6 @@ import java.util.concurrent.Executor;
 public class LocalUploadController {
     
     private static final Logger log = LoggerFactory.getLogger(LocalUploadController.class);
-
-    @Autowired
-    private AIParserService aiParserService;
 
     @Autowired
     private SimulatedRecognitionService simulatedRecognitionService;
@@ -150,7 +146,9 @@ public class LocalUploadController {
             if (!name.toLowerCase(Locale.ROOT).contains(".")) {
                 name = name + ".jpg";
             }
-            keys.add(aiParserService.saveUploadedFile(page.getBytes(), name));
+            String filename = fileStorage.save(page.getBytes(), name);
+        log.info("上传图片已保存: {} (remote={})", filename, fileStorage.isRemote());
+        keys.add(filename);
         }
         return keys;
     }
@@ -227,7 +225,6 @@ public class LocalUploadController {
             startEvent.put("imagePreviewUrl", apiUrl("/local/image/" + savedFilename));
             startEvent.put("imageCount", savedKeys.size());
             startEvent.put("promptCountry", configCountry);
-            startEvent.put("promptSection", configService.describePromptSection(configCountry));
             emitter.send(SseEmitter.event()
                     .name("start")
                     .data(startEvent.toJSONString(), MediaType.APPLICATION_JSON));
@@ -362,105 +359,20 @@ public class LocalUploadController {
                         }
                     }
                 } else {
-                if (!structuredRecognitionPipeline.doctorOk()
-                        && recognitionProperties.isOcrPrimary()
-                        && recognitionProperties.getOcr().isFallbackLegacyOnUnavailable()) {
-                    log.warn("ocr_primary 未就绪，SSE 回退 legacy: {}", structuredRecognitionPipeline.doctorMessage());
-                }
-                final Exception[] streamError = {null};
-                final boolean[] streamCompleted = {false};
-                for (int pageIndex = 0; pageIndex < pages.size(); pageIndex++) {
-                    UploadMediaSupport.ImagePage page = pages.get(pageIndex);
-                    final boolean lastPage = pageIndex == pages.size() - 1;
-                    AIParserService.ParseCallback pageCallback = new AIParserService.ParseCallback() {
-                        @Override
-                        public void onRecord(JSONObject record) {
-                            RecordCountryDefaults.applyMissingPays(record, workingCountry);
-                            records.add(record);
-                            try {
-                                JSONObject recordEvent = new JSONObject();
-                                recordEvent.put("record", record);
-                                emitter.send(SseEmitter.event()
-                                        .name("record")
-                                        .data(recordEvent.toJSONString(), MediaType.APPLICATION_JSON));
-                            } catch (IOException e) {
-                                log.error("SSE发送失败", e);
-                            }
-                        }
-
-                        @Override
-                        public void onComplete(int totalCount) {
-                            if (!lastPage) {
-                                return;
-                            }
-                            try {
-                                String promptCountry = aiParserService.getLastPromptCountry();
-                                String engineTag = recognitionSupport.getActiveEngine() + ":"
-                                        + (promptCountry != null ? promptCountry : configCountry);
-                                appendRawData(newTaskId, records, engineTag, trace);
-                                sendTraceDump(emitter, trace);
-
-                                JSONObject completeEvent = new JSONObject();
-                                completeEvent.put("taskId", newTaskId);
-                                completeEvent.put("rowCount", records.size());
-                                completeEvent.put("promptCountry", configCountry);
-                                completeEvent.put("pageCount", pages.size());
-
-                                emitter.send(SseEmitter.event()
-                                        .name("complete")
-                                        .data(completeEvent.toJSONString(), MediaType.APPLICATION_JSON));
-                                emitter.complete();
-                                streamCompleted[0] = true;
-                            } catch (Exception e) {
-                                log.error("完成处理失败", e);
-                                emitter.completeWithError(e);
-                                streamCompleted[0] = true;
-                            }
-                        }
-
-                        @Override
-                        public void onError(Exception e) {
-                            streamError[0] = e;
-                            try {
-                                trace.step("recognition_failed", "message", e.getMessage());
-                                taskService.failTask(newTaskId,
-                                        RecognitionFailureMessages.toClientMessage(e), trace);
-                                sendTraceDump(emitter, trace);
-                                JSONObject errorEvent = buildErrorEvent(e);
-                                emitter.send(SseEmitter.event()
-                                        .name("error")
-                                        .data(errorEvent.toJSONString(), MediaType.APPLICATION_JSON));
-                                emitter.complete();
-                                streamCompleted[0] = true;
-                            } catch (IOException ex) {
-                                log.error("错误发送失败", ex);
-                            }
-                        }
-                    };
-
-                    log.info("识别 PDF/图片页 {}/{}: {}", pageIndex + 1, pages.size(), page.getLabel());
-                    aiParserService.parseImageStreamByLineFromBytes(
-                            page.getBytes(), page.getLabel(), configCountry, workingCountry, pageCallback, trace);
-                    if (streamError[0] != null) {
-                        break;
-                    }
-                }
-                if (!streamCompleted[0] && streamError[0] == null) {
-                    log.warn("识别结束但未收到 complete 回调，补发完成事件: taskId={}", newTaskId);
-                    try {
-                        String engineTag = recognitionSupport.getActiveEngine() + ":" + configCountry;
-                        appendRawData(newTaskId, records, engineTag, trace);
-                        JSONObject completeEvent = new JSONObject();
-                        completeEvent.put("taskId", newTaskId);
-                        completeEvent.put("rowCount", records.size());
-                        completeEvent.put("promptCountry", configCountry);
-                        emitter.send(SseEmitter.event()
-                                .name("complete")
-                                .data(completeEvent.toJSONString(), MediaType.APPLICATION_JSON));
-                        emitter.complete();
-                    } catch (Exception ex) {
-                        emitter.completeWithError(ex);
-                    }
+                // ocr_primary 未就绪：直接报错，不再回退 legacy 整页 VLM。
+                String doctor = structuredRecognitionPipeline.doctorMessage();
+                log.error("ocr_primary 未就绪，无法识别: {}", doctor);
+                try {
+                    trace.step("recognition_failed", "message", doctor);
+                    taskService.failTask(newTaskId, "识别服务未就绪，请稍后重试", trace);
+                    sendTraceDump(emitter, trace);
+                    JSONObject errorEvent = buildErrorEvent(new IllegalStateException("ocr_primary 未就绪: " + doctor));
+                    emitter.send(SseEmitter.event()
+                            .name("error")
+                            .data(errorEvent.toJSONString(), MediaType.APPLICATION_JSON));
+                    emitter.complete();
+                } catch (IOException ex) {
+                    log.error("错误发送失败", ex);
                 }
                 }
             }
@@ -562,7 +474,6 @@ public class LocalUploadController {
             result.put("status", "processing");
             result.put("recognitionEngine", plannedEngine);
             result.put("promptCountry", configCountry);
-            result.put("promptSection", configService.describePromptSection(configCountry));
 
             return com.attendance.common.Result.success(result);
         } catch (com.attendance.common.BusinessException e) {

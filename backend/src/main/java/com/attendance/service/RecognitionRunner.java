@@ -34,9 +34,6 @@ public class RecognitionRunner {
     private static final Logger log = LoggerFactory.getLogger(RecognitionRunner.class);
 
     @Autowired
-    private AIParserService aiParserService;
-
-    @Autowired
     private SimulatedRecognitionService simulatedRecognitionService;
 
     @Autowired
@@ -255,78 +252,24 @@ public class RecognitionRunner {
                     recognitionModelRuntime.displayEngineName(),
                     originalFilename, promptCountry, fileBytes.length);
 
-            boolean skipLegacyVlm = false;
-            if (useOcrPrimaryPipeline()) {
-                if (!structuredRecognitionPipeline.doctorOk()) {
-                    String doctor = structuredRecognitionPipeline.doctorMessage();
-                    if (recognitionProperties.getOcr().isFallbackLegacyOnUnavailable()) {
-                        log.warn("ocr_primary 环境未就绪，回退 legacy: {}", doctor);
-                        if (trace != null) {
-                            trace.step("ocr_primary_fallback_legacy", "reason", doctor);
-                        }
-                    } else {
-                        error[0] = new IllegalStateException("dsh-ocr-local 未就绪: " + doctor);
-                        done.countDown();
-                        skipLegacyVlm = true;
-                    }
-                } else {
-                    try {
-                        List<JSONObject> parsed = structuredRecognitionPipeline.recognizePage(
-                                fileBytes, originalFilename, promptCountry, workingCountry, trace);
-                        for (JSONObject record : parsed) {
-                            RecordCountryDefaults.applyMissingPays(record, workingCountry);
-                            records.add(record);
-                        }
-                        skipLegacyVlm = true;
-                        done.countDown();
-                    } catch (Exception e) {
-                        log.error("ocr_primary 识别失败", e);
-                        error[0] = e;
-                        skipLegacyVlm = true;
-                        done.countDown();
-                    }
-                }
-            }
-
-            if (skipLegacyVlm) {
-                // Harness 管线已完成或已失败
+            if (!structuredRecognitionPipeline.doctorOk()) {
+                String doctor = structuredRecognitionPipeline.doctorMessage();
+                error[0] = new IllegalStateException("ocr_primary 未就绪: " + doctor);
+                done.countDown();
             } else {
-            AIParserService.ParseCallback callback = new AIParserService.ParseCallback() {
-                @Override
-                public void onRecord(JSONObject record) {
-                    RecordCountryDefaults.applyMissingPays(record, workingCountry);
-                    records.add(record);
-                    if (trace != null && (recordIndex[0] % 10 == 0)) {
-                        JSONObject row = new JSONObject();
-                        row.put("index", recordIndex[0]++);
-                        row.put("NO", record.getString("NO"));
-                        row.put("NOM_PRENOM", record.getString("NOM_PRENOM"));
-                        row.put("Date", record.getString("Date"));
-                        trace.step("backend_parsed_record", row);
-                    } else if (trace != null) {
-                        recordIndex[0]++;
+                try {
+                    List<JSONObject> parsed = structuredRecognitionPipeline.recognizePage(
+                            fileBytes, originalFilename, promptCountry, workingCountry, trace);
+                    for (JSONObject record : parsed) {
+                        RecordCountryDefaults.applyMissingPays(record, workingCountry);
+                        records.add(record);
                     }
-                    if (progressTaskId != null && records.size() % PROGRESS_COUNT_EVERY == 0) {
-                        flushMergedProgress(progressTaskId, baseline, records, engineTag);
-                    }
-                }
-
-                @Override
-                public void onComplete(int totalCount) {
-                    log.info("{} 识别完成，共 {} 条", recognitionModelRuntime.displayEngineName(), totalCount);
                     done.countDown();
-                }
-
-                @Override
-                public void onError(Exception e) {
-                    log.error("{} 识别失败", recognitionModelRuntime.displayEngineName(), e);
+                } catch (Exception e) {
+                    log.error("ocr_primary 识别失败", e);
                     error[0] = e;
                     done.countDown();
                 }
-            };
-
-            aiParserService.parseImageStreamByLineFromBytes(
-                    fileBytes, originalFilename, promptCountry, workingCountry, callback, trace);
             }
         }
 
@@ -345,13 +288,7 @@ public class RecognitionRunner {
         }
 
         if (records.isEmpty() && !recognitionSupport.shouldUseSimulatedRecognition()) {
-            if (useOcrPrimaryPipeline() && structuredRecognitionPipeline.doctorOk()) {
-                throw new IllegalStateException("识别结果为空，请检查 Harness 是否抽出人员行");
-            }
-            String preview = aiParserService.getLastRecognitionRawText();
-            String msg = "识别结果为空，请检查图片是否清晰。模型回复: "
-                    + (preview.length() > 200 ? preview.substring(0, 200) + "..." : preview);
-            throw new IllegalStateException(msg);
+            throw new IllegalStateException("识别结果为空，请检查图片是否清晰");
         }
 
         if (progressTaskId != null && !records.isEmpty()) {
@@ -368,13 +305,9 @@ public class RecognitionRunner {
         if (recognitionSupport.shouldUseSimulatedRecognition()) {
             country = promptCountry != null ? promptCountry : "default";
             engine = "simulated";
-        } else if (useOcrPrimaryPipeline() && structuredRecognitionPipeline.doctorOk()) {
+        } else {
             country = promptCountry != null ? promptCountry : "default";
             engine = "harness:" + country;
-        } else {
-            country = aiParserService.getLastPromptCountry();
-            engine = recognitionSupport.getActiveEngine() + ":"
-                    + (country != null ? country : "default");
         }
 
         if (trace != null) {
@@ -383,8 +316,6 @@ public class RecognitionRunner {
             doneMeta.put("promptCountry", country);
             doneMeta.put("recordCount", records.size());
             doneMeta.put("sampleRecords", RecognitionTrace.sampleRecords(records, 5));
-            doneMeta.put("modelRawPreview", RecognitionTrace.preview(aiParserService.getLastRecognitionRawText(), 1500));
-            doneMeta.put("modelRawLength", aiParserService.getLastRecognitionRawText().length());
             trace.step("backend_recognition_done", doneMeta);
         }
 
@@ -749,12 +680,6 @@ public class RecognitionRunner {
                                 List<JSONObject> records, String engineTag) {
         flushProgress(taskId, records, engineTag, true);
         taskService.saveRecognitionCheckpoint(taskId, checkpoint);
-    }
-
-    private boolean useOcrPrimaryPipeline() {
-        return recognitionProperties.isOcrPrimary()
-                && recognitionProperties.getOcr().isEnabled()
-                && recognitionProperties.getHarness().isEnabled();
     }
 
     private static boolean hasPartialRawData(com.attendance.entity.Task task) {

@@ -22,10 +22,6 @@
             @change="loadCountryConfigs"
             :options="countryOptions"
           />
-          <a-tag v-if="countryBundle.promptFromGlobalFallback" color="orange">
-            {{ $t('config.aiFallbackGlobal') }}
-          </a-tag>
-          <a-tag v-else color="blue">{{ $t('config.aiCountrySpecific') }}</a-tag>
           <a-tag v-if="countryBundle.feishuFromGlobalFallback" color="orange">
             {{ $t('config.feishuFallbackGlobal') }}
           </a-tag>
@@ -56,42 +52,9 @@
                 <a-tag>
                   {{ $t('config.effective.editCountry') }}：{{ formatCountryCode(selectedCountry) }}
                 </a-tag>
-                <a-button type="link" size="small" @click="openPromptPreview">
-                  {{ $t('config.effective.previewPrompt') }}
-                </a-button>
               </a-space>
             </div>
           <a-row :gutter="16">
-            <a-col :xs="24" :md="12">
-              <div class="effective-block">
-                <h4 class="block-title">
-                  <RobotOutlined />
-                  {{ $t('config.effective.aiSection') }}
-                </h4>
-                <a-descriptions :column="1" size="small" bordered>
-                  <a-descriptions-item :label="$t('config.effective.requestCountry')">
-                    {{ formatCountryCode(countryBundle.requestCountry) }}
-                  </a-descriptions-item>
-                  <a-descriptions-item :label="$t('config.effective.effective')">
-                    <a-tag :color="countryBundle.promptFromGlobalFallback ? 'orange' : 'blue'">
-                      {{ formatCountryCode(countryBundle.effectivePromptCountry) }}
-                    </a-tag>
-                  </a-descriptions-item>
-                  <a-descriptions-item :label="$t('config.effective.mdSection')">
-                    {{ countryBundle.promptSection || '—' }}
-                  </a-descriptions-item>
-                  <a-descriptions-item :label="$t('config.effective.promptLength')">
-                    {{ $t('config.effective.chars', { n: (countryBundle.aiPrompt || '').length }) }}
-                  </a-descriptions-item>
-                  <a-descriptions-item :label="$t('config.effective.continueLength')">
-                    {{ $t('config.effective.chars', { n: (countryBundle.continuePrompt || '').length }) }}
-                  </a-descriptions-item>
-                </a-descriptions>
-                <p v-if="countryBundle.promptFromGlobalFallback" class="block-hint">
-                  {{ $t('config.effective.promptFallbackHint') }}
-                </p>
-              </div>
-            </a-col>
             <a-col :xs="24" :md="12">
               <div class="effective-block">
                 <h4 class="block-title">
@@ -146,25 +109,6 @@
       </a-collapse-panel>
     </a-collapse>
 
-    <a-modal
-      v-model:open="showPromptPreview"
-      title="MiMo 实际请求提示词预览"
-      width="720px"
-      :footer="null"
-    >
-      <a-descriptions v-if="promptPreview" :column="1" size="small" bordered class="preview-meta">
-        <a-descriptions-item label="请求国家">{{ promptPreview.requestCountry }}</a-descriptions-item>
-        <a-descriptions-item label="生效 AI 国家">{{ promptPreview.effectivePromptCountry || promptPreview.effectiveCountry }}</a-descriptions-item>
-        <a-descriptions-item label="生效飞书国家">{{ promptPreview.effectiveFeishuCountry }}</a-descriptions-item>
-        <a-descriptions-item label="章节">{{ promptPreview.promptSection }}</a-descriptions-item>
-        <a-descriptions-item label="含示例块">{{ promptPreview.includesExampleBlock ? '是' : '否' }}</a-descriptions-item>
-        <a-descriptions-item label="API 长度">{{ promptPreview.apiPromptLength }} 字符</a-descriptions-item>
-      </a-descriptions>
-      <a-typography-paragraph v-if="promptPreview?.apiPromptPreview" class="preview-text">
-        <pre>{{ promptPreview.apiPromptPreview }}</pre>
-      </a-typography-paragraph>
-    </a-modal>
-
     <a-tabs
       v-model:activeKey="activeModule"
       type="card"
@@ -173,70 +117,6 @@
     >
       <a-tab-pane v-if="visibleTabKeys.includes('ai')" key="ai" :tab="$t('config.tabs.ai')">
       <div class="module-panel">
-        <a-card class="config-card">
-          <template #title>
-            <div class="card-header-flex">
-              <div>
-                <h3 class="card-title">{{ t('config.aiConfig.title') }}</h3>
-                <p class="card-desc">{{ t('config.aiConfig.subtitle') }}</p>
-              </div>
-            </div>
-          </template>
-
-          <a-form layout="vertical">
-            <a-alert
-              v-if="configs.aiPrompt && !configs.aiPrompt.includes('DATE_RAW')"
-              type="warning"
-              show-icon
-              :message="t('config.aiConfig.legacyPromptTitle')"
-              :description="t('config.aiConfig.legacyPromptDesc')"
-              style="margin-bottom: 16px"
-            />
-            <a-form-item :label="t('config.aiConfig.aiPrompt')">
-              <template #label>
-                <span>
-                  {{ t('config.aiConfig.aiPrompt') }}
-                  <a-tooltip :title="t('config.aiConfig.aiPromptDesc')">
-                    <QuestionCircleOutlined style="margin-left: 4px; color: #73707F" />
-                  </a-tooltip>
-                </span>
-              </template>
-              <a-textarea
-                v-model:value="configs.aiPrompt"
-                :rows="12"
-                placeholder="请输入AI识别提示词..."
-              />
-            </a-form-item>
-
-            <a-form-item :label="t('config.aiConfig.continuePrompt')">
-              <template #label>
-                <span>
-                  {{ t('config.aiConfig.continuePrompt') }}
-                  <a-tooltip :title="t('config.aiConfig.continuePromptDesc')">
-                    <QuestionCircleOutlined style="margin-left: 4px; color: #73707F" />
-                  </a-tooltip>
-                </span>
-              </template>
-              <a-textarea
-                v-model:value="configs.continuePrompt"
-                :rows="3"
-                placeholder="请输入继续提示词..."
-              />
-            </a-form-item>
-
-            <a-form-item>
-              <a-space>
-                <a-button type="primary" @click="saveAiConfig" :loading="saving">
-                  {{ t('common.save') }}
-                </a-button>
-                <a-button :loading="applyingPrompts" @click="applyLatestPrompts">
-                  {{ t('config.aiConfig.applyLatestPrompts') }}
-                </a-button>
-              </a-space>
-            </a-form-item>
-          </a-form>
-        </a-card>
-
         <a-card class="config-card" style="margin-top: 20px">
           <template #title>
             <div class="card-header-flex">
@@ -719,27 +599,17 @@ const feishuUrl = ref('')
 const parsingUrl = ref(false)
 const urlParseResult = ref(null)
 const bundleLoading = ref(false)
-const showPromptPreview = ref(false)
-const promptPreview = ref(null)
-
 const countryBundle = ref({
   requestCountry: 'default',
-  effectivePromptCountry: 'default',
   effectiveFeishuCountry: 'default',
-  promptSection: '',
-  aiPrompt: '',
-  continuePrompt: '',
   appToken: '',
   tableId: '',
   fieldMapping: [],
-  promptFromGlobalFallback: false,
   feishuFromGlobalFallback: false,
   syncEnabled: true
 })
 
 const configs = reactive({
-  aiPrompt: '',
-  continuePrompt: '',
   appToken: '',
   tableId: '',
   syncEnabled: true,
@@ -832,19 +702,6 @@ const loadCountryBundle = async (countryCode) => {
   }
 }
 
-const openPromptPreview = async () => {
-  try {
-    const res = await request({
-      url: '/config/recognition-prompt-preview',
-      params: { country: selectedCountry.value }
-    })
-    promptPreview.value = res.data
-    showPromptPreview.value = true
-  } catch (error) {
-    console.error('加载提示词预览失败:', error)
-  }
-}
-
 const baseMappingColumns = computed(() => withTableSorters([
   { title: t('config.mappingConfig.aiField'), dataIndex: 'aiField', key: 'aiField', width: 150 },
   { title: t('config.mappingConfig.feishuField'), dataIndex: 'feishuField', key: 'feishuField', width: 150 },
@@ -872,14 +729,6 @@ const wizardSteps = [
   { titleKey: 'config.wizard.step4', descKey: 'config.wizard.step4Desc' },
   { titleKey: 'config.wizard.step5', descKey: 'config.wizard.step5Desc' }
 ]
-
-const defaultContinuePrompt = '接续上文继续输出，格式与字段不变（含第16位 DATE_RAW），不重复已输出行。'
-
-/** 配置页以库内容为准；空继续提示词保持空，不再回填默认文案 */
-const applyPromptFromApi = (aiRes) => {
-  configs.aiPrompt = aiRes?.data?.ai_prompt || ''
-  configs.continuePrompt = aiRes?.data?.continue_prompt != null ? String(aiRes.data.continue_prompt) : ''
-}
 
 const defaultFieldMapping = [
   { aiField: 'NO', feishuField: 'NO', type: 'string', required: true, description: '工号' },
@@ -937,12 +786,6 @@ const loadConfigs = async () => {
     }
     countryStore.hydrated = true
 
-    // 国家确定后再拉提示词，避免先按旧国家取数再被工作国家覆盖
-    const promptRes = await request({
-      url: '/config/ai-prompt',
-      params: { country: selectedCountry.value },
-    })
-    applyPromptFromApi(promptRes)
     await loadVisionPrompts()
 
     const feishuForCountry = await request({
@@ -971,11 +814,7 @@ const loadConfigs = async () => {
 const loadCountryConfigs = async () => {
   loading.value = true
   try {
-    const [aiRes, feishuRes] = await Promise.all([
-      request({ url: '/config/ai-prompt', params: { country: selectedCountry.value } }),
-      request({ url: '/config/feishu', params: { country: selectedCountry.value } })
-    ])
-    applyPromptFromApi(aiRes)
+    const feishuRes = await request({ url: '/config/feishu', params: { country: selectedCountry.value } })
     configs.appToken = feishuRes.data.appToken || ''
     configs.tableId = feishuRes.data.tableId || ''
     configs.syncEnabled = feishuRes.data.syncEnabled !== false
@@ -998,33 +837,6 @@ const setAsCurrentCountry = async () => {
     message.success('已设置为当前工作国家')
   } catch (error) {
     console.error('设置失败:', error)
-  }
-}
-
-const saveAiConfig = async () => {
-  saving.value = true
-  try {
-    await request({
-      url: '/config/ai-prompt',
-      method: 'post',
-      data: {
-        country: selectedCountry.value,
-        ai_prompt: configs.aiPrompt,
-        continue_prompt: configs.continuePrompt
-      }
-    })
-    // 保存后立刻从库回读，确保展示与库一致
-    const aiRes = await request({
-      url: '/config/ai-prompt',
-      params: { country: selectedCountry.value },
-    })
-    applyPromptFromApi(aiRes)
-    message.success(t('config.saveSuccess'))
-    await loadCountryBundle(selectedCountry.value)
-  } catch (error) {
-    console.error('保存失败:', error)
-  } finally {
-    saving.value = false
   }
 }
 
@@ -1054,34 +866,6 @@ const saveVisionPrompts = async () => {
 
 const resetVisionPrompt = (p) => {
   p.currentValue = p.defaultValue
-}
-
-const applyLatestPrompts = () => {
-  Modal.confirm({
-    title: t('config.aiConfig.applyLatestPrompts'),
-    content: t('config.aiConfig.restoreDefaultConfirm'),
-    onOk: async () => {
-      applyingPrompts.value = true
-      try {
-        await request({
-          url: '/config/reset-prompts',
-          method: 'post',
-          params: { country: selectedCountry.value },
-        })
-        const aiRes = await request({
-          url: '/config/ai-prompt',
-          params: { country: selectedCountry.value },
-        })
-        applyPromptFromApi(aiRes)
-        message.success(t('config.aiConfig.applyLatestPromptsDone'))
-        await loadCountryBundle(selectedCountry.value)
-      } catch (error) {
-        console.error('应用最新提示词失败:', error)
-      } finally {
-        applyingPrompts.value = false
-      }
-    },
-  })
 }
 
 const saveFeishuConfig = async () => {
@@ -1248,24 +1032,6 @@ const generateFieldMappingYaml = (mappings) => {
 const completeWizard = async () => {
   saving.value = true
   try {
-    // 向导复用库中 default 提示词，不再注入前端硬编码模板
-    const defaultPromptRes = await request({
-      url: '/config/ai-prompt',
-      params: { country: 'default' },
-      silentError: true,
-    }).catch(() => null)
-    const prompt = defaultPromptRes?.data?.ai_prompt || ''
-    const continuePrompt = defaultPromptRes?.data?.continue_prompt || defaultContinuePrompt
-    await request({
-      url: '/config/ai-prompt',
-      method: 'post',
-      data: {
-        country: wizardCountry.value,
-        ai_prompt: prompt,
-        continue_prompt: continuePrompt
-      }
-    })
-    
     if (wizardAppToken.value || wizardTableId.value) {
       const fieldMappingYaml = generateFieldMappingYaml(defaultFieldMapping)
       await request({

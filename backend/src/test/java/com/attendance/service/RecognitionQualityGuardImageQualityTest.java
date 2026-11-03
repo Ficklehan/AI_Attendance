@@ -24,9 +24,6 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 class RecognitionQualityGuardImageQualityTest {
 
     @Mock
-    private RecognitionPromptGuard recognitionPromptGuard;
-
-    @Mock
     private ImageQualityConfigService imageQualityConfigService;
 
     @Mock
