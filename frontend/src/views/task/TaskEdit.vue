@@ -1533,8 +1533,7 @@ const canCopyCell = (record, field) => getCopyableCellText(record, field) !== ''
 const canReceiveCellPaste = (record, field) => {
   if (!record || !COPY_PASTE_FIELDS.has(field)) return false
   if (isConfirmedTask.value || isRecordDeleted(record)) return false
-  if (!canEditRequiredFields(record)) return false
-  return true
+  return isFieldEditable(record, field)
 }
 
 const isCellPasteTarget = (record, field) => {
@@ -1625,7 +1624,16 @@ const onCopyPasteCellMouseDown = (record, field, event) => {
   if (event.button !== 0) return
   if (!isCellPasteTarget(record, field)) return
   const target = event.target
-  if (target && typeof target.closest === 'function' && target.closest('.cell-copy-paste')) return
+  if (target && typeof target.closest === 'function') {
+    // 复制/粘贴按钮自己处理
+    if (target.closest('.cell-copy-paste')) return
+    // 点在可编辑控件上：允许聚焦手改，不要强制粘贴（休息分钟曾因此只能粘贴）
+    if (target.closest(
+      'input, textarea, select, .ant-input, .ant-input-number, .ant-picker, .ant-select, .clock-time-field',
+    )) {
+      return
+    }
+  }
   event.preventDefault()
   event.stopPropagation()
   pasteCellValue(record, field)
@@ -1917,18 +1925,18 @@ const canCalibrateRecord = computed(
 const isRecordEditable = (record) =>
   !isConfirmedTask.value && !isRecordDeleted(record) && !isAbsentRow(record)
 
-/** 无框字段仅姓名、中介机构可改；不因「考勤正确」锁死 */
+/** 无框字段：姓名、仓库、中介、班次可改；不因「考勤正确」锁死 */
 const EXCEPTION_TYPE_UNLOCKED_FIELDS = new Set([
   'NOM_PRENOM',
   'AGENCE_INTERIMAIRE',
+  'Entrepot',
+  'HORAIRES_DU_TRAVAIL',
 ])
 
-/** 无框且不可改：序号、仓库、班次、备注、页码（休息分钟可改，识别错时可校正） */
+/** 无框且不可改：序号、备注、页码（仓库、班次、休息可改） */
 const UNBOXED_LOCKED_FIELDS = new Set([
   'PAGE_NUM',
   'NO',
-  'Entrepot',
-  'HORAIRES_DU_TRAVAIL',
   'Observations',
 ])
 
@@ -1938,6 +1946,8 @@ const ABSENT_EDITABLE_FIELDS = new Set([
   'DEPAR',
   'NOM_PRENOM',
   'AGENCE_INTERIMAIRE',
+  'Entrepot',
+  'HORAIRES_DU_TRAVAIL',
 ])
 
 const isFieldEditable = (record, field) => {
