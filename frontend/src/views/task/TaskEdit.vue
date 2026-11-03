@@ -1523,8 +1523,7 @@ const canCopyCell = (record, field) => getCopyableCellText(record, field) !== ''
 const canReceiveCellPaste = (record, field) => {
   if (!record || !COPY_PASTE_FIELDS.has(field)) return false
   if (isConfirmedTask.value || isRecordDeleted(record)) return false
-  if (!canEditRequiredFields(record)) return false
-  return true
+  return isFieldEditable(record, field)
 }
 
 const isCellPasteTarget = (record, field) => {
@@ -1909,18 +1908,18 @@ const canCalibrateRecord = computed(
 const isRecordEditable = (record) =>
   !isConfirmedTask.value && !isRecordDeleted(record) && !isAbsentRow(record)
 
-/** 无框字段仅姓名、中介机构可改；不因「考勤正确」锁死 */
+/** 无框字段：姓名、仓库、中介、班次可改；不因「考勤正确」锁死 */
 const EXCEPTION_TYPE_UNLOCKED_FIELDS = new Set([
   'NOM_PRENOM',
   'AGENCE_INTERIMAIRE',
+  'Entrepot',
+  'HORAIRES_DU_TRAVAIL',
 ])
 
-/** 无框且不可改：序号、仓库、班次、备注、页码（休息分钟可改，识别错时可校正） */
+/** 无框且不可改：序号、备注、页码（仓库、班次可改） */
 const UNBOXED_LOCKED_FIELDS = new Set([
   'PAGE_NUM',
   'NO',
-  'Entrepot',
-  'HORAIRES_DU_TRAVAIL',
   'Observations',
 ])
 
@@ -1930,6 +1929,8 @@ const ABSENT_EDITABLE_FIELDS = new Set([
   'DEPAR',
   'NOM_PRENOM',
   'AGENCE_INTERIMAIRE',
+  'Entrepot',
+  'HORAIRES_DU_TRAVAIL',
 ])
 
 const isFieldEditable = (record, field) => {
