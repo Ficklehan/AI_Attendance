@@ -237,6 +237,41 @@
           </a-form>
         </a-card>
 
+        <a-card class="config-card" style="margin-top: 20px">
+          <template #title>
+            <div class="card-header-flex">
+              <div>
+                <h3 class="card-title">视觉识别提示词</h3>
+                <p class="card-desc">控制视觉识别（ocr_primary）各步骤的提示词，保存后立即生效</p>
+              </div>
+            </div>
+          </template>
+
+          <a-form layout="vertical">
+            <a-form-item v-for="p in visionPrompts" :key="p.key" :label="p.name">
+              <template #label>
+                <span>
+                  {{ p.name }}
+                  <a-tooltip :title="p.description">
+                    <QuestionCircleOutlined style="margin-left: 4px; color: #73707F" />
+                  </a-tooltip>
+                </span>
+              </template>
+              <a-textarea v-model:value="p.currentValue" :rows="6" />
+              <div class="block-hint" style="margin-top: 4px">
+                {{ p.description }}
+                <a-button type="link" size="small" @click="resetVisionPrompt(p)">恢复默认</a-button>
+              </div>
+            </a-form-item>
+
+            <a-form-item>
+              <a-button type="primary" @click="saveVisionPrompts" :loading="savingVisionPrompts">
+                {{ t('common.save') }}
+              </a-button>
+            </a-form-item>
+          </a-form>
+        </a-card>
+
         <NightShiftSettingsCard style="margin-top: 20px" />
       </div>
       </a-tab-pane>
@@ -715,6 +750,9 @@ const configs = reactive({
 
 const fieldMappings = ref([])
 
+const visionPrompts = ref([])
+const savingVisionPrompts = ref(false)
+
 const modules = [
   { key: 'ai', titleKey: 'config.modules.ai', descKey: 'config.modules.aiDesc', icon: RobotOutlined, color: '#5B6CF7' },
   { key: 'feishu', titleKey: 'config.modules.feishu', descKey: 'config.modules.feishuDesc', icon: LinkOutlined, color: '#61DDAA' },
@@ -905,6 +943,7 @@ const loadConfigs = async () => {
       params: { country: selectedCountry.value },
     })
     applyPromptFromApi(promptRes)
+    await loadVisionPrompts()
 
     const feishuForCountry = await request({
       url: '/config/feishu',
@@ -987,6 +1026,34 @@ const saveAiConfig = async () => {
   } finally {
     saving.value = false
   }
+}
+
+const loadVisionPrompts = async () => {
+  try {
+    const res = await request({ url: '/config/vision-prompts' })
+    visionPrompts.value = res.data || []
+  } catch (error) {
+    console.error('加载视觉提示词失败:', error)
+  }
+}
+
+const saveVisionPrompts = async () => {
+  savingVisionPrompts.value = true
+  try {
+    const payload = {}
+    visionPrompts.value.forEach((p) => { payload[p.key] = p.currentValue })
+    await request({ url: '/config/vision-prompts', method: 'post', data: payload })
+    message.success(t('config.saveSuccess'))
+    await loadVisionPrompts()
+  } catch (error) {
+    console.error('保存视觉提示词失败:', error)
+  } finally {
+    savingVisionPrompts.value = false
+  }
+}
+
+const resetVisionPrompt = (p) => {
+  p.currentValue = p.defaultValue
 }
 
 const applyLatestPrompts = () => {

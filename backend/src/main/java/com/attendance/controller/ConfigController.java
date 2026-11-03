@@ -1,5 +1,7 @@
 package com.attendance.controller;
 
+import com.alibaba.fastjson.JSONArray;
+import com.alibaba.fastjson.JSONObject;
 import com.attendance.common.Result;
 import com.attendance.config.CountryCatalog;
 import com.attendance.dto.ConfirmValidationConfigDTO;
@@ -18,6 +20,7 @@ import com.attendance.service.PluginConfigService;
 import com.attendance.service.RecognitionPromptGuard;
 import com.attendance.service.RecognitionEngineConfigService;
 import com.attendance.service.RecognitionPromptService;
+import com.attendance.service.VisionPromptService;
 import com.attendance.service.RecognitionQualityGuard;
 import com.attendance.security.AdminAuthService;
 import org.slf4j.Logger;
@@ -51,6 +54,9 @@ public class ConfigController {
 
     @Autowired
     private RecognitionPromptService recognitionPromptService;
+
+    @Autowired
+    private VisionPromptService visionPromptService;
 
     @Autowired
     private AdminAuthService adminAuthService;
@@ -208,7 +214,26 @@ public class ConfigController {
             return Result.error(500, "更新失败: " + e.getMessage());
         }
     }
-    
+
+    /** 视觉识别提示词（整表读/页头/表头列名/时钟列/姓名列），全局配置，改完即生效。 */
+    @GetMapping("/vision-prompts")
+    public Result<JSONArray> getVisionPrompts() {
+        requireAdmin();
+        return Result.success(visionPromptService.listAll());
+    }
+
+    @PostMapping("/vision-prompts")
+    public Result<Void> updateVisionPrompts(@RequestBody JSONObject request) {
+        requireAdmin();
+        try {
+            visionPromptService.saveAll(request);
+            return Result.success(null, "视觉识别提示词更新成功");
+        } catch (Exception e) {
+            log.error("更新视觉识别提示词失败", e);
+            return Result.error(500, "更新失败: " + e.getMessage());
+        }
+    }
+
     @GetMapping("/feishu")
     public Result<Map<String, Object>> getFeishuConfig(@RequestParam(required = false, defaultValue = "default") String country) {
         requireAdmin();

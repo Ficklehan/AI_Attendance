@@ -6,6 +6,7 @@ import com.alibaba.fastjson.JSONObject;
 import com.attendance.config.DeepSeekProperties;
 import com.attendance.config.MimoProperties;
 import com.attendance.service.RecognitionModelRuntime;
+import com.attendance.service.VisionPromptService;
 import okhttp3.MediaType;
 import okhttp3.OkHttpClient;
 import okhttp3.Request;
@@ -40,6 +41,7 @@ public class VisionClient {
     private final RecognitionModelRuntime runtime;
     private final DeepSeekProperties deepSeekProperties;
     private final MimoProperties mimoProperties;
+    private final VisionPromptService visionPromptService;
     private final AtomicInteger keyCursor = new AtomicInteger();
     private final OkHttpClient http = new OkHttpClient.Builder()
             .connectTimeout(30, TimeUnit.SECONDS)
@@ -48,10 +50,11 @@ public class VisionClient {
             .build();
 
     public VisionClient(RecognitionModelRuntime runtime, DeepSeekProperties deepSeekProperties,
-                        MimoProperties mimoProperties) {
+                        MimoProperties mimoProperties, VisionPromptService visionPromptService) {
         this.runtime = runtime;
         this.deepSeekProperties = deepSeekProperties;
         this.mimoProperties = mimoProperties;
+        this.visionPromptService = visionPromptService;
     }
 
     /**
@@ -60,14 +63,7 @@ public class VisionClient {
      */
     public List<String> readColumnHeaders(BufferedImage image, String countryCode) throws Exception {
         String code = countryCode == null || countryCode.trim().isEmpty() ? "FR" : countryCode.trim();
-        StringBuilder sb = new StringBuilder();
-        sb.append("This is a European attendance timesheet (country=").append(code).append(").\n");
-        sb.append("Read ONLY the printed column header row (the row of column titles above the data rows).\n");
-        sb.append("Output JSON only, no markdown: {\"headers\":[\"...\",\"...\",...]}\n");
-        sb.append("List the column titles from LEFT to RIGHT, one entry per column, in the order they appear.\n");
-        sb.append("Use the exact printed text. If a column has no visible title, use \"\".\n");
-        sb.append("Do NOT include page header (warehouse/date) text. Do NOT read data rows.\n");
-        String raw = complete(image, sb.toString(), 512);
+        String raw = complete(image, visionPromptService.getColumnHeadersPrompt(code), 512);
         JSONObject root = extractObject(raw);
         if (root == null || root.getJSONArray("headers") == null) {
             return null;
@@ -84,11 +80,7 @@ public class VisionClient {
 
     /** 读姓名列：返回 [{name, struck}] 数组。 */
     public JSONArray describeNameColumn(BufferedImage crop) throws Exception {
-        String prompt = "This image is ONE name column of an attendance timesheet (body rows only, no header row).\n"
-                + "List each body row top-to-bottom. For each row: the full name text, and whether the name is struck through with no replacement written.\n"
-                + "Output JSON only, no markdown: {\"names\":[{\"text\":\"...\",\"struck\":false},...]}\n"
-                + "Include every row, even if the name is empty. Do not invent names.\n";
-        String raw = complete(crop, prompt, 2048);
+        String raw = complete(crop, visionPromptService.getPrompt("vision.prompt.name_column"), 2048);
         JSONObject root = extractObject(raw);
         if (root == null || root.getJSONArray("names") == null) {
             return null;
@@ -98,10 +90,7 @@ public class VisionClient {
 
     /** 读页头：返回 {warehouse, date_raw}。 */
     public String[] describeHeader(BufferedImage crop) throws Exception {
-        String prompt = "This image is the page header band of an attendance timesheet.\n"
-                + "Output JSON only, no markdown: {\"warehouse\":\"...\",\"date_raw\":\"...\"}\n"
-                + "warehouse = printed site/depot name (may be empty). date_raw = printed date exactly as written (may be empty).\n";
-        String raw = complete(crop, prompt, 256, "jpeg");
+        String raw = complete(crop, visionPromptService.getPrompt("vision.prompt.header"), 256, "jpeg");
         JSONObject root = extractObject(raw);
         if (root == null) {
             return new String[] {"", ""};
@@ -112,12 +101,7 @@ public class VisionClient {
     /** 读时钟列：crop 整列放大 2x，逐行读手写 HH:MM，返回 times 列表（空行 ""）；失败返回 null。 */
     public List<String> readClockColumn(BufferedImage columnCrop) throws Exception {
         BufferedImage zoomed = scaleBy(columnCrop, 2.0);
-        String prompt = "This image is ONE column of an attendance timesheet showing handwritten clock times "
-                + "(format HH:MM), one per data row, from top to bottom. There may be a printed column header "
-                + "near the top — ignore it. Read every data row in order.\n"
-                + "Output JSON only, no markdown: {\"times\":[\"HH:MM\",\"HH:MM\",...]}\n"
-                + "Use \"\" for an empty row. Include every row, do not skip empty rows.\n";
-        String raw = complete(zoomed, prompt, 1024);
+        String raw = complete(zoomed, visionPromptService.getPrompt("vision.prompt.clock_column"), 1024);
         JSONObject root = extractObject(raw);
         if (root == null || root.getJSONArray("times") == null) {
             return null;
@@ -136,15 +120,7 @@ public class VisionClient {
      * 返回 rows JSONArray；失败返回 null。
      */
     public JSONArray readTableBody(BufferedImage tableCrop) throws Exception {
-        String prompt = "This is an attendance timesheet table body. Columns left-to-right: "
-                + "NO, NAME, AGENCY, SHIFT, ARRIVEE, DEPAR, PAUSE.\n"
-                + "The first row may be the column header — skip it. Read every data row top-to-bottom.\n"
-                + "Output JSON only, no markdown:\n"
-                + "{\"rows\":[{\"no\":\"1\",\"name\":\"...\",\"struck\":false,\"agency\":\"...\","
-                + "\"shift\":\"10:00-19:00\",\"arrive\":\"10:00\",\"depart\":\"19:00\",\"pause\":\"60\"},...]}\n"
-                + "Use \"\" for empty cells. \"struck\" = the name is crossed out with no replacement written. "
-                + "Include every row, do not skip empty rows.\n";
-        String raw = complete(tableCrop, prompt, 4096, "jpeg");
+        String raw = complete(tableCrop, visionPromptService.getPrompt("vision.prompt.table_body"), 4096, "jpeg");
         JSONObject root = extractObject(raw);
         if (root == null || root.getJSONArray("rows") == null) {
             return null;
