@@ -80,7 +80,7 @@
     "aiUnreadableTimes": "Viele ??? bei Namen, aber Zeiten ausgefüllt",
     "validationFailed": "Validierung fehlgeschlagen: {detail}",
     "missingParameter": "Fehlender Parameter: {name}",
-    "fileSizeExceeded": "Datei überschreitet 10 MB",
+    "fileSizeExceeded": "Datei überschreitet 100 MB",
     "apiNotFound": "API-Endpunkt nicht gefunden",
     "methodNotAllowed": "HTTP-Methode nicht erlaubt",
     "systemError": "Systemfehler, bitte später erneut versuchen",

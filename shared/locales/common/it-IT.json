@@ -96,7 +96,7 @@
     "imageQualityDenominatorAllRows": "Tutte le righe non eliminate",
     "validationFailed": "Validazione non riuscita: {detail}",
     "missingParameter": "Parametro della richiesta mancante: {name}",
-    "fileSizeExceeded": "La dimensione del file supera il limite di 10 MB",
+    "fileSizeExceeded": "La dimensione del file supera il limite di 100 MB",
     "apiNotFound": "Endpoint API non trovato",
     "methodNotAllowed": "Metodo HTTP non consentito",
     "systemError": "Errore di sistema, riprova più tardi",

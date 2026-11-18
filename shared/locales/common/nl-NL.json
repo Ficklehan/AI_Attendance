@@ -80,7 +80,7 @@
     "aiUnreadableTimes": "Veel ??? bij namen maar tijden ingevuld",
     "validationFailed": "Validatie mislukt: {detail}",
     "missingParameter": "Ontbrekende parameter: {name}",
-    "fileSizeExceeded": "Bestand overschrijdt 10 MB",
+    "fileSizeExceeded": "Bestand overschrijdt 100 MB",
     "apiNotFound": "API-endpoint niet gevonden",
     "methodNotAllowed": "HTTP-methode niet toegestaan",
     "systemError": "Systeemfout, probeer later opnieuw",

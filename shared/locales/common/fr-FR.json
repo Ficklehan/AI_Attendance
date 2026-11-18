@@ -98,7 +98,7 @@
     "imageQualityDenominatorAllRows": "All non-deleted rows",
     "validationFailed": "Validation failed: {detail}",
     "missingParameter": "Missing request parameter: {name}",
-    "fileSizeExceeded": "File size exceeds the 10MB limit",
+    "fileSizeExceeded": "File size exceeds the 100MB limit",
     "apiNotFound": "API endpoint not found",
     "methodNotAllowed": "HTTP method not allowed",
     "imageQualityStatsRangeAllRows": "All non-deleted rows",

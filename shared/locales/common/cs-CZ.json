@@ -81,7 +81,7 @@
     "aiUnreadableTimes": "Mnoho ??? u jmen, ale časy vyplněny",
     "validationFailed": "Validace selhala: {detail}",
     "missingParameter": "Chybí parametr: {name}",
-    "fileSizeExceeded": "Soubor přesahuje 10 MB",
+    "fileSizeExceeded": "Soubor přesahuje 100 MB",
     "apiNotFound": "API endpoint nenalezen",
     "methodNotAllowed": "HTTP metoda není povolena",
     "systemError": "Systémová chyba, zkuste to později",

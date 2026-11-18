@@ -81,7 +81,7 @@
     "aiUnreadableTimes": "Wiele ??? w nazwach, ale czasy wypełnione — prawdopodobnie zgadywane",
     "validationFailed": "Błąd walidacji: {detail}",
     "missingParameter": "Brak parametru: {name}",
-    "fileSizeExceeded": "Plik przekracza limit 10 MB",
+    "fileSizeExceeded": "Plik przekracza limit 100 MB",
     "apiNotFound": "Endpoint API nie znaleziony",
     "methodNotAllowed": "Metoda HTTP niedozwolona",
     "systemError": "Błąd systemu, spróbuj ponownie później",

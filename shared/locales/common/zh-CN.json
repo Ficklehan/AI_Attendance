@@ -96,7 +96,7 @@
     "imageQualityDenominatorAllRows": "全部非删除行",
     "validationFailed": "参数校验失败: {detail}",
     "missingParameter": "缺少请求参数: {name}",
-    "fileSizeExceeded": "文件大小超出限制，最大支持 10MB",
+    "fileSizeExceeded": "文件大小超出限制，最大支持 100MB",
     "apiNotFound": "接口不存在",
     "methodNotAllowed": "请求方法不支持",
     "systemError": "系统异常，请稍后重试",

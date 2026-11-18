@@ -28,7 +28,7 @@ AttendanceAgent 专用检查清单。审计时按环境勾选适用项；每项�
 | 2.1 | HTTPS 强制 | 80 → 301 HTTPS；有效证书 | HTTP 明文、过期证书 |
 | 2.2 | 后端不直连公网 | 仅 `127.0.0.1:8080` 监听 | `0.0.0.0:8080` 暴露 |
 | 2.3 | 代理头 | `X-Forwarded-Proto`、`X-Real-IP` 正确 | OAuth 回调 http/https 错乱 |
-| 2.4 | 上传限制 | `client_max_body_size` 合理（≥20m 且不过大） | 无限制导致 DoS |
+| 2.4 | 上传限制 | `client_max_body_size` 合理（≥100m 且不过大） | 无限制导致 DoS |
 | 2.5 | 安全响应头 | `HSTS`、`X-Content-Type-Options`、`X-Frame-Options` 等 | 完全缺失 |
 | 2.6 | 静态资源 | `/clockai/` 不列出目录、不执行脚本 | `alias` 路径错误导致遍历 |
 | 2.7 | 兜底路由 | 旧 `/feishu/callback` 302 到新路径 | OAuth 404 导致 token 泄露尝试 |
