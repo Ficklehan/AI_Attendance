@@ -5,7 +5,7 @@ server:
   # 反向代理(nginx)后按 X-Forwarded-* 解析真实协议/域名，保证导出图片链接等使用公网地址
   forward-headers-strategy: framework
   tomcat:
-    connection-timeout: 60000
+    connection-timeout: 300000
     keep-alive-timeout: 60000
 
 spring:
@@ -28,7 +28,7 @@ spring:
     multipart:
       enabled: true
       max-file-size: 100MB
-      max-request-size: 100MB
+      max-request-size: 110MB
   jackson:
     date-format: yyyy-MM-dd HH:mm:ss
     time-zone: GMT+8

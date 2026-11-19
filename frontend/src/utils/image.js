@@ -1,5 +1,7 @@
 /** DeepSeek 单边上限 8192；上传默认留足去白边后再填 1300² 的底像素。 */
 export const VISION_UPLOAD_MAX_EDGE = 4096
+/** 单文件上传上限（与 Spring max-file-size 一致）；压缩前先拦，避免 100MB 原图走 DataURL。 */
+export const MAX_UPLOAD_BYTES = 100 * 1024 * 1024
 
 export async function compressImage(file, options = {}) {
   const {

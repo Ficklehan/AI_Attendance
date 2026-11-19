@@ -172,7 +172,7 @@ import { ref, computed, onMounted, onBeforeUnmount, h } from 'vue'
 import { useRouter } from 'vue-router'
 import { useI18n } from 'vue-i18n'
 import { message, Modal as aModal } from 'ant-design-vue'
-import { compressImage, getImageHash, getFileSizeDisplay } from '@/utils/image'
+import { compressImage, getImageHash, getFileSizeDisplay, MAX_UPLOAD_BYTES } from '@/utils/image'
 import HomeHeroIllustration from '@/components/HomeHeroIllustration.vue'
 import ImagePreviewModal from '@/components/ImagePreviewModal.vue'
 import { useCountryStore } from '@/stores/country'
@@ -432,6 +432,10 @@ const isPdfFile = (file) => {
 
 const prepareSelectedFile = async (file) => {
   if (uploading.value) return
+  if ((file.size || 0) > MAX_UPLOAD_BYTES) {
+    message.error(t('errors.fileSizeExceeded'))
+    return
+  }
   const isPdf = isPdfFile(file)
   const previewUrl = isPdf ? '' : URL.createObjectURL(file)
   const uid = file.uid

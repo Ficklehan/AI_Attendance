@@ -40,7 +40,7 @@ const HOME_TEXT_FALLBACK = {
   scanTitle: '拍照',
   scanSub: '打开相机拍摄',
   uploadAlbum: '从相册选择',
-  uploadAlbumSub: 'JPG / PNG',
+  uploadAlbumSub: 'JPG / PNG，单张最多100MB',
   clear: '清空',
   statusTitle: '任务概览',
   statusProcessing: '识别中',

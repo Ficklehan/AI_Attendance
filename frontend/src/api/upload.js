@@ -8,6 +8,7 @@ function isNonRetryableUploadError(error) {
     || key === 'errors.uploadImageTooSmall'
     || key === 'errors.unrecognizedImageFormat'
     || key === 'errors.imagesOnly'
+    || key === 'errors.fileSizeExceeded'
 }
 
 async function withUploadRetry(fn) {
@@ -38,7 +39,7 @@ export const uploadImageAsync = (formData) => withUploadRetry(() => request({
     'Content-Type': 'multipart/form-data',
     'X-Client': 'pc-web',
   },
-  timeout: 180000,
+  timeout: 300000,
   silentError: true,
 }))
 
