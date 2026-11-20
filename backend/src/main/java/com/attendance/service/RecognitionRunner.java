@@ -8,6 +8,7 @@ import com.attendance.common.ErrorCode;
 import com.attendance.common.ErrorKeys;
 import com.attendance.dto.ImageQualityAssessment;
 import com.attendance.dto.RecognitionCheckpoint;
+import com.attendance.util.RecognitionEmptyPageSupport;
 import com.attendance.util.RecordCountryDefaults;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -19,6 +20,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.CompletionException;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.Executor;
@@ -154,9 +156,9 @@ public class RecognitionRunner {
                 meta.put("filename", page.getLabel());
                 trace.step("pdf_page_start", meta);
             }
-            RecognitionOutcome outcome = runSingleImage(
+            RecognitionOutcome outcome = runPageAllowingEmpty(
                     page.getBytes(), page.getLabel(), promptCountry, workingCountry, trace,
-                    progressTaskId, merged, progressTaskId, Integer.valueOf(i));
+                    progressTaskId, merged, progressTaskId, Integer.valueOf(i), true);
             merged.addAll(outcome.getRecords());
             finalEngine = outcome.getEngine();
             if (outcome.getPromptCountry() != null && !outcome.getPromptCountry().trim().isEmpty()) {
@@ -410,9 +412,9 @@ public class RecognitionRunner {
                 pages.add(new UploadMediaSupport.ImagePage(fileBytes, fileKey));
             }
             for (UploadMediaSupport.ImagePage page : pages) {
-                RecognitionOutcome outcome = runSingleImage(
+                RecognitionOutcome outcome = runPageAllowingEmpty(
                         page.getBytes(), page.getLabel(), configCountry, workingCountry, trace,
-                        taskId, merged, taskId, Integer.valueOf(i));
+                        taskId, merged, taskId, Integer.valueOf(i), total > 1);
                 merged.addAll(outcome.getRecords());
                 finalEngine = outcome.getEngine();
                 if (outcome.getPromptCountry() != null && !outcome.getPromptCountry().trim().isEmpty()) {
@@ -477,7 +479,8 @@ public class RecognitionRunner {
                     }
                     taskService.touchRecognitionHeartbeat(taskId);
                     ImageSliceResult slice = collectRecordsForImage(
-                            taskId, fileKey, configCountry, workingCountry, trace, systemRecovery, imageIndex);
+                            taskId, fileKey, configCountry, workingCountry, trace, systemRecovery, imageIndex,
+                            total > 1);
                     perImageRecords.put(imageIndex, slice.records);
                     if (slice.engine != null) {
                         perImageEngine.put(imageIndex, slice.engine);
@@ -494,7 +497,21 @@ public class RecognitionRunner {
                     log.info("多图并行识别完成单张: taskId={}, image={}/{}, rows={}",
                             taskId, imageIndex + 1, total, slice.records.size());
                 } catch (Exception e) {
-                    throw new java.util.concurrent.CompletionException(e);
+                    if (total > 1 && RecognitionEmptyPageSupport.isSkippableEmptyPageError(e)) {
+                        log.warn("跳过无考勤行页面: taskId={}, image={}/{}, file={}, reason={}",
+                                taskId, imageIndex + 1, total, fileKey, e.getMessage());
+                        if (trace != null) {
+                            JSONObject skip = new JSONObject();
+                            skip.put("index", imageIndex + 1);
+                            skip.put("total", total);
+                            skip.put("fileKey", fileKey);
+                            skip.put("reason", "no_parseable_rows");
+                            trace.step("page_skipped_empty", skip);
+                        }
+                        perImageRecords.put(imageIndex, new ArrayList<JSONObject>());
+                        return;
+                    }
+                    throw new CompletionException(e);
                 }
             }, recognitionExecutor));
         }
@@ -575,7 +592,8 @@ public class RecognitionRunner {
 
     private ImageSliceResult collectRecordsForImage(String taskId, String fileKey, String configCountry,
                                                     String workingCountry, RecognitionTrace trace,
-                                                    boolean systemRecovery, int imageIndex) throws Exception {
+                                                    boolean systemRecovery, int imageIndex,
+                                                    boolean allowEmpty) throws Exception {
         byte[] fileBytes = systemRecovery
                 ? taskService.readUploadedImageBytesForTask(taskId, fileKey)
                 : taskService.readUploadedImageBytes(fileKey);
@@ -586,13 +604,14 @@ public class RecognitionRunner {
             pages = new ArrayList<>(1);
             pages.add(new UploadMediaSupport.ImagePage(fileBytes, fileKey));
         }
+        boolean skipEmpty = allowEmpty || pages.size() > 1;
         List<JSONObject> imageRecords = new ArrayList<>();
         String imageEngine = null;
         String imageCountry = configCountry;
         for (UploadMediaSupport.ImagePage page : pages) {
-            RecognitionOutcome outcome = runSingleImage(
+            RecognitionOutcome outcome = runPageAllowingEmpty(
                     page.getBytes(), page.getLabel(), configCountry, workingCountry, trace,
-                    null, null, taskId, Integer.valueOf(imageIndex));
+                    null, null, taskId, Integer.valueOf(imageIndex), skipEmpty);
             imageRecords.addAll(outcome.getRecords());
             imageEngine = outcome.getEngine();
             if (outcome.getPromptCountry() != null && !outcome.getPromptCountry().trim().isEmpty()) {
@@ -600,6 +619,42 @@ public class RecognitionRunner {
             }
         }
         return new ImageSliceResult(imageRecords, imageEngine, imageCountry);
+    }
+
+    private RecognitionOutcome runPageAllowingEmpty(byte[] fileBytes, String originalFilename, String promptCountry,
+                                                    String workingCountry, RecognitionTrace trace,
+                                                    String progressTaskId, List<JSONObject> mergedBaseline,
+                                                    String eventTaskId, Integer imageIndex,
+                                                    boolean allowEmpty) throws Exception {
+        if (allowEmpty && RecognitionEmptyPageSupport.isNearlyBlank(fileBytes)) {
+            log.warn("跳过空白页（几乎无墨迹）: {}", originalFilename);
+            if (trace != null) {
+                JSONObject meta = new JSONObject();
+                meta.put("filename", originalFilename);
+                meta.put("reason", "blank_pixels");
+                trace.step("page_skipped_empty", meta);
+            }
+            publishPageDoneEvent(eventTaskId, imageIndex, new ArrayList<JSONObject>());
+            return new RecognitionOutcome(new ArrayList<JSONObject>(), plannedEngine(), promptCountry);
+        }
+        try {
+            return runSingleImage(fileBytes, originalFilename, promptCountry, workingCountry, trace,
+                    progressTaskId, mergedBaseline, eventTaskId, imageIndex);
+        } catch (Exception e) {
+            if (allowEmpty && RecognitionEmptyPageSupport.isSkippableEmptyPageError(e)) {
+                log.warn("跳过无考勤行页面: file={}, reason={}", originalFilename, e.getMessage());
+                if (trace != null) {
+                    JSONObject meta = new JSONObject();
+                    meta.put("filename", originalFilename);
+                    meta.put("reason", "no_parseable_rows");
+                    meta.put("message", e.getMessage());
+                    trace.step("page_skipped_empty", meta);
+                }
+                publishPageDoneEvent(eventTaskId, imageIndex, new ArrayList<JSONObject>());
+                return new RecognitionOutcome(new ArrayList<JSONObject>(), plannedEngine(), promptCountry);
+            }
+            throw e;
+        }
     }
 
     private static List<JSONObject> buildContiguousMergedRecords(List<JSONObject> baseline,

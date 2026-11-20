@@ -10,12 +10,14 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import javax.imageio.ImageIO;
+import javax.imageio.ImageReader;
 import java.awt.image.BufferedImage;
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.Iterator;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
@@ -29,6 +31,18 @@ public final class PdfToImageConverter {
 
     static {
         System.setProperty("java.awt.headless", "true");
+        ImageIO.scanForPlugins();
+        if (!hasJbig2Reader()) {
+            log.warn("未注册 JBIG2 ImageIO，PDF 中 JBIG2 页可能渲成白页");
+        }
+    }
+
+    static boolean hasJbig2Reader() {
+        Iterator<ImageReader> readers = ImageIO.getImageReadersByFormatName("JBIG2");
+        if (readers.hasNext()) {
+            return true;
+        }
+        return ImageIO.getImageReadersByFormatName("jbig2").hasNext();
     }
 
     private PdfToImageConverter() {
@@ -65,7 +79,12 @@ public final class PdfToImageConverter {
             PDFRenderer renderer = new PDFRenderer(document);
             for (int i = 0; i < pageCount; i++) {
                 BufferedImage image = renderer.renderImageWithDPI(i, dpi, ImageType.RGB);
-                pages.add(toJpegBytes(image));
+                byte[] jpeg = toJpegBytes(image);
+                if (RecognitionEmptyPageSupport.isNearlyBlank(jpeg)) {
+                    logger.warn("PDF 第 {}/{} 页渲染后几乎全白（{} bytes），若原页有表格线则可能是 JBIG2 未解码",
+                            i + 1, pageCount, jpeg.length);
+                }
+                pages.add(jpeg);
             }
             logger.info("PDF 转图片完成: pages={}, dpi={}", pageCount, dpi);
             return pages;
